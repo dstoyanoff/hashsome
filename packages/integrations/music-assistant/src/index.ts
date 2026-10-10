@@ -49,6 +49,11 @@ export interface MusicAssistantOptions {
   /** Integration id used in entity refs. Defaults to `ma`. */
   id?: string;
 
+  /** Whether what is played from a dashboard goes on with similar tracks once its queue runs out, as it does in
+   * Spotify (Music Assistant's "don't stop the music" setting on the player's queue, turned on whenever something is
+   * played). `false` leaves the setting as it is in Music Assistant. Default `true`. */
+  autoplay?: boolean;
+
   /** Override for tests. */
   createSocket?: (url: string) => WebSocket;
   reconnectMinMs?: number;
@@ -328,6 +333,18 @@ export class MusicAssistantIntegration extends BaseIntegration {
 
     if (name === 'previous') {
       this.#wentBack.set(entityId, Date.now());
+    }
+
+    // Playing something: let the queue go on with similar tracks when it runs out. Not waited for (nor does it matter if
+    // it fails): Music Assistant takes the requests in order, so the setting is there when the item starts.
+    if (
+      name === 'playMedia' &&
+      this.#options.autoplay !== false &&
+      ['play', 'replace', undefined].includes(args?.mode as string | undefined)
+    ) {
+      this.#send('player_queues/autoplay', { queue_id: entityId, autoplay_enabled: true }).catch(
+        () => {},
+      );
     }
 
     const { command, args: commandArgs, idKey = 'player_id' } = commandFor(name, args);

@@ -327,6 +327,44 @@ test('the playlist or album the queue was filled from is on the player, and goes
   expect(ma.getEntity('kitchen_speaker')).not.toHaveProperty('source');
 });
 
+test('playing something turns on autoplay on its queue, so it goes on with similar tracks, unless that is switched off', async () => {
+  const { ma, socket } = make();
+  await connect(ma, socket);
+  void ma.command('kitchen_speaker', 'playMedia', { item: 'library://track/1' });
+  await flush();
+  expect(
+    socket()
+      .sent.slice(-2)
+      .map(({ command, args }) => [command, args]),
+  ).toEqual([
+    ['player_queues/autoplay', { queue_id: 'kitchen_speaker', autoplay_enabled: true }],
+    [
+      'player_queues/play_media',
+      { queue_id: 'kitchen_speaker', media: 'library://track/1', option: 'play' },
+    ],
+  ]);
+
+  // Putting a track in a queue that is already going does not touch the setting.
+  void ma.command('kitchen_speaker', 'playMedia', { item: 'library://track/2', mode: 'add' });
+  await flush();
+  expect(socket().sent.at(-1)).toMatchObject({ command: 'player_queues/play_media' });
+  expect(socket().sent.at(-2)).toMatchObject({ command: 'player_queues/play_media' });
+
+  const off = new MusicAssistantIntegration({
+    url: 'http://mass.local:8095',
+    token: 'tok',
+    autoplay: false,
+    createSocket: (url) => new FakeSocket(url) as unknown as WebSocket,
+  });
+
+  await connect(off, () => FakeSocket.instances.at(-1)!);
+  void off.command('kitchen_speaker', 'playMedia', { item: 'library://track/1' });
+  await flush();
+  expect(
+    FakeSocket.instances.at(-1)!.sent.filter((sent) => sent.command === 'player_queues/autoplay'),
+  ).toHaveLength(0);
+});
+
 test('browse lists the shelves, then what is in a shelf, an album and an artist', async () => {
   const { ma, socket } = make();
   await connect(ma, socket);
