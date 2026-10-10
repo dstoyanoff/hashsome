@@ -8,12 +8,13 @@ import {
   type BrowseResult,
   type EntityInput,
   type EntityRef,
+  type MediaPlayerSource,
   type QueueQuery,
   type QueueResult,
 } from '@hashsome/core';
 import { parseUri, SHELVES, toBrowseItem, type MaItem } from './browse.ts';
 import { groupOf } from './group.ts';
-import { toMediaPlayer, type MaPlayer, type ToMediaPlayerOptions } from './mapper.ts';
+import { sourceOf, toMediaPlayer, type MaPlayer, type ToMediaPlayerOptions } from './mapper.ts';
 import { toQueueItems, type MaQueueItem } from './queue.ts';
 import { onPlayback, onQueue, positionOf, type Position } from './position.ts';
 import { onReport, REVERT_WINDOW_MS, type Shown } from './revert.ts';
@@ -208,6 +209,9 @@ function wsUrl(url: string): string {
 interface QueueState {
   shuffle?: boolean;
   position: Position;
+
+  /** What the queue was filled from. */
+  source?: MediaPlayerSource;
 }
 
 /** The kinds of item a search finds, which are also Music Assistant's own names for them. */
@@ -752,9 +756,10 @@ export class MusicAssistantIntegration extends BaseIntegration {
       return own;
     }
 
-    const { media, position, positionUpdatedAt, duration, shuffle } = lead;
+    const { media, position, positionUpdatedAt, duration, shuffle, source } = lead;
     return {
       ...own,
+      ...(source ? { source } : {}),
       playback: lead.playback,
       ...(media ? { media } : {}),
       ...(position !== undefined ? { position } : {}),
@@ -770,6 +775,7 @@ export class MusicAssistantIntegration extends BaseIntegration {
   /** A player as it is by itself, with its queue's shuffle setting and position copied onto it. */
   #ownEntity(player: MaPlayer, options: ToMediaPlayerOptions): EntityInput {
     const queue = this.#queues.get(player.player_id);
+    options = { ...options, ...(queue?.source ? { source: queue.source } : {}) };
     if (!queue) {
       // A stopped player's own counter is back at the start: until the queue says more, no position.
       return toMediaPlayer(
@@ -851,10 +857,13 @@ export class MusicAssistantIntegration extends BaseIntegration {
     const playback =
       player?.playback_state ?? (typeof queue.state === 'string' ? queue.state : undefined);
 
+    const source = sourceOf(queue);
+    const { source: _before, ...rest } = known;
     const next: QueueState = {
-      ...known,
+      ...rest,
       ...(typeof queue.shuffle_enabled === 'boolean' ? { shuffle: queue.shuffle_enabled } : {}),
       position: onQueue(known.position, message, playback, Date.now() / 1000),
+      ...(source ? { source } : {}),
     };
 
     this.#changeQueue(queue.queue_id, known, next);
@@ -862,7 +871,12 @@ export class MusicAssistantIntegration extends BaseIntegration {
 
   /** Keeps a queue's new state and, when something it shows changed, the player's entity. */
   #changeQueue(id: string, known: QueueState, next: QueueState): void {
-    if (next.shuffle === known.shuffle && samePosition(next.position, known.position)) {
+    if (
+      next.shuffle === known.shuffle &&
+      samePosition(next.position, known.position) &&
+      next.source?.title === known.source?.title &&
+      next.source?.kind === known.source?.kind
+    ) {
       this.#queues.set(id, next);
       return;
     }

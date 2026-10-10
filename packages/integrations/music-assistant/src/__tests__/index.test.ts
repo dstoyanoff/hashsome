@@ -299,6 +299,34 @@ const answer = async (socket: () => FakeSocket, result: unknown) => {
   await flush();
 };
 
+test('the playlist or album the queue was filled from is on the player, and goes when the queue is filled otherwise', async () => {
+  const { ma, socket } = make();
+  await connect(ma, socket);
+  expect(ma.getEntity('kitchen_speaker')).not.toHaveProperty('source');
+
+  socket().receive({
+    event: 'queue_updated',
+    object_id: 'kitchen_speaker',
+    data: {
+      queue_id: 'kitchen_speaker',
+      state: 'playing',
+      sources: [{ media_type: 'playlist', name: 'Daily Mix 2' }],
+    },
+  });
+
+  expect(ma.getEntity('kitchen_speaker')).toMatchObject({
+    source: { title: 'Daily Mix 2', kind: 'playlist' },
+  });
+
+  socket().receive({
+    event: 'queue_updated',
+    object_id: 'kitchen_speaker',
+    data: { queue_id: 'kitchen_speaker', state: 'playing', sources: [] },
+  });
+
+  expect(ma.getEntity('kitchen_speaker')).not.toHaveProperty('source');
+});
+
 test('browse lists the shelves, then what is in a shelf, an album and an artist', async () => {
   const { ma, socket } = make();
   await connect(ma, socket);

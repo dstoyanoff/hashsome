@@ -2,6 +2,7 @@
 import { useTheme } from '@emotion/react';
 import { Flex, Grid, Typography } from 'e-prim';
 import type { ReactNode } from 'react';
+import type { MediaPlayerSource } from '@hashsome/core';
 import type { EntityHandle } from '../entity-handle.ts';
 import { Icon } from '../icon.tsx';
 import { ValueBar } from '../layout/drawer-controls.tsx';
@@ -13,6 +14,18 @@ import { formatDuration, useMediaPosition, useSteadyPlaying } from './media-prog
 import { useSeekHold } from './media-seek.ts';
 import { ArtworkRing } from './artwork-ring.tsx';
 import { LoadingLine, useLoadingLabel } from './media-loading-line.tsx';
+
+const SOURCE_WORDS = {
+  playlist: 'playlist',
+  album: 'album',
+  artist: 'artist',
+  radio: 'radio station',
+} as const;
+
+/** What the line under the artist says about what the queue was filled from: "From playlist Daily Mix 2". */
+export function sourceLabel(source: MediaPlayerSource): string {
+  return `From ${source.kind ? `${SOURCE_WORDS[source.kind]} ` : ''}${source.title}`;
+}
 
 /** The upright "now playing" panel the media column and page share: the artwork on a record, what is playing, how
  * far along it is, the transport buttons and a volume bar that is always there. Not exported from
@@ -143,6 +156,19 @@ export function NowPlaying({
             {name ?? player?.name ?? fallback}
           </Typography>
         )}
+        {ready && player?.source ? (
+          <Typography
+            as="span"
+            variant="secondary"
+            color="textMuted"
+            noWrap
+            textOverflow="ellipsis"
+            overflow="hidden"
+            maxWidth="100%"
+          >
+            {sourceLabel(player.source)}
+          </Typography>
+        ) : null}
       </Flex>
       {seek.shown !== undefined && duration ? (
         <Typography

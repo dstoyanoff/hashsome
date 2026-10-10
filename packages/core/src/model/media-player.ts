@@ -12,9 +12,19 @@ export interface MediaPlayerGroup {
   members: EntityRef[];
 }
 
+/** The playlist, album, artist or radio station a player is playing from. */
+export interface MediaPlayerSource {
+  title: string;
+  kind?: 'playlist' | 'album' | 'artist' | 'radio';
+}
+
 export interface MediaPlayerEntity extends EntityBase<'mediaPlayer'> {
   playback: PlaybackState;
   media?: { title?: string; artist?: string; album?: string; artworkUrl?: string };
+
+  /** What the queue was filled from, to say what is playing "from": the playlist, album, artist or radio station.
+   * Absent for a track played on its own, or when the backend does not say. */
+  source?: MediaPlayerSource;
 
   /** Where playback is in the current item, in seconds, as of `positionUpdatedAt`. A player that
    * is playing advances from there, so a UI interpolates instead of waiting for updates. */
