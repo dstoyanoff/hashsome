@@ -127,6 +127,7 @@ export function createGalleryIntegration() {
       'media_player.living_room': mockMediaPlayer({
         name: 'Living Room',
         playback: 'playing',
+        source: { title: 'Daily Mix 2', kind: 'playlist' },
         media: {
           title: 'Blank Space',
           artist: 'More More',

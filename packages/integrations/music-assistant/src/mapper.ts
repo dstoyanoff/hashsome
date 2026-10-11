@@ -1,4 +1,4 @@
-import type { EntityInput, EntityRef } from '@hashsome/core';
+import type { EntityInput, EntityRef, MediaPlayerSource } from '@hashsome/core';
 import type { MaGroup } from './group.ts';
 
 export interface MaPlayerMedia {
@@ -49,6 +49,9 @@ export interface ToMediaPlayerOptions {
 
   /** The group the player plays in, from `groupOf`. */
   group?: MaGroup | undefined;
+
+  /** What its queue was filled from, from `sourceOf`. */
+  source?: MediaPlayerSource | undefined;
 }
 
 const PLAYBACK: Record<string, 'playing' | 'paused' | 'idle' | 'buffering'> = {
@@ -95,6 +98,7 @@ export function toMediaPlayer(player: MaPlayer, options: ToMediaPlayerOptions = 
       ? { group: { leader: ref(options.group.leader), members: options.group.members.map(ref) } }
       : {}),
     ...(groupable && others.length > 0 ? { groupable: others.map(ref) } : {}),
+    ...(options.source ? { source: options.source } : {}),
     capabilities: {
       volume: typeof player.volume_level === 'number',
       mute: typeof player.volume_muted === 'boolean',
@@ -109,4 +113,28 @@ export function toMediaPlayer(player: MaPlayer, options: ToMediaPlayerOptions = 
       group: groupable,
     },
   };
+}
+
+const SOURCE_KINDS = ['playlist', 'album', 'artist', 'radio'] as const;
+
+/** What a Music Assistant queue was filled from: the first of its `sources` that is a playlist, album, artist or radio
+ * station. A queue of tracks put in one by one, or of a single track, has none. */
+export function sourceOf(queue: Record<string, unknown>): MediaPlayerSource | undefined {
+  if (!Array.isArray(queue.sources)) {
+    return undefined;
+  }
+
+  for (const entry of queue.sources) {
+    if (typeof entry !== 'object' || entry === null) {
+      continue;
+    }
+
+    const { name, media_type: type } = entry as { name?: unknown; media_type?: unknown };
+    const kind = SOURCE_KINDS.find((candidate) => candidate === type);
+    if (kind && typeof name === 'string' && name !== '') {
+      return { title: name, kind };
+    }
+  }
+
+  return undefined;
 }
