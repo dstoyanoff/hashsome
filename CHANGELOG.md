@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.0 (2026-10-10)
+
+### Features
+
+- **ui:** speakers sit behind a pill under the track info, with Add, Join and Remove buttons (#95) ([94db6d8](https://github.com/dstoyanoff/hashsome/commit/94db6d8139d7e6878b4f0016ec6aa338f6ca715e))
+- **music-assistant:** players report the group they play in, can be grouped, and a follower can take the stream over (#96) ([06d52ab](https://github.com/dstoyanoff/hashsome/commit/06d52ab9ec2a1b44954c90b22b099709f062c5a1))
+- **core:** media players can be grouped, and a follower can take the stream over (#93) ([0cddacd](https://github.com/dstoyanoff/hashsome/commit/0cddacd9ae062b2772cf910c819aa0b4770588d6))
+
 ## 0.11.0 (2026-10-10)
 
 ### Features
