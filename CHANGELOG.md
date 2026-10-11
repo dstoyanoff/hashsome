@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.0 (2026-10-11)
+
+### Features
+
+- **ui:** the player says which playlist or album it plays from, and goes on with similar tracks (#97) ([48f8144](https://github.com/dstoyanoff/hashsome/commit/48f8144bfa40301def319fab167a8da91c3b8aa9))
+
 ## 0.12.0 (2026-10-10)
 
 ### Features
