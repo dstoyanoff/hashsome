@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.1 (2026-10-14)
+
+### Fixes
+
+- **ui:** the source line reads "from playlist" in lowercase, with the name set apart (#99) ([82f003c](https://github.com/dstoyanoff/hashsome/commit/82f003c938208b7e478c1c0fafdf1ca0f6703d4c))
+- **ui:** the live power reading stays in the full-size drawer (#98) ([25006d5](https://github.com/dstoyanoff/hashsome/commit/25006d5a544ff757436fe3c06b41836cca23d081))
+
 ## 0.13.0 (2026-10-11)
 
 ### Features
