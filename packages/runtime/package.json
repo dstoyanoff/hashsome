@@ -1,6 +1,6 @@
 {
   "name": "@hashsome/runtime",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "description": "Server + CLI that serves a project's own dashboards",
   "type": "module",
   "exports": {
