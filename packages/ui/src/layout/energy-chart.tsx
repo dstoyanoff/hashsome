@@ -123,7 +123,7 @@ export function EnergyChart({
           <RangeSwitcher range={range} options={ENERGY_RANGES} onChange={selectRange} />
         ) : null}
       </Flex>
-      {expanded ? null : power ? (
+      {power ? (
         <PowerReading entity={power} fallbackUnit={unit} />
       ) : (
         <Typography as="span" variant="stat">
