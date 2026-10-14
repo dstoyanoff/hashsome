@@ -128,6 +128,30 @@ test('the bar shows a progress line you can seek on, the time beside the artist,
   });
 });
 
+test('the bar can leave the time out and still has its line to show and seek on', () => {
+  renderWithMock(<MediaPlayerBar entity="ha:room" time={false} />, playing(), library);
+  expect(screen.queryByText(/ \/ 2:00/)).toBeNull();
+  expect(screen.getByRole('slider', { name: 'Position' })).toBeTruthy();
+});
+
+test('the bar can leave the shuffle button out', () => {
+  const { unmount } = renderWithMock(
+    <MediaPlayerBar entity="ha:room" />,
+    playing({ shuffle: true }),
+    library,
+  );
+
+  expect(screen.getByRole('button', { name: 'Shuffle' })).toBeTruthy();
+  unmount();
+  renderWithMock(
+    <MediaPlayerBar entity="ha:room" shuffle={false} />,
+    playing({ shuffle: true }),
+    library,
+  );
+
+  expect(screen.queryByRole('button', { name: 'Shuffle' })).toBeNull();
+});
+
 test('dragging the bar’s line moves the time with it, and lets go with a seek', () => {
   const box = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
     left: 0,
@@ -438,7 +462,7 @@ test('the bar has a shuffle toggle by the title when the player can shuffle, and
 test('the bar’s time is its own element beside the track info, not a line inside it', () => {
   renderWithMock(<MediaPlayerBar entity="ha:room" />, playing(), library);
   const time = screen.getByText(/0:3\d \/ 2:00/);
-  const info = screen.getByText('Fleetwood Mac').parentElement as HTMLElement;
+  const info = screen.getByText('Fleetwood Mac').closest('[data-part="track"]') as HTMLElement;
   expect(info.contains(screen.getByText('Dreams'))).toBe(true);
   // A sibling of the track info in the bar (which centers its items), so the time sits at the
   // bar's vertical middle rather than in one of the info's lines.

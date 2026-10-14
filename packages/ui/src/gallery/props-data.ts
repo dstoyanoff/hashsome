@@ -693,6 +693,18 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         optional: true,
         type: "1 | 2 | 'auto'",
       },
+      {
+        doc: '`false` leaves the time ("1:23 / 3:45") out, for a bar with no room for it: the ring round the artwork and the line along the bottom still show how far along playback is. Default `true`.',
+        name: 'time',
+        optional: true,
+        type: 'boolean',
+      },
+      {
+        doc: '`false` leaves the shuffle button out, for a bar with no room for it (a small wall display). Default `true`, shown when the player has shuffle.',
+        name: 'shuffle',
+        optional: true,
+        type: 'boolean',
+      },
     ],
   },
   MediaPlayerColumn: {
