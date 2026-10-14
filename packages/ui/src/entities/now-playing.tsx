@@ -22,9 +22,16 @@ const SOURCE_WORDS = {
   radio: 'radio station',
 } as const;
 
-/** What the line under the artist says about what the queue was filled from: "From playlist Daily Mix 2". */
+/** The two parts of the line under the artist that says what the queue was filled from: "from playlist" and the
+ * playlist's own name, which is set apart from it. */
+export function sourceParts(source: MediaPlayerSource): { lead: string; title: string } {
+  return { lead: `from${source.kind ? ` ${SOURCE_WORDS[source.kind]}` : ''}`, title: source.title };
+}
+
+/** The same line as one string: "from playlist Daily Mix 2". */
 export function sourceLabel(source: MediaPlayerSource): string {
-  return `From ${source.kind ? `${SOURCE_WORDS[source.kind]} ` : ''}${source.title}`;
+  const { lead, title } = sourceParts(source);
+  return `${lead} ${title}`;
 }
 
 /** The upright "now playing" panel the media column and page share: the artwork on a record, what is playing, how
@@ -166,7 +173,10 @@ export function NowPlaying({
             overflow="hidden"
             maxWidth="100%"
           >
-            {sourceLabel(player.source)}
+            {sourceParts(player.source).lead}{' '}
+            <Typography as="span" variant="label" color="text">
+              {sourceParts(player.source).title}
+            </Typography>
           </Typography>
         ) : null}
       </Flex>
