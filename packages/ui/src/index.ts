@@ -37,4 +37,5 @@ export { MediaSpeakers, type MediaSpeakersProps } from './entities/media-speaker
 export { formatDuration } from './entities/media-progress.ts';
 export * from './entities/nav-rail.tsx';
 export * from './entities/nav-dock.tsx';
+export * from './entities/nav-bar.tsx';
 export * from './entities/top-bar.tsx';

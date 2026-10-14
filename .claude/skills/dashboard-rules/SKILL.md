@@ -59,8 +59,8 @@ A dashboard owns its whole layout. There is no runtime-rendered chrome: a page b
   and the padded, scrolling page every dashboard renders into is `@hashsome/ui`'s `Page`, rendered by
   the app's root layout (`example/app/root.tsx`) — the project's own code, free to swap for
   its own wrapper. A page just returns its rooms (see `dashboards/kitchen`).
-- The **top bar** and the **nav** (`NavRail`, which is fixed to the left, or `NavDock`) are ordinary
-  components a dashboard includes — or leaves out. `NavRail`/`NavDock` reserve their size in the surrounding
+- The **top bar** and the **nav** (`NavRail`, which is fixed to the left, `NavDock`, which floats at the bottom, or `NavBar`, the rail's design along the bottom) are ordinary
+  components a dashboard includes — or leaves out. `NavRail`/`NavDock`/`NavBar` reserve their size in the surrounding
   `Page`, which pads so content never sits under them. A small kiosk panel is simply
   its content with no chrome (see `dashboards/hello`).
 - A **multi-page** dashboard puts the shared structure in a layout route: `routes.ts` nests the pages under
@@ -68,7 +68,7 @@ A dashboard owns its whole layout. There is no runtime-rendered chrome: a page b
   `NavRail` (absolute `base`, e.g. `/home`, items relative to it), the top bar and an
   `<Outlet />` (see `dashboards/home`).
 - A **wall display** that is left alone on a sub-page (a music page, say) can go back to the dashboard's main page by
-  itself: `HashsomeProvider`'s `idleReturn` (a time in ms, off by default) turns it on for every `NavRail`/`NavDock`,
+  itself: `HashsomeProvider`'s `idleReturn` (a time in ms, off by default) turns it on for every `NavRail`/`NavDock`/`NavBar`,
   and one can set its own `idleReturn` (a time, or `false`) over it. The main page is the nav item with `to: ''`.
 - To make several dashboards match, share the configuration in the project: `example/shared/`
   holds `HomeTopBar` (weather, presence, clock, the switcher) and `dashboards.ts` (which dashboards
@@ -148,7 +148,7 @@ every component live, documented with its supported states. Concretely:
 
 Put the shared structure in a layout route (see "Layout and chrome"): `routes.ts` nests the pages under
 `route('<id>', '../dashboards/<id>/layout.tsx', [index(…), route('lights', …)])` and `layout.tsx` renders a `NavRail`
-or `NavDock`, the top bar, and an `<Outlet />`. `NavRail`/`NavDock` take an
+or `NavDock`, the top bar, and an `<Outlet />`. `NavRail`/`NavDock`/`NavBar` take an
 absolute `base` (e.g. `/home`) and `items[].to` relative to it (`''` for the dashboard's
 home, `'lights'` for `/<id>/lights`), and highlight the current page themselves. Read
 `dashboards/home/layout.tsx` and its block in `app/routes.ts` for the working example.

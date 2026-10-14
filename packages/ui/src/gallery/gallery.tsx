@@ -14,6 +14,7 @@ import { MediaPlayerFull } from '../entities/media-player-full.tsx';
 import { MediaQueue } from '../entities/media-queue.tsx';
 import { MediaSpeakers } from '../entities/media-speakers.tsx';
 import { WeatherForecast } from '../entities/weather-forecast.tsx';
+import { NavBar } from '../entities/nav-bar.tsx';
 import { NavDock } from '../entities/nav-dock.tsx';
 import { NavRail } from '../entities/nav-rail.tsx';
 import { Page } from '../layout/page.tsx';
@@ -1141,8 +1142,8 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
 
           <ComponentDoc
             title="Navigation"
-            components={['NavRail', 'NavDock', 'Page']}
-            description="Routes within one dashboard. A dashboard includes one itself, usually in its layout route: NavRail is fixed to the left and NavDock floats at the bottom, and both reserve the space they take in the Page around them, which pads so content never sits under them. An item can carry a dot (`attention`: `notice` or `urgent`) when something on its page needs a look, so it is seen without opening the page."
+            components={['NavRail', 'NavDock', 'NavBar', 'Page']}
+            description="Routes within one dashboard. A dashboard includes one itself, usually in its layout route: NavRail is fixed to the left, NavDock floats at the bottom and NavBar is the rail's design on its side, a bar along the bottom from edge to edge for a small display where the rail would take too much width; each reserves the space they take in the Page around them, which pads so content never sits under them. An item can carry a dot (`attention`: `notice` or `urgent`) when something on its page needs a look, so it is seen without opening the page."
           >
             <Flex direction="column" gap={5}>
               <SubPreview label="NavRail, in a Page" height={240}>
@@ -1155,6 +1156,14 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
               </SubPreview>
               <SubPreview label="NavDock" height={140}>
                 <NavDock base="/gallery" items={NAV_ITEMS} />
+              </SubPreview>
+              <SubPreview label="NavBar, in a Page" height={200}>
+                <Page height="100%">
+                  <NavBar base="/gallery" items={NAV_ITEMS} />
+                  <Typography as="p" variant="body" color="textMuted">
+                    Page content, padded clear of the bar.
+                  </Typography>
+                </Page>
               </SubPreview>
               <SubPreview label="NavRail, with something to look at on two pages" height={240}>
                 <Page height="100%">

@@ -57,7 +57,7 @@ Check, at the screen size it targets:
 - At least one interaction round-trips: click a light/scene/action tile, or drag a dimmable one,
   and confirm the state updates (it's reading from the mock or real backend through the actual
   WebSocket proxy, not a static render).
-- If there's more than one page (a layout route with a `NavRail`/`NavDock`), every nav item goes to the right page and
+- If there's more than one page (a layout route with a `NavRail`/`NavDock`/`NavBar`), every nav item goes to the right page and
   highlights as current.
 - Nothing shows raw text like "unavailable" rendered incorrectly, unstyled, or a blank tile for a
   bad ref — bad refs should read "Not found", not error or vanish.

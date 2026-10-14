@@ -20,7 +20,7 @@ type Side = 'left' | 'bottom';
 const InsetContext = createContext<((side: Side, size: number) => () => void) | null>(null);
 
 /** Reserves `size` px of the surrounding `Page`'s edge for something fixed over it (`NavRail`,
- * `NavDock`), so content never sits under it. A no-op outside a `Page`. */
+ * `NavDock`, `NavBar`), so content never sits under it. A no-op outside a `Page`. */
 export function usePageInset(side: Side, size: number): void {
   const reserve = useContext(InsetContext);
   useLayoutEffect(() => reserve?.(side, size), [reserve, side, size]);
@@ -36,7 +36,7 @@ export interface PageProps {
 
 /** The page every dashboard renders into: padded by the density's spacing, a column with gaps,
  * exactly viewport height, and scrolling inside itself (the document never scrolls — the entity
- * drawer is `position: fixed` and relies on that). It pads further for a `NavRail` or `NavDock`
+ * drawer is `position: fixed` and relies on that). It pads further for a `NavRail`, `NavDock` or `NavBar`
  * the dashboard includes. Render it once, in the app's root layout.
  *
  * The debug menu (`HASHSOME_DEBUG=1`) can draw the module grid over the page, spanning all of it (its

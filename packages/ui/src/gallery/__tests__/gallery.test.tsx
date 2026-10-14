@@ -28,10 +28,11 @@ test('gallery renders every component', () => {
   // Uniform non-ready states across component types.
   expect(screen.getAllByText('Unavailable').length).toBeGreaterThan(3);
   expect(screen.getAllByText('Not found').length).toBeGreaterThan(0);
-  // NavRail and NavDock are demoed as separate contained previews here (not as this page's own
-  // chrome), each plain and each with dots on two pages, so "Home" resolves to one link per preview.
+  // NavRail, NavDock and NavBar are demoed as separate contained previews here (not as this page's own
+  // chrome): the rail and the dock plain and with dots on two pages, the bar plain, so "Home" resolves to one link
+  // per preview.
   const homeLinks = screen.getAllByRole('link', { name: 'Home' });
-  expect(homeLinks).toHaveLength(4);
+  expect(homeLinks).toHaveLength(5);
   // The pages with a dot say so.
   expect(screen.getAllByRole('link', { name: 'Lights, needs attention' })).toHaveLength(2);
   expect(screen.getAllByRole('link', { name: 'Climate, needs attention' })).toHaveLength(2);
