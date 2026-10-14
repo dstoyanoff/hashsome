@@ -101,7 +101,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     ],
   },
   Page: {
-    doc: "The page every dashboard renders into: padded by the density's spacing, a column with gaps, exactly viewport height, and scrolling inside itself (the document never scrolls — the entity drawer is `position: fixed` and relies on that). It pads further for a `NavRail` or `NavDock` the dashboard includes. Render it once, in the app's root layout. The debug menu (`HASHSOME_DEBUG=1`) can draw the module grid over the page, spanning all of it (its padding is the grid's first three modules), with every card boxed green or red by whether it sits on the grid: for laying a dashboard out for one device. The height is rarely a whole number of grid modules; what is left over (under one module) is shared between the top and the bottom padding, so the content sits centered and the grid stays whole.",
+    doc: "The page every dashboard renders into: padded by the density's spacing, a column with gaps, exactly viewport height, and scrolling inside itself (the document never scrolls — the entity drawer is `position: fixed` and relies on that). It pads further for a `NavRail`, `NavDock` or `NavBar` the dashboard includes. Render it once, in the app's root layout. The debug menu (`HASHSOME_DEBUG=1`) can draw the module grid over the page, spanning all of it (its padding is the grid's first three modules), with every card boxed green or red by whether it sits on the grid: for laying a dashboard out for one device. The height is rarely a whole number of grid modules; what is left over (under one module) is shared between the top and the bottom padding, so the content sits centered and the grid stays whole.",
     props: [
       {
         doc: 'The dashboard.',
@@ -121,7 +121,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     doc: "A dashboard layout's `<Outlet />` with a transition between its pages: the page that was showing fades out (sliding a little toward the side it was on), then the new one fades in from the side it is on. It is a drop-in for `Outlet` in a layout route, and does nothing the first time a page shows or for a visitor who prefers reduced motion.",
     props: [
       {
-        doc: "The dashboard's pages in the order its nav lists them (the same `items` as `NavRail` or `NavDock`). A page then slides in from the side it sits on: a later page from the right, an earlier one from the left. Left out, pages only fade.",
+        doc: "The dashboard's pages in the order its nav lists them (the same `items` as `NavRail`, `NavDock` or `NavBar`). A page then slides in from the side it sits on: a later page from the right, an earlier one from the left. Left out, pages only fade.",
         name: 'items',
         optional: true,
         type: 'NavItem[]',
@@ -946,6 +946,29 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
       },
     ],
   },
+  NavBar: {
+    doc: "The left rail's design along the bottom of the screen, for a small display where the rail would take too much of the width: the same rail colour and rounded-square buttons (the open page lit), in a row at the middle of a bar that runs from edge to edge, not floating like `NavDock`. Must be rendered inside a router. It is `position: fixed` and reserves its height in the surrounding `Page`, which pads for it so content never sits under it.",
+    props: [
+      {
+        doc: 'The pages to link to; `to` is relative to `base`.',
+        name: 'items',
+        optional: false,
+        type: 'NavItem[]',
+      },
+      {
+        doc: 'Base path items are resolved against, e.g. `/home`.',
+        name: 'base',
+        optional: false,
+        type: 'string',
+      },
+      {
+        doc: "How long, in ms, the display may be left alone on a page other than the main one (the item whose `to` is `''`) before it goes back to that page; `false` for never. Any touch, click, key or scroll starts the time again. Defaults to `HashsomeProvider`'s `idleReturn`, which is off unless the app turns it on.",
+        name: 'idleReturn',
+        optional: true,
+        type: 'number | false',
+      },
+    ],
+  },
   TopBar: {
     doc: "Shared chrome above a dashboard page's content: title (optionally a dashboard switcher), scene shortcuts, and live status (weather, presence, a clock). Composes freely — every prop but `title` is optional.",
     props: [
@@ -1176,7 +1199,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'EntityRef',
       },
       {
-        doc: "How long, in ms, a display is left alone on a dashboard's page other than its main one before it goes back to the main page, so a wall display does not stay on the music page for hours. Any touch, click, key or scroll starts the time again, and the main page itself is left alone. It is done by the dashboard's `NavRail` or `NavDock`, which can set their own `idleReturn` (a time, or `false`) over this. Default `false`: off.",
+        doc: "How long, in ms, a display is left alone on a dashboard's page other than its main one before it goes back to the main page, so a wall display does not stay on the music page for hours. Any touch, click, key or scroll starts the time again, and the main page itself is left alone. It is done by the dashboard's `NavRail`, `NavDock` or `NavBar`, which can set their own `idleReturn` (a time, or `false`) over this. Default `false`: off.",
         name: 'idleReturn',
         optional: true,
         type: 'number | false',

@@ -5,7 +5,7 @@ import { useLocation, useOutlet } from 'react-router';
 import type { NavItem } from '../entities/nav-rail.tsx';
 
 export interface AnimatedOutletProps {
-  /** The dashboard's pages in the order its nav lists them (the same `items` as `NavRail` or `NavDock`). A page then slides in from the side it sits on: a later page from the right, an earlier one from the left. Left out, pages only fade. */
+  /** The dashboard's pages in the order its nav lists them (the same `items` as `NavRail`, `NavDock` or `NavBar`). A page then slides in from the side it sits on: a later page from the right, an earlier one from the left. Left out, pages only fade. */
   items?: NavItem[];
 
   /** The path `items` are relative to, e.g. `/bathroom`. Needed with `items`. */

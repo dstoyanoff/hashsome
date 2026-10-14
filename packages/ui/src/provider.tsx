@@ -81,7 +81,7 @@ export interface HashsomeProviderProps {
   /** The daylight sensor (`on` while the sun is up) the debug menu's Sun theme follows, when `theme` is not a sun schedule already (`theme={{ sun: … }}` names one). Without either, the menu has no Sun choice: Hashsome does not know which entity is the sun. */
   sun?: EntityRef;
 
-  /** How long, in ms, a display is left alone on a dashboard's page other than its main one before it goes back to the main page, so a wall display does not stay on the music page for hours. Any touch, click, key or scroll starts the time again, and the main page itself is left alone. It is done by the dashboard's `NavRail` or `NavDock`, which can set their own `idleReturn` (a time, or `false`) over this. Default `false`: off. */
+  /** How long, in ms, a display is left alone on a dashboard's page other than its main one before it goes back to the main page, so a wall display does not stay on the music page for hours. Any touch, click, key or scroll starts the time again, and the main page itself is left alone. It is done by the dashboard's `NavRail`, `NavDock` or `NavBar`, which can set their own `idleReturn` (a time, or `false`) over this. Default `false`: off. */
   idleReturn?: number | false;
 
   /** The app. */

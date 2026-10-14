@@ -36,7 +36,7 @@ export function useIdleReturnDefault(): number | false {
  * on `to` itself nothing happens. The page it leaves replaces itself in the history, so the back button does
  * not return to it. `false` (or no time) turns it off.
  *
- * `NavRail` and `NavDock` do this for the dashboard they are in (see their `idleReturn`); use the hook
+ * `NavRail`, `NavDock` and `NavBar` do this for the dashboard they are in (see their `idleReturn`); use the hook
  * directly for a dashboard that builds its own navigation.
  */
 export function useIdleReturn({ to, after }: { to: string; after: number | false | undefined }) {

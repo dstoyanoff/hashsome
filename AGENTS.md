@@ -31,7 +31,7 @@ of relying on this summary alone.
 ## Rules
 
 - Node is pinned via `devEngines.runtime` in package.json and managed by pnpm (`pnpm runtime`); do not use nvm.
-- A dashboard is ordinary app code, not a sandbox: it can import anything (other libraries, the project's own `shared/` files, its own helpers). `@hashsome/ui` components are the building blocks, and a dashboard owns its layout — it includes `TopBar`/`NavRail`/`NavDock` itself, or leaves them out.
+- A dashboard is ordinary app code, not a sandbox: it can import anything (other libraries, the project's own `shared/` files, its own helpers). `@hashsome/ui` components are the building blocks, and a dashboard owns its layout — it includes `TopBar`/`NavRail`/`NavDock`/`NavBar` itself, or leaves them out.
 - Do not edit `packages/*` when creating a dashboard; propose a separate change instead (see `add-ui-component` for the one deliberate exception, for `packages/ui` only). Registering a new dashboard touches `example/app/routes.ts` (the one file listing every route; plus `example/shared/dashboards.ts` if it should appear in the top bar's switcher) — that's expected, not an exception to this rule, since all of them live inside `example`, not `packages/*`.
 - There is no dashboard manifest: a dashboard's URL is its `route('<id>', …)` in `routes.ts`, and its tab title is the entry module's `meta` export.
 - Tests (`pnpm test`) cover `packages/*` and `scripts/` only. Don't add tests under `example/dashboards/*` — verify a dashboard with `verify-dashboard` (typecheck plus an actual look at it running) instead.
