@@ -60,7 +60,7 @@ export interface HashsomeProviderProps {
   /** Options for the default `RemoteClient` (reconnect timing, a custom socket factory). Ignored when `client` is given. */
   clientOptions?: Omit<RemoteClientOptions, 'url'>;
 
-  /** `'light'`, `'dark'`, `'system'` (follows the browser/OS preference and updates live), or a schedule: `{ dark: { from: '19:00', to: '07:00' } }` is dark between those times on the display's clock, `{ sun: 'ha:sun.sun' }` is dark while that entity, a `daylight` sensor (`on` while the sun is up; the Home Assistant integration makes one of `sun.sun`), is `off`. Default `'dark'`. A schedule and the document shell's first paint use `'system'` until the time or the entity is known. A `useThemeToggle()` caller (e.g. `NavRail`'s dev toggle) can still override this at runtime. Pass a constant defined outside the component. */
+  /** `'light'`, `'dark'`, `'system'` (follows the browser/OS preference and updates live), or a schedule: `{ dark: { from: '19:00', to: '07:00' } }` is dark between those times on the display's clock, `{ sun: 'ha:sun.sun' }` is dark while that entity, a `daylight` sensor (`on` while the sun is up; the Home Assistant integration makes one of `sun.sun`), is `off`. Default `'dark'`. A schedule and the document shell's first paint use `'system'` until the time or the entity is known. A `useThemeToggle()` caller (a toggle of the project's own) can still override this at runtime. Pass a constant defined outside the component. */
   theme?: ThemeMode;
 
   /** Any Google Fonts family name (e.g. `'Inter'`, `'Roboto'`, `'Poppins'`), loaded dynamically. Default `'Inter'`. */
@@ -136,7 +136,7 @@ export interface ThemeModeState {
 
 const ThemeModeContext = createContext<ThemeModeState | null>(null);
 
-/** Reads the live light/dark state and a way to flip it — e.g. a dev-only toggle in `NavRail`.
+/** Reads the live light/dark state and a way to flip it, for a toggle of the project's own (the debug menu has a Theme choice).
  * Must be rendered inside `<HashsomeProvider>`. */
 export function useThemeToggle(): ThemeModeState {
   const value = useContext(ThemeModeContext);

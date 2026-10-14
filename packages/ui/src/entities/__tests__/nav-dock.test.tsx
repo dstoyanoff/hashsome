@@ -1,9 +1,7 @@
-import { LocalClient, MockIntegration } from '@hashsome/core';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { ThemeProvider } from 'e-prim';
 import { MemoryRouter } from 'react-router';
 import { expect, test } from 'vitest';
-import { HashsomeProvider } from '../../provider.tsx';
 import { darkTheme } from '../../theme/index.ts';
 import { NavDock } from '../nav-dock.tsx';
 
@@ -30,32 +28,4 @@ test('nav dock resolves items against base and marks the current page', () => {
   expect(screen.getByRole('link', { name: 'Upstairs' }).getAttribute('href')).toBe(
     '/home/upstairs',
   );
-});
-
-test('showThemeToggle is off by default, and toggles the theme when on', () => {
-  const { rerender } = render(
-    <HashsomeProvider client={new LocalClient([new MockIntegration({})])}>
-      <MemoryRouter>
-        <NavDock base="/home" items={[{ to: '', label: 'Home', icon: 'lu:house' }]} />
-      </MemoryRouter>
-    </HashsomeProvider>,
-  );
-
-  expect(screen.queryByRole('button')).toBeNull();
-
-  rerender(
-    <HashsomeProvider client={new LocalClient([new MockIntegration({})])} theme="dark">
-      <MemoryRouter>
-        <NavDock
-          base="/home"
-          items={[{ to: '', label: 'Home', icon: 'lu:house' }]}
-          showThemeToggle
-        />
-      </MemoryRouter>
-    </HashsomeProvider>,
-  );
-
-  const toggle = screen.getByRole('button', { name: /switch to light theme/i });
-  fireEvent.click(toggle);
-  expect(screen.getByRole('button', { name: /switch to dark theme/i })).toBeTruthy();
 });

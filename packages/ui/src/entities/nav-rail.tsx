@@ -4,7 +4,6 @@ import { NavLink } from 'react-router';
 import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { usePageInset } from '../layout/page.tsx';
-import { useThemeToggle } from '../provider.tsx';
 import { NAV_RAIL } from '../theme/grid.ts';
 import { AttentionDot } from './attention-dot.tsx';
 import { useIdleReturn, useIdleReturnDefault } from '../layout/use-idle-return.ts';
@@ -32,9 +31,6 @@ export interface NavRailProps {
   /** Base path items are resolved against, e.g. `/home`. */
   base: string;
 
-  /** Adds a light/dark toggle at the bottom of the rail. Off by default — meant for development or a project that deliberately exposes it, not every kiosk install. */
-  showThemeToggle?: boolean;
-
   /** How long, in ms, the display may be left alone on a page other than the main one (the item whose `to` is `''`) before it goes back to that page; `false` for never. Any touch, click, key or scroll starts the time again. Defaults to `HashsomeProvider`'s `idleReturn`, which is off unless the app turns it on. */
   idleReturn?: number | false;
 }
@@ -42,7 +38,7 @@ export interface NavRailProps {
 /** Fixed left sidebar for switching between a dashboard's pages. Must be rendered inside a
  * router. It is `position: fixed` and reserves its width in the surrounding `Page`, which pads
  * for it so content never sits under it. */
-export function NavRail({ items, base, showThemeToggle, idleReturn }: NavRailProps) {
+export function NavRail({ items, base, idleReturn }: NavRailProps) {
   const appDefault = useIdleReturnDefault();
   useIdleReturn({ to: mainPath(items, base), after: idleReturn ?? appDefault });
   usePageInset('left', NAV_RAIL);
@@ -88,30 +84,6 @@ export function NavRail({ items, base, showThemeToggle, idleReturn }: NavRailPro
           )}
         </NavLink>
       ))}
-      {showThemeToggle ? <ThemeToggleButton /> : null}
-    </Flex>
-  );
-}
-
-function ThemeToggleButton() {
-  const { resolved, toggle } = useThemeToggle();
-  return (
-    <Flex
-      as="button"
-      type="button"
-      onClick={toggle}
-      aria-label={`Switch to ${resolved === 'dark' ? 'light' : 'dark'} theme`}
-      title={`Switch to ${resolved === 'dark' ? 'light' : 'dark'} theme`}
-      align="center"
-      justify="center"
-      width={44}
-      height={44}
-      radius="chrome"
-      cursor="pointer"
-      color="line"
-      css={{ background: 'none', marginTop: 'auto' }}
-    >
-      <Icon name={resolved === 'dark' ? 'lu:moon' : 'lu:sun'} size={22} />
     </Flex>
   );
 }

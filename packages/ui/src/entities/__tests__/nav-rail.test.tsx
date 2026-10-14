@@ -1,5 +1,5 @@
 import { LocalClient, MockIntegration } from '@hashsome/core';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { ThemeProvider } from 'e-prim';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -28,34 +28,6 @@ test('nav rail resolves items against base and marks the current page', () => {
   expect(screen.getByRole('link', { name: 'Upstairs' }).getAttribute('aria-current')).toBe('page');
   expect(screen.getByRole('link', { name: 'Downstairs' }).getAttribute('aria-current')).toBeNull();
   expect(screen.getByRole('link', { name: 'Downstairs' }).getAttribute('href')).toBe('/home');
-});
-
-test('showThemeToggle is off by default, and toggles the theme when on', () => {
-  const { rerender } = render(
-    <HashsomeProvider client={new LocalClient([new MockIntegration({})])}>
-      <MemoryRouter>
-        <NavRail base="/home" items={[{ to: '', label: 'Home', icon: 'lu:house' }]} />
-      </MemoryRouter>
-    </HashsomeProvider>,
-  );
-
-  expect(screen.queryByRole('button')).toBeNull();
-
-  rerender(
-    <HashsomeProvider client={new LocalClient([new MockIntegration({})])} theme="dark">
-      <MemoryRouter>
-        <NavRail
-          base="/home"
-          items={[{ to: '', label: 'Home', icon: 'lu:house' }]}
-          showThemeToggle
-        />
-      </MemoryRouter>
-    </HashsomeProvider>,
-  );
-
-  const toggle = screen.getByRole('button', { name: /switch to light theme/i });
-  fireEvent.click(toggle);
-  expect(screen.getByRole('button', { name: /switch to dark theme/i })).toBeTruthy();
 });
 
 test('an item with attention says so to a screen reader, and the others do not', () => {
