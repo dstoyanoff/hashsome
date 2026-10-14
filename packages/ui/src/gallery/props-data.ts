@@ -950,12 +950,6 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'string',
       },
       {
-        doc: 'Adds a light/dark toggle at the end of the bar. Off by default — meant for development or a project that deliberately exposes it, not every kiosk install.',
-        name: 'showThemeToggle',
-        optional: true,
-        type: 'boolean',
-      },
-      {
         doc: "How long, in ms, the display may be left alone on a page other than the main one (the item whose `to` is `''`) before it goes back to that page; `false` for never. Any touch, click, key or scroll starts the time again. Defaults to `HashsomeProvider`'s `idleReturn`, which is off unless the app turns it on.",
         name: 'idleReturn',
         optional: true,

@@ -1,5 +1,5 @@
 import { LocalClient, MockIntegration } from '@hashsome/core';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { HashsomeProvider } from '../../provider.tsx';
@@ -50,28 +50,6 @@ test('an item with attention says so to a screen reader', () => {
 
   expect(screen.getByRole('link', { name: 'Maintenance, needs attention' })).toBeTruthy();
   expect(screen.getByRole('link', { name: 'Home' })).toBeTruthy();
-});
-
-test('the theme toggle is off by default, and flips the theme when on', () => {
-  const { rerender } = render(
-    inProvider(
-      <MemoryRouter>
-        <NavBar base="/home" items={items} />
-      </MemoryRouter>,
-    ),
-  );
-
-  expect(screen.queryByRole('button')).toBeNull();
-  rerender(
-    inProvider(
-      <MemoryRouter>
-        <NavBar base="/home" items={items} showThemeToggle />
-      </MemoryRouter>,
-    ),
-  );
-
-  fireEvent.click(screen.getByRole('button', { name: /switch to light theme/i }));
-  expect(screen.getByRole('button', { name: /switch to dark theme/i })).toBeTruthy();
 });
 
 describe('going back to the main page when the display is left alone', () => {
