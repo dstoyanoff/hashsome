@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.0 (2026-10-14)
+
+### Features
+
+- **ui:** NavBar, the left rail's design along the bottom of the screen (#101) ([5ca34fc](https://github.com/dstoyanoff/hashsome/commit/5ca34fc051e001f15d4446b56f214ac245effc18))
+- **ui:** the player bar can be one row without the time or the shuffle button, and its title rolls (#100) ([a252437](https://github.com/dstoyanoff/hashsome/commit/a252437fa3390084e2b4ccf0cc4c9de6ba5f5bb6))
+
 ## 0.13.1 (2026-10-14)
 
 ### Fixes
