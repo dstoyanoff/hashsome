@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { LocalClient, MockIntegration, mockSensor, type HistoryQuery } from '@hashsome/core';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { HashsomeProvider } from '../../provider.tsx';
 import { renderWithMock } from '../../test-utils.tsx';
+import { useDetail } from '../detail-provider.tsx';
 import { EnergyChart } from '../energy-chart.tsx';
 
 const entities = {
@@ -89,4 +90,25 @@ test('a backend that keeps no history just shows the live reading', async () => 
   await act(async () => {});
   expect(screen.getByText('9 W')).toBeTruthy();
   expect(screen.queryByText('Today')).toBeNull();
+});
+
+const chart = <EnergyChart power="ha:lamp_power" />;
+
+function Open() {
+  const { openDetail } = useDetail();
+  return (
+    <button type="button" onClick={() => openDetail('lamp', 'Lamp', chart, true)}>
+      open
+    </button>
+  );
+}
+
+test('the live reading is there in the full-size drawer too, above the chart', async () => {
+  const { ha } = renderWithMock(<Open />, entities);
+  fireEvent.click(screen.getByText('open'));
+  expect(await screen.findByText('9 W')).toBeTruthy();
+  // And it is the range switcher that only the full-size drawer has.
+  expect(screen.getByText('1D')).toBeTruthy();
+  act(() => ha.update('lamp_power', { value: '12', numeric: 12 }));
+  expect(await screen.findByText('12 W')).toBeTruthy();
 });
