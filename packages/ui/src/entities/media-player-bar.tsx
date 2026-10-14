@@ -16,6 +16,7 @@ import { statusLabels } from '../status.ts';
 import { usePressFeedback, useTransportAvailability, useVolumeControl } from './media-controls.ts';
 import { Cover } from '../layout/cover.tsx';
 import { Spinner } from '../layout/spinner.tsx';
+import { MarqueeText } from '../layout/marquee-text.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { MediaBrowser } from './media-browser.tsx';
 import { LoadingLine, useLoadingLabel } from './media-loading-line.tsx';
@@ -53,6 +54,12 @@ export interface MediaPlayerBarProps {
 
   /** `1` puts the controls beside the track, in one pill; `2` puts them on a second row under it, for a narrow space (a small wall display). Default `'auto'`: one row, and two once the bar is narrower than 560 px wide. */
   rows?: 1 | 2 | 'auto';
+
+  /** `false` leaves the time ("1:23 / 3:45") out, for a bar with no room for it: the ring round the artwork and the line along the bottom still show how far along playback is. Default `true`. */
+  time?: boolean;
+
+  /** `false` leaves the shuffle button out, for a bar with no room for it (a small wall display). Default `true`, shown when the player has shuffle. */
+  shuffle?: boolean;
 }
 
 /** Narrower than this, a bar with `rows="auto"` is two rows. */
@@ -282,6 +289,8 @@ export function MediaPlayerBar({
   grouping = true,
   speakers,
   rows = 'auto',
+  time = true,
+  shuffle = true,
 }: MediaPlayerBarProps) {
   const handle = useEntityHandle('mediaPlayer', entity);
   const player = handle.entity;
@@ -419,12 +428,14 @@ export function MediaPlayerBar({
         {...(ready ? {} : { color: 'textMuted' as const })}
       >
         <Flex align="center" gap={1.5} minWidth={0}>
-          <Typography as="span" variant="label" noWrap textOverflow="ellipsis">
-            {ready
-              ? (player?.media?.title ?? 'Nothing playing')
-              : statusLabels[status as Exclude<typeof status, 'ready'>]}
+          <Typography as="span" variant="label" css={{ minWidth: 0 }}>
+            <MarqueeText>
+              {ready
+                ? (player?.media?.title ?? 'Nothing playing')
+                : statusLabels[status as Exclude<typeof status, 'ready'>]}
+            </MarqueeText>
           </Typography>
-          {ready && caps?.shuffle ? (
+          {ready && shuffle && caps?.shuffle ? (
             <PlainButton
               aria-label="Shuffle"
               aria-pressed={player?.shuffle === true}
@@ -449,14 +460,8 @@ export function MediaPlayerBar({
         {loading ? (
           <LoadingLine label={loading} variant="secondary" />
         ) : ready && player?.media?.artist ? (
-          <Typography
-            as="span"
-            variant="secondary"
-            color="textMuted"
-            noWrap
-            textOverflow="ellipsis"
-          >
-            {player.media.artist}
+          <Typography as="span" variant="secondary" color="textMuted">
+            <MarqueeText>{player.media.artist}</MarqueeText>
           </Typography>
         ) : null}
       </Flex>
@@ -473,7 +478,7 @@ export function MediaPlayerBar({
       {trackInfo}
       {/* The time sits at the vertical middle of the bar, beside the track; in two rows it is at the
           right of the top row. The volume slider takes the track's and the time's place in one row. */}
-      {timed ? (
+      {timed && time ? (
         <Typography
           as="span"
           data-part="time"
