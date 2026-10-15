@@ -199,10 +199,12 @@ const libraryFolder = (
   title: string,
   kind: BrowseItem['kind'],
   subtitle?: string,
+  holds?: BrowseItem['kind'],
 ): BrowseItem => ({
   id,
   title,
   ...(subtitle ? { subtitle } : {}),
+  ...(holds ? { holds } : {}),
   ...(kind === 'folder' ? {} : { artworkUrl: cover(id) }),
   kind,
   playable: kind !== 'folder',
@@ -216,10 +218,10 @@ export function mockLibrary(): MockLibrary {
     root: {
       items: [
         libraryFolder('recent', 'Recently played', 'folder'),
-        libraryFolder('playlists', 'Playlists', 'folder'),
-        libraryFolder('albums', 'Albums', 'folder'),
-        libraryFolder('artists', 'Artists', 'folder'),
-        libraryFolder('radio', 'Radio', 'folder'),
+        libraryFolder('playlists', 'Playlists', 'folder', undefined, 'playlist'),
+        libraryFolder('albums', 'Albums', 'folder', undefined, 'album'),
+        libraryFolder('artists', 'Artists', 'folder', undefined, 'artist'),
+        libraryFolder('radio', 'Radio', 'folder', undefined, 'radio'),
       ],
     },
     recent: {

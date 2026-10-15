@@ -1,7 +1,36 @@
 import type { BrowseItem, BrowseKind, EntityRef } from '@hashsome/core';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useReconnects } from './hooks.ts';
 import { useClient } from './provider.tsx';
+
+/** How well an item's title answers what was searched for, lowest first: the whole title, then its start, then a word's
+ * start, then anywhere in it, then not in the title at all (found by its artist, say). */
+function matchRank(title: string, needle: string): number {
+  const text = title.toLowerCase();
+  const wanted = needle.toLowerCase();
+  if (text === wanted) {
+    return 0;
+  }
+
+  if (text.startsWith(wanted)) {
+    return 1;
+  }
+
+  if (text.split(/[\s\-_/.,:;()[\]]+/).some((word) => word.startsWith(wanted))) {
+    return 2;
+  }
+
+  return text.includes(wanted) ? 3 : 4;
+}
+
+/** Search results in the order of how well their titles match, an exact match first. Items that match equally keep the
+ * order the library gave them, which is its own idea of what matters. */
+export function rankSearchResults(items: BrowseItem[], needle: string): BrowseItem[] {
+  return items
+    .map((item, index) => ({ item, index, rank: matchRank(item.title, needle) }))
+    .toSorted((a, b) => a.rank - b.rank || a.index - b.index)
+    .map(({ item }) => item);
+}
 
 interface Level {
   /** The item that was opened to get here; `undefined` for the top level. */
@@ -144,10 +173,15 @@ export function useMediaBrowser(ref: EntityRef): MediaBrowserState {
     setLastKinds(undefined);
   }
 
-  // What to offer: this search's kinds once they are in, the last search's until then.
-  const kinds = searching ? (foundKinds ?? lastKinds) : undefined;
-  const kind =
-    kinds && kindChoice !== undefined && kinds.includes(kindChoice) ? kindChoice : undefined;
+  // What to offer: this search's kinds once they are in, the last search's until then, and the one chosen even if
+  // this search found none of it (a search begun on a shelf starts on that shelf's kind: "nothing found" is an answer).
+  const offered = searching ? (foundKinds ?? lastKinds) : undefined;
+  const kinds =
+    offered && kindChoice !== undefined && !offered.includes(kindChoice)
+      ? KIND_ORDER.filter((candidate) => candidate === kindChoice || offered.includes(candidate))
+      : offered;
+
+  const kind = kindChoice !== undefined && kinds?.includes(kindChoice) ? kindChoice : undefined;
 
   // What to ask for, if anything: a folder, the open tab, or one kind of a search's results. A top level
   // that is not shelves is already in hand, and so is the search with no kind chosen.
@@ -235,6 +269,22 @@ export function useMediaBrowser(ref: EntityRef): MediaBrowserState {
     [text, kind],
   );
 
+  // Typing into the search begins it on the open shelf's kind, when the shelf holds one kind (the Playlists tab
+  // searches playlists, with "All" a tap away); clearing it forgets the choice.
+  const holds = tabs?.find((item) => item.id === selected)?.holds;
+  const search = useCallback(
+    (next: string) => {
+      if (next.trim() === '') {
+        setKindChoice(undefined);
+      } else if (text.trim() === '' && atTop) {
+        setKindChoice(holds);
+      }
+
+      setText(next);
+    },
+    [text, atTop, holds],
+  );
+
   const selectTab = useCallback((id: string) => {
     setTab(id);
     setText('');
@@ -258,8 +308,14 @@ export function useMediaBrowser(ref: EntityRef): MediaBrowserState {
 
   // The plain top-level list, when there are no shelves to make tabs of.
   const listing = searching && !kind ? found : !searching && atTop && !tabs ? top : result;
+  const listed = listing?.items;
+  const items = useMemo(
+    () => (listed && searching ? rankSearchResults(listed, needle) : (listed ?? [])),
+    [listed, searching, needle],
+  );
+
   return {
-    items: listing?.items ?? [],
+    items,
     listKey: searching ? `search:${kind ?? ''}` : `path:${path ?? 'top'}`,
     title: searching
       ? (result?.title ?? `Results for “${needle}”`)
@@ -277,7 +333,7 @@ export function useMediaBrowser(ref: EntityRef): MediaBrowserState {
     open,
     back,
     query: text,
-    search: setText,
+    search,
     kinds: kinds && kinds.length >= 1 ? kinds : undefined,
     kindsPending: searching && foundKinds === undefined && !(lastKinds && lastKinds.length >= 1),
     kind,
