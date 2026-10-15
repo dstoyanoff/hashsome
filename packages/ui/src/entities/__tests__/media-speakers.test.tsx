@@ -93,7 +93,6 @@ test('adding a speaker asks the stream’s leader to add it, and it joins the st
   ).toBeTruthy();
 
   expect(screen.getByRole('slider', { name: 'Kitchen volume' })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: /Take everyone else out/ })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Add Kitchen to this stream' })).toBeNull();
 });
 
@@ -136,23 +135,42 @@ test('taking a speaker out asks the leader to remove it', async () => {
   expect(screen.getByRole('button', { name: 'Add Kitchen to this stream' })).toBeTruthy();
 });
 
-test('a leader with several others can take them all out at once', async () => {
+test('a leader with one other speaker leaves in one press, handing the stream to it', async () => {
+  const { ha } = renderWithMock(
+    <MediaSpeakers entity="ha:porch" />,
+    rooms({ porch: { group: grouped }, kitchen: { group: grouped } }),
+  );
+
+  // No "Remove all", and no one to pick: there is only the kitchen to lead.
+  expect(screen.queryByRole('button', { name: /Take everyone else out/ })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Hand this stream to/ })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: /^Leave this stream; Kitchen carries on/ }));
+  expect(ha.calls.at(-1)).toMatchObject({ entityId: 'kitchen', command: 'takeOverGroup' });
+
+  // The porch is out and the kitchen is alone with what was playing.
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: /^Leave this stream/ })).toBeNull(),
+  );
+});
+
+test('a leader with several others picks which one leads, and leaves', async () => {
   const both = { leader: ref('porch'), members: [ref('kitchen'), ref('patio')] };
   const { ha } = renderWithMock(
     <MediaSpeakers entity="ha:porch" />,
     rooms({ porch: { group: both }, kitchen: { group: both }, patio: { group: both } }),
   );
 
-  fireEvent.click(screen.getByRole('button', { name: /Take everyone else out/ }));
-  expect(ha.calls.at(-1)).toMatchObject({
-    entityId: 'porch',
-    command: 'setGroupMembers',
-    args: { remove: [ref('kitchen'), ref('patio')] },
-  });
+  expect(screen.queryByRole('button', { name: /Take everyone else out/ })).toBeNull();
+  // Leaving is not one press: which of the two leads is for the leader to say.
+  expect(screen.queryByRole('button', { name: /^Leave this stream/ })).toBeNull();
+  // Each one can still be taken out.
+  expect(screen.getByRole('button', { name: 'Take Kitchen out of this stream' })).toBeTruthy();
 
-  await waitFor(() =>
-    expect(screen.queryByRole('button', { name: /Take everyone else out/ })).toBeNull(),
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Hand this stream to Patio; Porch leaves it' }),
   );
+
+  expect(ha.calls.at(-1)).toMatchObject({ entityId: 'patio', command: 'takeOverGroup' });
 });
 
 test('a follower can leave, or take the stream over by removing the player that leads it', async () => {
