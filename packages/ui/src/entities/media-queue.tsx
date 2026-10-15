@@ -323,7 +323,7 @@ function QueueRow({
           css={{ flex: 'none' }}
         >
           {item.artworkUrl ? (
-            <Cover src={item.artworkUrl} />
+            <Cover src={item.artworkUrl} size="small" />
           ) : (
             <Icon name={playing ? 'lu:audio-lines' : 'lu:music'} size={18} />
           )}

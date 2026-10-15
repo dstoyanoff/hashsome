@@ -418,7 +418,7 @@ function SpeakerRow({
         css={{ flex: 'none' }}
       >
         {player?.media?.artworkUrl && info.playing !== undefined ? (
-          <Cover src={player.media.artworkUrl} />
+          <Cover src={player.media.artworkUrl} size="small" />
         ) : (
           <Icon name="lu:speaker" size={18} />
         )}

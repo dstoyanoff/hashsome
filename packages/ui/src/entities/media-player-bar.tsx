@@ -316,7 +316,7 @@ export function MediaPlayerBar({
       color="textMuted"
     >
       {player?.media?.artworkUrl ? (
-        <Cover src={player.media.artworkUrl} />
+        <Cover src={player.media.artworkUrl} size="small" />
       ) : (
         <Icon name="lu:music" size={14} />
       )}

@@ -239,7 +239,11 @@ export function ArtworkRing({
               }
             : {})}
         >
-          {artworkUrl ? <Cover src={artworkUrl} /> : <Icon name="lu:music" size={40} />}
+          {artworkUrl ? (
+            <Cover src={artworkUrl} size="large" />
+          ) : (
+            <Icon name="lu:music" size={40} />
+          )}
         </Flex>
       </Box>
     </Box>

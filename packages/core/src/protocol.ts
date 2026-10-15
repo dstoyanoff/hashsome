@@ -12,6 +12,15 @@ export function assetUrl(integration: string, path: string): string {
   return `${ASSET_PATH}/${encodeURIComponent(integration)}?path=${encodeURIComponent(path)}`;
 }
 
+/** The same address, asking for the picture about `pixels` wide: the runtime hands it to the backend as a hint, which
+ * gives the nearest size it has that is not smaller (a backend that cannot resize gives the picture as it is). A file
+ * that is not one of the runtime's (a streaming service's own address) comes back unchanged. */
+export function sizedAssetUrl(url: string, pixels: number): string {
+  return url.startsWith(`${ASSET_PATH}/`)
+    ? `${url.replace(/&size=\d+/, '')}&size=${Math.round(pixels)}`
+    : url;
+}
+
 /** Messages sent by the browser to the runtime's `/ws` endpoint. */
 export type ClientMessage =
   | { type: 'subscribe'; ref: EntityRef }

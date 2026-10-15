@@ -3,6 +3,7 @@ import {
   BaseIntegration,
   parseEntityRef,
   UnknownEntityError,
+  type AssetOptions,
   type BrowseItem,
   type BrowseKind,
   type BrowseQuery,
@@ -60,6 +61,9 @@ export interface MusicAssistantOptions {
   reconnectMinMs?: number;
   reconnectMaxMs?: number;
 }
+
+/** The sizes Music Assistant resizes a picture to; anything else it refuses. */
+const PICTURE_SIZES = [80, 160, 256, 512, 1024];
 
 /** The most tracks Clear looks for after the one that plays, and how many it takes out at once. */
 const UPCOMING_LIMIT = 5000;
@@ -799,13 +803,20 @@ export class MusicAssistantIntegration extends BaseIntegration {
     return path.startsWith('/imageproxy/');
   }
 
-  /** A picture Music Assistant serves (what is playing, an item's), fetched with the token. Only one of its
-   * `/imageproxy/` paths is accepted, never another path or another address. */
-  async fetchAsset(path: string): Promise<Response> {
+  /** A picture Music Assistant serves (what is playing, an item's), fetched with the token, at the size it has that is
+   * nearest above the one wanted (it has 80, 160, 256, 512 and 1024 pixels); the size in the path when none is said.
+   * Only one of its `/imageproxy/` paths is accepted, never another path or another address. */
+  async fetchAsset(path: string, options: AssetOptions = {}): Promise<Response> {
     const base = new URL(this.#options.url);
     const target = new URL(path, base);
     if (!path.startsWith('/imageproxy/') || target.origin !== base.origin) {
       throw new Error('Not a picture of Music Assistant');
+    }
+
+    if (options.size !== undefined) {
+      const wanted = options.size;
+      const size = PICTURE_SIZES.find((step) => step >= wanted) ?? PICTURE_SIZES.at(-1);
+      target.searchParams.set('size', String(size));
     }
 
     return fetch(target, { headers: { Authorization: `Bearer ${this.#options.token}` } });

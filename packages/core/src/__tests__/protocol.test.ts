@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest';
 import {
+  assetUrl,
   encodeMessage,
   parseClientMessage,
   parseServerMessage,
+  sizedAssetUrl,
   type ClientMessage,
 } from '../protocol.ts';
 
@@ -68,5 +70,18 @@ describe('protocol', () => {
     ).toBeDefined();
 
     expect(parseServerMessage('{"type":"entity","ref":"bad"}')).toBeUndefined();
+  });
+});
+
+describe('sizedAssetUrl', () => {
+  const url = assetUrl('ma', '/imageproxy/abc?size=512&fmt=jpg');
+
+  test('asks for the size, and asks again for another without piling them up', () => {
+    expect(sizedAssetUrl(url, 80)).toBe(`${url}&size=80`);
+    expect(sizedAssetUrl(sizedAssetUrl(url, 80), 256)).toBe(`${url}&size=256`);
+  });
+
+  test('leaves an address that is not the runtime’s alone', () => {
+    expect(sizedAssetUrl('https://i.scdn.co/image/xyz', 80)).toBe('https://i.scdn.co/image/xyz');
   });
 });
