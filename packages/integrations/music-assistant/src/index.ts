@@ -793,6 +793,11 @@ export class MusicAssistantIntegration extends BaseIntegration {
   /** Where a browser asks the runtime for a picture of Music Assistant's. */
   #assetUrl = (path: string): string => assetUrl(this.id, path);
 
+  /** Music Assistant's picture addresses are made from the picture's own identity: the same one is the same picture. */
+  isStableAsset(path: string): boolean {
+    return path.startsWith('/imageproxy/');
+  }
+
   /** A picture Music Assistant serves (what is playing), fetched with the token. Only one of its `/imageproxy/`
    * paths is accepted, never another path or another address. */
   async fetchAsset(path: string): Promise<Response> {
