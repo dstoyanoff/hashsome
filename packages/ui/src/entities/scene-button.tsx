@@ -12,11 +12,19 @@ export interface SceneButtonProps {
 
   /** Icon id. Defaults to a palette. */
   icon?: IconName;
+
+  /** A literal CSS color that fills the icon's badge, e.g. `#8B5CF6`, so scenes read as distinct at a glance (the top bar's scene dots take one too). Default: the usual neutral badge. */
+  color?: string;
 }
 
 /** Activates a scene. */
-export function SceneButton({ entity, name, icon }: SceneButtonProps) {
+export function SceneButton({ entity, name, icon, color }: SceneButtonProps) {
   return (
-    <ActionButton entity={entity} {...(name ? { label: name } : {})} icon={icon ?? 'lu:palette'} />
+    <ActionButton
+      entity={entity}
+      {...(name ? { label: name } : {})}
+      icon={icon ?? 'lu:palette'}
+      {...(color ? { color } : {})}
+    />
   );
 }

@@ -173,6 +173,12 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'IconName',
       },
       {
+        doc: "A literal CSS color (e.g. `#8B5CF6`) that fills the icon's badge, with a light glyph, so tiles of one kind (scenes, say) can be told apart at a glance. The palette has too few colors for that, so each app picks its own. Only while the tile is ready; otherwise the badge is the usual one.",
+        name: 'iconColor',
+        optional: true,
+        type: 'string',
+      },
+      {
         doc: 'Second line. Replaced by the status label when the entity is not ready.',
         name: 'secondary',
         optional: true,
@@ -606,6 +612,12 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'IconName',
       },
       {
+        doc: "A literal CSS color that fills the icon's badge, e.g. `#8B5CF6`, to tell buttons apart at a glance. Default: the usual neutral badge.",
+        name: 'color',
+        optional: true,
+        type: 'string',
+      },
+      {
         doc: 'A second line of text under the label.',
         name: 'secondary',
         optional: true,
@@ -645,6 +657,12 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         name: 'icon',
         optional: true,
         type: 'IconName',
+      },
+      {
+        doc: "A literal CSS color that fills the icon's badge, e.g. `#8B5CF6`, so scenes read as distinct at a glance (the top bar's scene dots take one too). Default: the usual neutral badge.",
+        name: 'color',
+        optional: true,
+        type: 'string',
       },
     ],
   },

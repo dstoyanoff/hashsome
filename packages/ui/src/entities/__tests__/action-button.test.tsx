@@ -15,6 +15,20 @@ test('scene button triggers the scene, labelled with its name', () => {
   expect(ha.calls).toEqual([{ entityId: 'tv', command: 'trigger' }]);
 });
 
+test('a scene button given a color fills its icon badge with it, and a plain one does not', () => {
+  const { container } = renderWithMock(
+    <>
+      <SceneButton entity="ha:tv" icon="lu:tv" color="#8B5CF6" />
+      <SceneButton entity="ha:cook" icon="lu:chef-hat" />
+    </>,
+    { tv: mockAction({ name: 'tv time' }), cook: mockAction({ name: 'cooking' }) },
+  );
+
+  const badges = [...container.querySelectorAll('svg')].map((icon) => icon.parentElement!);
+  expect(getComputedStyle(badges[0]!).backgroundColor).toBe('rgb(139, 92, 246)');
+  expect(getComputedStyle(badges[1]!).backgroundColor).not.toBe('rgb(139, 92, 246)');
+});
+
 test('an action button runs an action entity and shows feedback', async () => {
   const { ha, container } = renderWithMock(<ActionButton entity="ha:shower" label="shower" />, {
     shower: mockAction(),

@@ -30,6 +30,9 @@ export interface TileProps {
   /** Icon id, e.g. `lu:lightbulb`. */
   icon?: IconName;
 
+  /** A literal CSS color (e.g. `#8B5CF6`) that fills the icon's badge, with a light glyph, so tiles of one kind (scenes, say) can be told apart at a glance. The palette has too few colors for that, so each app picks its own. Only while the tile is ready; otherwise the badge is the usual one. */
+  iconColor?: string;
+
   /** Second line. Replaced by the status label when the entity is not ready. */
   secondary?: ReactNode;
 
@@ -101,6 +104,7 @@ const valueAt = (event: PointerEvent<HTMLButtonElement>) => {
 export function Tile({
   label,
   icon,
+  iconColor: tint,
   secondary,
   status = 'ready',
   active = false,
@@ -306,11 +310,13 @@ export function Tile({
     cardBg = accent;
   }
 
-  const iconBg = accented && !overlaid ? 'rgba(0, 0, 0, 0.25)' : surfaceRaised;
+  // An app's own color for the icon (a scene's) fills the badge while the tile is ready, with the light glyph.
+  const tinted = tint !== undefined && ready;
+  const iconBg = tinted ? tint : accented && !overlaid ? 'rgba(0, 0, 0, 0.25)' : surfaceRaised;
   // The icon glyph sits inside that translucent badge, which self-adapts to whatever's behind it
   // (the orange fill at a high `fill`, plain `surface` at a low one) — so it still needs the
   // lighter `accentText` glyph once accented, unlike the flat label/secondary text above.
-  const iconColor = accented && !overlaid ? accentText : ready ? line : textMuted;
+  const iconColor = tinted || (accented && !overlaid) ? accentText : ready ? line : textMuted;
   // The label always stays full brightness; only the icon glyph and this line dim when the tile is
   // off (matches the converged mockup — `#726C6A`/`line`, not `textMuted`, which is reserved for
   // the unavailable/unknown/missing/loading statuses below).
