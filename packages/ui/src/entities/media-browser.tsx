@@ -47,26 +47,8 @@ const KIND_LABELS: Record<BrowseKind, string> = {
   other: 'Other',
 };
 
-/** What one item of a kind is called, to say what each result is in a search that mixes them. */
-const KIND_NAMES: Record<BrowseKind, string | undefined> = {
-  album: 'Album',
-  artist: 'Artist',
-  track: 'Track',
-  playlist: 'Playlist',
-  radio: 'Station',
-  folder: 'Folder',
-  other: undefined,
-};
-
-/** The line under an item's title: its subtitle, with what kind of thing it is in front when the list mixes kinds. */
-const subtitleOf = (item: BrowseItem, kindName: string | undefined) =>
-  [kindName, item.subtitle].filter(Boolean).join(' · ');
-
 /** How far, in px, a swipe across the list goes before it means "back". */
 const SWIPE_BACK = 72;
-
-/** The chip for every kind at once. */
-const ALL_KINDS = 'all';
 
 const KIND_ICONS: Record<BrowseKind, IconName> = {
   folder: 'lu:folder',
@@ -125,8 +107,6 @@ export function MediaBrowser({
         media.artist === undefined ||
         item.subtitle === media.artist));
 
-  // Several kinds in one list (a search that is not narrowed to one): each result says what it is.
-  const mixed = browser.searching && browser.kind === undefined;
   const nowPlaying = player?.playback === 'playing';
   const togglePlay = () => void handle.command('togglePlay');
 
@@ -355,26 +335,19 @@ export function MediaBrowser({
     </Flex>
   ) : null;
 
-  /** The categories (and, with `search='icon'`, the search icon at the end). While a search has results, the
-   * same row is the kinds to narrow it to: the shelves mean nothing to a search's results, which belong to none. */
+  /** The categories (and, with `search='icon'`, the search icon at the end). While searching, the same row is the
+   * kinds to search for: the shelves mean nothing to a search's results, which belong to none. */
   const tabsRowFor = (trailing: boolean) =>
     browser.tabs ? (
       // With the search icon in it, as tall as the field that replaces it, so the list below stays put.
       <Flex align="center" gap={3} {...(onDemand && trailing ? { minHeight: SEARCH_HEIGHT } : {})}>
         <Flex direction="column" grow={1} minWidth={0}>
-          {browser.searching && browser.kindsPending ? (
-            // The kinds are not known yet: not the shelves, which the results belong to none of, and which would
-            // be swapped for the kinds a moment later.
-            <KindsSkeleton />
-          ) : browser.searching && browser.kinds ? (
+          {browser.searching && browser.kinds ? (
             <ChipRow
               tabs
-              options={[
-                { value: ALL_KINDS, label: 'All' },
-                ...browser.kinds.map((kind) => ({ value: kind, label: KIND_LABELS[kind] })),
-              ]}
-              value={browser.kind ?? ALL_KINDS}
-              onChange={(id) => browser.filterBy(id === ALL_KINDS ? undefined : (id as BrowseKind))}
+              options={browser.kinds.map((kind) => ({ value: kind, label: KIND_LABELS[kind] }))}
+              value={browser.kind ?? ''}
+              onChange={(id) => browser.filterBy(id as BrowseKind)}
             />
           ) : (
             <ChipRow
@@ -476,7 +449,6 @@ export function MediaBrowser({
               <Reveal index={browser.searching ? 0 : index}>
                 <BrowseCard
                   item={item}
-                  kindName={mixed ? KIND_NAMES[item.kind] : undefined}
                   active={activeOf(item)}
                   playing={nowPlaying}
                   onToggle={togglePlay}
@@ -508,7 +480,6 @@ export function MediaBrowser({
               <Reveal index={browser.searching ? 0 : index}>
                 <BrowseRow
                   item={item}
-                  kindName={mixed ? KIND_NAMES[item.kind] : undefined}
                   active={activeOf(item)}
                   playing={nowPlaying}
                   onToggle={togglePlay}
@@ -530,17 +501,6 @@ export function MediaBrowser({
 
 /** What shows where the list will be while it loads: placeholders shaped like what is coming (cards in
  * the theater layout, rows in the list), in the room the real thing takes, so nothing moves. */
-/** Where the kinds to narrow a search to will be, in the chips' own height, so the list below does not move. */
-function KindsSkeleton() {
-  return (
-    <Flex gap={2} aria-busy="true" css={{ height: CHIP_HEIGHT }}>
-      {[40, 78, 74, 70, 62].map((width) => (
-        <Skeleton key={width} width={width} height={CHIP_HEIGHT} radius="full" />
-      ))}
-    </Flex>
-  );
-}
-
 function BrowseSkeleton({ theater }: { theater: boolean }) {
   return theater ? (
     <Flex
@@ -654,7 +614,6 @@ function PillButton({
 
 function BrowseRow({
   item,
-  kindName,
   active,
   playing,
   onToggle,
@@ -666,9 +625,6 @@ function BrowseRow({
   onAdd,
 }: {
   item: BrowseItem;
-
-  /** What kind of thing it is, in words, for a list that mixes kinds (a search); it is said before the subtitle. */
-  kindName?: string | undefined;
 
   /** It is what the player is playing, or playing from. */
   active: boolean;
@@ -734,9 +690,9 @@ function BrowseRow({
           <Typography as="span" variant="bodyStrong" {...(active ? { color: 'accent' } : {})}>
             <MarqueeText>{item.title}</MarqueeText>
           </Typography>
-          {subtitleOf(item, kindName) ? (
+          {item.subtitle ? (
             <Typography as="span" variant="secondary" color="textMuted">
-              <MarqueeText>{subtitleOf(item, kindName)}</MarqueeText>
+              <MarqueeText>{item.subtitle}</MarqueeText>
             </Typography>
           ) : null}
         </Flex>
@@ -820,7 +776,6 @@ const CARD_SIZE = `min(${CARD}px, max(${MIN_CARD}px, calc(100cqh - ${LABEL}px)))
  * button over the artwork's corner. */
 function BrowseCard({
   item,
-  kindName,
   active,
   playing,
   onToggle,
@@ -831,9 +786,6 @@ function BrowseCard({
   onAdd,
 }: {
   item: BrowseItem;
-
-  /** What kind of thing it is, in words, for a list that mixes kinds (a search); it is said before the subtitle. */
-  kindName?: string | undefined;
 
   /** It is what the player is playing, or playing from. */
   active: boolean;
@@ -890,9 +842,9 @@ function BrowseCard({
             </Typography>
             {item.expandable ? <Opens /> : null}
           </Flex>
-          {subtitleOf(item, kindName) ? (
+          {item.subtitle ? (
             <Typography as="span" variant="secondary" color="textMuted">
-              <MarqueeText>{subtitleOf(item, kindName)}</MarqueeText>
+              <MarqueeText>{item.subtitle}</MarqueeText>
             </Typography>
           ) : null}
         </Flex>

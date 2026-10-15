@@ -1,5 +1,5 @@
 import { mockLibrary, mockMediaPlayer, type MockIntegration } from '@hashsome/core';
-import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
 import { renderWithMock } from '../../test-utils.tsx';
 import { MediaBrowser } from '../media-browser.tsx';
@@ -10,6 +10,9 @@ const rooms = {
     capabilities: { browse: true, search: true },
   }),
 };
+
+/** What a search can be for in the mock library: always these four, and radio because a shelf holds it. */
+const KINDS = ['Tracks', 'Playlists', 'Albums', 'Artists', 'Radio'];
 
 const queueRoom = () => ({
   room: mockMediaPlayer({
@@ -154,10 +157,9 @@ test('the search box shows only for a library that can be searched, and lists ma
   });
 
   expect(await screen.findByRole('button', { name: 'Play Dreams' })).toBeTruthy();
-  // The shelves give way to the kinds found, since results belong to no shelf.
-  expect(await screen.findByRole('tab', { name: 'All' })).toBeTruthy();
-  expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['All', 'Tracks']);
-  expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true');
+  // The shelves give way to the kinds to search for, since results belong to no shelf.
+  expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(KINDS);
+  expect(screen.getByRole('tab', { name: 'Tracks' }).getAttribute('aria-selected')).toBe('true');
 
   act(() => {
     fireEvent.change(box, { target: { value: 'zzzz' } });
@@ -186,19 +188,29 @@ test('the browser’s own clear button is not drawn in the search field, which h
   expect(styles).toMatch(/::-webkit-search-cancel-button[^{]*\{[^}]*display:\s*none/);
 });
 
-test('a search that found one kind can be narrowed to it too, which asks the library for more of it', async () => {
+test('a search is for one kind, which can be changed, and asks the library for that kind', async () => {
   const { ha } = render();
   await screen.findByRole('tab', { name: 'Albums' });
   const browse = vi.spyOn(ha, 'browse');
   act(() => {
-    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'dream' } });
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'fleetwood' } });
   });
 
-  fireEvent.click(await screen.findByRole('tab', { name: 'Tracks' }));
   expect(await screen.findByRole('button', { name: 'Play Dreams' })).toBeTruthy();
   await waitFor(() =>
-    expect(browse).toHaveBeenCalledWith(expect.anything(), { search: 'dream', kind: 'track' }),
+    expect(browse).toHaveBeenCalledWith(expect.anything(), { search: 'fleetwood', kind: 'track' }),
   );
+
+  fireEvent.click(screen.getByRole('tab', { name: 'Artists' }));
+  expect(await screen.findByRole('button', { name: 'Open Fleetwood Mac' })).toBeTruthy();
+  await waitFor(() =>
+    expect(browse).toHaveBeenCalledWith(expect.anything(), { search: 'fleetwood', kind: 'artist' }),
+  );
+
+  // One search for the phrase and kind, not one for every kind as well.
+  expect(
+    browse.mock.calls.filter(([, query]) => query.search !== undefined && !query.kind),
+  ).toEqual([]);
 });
 
 test('opening an album from search results opens it, and going back returns to the results', async () => {
@@ -208,6 +220,7 @@ test('opening an album from search results opens it, and going back returns to t
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'rumours' } });
   });
 
+  fireEvent.click(screen.getByRole('tab', { name: 'Albums' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Open Rumours' }));
   // Its tracks are listed, the search is out of the way, and the open album is what a "play all" plays.
   expect(await screen.findByRole('button', { name: 'Play Go Your Own Way' })).toBeTruthy();
@@ -221,7 +234,7 @@ test('opening an album from search results opens it, and going back returns to t
   expect(screen.queryByRole('button', { name: 'Play Go Your Own Way' })).toBeNull();
 });
 
-describe('narrowing a search to one kind of result', () => {
+describe('searching one kind of thing at a time', () => {
   const search = async (text: string) => {
     const view = render();
     await screen.findByRole('tab', { name: 'Albums' });
@@ -232,57 +245,42 @@ describe('narrowing a search to one kind of result', () => {
     return view;
   };
 
-  test('a search that found several kinds shows them in place of the shelves, with All selected', async () => {
+  test('the kinds to search for take the place of the shelves, starting on tracks', async () => {
     await search('fleetwood');
-    // The shelves have an "Artists" tab too: wait for the kinds to replace them.
-    expect(await screen.findByRole('tab', { name: 'All' })).toBeTruthy();
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'All',
-      'Tracks',
-      'Albums',
-      'Artists',
-    ]);
-
-    expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true');
+    expect(await screen.findByRole('button', { name: 'Play Dreams' })).toBeTruthy();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(KINDS);
+    expect(screen.getByRole('tab', { name: 'Tracks' }).getAttribute('aria-selected')).toBe('true');
     expect(screen.queryByRole('tab', { name: 'Recently played' })).toBeNull();
-    // The mixed list: an artist and a track are both there.
-    expect(screen.getByRole('button', { name: 'Open Fleetwood Mac' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Play Dreams' })).toBeTruthy();
+    // Only tracks: the artist is a tap away, not mixed in.
+    expect(screen.queryByRole('button', { name: 'Open Fleetwood Mac' })).toBeNull();
   });
 
-  test('choosing a kind lists only that kind, asking the library for it, and All goes back', async () => {
-    const { ha } = await search('fleetwood');
-    await screen.findByRole('tab', { name: 'All' });
+  test('choosing a kind lists only that kind, and the others stay to choose from', async () => {
+    await search('fleetwood');
+    await screen.findByRole('button', { name: 'Play Dreams' });
     fireEvent.click(screen.getByRole('tab', { name: 'Artists' }));
     expect(await screen.findByRole('button', { name: 'Open Fleetwood Mac' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Play Dreams' })).toBeNull();
     expect(screen.getByRole('tab', { name: 'Artists' }).getAttribute('aria-selected')).toBe('true');
-    // The kinds stay to choose from, not only the one chosen.
     expect(screen.getByRole('tab', { name: 'Tracks' })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'All' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Tracks' }));
     expect(await screen.findByRole('button', { name: 'Play Dreams' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true');
-    expect(ha.calls).toEqual([]);
   });
 
-  test('the shelves are only for a search with no results, and clearing the search brings them back', async () => {
+  test('with nothing found the kinds stay, and clearing the search brings the shelves back', async () => {
     await search('zzzz');
     expect(await screen.findByText('Nothing found.')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Albums' })).toBeTruthy();
-    expect(screen.queryByRole('tab', { name: 'All' })).toBeNull();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(KINDS);
 
-    cleanup();
-    await search('fleetwood');
-    await screen.findByRole('tab', { name: 'All' });
     fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
     expect(await screen.findByRole('tab', { name: 'Recently played' })).toBeTruthy();
-    expect(screen.queryByRole('tab', { name: 'All' })).toBeNull();
+    expect(screen.queryByRole('tab', { name: 'Tracks' })).toBeNull();
   });
 
   test('opening a result with a kind chosen, and going back, returns to that kind', async () => {
     await search('fleetwood');
-    await screen.findByRole('tab', { name: 'All' });
+    await screen.findByRole('button', { name: 'Play Dreams' });
     fireEvent.click(screen.getByRole('tab', { name: 'Albums' }));
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Play Dreams' })).toBeNull());
     fireEvent.click(await screen.findByRole('button', { name: 'Open Rumours' }));
@@ -291,7 +289,7 @@ describe('narrowing a search to one kind of result', () => {
     expect(await screen.findByRole('button', { name: 'Open Rumours' })).toBeTruthy();
     expect((screen.getByRole('searchbox') as HTMLInputElement).value).toBe('fleetwood');
     expect(screen.getByRole('tab', { name: 'Albums' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.queryByRole('button', { name: 'Open Fleetwood Mac' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Play Dreams' })).toBeNull();
   });
 });
 
@@ -309,7 +307,7 @@ describe('while a search is on its way', () => {
     return () => held.splice(0).forEach((release) => release());
   };
 
-  test('the kinds are a placeholder, not the shelves, until the first answer', async () => {
+  test('the kinds are there at once, with the list waiting for its answer', async () => {
     const { ha } = render();
     await screen.findByRole('tab', { name: 'Albums' });
     const release = slow(ha);
@@ -317,24 +315,23 @@ describe('while a search is on its way', () => {
       fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'fleetwood' } });
     });
 
-    await waitFor(() => expect(screen.queryByRole('tab')).toBeNull());
-    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
-    // Past the pause before the search is made, with its answer held back, it is still the placeholder.
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(KINDS);
+    // Past the pause before the search is made, with its answer held back, the list is still not there.
     await act(async () => new Promise((resolve) => setTimeout(resolve, 450)));
-    expect(screen.queryByRole('tab')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Play Dreams' })).toBeNull();
     await act(async () => release());
-    expect(await screen.findByRole('tab', { name: 'All' })).toBeTruthy();
-    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(await screen.findByRole('button', { name: 'Play Dreams' })).toBeTruthy();
   });
 
-  test('typing on keeps the kinds already found until the new ones arrive, instead of showing the shelves', async () => {
+  test('typing on keeps the kind chosen, instead of going back to the shelf’s', async () => {
     const { ha } = render();
     await screen.findByRole('tab', { name: 'Albums' });
     act(() => {
       fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'fleetwood' } });
     });
 
-    await screen.findByRole('tab', { name: 'All' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Artists' }));
+    await screen.findByRole('button', { name: 'Open Fleetwood Mac' });
     const release = slow(ha);
     act(() => {
       fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'fleetwood m' } });
@@ -342,15 +339,9 @@ describe('while a search is on its way', () => {
 
     // Past the pause before a search is made, with its answer still held back.
     await act(async () => new Promise((resolve) => setTimeout(resolve, 450)));
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'All',
-      'Tracks',
-      'Albums',
-      'Artists',
-    ]);
-
+    expect(screen.getByRole('tab', { name: 'Artists' }).getAttribute('aria-selected')).toBe('true');
     await act(async () => release());
-    expect(await screen.findByRole('tab', { name: 'All' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Open Fleetwood Mac' })).toBeTruthy();
   });
 });
 
@@ -691,7 +682,7 @@ describe('what the player is playing', () => {
   });
 });
 
-describe('saying what each result is', () => {
+describe('the search opened from its icon', () => {
   const find = async (text: string, search?: 'icon') => {
     renderWithMock(<MediaBrowser entity="ha:room" {...(search ? { search } : {})} />, rooms, {
       library: mockLibrary(),
@@ -717,21 +708,22 @@ describe('saying what each result is', () => {
     expect(document.activeElement).toBe(await screen.findByRole('searchbox'));
   });
 
-  test('with the search opened from its icon, the kinds are under the field', async () => {
+  test('the kinds are under the field, since the open field covers the row they live in', async () => {
     await find('fleetwood', 'icon');
-    expect(await screen.findByRole('tab', { name: 'All' })).toBeTruthy();
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'All',
-      'Tracks',
-      'Albums',
-      'Artists',
-    ]);
+    await waitFor(() =>
+      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(KINDS),
+    );
 
     expect(screen.getByRole('searchbox')).toBeTruthy();
   });
 
   test('opening a result puts the field away so the way back shows, and going back returns to the phrase', async () => {
     await find('fleetwood', 'icon');
+    await waitFor(() =>
+      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(KINDS),
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Artists' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Open Fleetwood Mac' }));
 
     // No blank field over the tabs: the selected tab is the way back, named for what is open.
@@ -746,20 +738,11 @@ describe('saying what each result is', () => {
     expect(field.value).toBe('fleetwood');
     // Back with the phrase in it, it does not take focus (and bring the keyboard up).
     expect(document.activeElement).not.toBe(field);
-    expect(await screen.findByRole('tab', { name: 'All' })).toBeTruthy();
-  });
+    await waitFor(() =>
+      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(KINDS),
+    );
 
-  test('in a list of several kinds, each result says which it is', async () => {
-    await find('fleetwood');
-    expect((await screen.findAllByText(/^Artist/)).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/^Track · /).length).toBeGreaterThan(0);
-  });
-
-  test('narrowed to one kind, they do not repeat it', async () => {
-    await find('fleetwood');
-    fireEvent.click(await screen.findByRole('tab', { name: 'Tracks' }));
-    await screen.findByRole('button', { name: 'Play Dreams' });
-    expect(screen.queryByText(/^Track · /)).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Artists' }).getAttribute('aria-selected')).toBe('true');
   });
 });
 
@@ -769,22 +752,21 @@ describe('a search begun on a shelf', () => {
       fireEvent.change(screen.getByRole('searchbox'), { target: { value: text } });
     });
 
-  test("starts on that shelf's kind, with the other kinds and All still there", async () => {
+  test("is for that shelf's kind, with the other kinds a tap away", async () => {
     render();
     fireEvent.click(await screen.findByRole('tab', { name: 'Albums' }));
     await screen.findByRole('button', { name: 'Open Rumours' });
     type('fleetwood');
 
-    expect(await screen.findByRole('tab', { name: 'All' })).toBeTruthy();
+    expect(await screen.findByRole('tab', { name: 'Tracks' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Albums' }).getAttribute('aria-selected')).toBe('true');
     // Only albums to begin with: no artist or track.
     expect(await screen.findByRole('button', { name: 'Open Rumours' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Open Fleetwood Mac' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Play Dreams' })).toBeNull();
 
-    // All is a tap away.
-    fireEvent.click(screen.getByRole('tab', { name: 'All' }));
-    expect(await screen.findByRole('button', { name: 'Open Fleetwood Mac' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: 'Tracks' }));
+    expect(await screen.findByRole('button', { name: 'Play Dreams' })).toBeTruthy();
   });
 
   test('keeps the kind when the phrase changes, says so when it finds none of it, and forgets it when cleared', async () => {
@@ -807,9 +789,9 @@ describe('a search begun on a shelf', () => {
     type('');
     fireEvent.click(await screen.findByRole('tab', { name: 'Recently played' }));
     await screen.findByRole('button', { name: 'Play Dreams' });
-    // Recently played holds several kinds: a search from it is the mixed one.
+    // Recently played holds several kinds: a search from it is for tracks.
     type('fleetwood');
-    expect(await screen.findByRole('button', { name: 'Open Fleetwood Mac' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true');
+    expect(await screen.findByRole('button', { name: 'Play Dreams' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Tracks' }).getAttribute('aria-selected')).toBe('true');
   });
 });
