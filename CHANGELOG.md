@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.16.0 (2026-10-15)
+
+### Features
+
+- **ui:** the stream's leader can leave it, handing it to another speaker (#119) ([3dc8576](https://github.com/dstoyanoff/hashsome/commit/3dc8576f5a0f4820671d7f67463b4cdc1bf49a50))
+
+### Fixes
+
+- **runtime:** a file that is not there is a 404, not the app's page (#120) ([d6001bb](https://github.com/dstoyanoff/hashsome/commit/d6001bb602954cd45d1159cbcf11d9dabb44eeca))
+
 ## 0.15.0 (2026-10-15)
 
 ### ⚠ Breaking changes
