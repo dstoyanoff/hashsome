@@ -1,7 +1,8 @@
 /** @jsxImportSource @emotion/react */
 import { useTheme } from '@emotion/react';
 import { Flex, Grid, Typography } from 'e-prim';
-import type { ReactNode } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { useState, type ReactNode } from 'react';
 import type { EntityHandle } from '../entity-handle.ts';
 import { Icon } from '../icon.tsx';
 import { ValueBar } from '../layout/drawer-controls.tsx';
@@ -13,6 +14,7 @@ import { formatDuration, useMediaPosition, useSteadyPlaying } from './media-prog
 import { useSeekHold } from './media-seek.ts';
 import { ArtworkRing } from './artwork-ring.tsx';
 import { LoadingLine, useLoadingLabel } from './media-loading-line.tsx';
+import { ROW_FADE, VolumeRow } from './volume-row.tsx';
 
 /** The upright "now playing" panel the media column and page share: the artwork on a record, what is playing, how
  * far along it is, the transport buttons and a volume bar that is always there. Not exported from
@@ -27,6 +29,7 @@ export function NowPlaying({
   onOpenArtwork,
   size,
   shuffle: shufflePlacement = 'transport',
+  volumeControl = 'bar',
 }: {
   handle: EntityHandle<'mediaPlayer'>;
 
@@ -53,6 +56,9 @@ export function NowPlaying({
 
   /** Where the shuffle button goes: `transport` is the left slot of the button row, `title` a small button beside the song title, which leaves previous, play and next centered on their own. Default `transport`. */
   shuffle?: 'transport' | 'title';
+
+  /** How the volume is shown: `bar` is a slider always under the buttons; `icon` is a round speaker button in the right slot of the button row (taking `extra`'s place) that swaps the whole row for the slider (with a cross to bring the buttons back), so the player is shorter. `icon` needs the shuffle by the title, which frees that slot. Default `bar`. */
+  volumeControl?: 'bar' | 'icon';
 }) {
   const player = handle.entity;
   const { iconCircle, space } = useTheme().density;
@@ -64,6 +70,13 @@ export function NowPlaying({
   const playing = useSteadyPlaying(player);
   const { feedbackFor, press } = usePressFeedback(player?.ref);
   const volume = useVolumeControl(handle);
+  const [volumeOpen, setVolumeOpen] = useState(false);
+  const still = useReducedMotion();
+  const iconVolume =
+    volumeControl === 'icon' &&
+    shufflePlacement === 'title' &&
+    (caps?.volume !== false || caps?.mute === true);
+
   const position = useMediaPosition(player);
   const can = useTransportAvailability(player, position);
   const duration = ready ? player?.duration : undefined;
@@ -161,61 +174,90 @@ export function NowPlaying({
         </Flex>
       ) : null}
       {/* Five equal slots, so play/pause stays in the middle whichever side buttons there are. */}
-      <Grid
-        gap={3}
-        css={({ density }) => ({
-          gridTemplateColumns: `repeat(5, ${density.iconCircle}px)`,
-          justifyContent: 'center',
-        })}
-      >
-        {caps?.shuffle && shufflePlacement === 'transport' ? (
-          <IconButton
-            icon="lu:shuffle"
-            label="Shuffle"
-            glyph={18}
-            active={player?.shuffle === true}
-            pressed={player?.shuffle === true}
-            disabled={!ready}
-            feedback={feedbackFor('setShuffle')}
-            onClick={() =>
-              press('setShuffle', () =>
-                handle.command('setShuffle', { shuffle: player?.shuffle !== true }),
-              )
-            }
+      <AnimatePresence mode="wait" initial={false}>
+        {/* The buttons and the volume take turns in one row: one fades out, then the other in. */}
+        {iconVolume && volumeOpen ? (
+          <VolumeRow
+            key="volume"
+            volume={volume}
+            canMute={caps?.mute !== false}
+            onClose={() => setVolumeOpen(false)}
           />
-        ) : shufflePlacement === 'title' ? (
-          (leading ?? <span />)
         ) : (
-          <span />
+          <Grid
+            key="transport"
+            as={motion.div}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: still ? 0 : ROW_FADE, ease: 'easeOut' }}
+            gap={3}
+            css={({ density }) => ({
+              gridTemplateColumns: `repeat(5, ${density.iconCircle}px)`,
+              justifyContent: 'center',
+            })}
+          >
+            {caps?.shuffle && shufflePlacement === 'transport' ? (
+              <IconButton
+                icon="lu:shuffle"
+                label="Shuffle"
+                glyph={18}
+                active={player?.shuffle === true}
+                pressed={player?.shuffle === true}
+                disabled={!ready}
+                feedback={feedbackFor('setShuffle')}
+                onClick={() =>
+                  press('setShuffle', () =>
+                    handle.command('setShuffle', { shuffle: player?.shuffle !== true }),
+                  )
+                }
+              />
+            ) : shufflePlacement === 'title' ? (
+              (leading ?? <span />)
+            ) : (
+              <span />
+            )}
+            <IconButton
+              icon="lu:skip-back"
+              label="Previous"
+              glyph={18}
+              disabled={!ready || caps?.previous === false || !can.previous}
+              feedback={feedbackFor('previous')}
+              onClick={() => press('previous', () => handle.command('previous'))}
+            />
+            <IconButton
+              icon={playing ? 'lu:pause' : 'lu:play'}
+              label={playing ? 'Pause' : 'Play'}
+              glyph={18}
+              disabled={!ready || !can.play}
+              primary
+              feedback={feedbackFor('togglePlay')}
+              onClick={() => press('togglePlay', () => handle.command('togglePlay'))}
+            />
+            <IconButton
+              icon="lu:skip-forward"
+              label="Next"
+              glyph={18}
+              disabled={!ready || caps?.next === false || !can.next}
+              feedback={feedbackFor('next')}
+              onClick={() => press('next', () => handle.command('next'))}
+            />
+            {iconVolume ? (
+              <IconButton
+                icon={volume.muted ? 'lu:volume-x' : 'lu:volume-2'}
+                label="Volume"
+                glyph={18}
+                active={volume.muted}
+                disabled={!ready}
+                onClick={() => setVolumeOpen(true)}
+              />
+            ) : (
+              (extra ?? <span />)
+            )}
+          </Grid>
         )}
-        <IconButton
-          icon="lu:skip-back"
-          label="Previous"
-          glyph={18}
-          disabled={!ready || caps?.previous === false || !can.previous}
-          feedback={feedbackFor('previous')}
-          onClick={() => press('previous', () => handle.command('previous'))}
-        />
-        <IconButton
-          icon={playing ? 'lu:pause' : 'lu:play'}
-          label={playing ? 'Pause' : 'Play'}
-          glyph={18}
-          disabled={!ready || !can.play}
-          primary
-          feedback={feedbackFor('togglePlay')}
-          onClick={() => press('togglePlay', () => handle.command('togglePlay'))}
-        />
-        <IconButton
-          icon="lu:skip-forward"
-          label="Next"
-          glyph={18}
-          disabled={!ready || caps?.next === false || !can.next}
-          feedback={feedbackFor('next')}
-          onClick={() => press('next', () => handle.command('next'))}
-        />
-        {extra ?? <span />}
-      </Grid>
-      {caps?.volume !== false || caps.mute ? (
+      </AnimatePresence>
+      {(caps?.volume !== false || caps.mute) && !iconVolume ? (
         <Flex align="center" gap={2}>
           <PlainButton
             aria-label={volume.muted ? 'Unmute' : 'Mute'}

@@ -8,8 +8,10 @@ import { useEntityHandle } from '../hooks.ts';
 import { useDetail } from '../layout/detail-provider.tsx';
 import { Icon } from '../icon.tsx';
 import { MediaSpeakers } from './media-speakers.tsx';
-import { SpeakersOverlay, SpeakersPill } from './media-speakers-pill.tsx';
+import { SpeakersButton, SpeakersOverlay, SpeakersPill } from './media-speakers-pill.tsx';
+import { IconButton } from '../layout/tile.tsx';
 import { NowPlaying } from './now-playing.tsx';
+import { PlayerSwitcher, type PlayerOption } from './player-switcher.tsx';
 
 /** The artwork ring's diameter in a full-size player, against the usual 168px. */
 const FULL_SIZE = 260;
@@ -50,6 +52,15 @@ export interface MediaPlayerFullProps {
 
   /** Called with the tab someone chose. */
   onTabChange?: (tab: ListTab) => void;
+
+  /** Volume and speakers as round icon buttons on either side of the transport instead of a slider and a pill under it, which makes the player shorter: the speakers button on the left opens them like the pill does, and the volume button on the right opens a popover with the slider. Default `false`. */
+  compact?: boolean;
+
+  /** The players this one can be swapped for, with the one shown among them: a small text dropdown in the corner of the player, next to the artwork, names the speaker and lists the others. Needs `onPlayerChange` and a player given as a ref, and shows only with more than one. Left out, there is no dropdown. */
+  players?: PlayerOption[];
+
+  /** Called with the player someone picked from `players`; the page swaps `entity` for it. */
+  onPlayerChange?: (entity: EntityRef) => void;
 }
 
 /** What the tabs below the player choose between. */
@@ -149,6 +160,9 @@ export function MediaPlayerFull({
   defaultTab = 'library',
   tab,
   onTabChange,
+  compact = false,
+  players,
+  onPlayerChange,
 }: MediaPlayerFullProps) {
   const handle = useEntityHandle('mediaPlayer', entity);
   const { detail } = useDetail();
@@ -175,9 +189,10 @@ export function MediaPlayerFull({
       />
     ) : undefined;
 
+  const title = name ?? player?.name ?? fallbackName(entity);
   const pill =
     speakersBody && ref ? (
-      speakersView === 'inline' ? (
+      compact ? undefined : speakersView === 'inline' ? (
         <SpeakersPill
           player={player}
           speakers={speakers}
@@ -189,10 +204,31 @@ export function MediaPlayerFull({
           player={player}
           entity={ref}
           name={name}
-          title={name ?? player?.name ?? fallbackName(entity)}
+          title={title}
           allowed={speakers}
         />
       )
+    ) : undefined;
+
+  // Compact, the speakers are a round button at the left of the transport row, opposite the volume's.
+  const speakersButton =
+    compact && speakersBody && ref ? (
+      speakersView === 'inline' ? (
+        <IconButton
+          icon="lu:speaker"
+          label="Speakers"
+          glyph={18}
+          pressed={speakersOpen}
+          onClick={() => setSpeakersOpen((now) => !now)}
+        />
+      ) : (
+        <SpeakersButton player={player} entity={ref} name={name} title={title} allowed={speakers} />
+      )
+    ) : undefined;
+
+  const switcher =
+    ref && players && players.length > 1 && onPlayerChange ? (
+      <PlayerSwitcher players={players} current={ref} onChange={onPlayerChange} />
     ) : undefined;
 
   const showSpeakers = speakersView === 'inline' && speakersOpen && speakersBody !== undefined;
@@ -214,7 +250,13 @@ export function MediaPlayerFull({
         {...(full ? { grow: 1 } : {})}
         css={{ flexShrink: 0 }}
       >
-        <Flex align="center" justify="center" grow={1} minWidth={0}>
+        <Flex align="center" justify="center" grow={1} minWidth={0} position="relative">
+          {/* In the corner, over the room the round artwork leaves, so it costs no height. */}
+          {switcher ? (
+            <Box position="absolute" css={{ top: 0, left: 0 }}>
+              {switcher}
+            </Box>
+          ) : null}
           <Box width="100%" maxWidth={full ? 560 : 420}>
             <NowPlaying
               handle={handle}
@@ -222,6 +264,8 @@ export function MediaPlayerFull({
               {...(name !== undefined ? { name } : {})}
               shuffle="title"
               {...(pill ? { speakers: pill } : {})}
+              {...(speakersButton ? { leading: speakersButton } : {})}
+              {...(compact ? { volumeControl: 'icon' as const } : {})}
               {...(full ? { size: FULL_SIZE } : {})}
             />
           </Box>

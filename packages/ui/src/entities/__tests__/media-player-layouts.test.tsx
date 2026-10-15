@@ -927,3 +927,96 @@ test('no tabs without a queue to switch to, in the wide layout, or with only one
   expect(screen.queryByRole('tablist')).toBeNull();
   expect(await screen.findByText(/24 tracks/)).toBeTruthy();
 });
+
+describe('the speaker dropdown in the full player', () => {
+  const players = [
+    { entity: 'ha:room' as const, name: 'Kitchen' },
+    { entity: 'ha:other' as const, name: 'Bathroom' },
+  ];
+
+  test('names the speaker and lists the others to pick from', () => {
+    const onPlayerChange = vi.fn<(entity: string) => void>();
+    renderWithMock(
+      <MediaPlayerFull entity="ha:room" players={players} onPlayerChange={onPlayerChange} />,
+      playing(),
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Speaker' });
+    expect(trigger.textContent).toContain('Kitchen');
+    expect(screen.queryByRole('listbox')).toBeNull();
+
+    fireEvent.click(trigger);
+
+    expect(screen.getByRole('option', { name: 'Kitchen' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+
+    fireEvent.click(screen.getByRole('option', { name: 'Bathroom' }));
+
+    expect(onPlayerChange).toHaveBeenCalledWith('ha:other');
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  test('is left out with one speaker, or without a way to change it', () => {
+    renderWithMock(
+      <MediaPlayerFull
+        entity="ha:room"
+        players={players.slice(0, 1)}
+        onPlayerChange={vi.fn<(entity: string) => void>()}
+      />,
+      playing(),
+    );
+
+    expect(screen.queryByRole('button', { name: 'Speaker' })).toBeNull();
+
+    cleanup();
+    renderWithMock(<MediaPlayerFull entity="ha:room" players={players} />, playing());
+    expect(screen.queryByRole('button', { name: 'Speaker' })).toBeNull();
+  });
+
+  test('closes on Escape', () => {
+    renderWithMock(
+      <MediaPlayerFull
+        entity="ha:room"
+        players={players}
+        onPlayerChange={vi.fn<(entity: string) => void>()}
+      />,
+      playing(),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Speaker' }));
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+});
+
+describe('the compact full player', () => {
+  test('volume and speakers are round buttons, and the volume replaces the button row, with a cross to give it back', async () => {
+    renderWithMock(<MediaPlayerFull entity="ha:room" compact speakers={['ha:other']} />, {
+      ...playing({ group: true }),
+      other: mockMediaPlayer({ name: 'Other', playback: 'idle' }),
+    });
+
+    expect(screen.queryByRole('slider', { name: 'Volume level' })).toBeNull();
+    expect(screen.queryByText('Speakers')).toBeNull();
+    expect(screen.getByRole('button', { name: /^Speakers/ })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Volume' }));
+
+    expect(await screen.findByRole('slider', { name: 'Volume level' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close volume' }));
+
+    expect(await screen.findByRole('button', { name: 'Pause' })).toBeTruthy();
+    expect(screen.queryByRole('slider', { name: 'Volume level' })).toBeNull();
+  });
+
+  test('without it the slider is always there', () => {
+    renderWithMock(<MediaPlayerFull entity="ha:room" />, playing());
+
+    expect(screen.getByRole('slider', { name: 'Volume level' })).toBeTruthy();
+  });
+});
