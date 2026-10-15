@@ -71,3 +71,16 @@ test('a file that is there is served, and one that is not is a 404, never the ap
     await new Promise((done) => server!.close(done));
   }
 });
+
+test('a favicon is served when the project has one, and is a 404 (not an empty success) when it has not', async () => {
+  const dir = clientDir();
+  writeFileSync(join(dir, 'favicon.ico'), 'ico');
+  const there = await get(dir, '/favicon.ico');
+  expect(there.status).toBe(200);
+  expect(await there.text()).toBe('ico');
+  await new Promise((done) => server!.close(done));
+
+  // An empty 204 reads as "the icon is empty" to a browser that is picking an icon for the page.
+  const missing = await get(clientDir(), '/favicon.ico');
+  expect(missing.status).toBe(404);
+});

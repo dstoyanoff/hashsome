@@ -55,10 +55,6 @@ export function createApp(
     serveAsset(integrations, req, res).then((served) => (served ? undefined : next()), next);
   });
 
-  app.get('/favicon.ico', (_req, res) => {
-    res.status(204).end();
-  });
-
   app.use(express.static(clientDir, { index: false, maxAge: '1h' }));
   // SPA fallback: client-side routing handles /{id}/...
   app.use((req, res) => {
