@@ -835,6 +835,24 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         optional: true,
         type: '(tab: ListTab) => void',
       },
+      {
+        doc: 'Volume and speakers as round icon buttons on either side of the transport instead of a slider and a pill under it, which makes the player shorter: the speakers button on the left opens them like the pill does, and the volume button on the right opens a popover with the slider. Default `false`.',
+        name: 'compact',
+        optional: true,
+        type: 'boolean',
+      },
+      {
+        doc: 'The players this one can be swapped for, with the one shown among them: a small text dropdown in the corner of the player, next to the artwork, names the speaker and lists the others. Needs `onPlayerChange` and a player given as a ref, and shows only with more than one. Left out, there is no dropdown.',
+        name: 'players',
+        optional: true,
+        type: 'PlayerOption[]',
+      },
+      {
+        doc: 'Called with the player someone picked from `players`; the page swaps `entity` for it.',
+        name: 'onPlayerChange',
+        optional: true,
+        type: '(entity: EntityRef) => void',
+      },
     ],
   },
   MediaBrowser: {

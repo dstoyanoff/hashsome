@@ -3,7 +3,7 @@ import type { ConnectionStatus, EntityRef, LinkStatus } from '@hashsome/core';
 import { Box, Flex, Typography } from 'e-prim';
 import { motion } from 'motion/react';
 import { PlainButton } from '../layout/plain-button.tsx';
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import type { IconName } from '../icon-data.ts';
 import { fallbackName } from '../entity-handle.ts';
@@ -14,6 +14,7 @@ import {
   useIntegrationStatuses,
 } from '../hooks.ts';
 import { Icon } from '../icon.tsx';
+import { useDismiss } from '../layout/use-dismiss.ts';
 import { statusLabels } from '../status.ts';
 import { TOP_ROW } from '../theme/grid.ts';
 import { CheckMark } from '../layout/check-mark.tsx';
@@ -52,37 +53,6 @@ function colorForId(id: string, colors: readonly string[]): string {
   }
 
   return colors[hash % colors.length]!;
-}
-
-/** Closes a popover (calls `close`) on a press outside `ref` or on Escape, while it is `open`. */
-function useDismiss(open: boolean, close: () => void, ref: RefObject<HTMLElement | null>) {
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const onPointer = (event: PointerEvent) => {
-      if (!ref.current?.contains(event.target as Node)) {
-        close();
-      }
-    };
-
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        close();
-      }
-    };
-
-    document.addEventListener('pointerdown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('pointerdown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-    // `close` is a fresh function each render but only ever sets state; re-subscribing for it would
-    // do nothing but churn listeners.
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, ref]);
 }
 
 export interface TopBarProps {

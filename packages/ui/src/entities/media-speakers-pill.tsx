@@ -4,6 +4,7 @@ import { Box, Flex, Typography } from 'e-prim';
 import { memo } from 'react';
 import { useEntities } from '../hooks.ts';
 import { Icon } from '../icon.tsx';
+import { IconButton } from '../layout/tile.tsx';
 import { DrawerTrigger } from '../layout/use-drawer.tsx';
 import { MediaSpeakers, offeredSpeakers } from './media-speakers.tsx';
 
@@ -188,6 +189,52 @@ export const SpeakersOverlay = memo(function SpeakersOverlay({
           speakers={allowed}
           onClick={open}
           {...(compact ? { compact } : {})}
+        />
+      )}
+    </DrawerTrigger>
+  );
+});
+
+/** The speakers as a round icon button, the size of the transport's, for a player with no room for the pill: it takes
+ * the accent colour while the player plays in a group, and opens the speakers in the same side panel as the pill.
+ * Memoized for the same reason `SpeakersOverlay` is. */
+export const SpeakersButton = memo(function SpeakersButton({
+  player,
+  entity,
+  name,
+  title,
+  allowed,
+}: {
+  player: MediaPlayerEntity | undefined;
+
+  /** The player, as a ref. */
+  entity: EntityRef;
+
+  /** What to call it, when it is not the name it reports. */
+  name?: string | undefined;
+
+  /** The player's name, under the panel's heading. */
+  title: string;
+  allowed?: readonly EntityRef[] | undefined;
+}) {
+  const summary = useSpeakersSummary(player, allowed);
+  const body = (
+    <MediaSpeakers
+      entity={entity}
+      {...(name !== undefined ? { name } : {})}
+      {...(allowed ? { speakers: [...allowed] } : {})}
+    />
+  );
+
+  return (
+    <DrawerTrigger icon="lu:speaker" label="Speakers" kind={title} body={body}>
+      {(open) => (
+        <IconButton
+          icon="lu:speaker"
+          label={`Speakers: ${summaryLabel(summary)}`}
+          glyph={18}
+          active={summary.together > 1}
+          onClick={open}
         />
       )}
     </DrawerTrigger>
