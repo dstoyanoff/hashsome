@@ -912,7 +912,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     ],
   },
   NavDock: {
-    doc: "Floating bottom pill for switching between a dashboard's pages. Must be rendered inside a router. `position: fixed`, floating over the page; it reserves the space it takes in the surrounding `Page`, which pads for it.",
+    doc: "Floating bottom pill for switching between a dashboard's pages. Must be rendered inside a router. `position: fixed`, floating over the page; it reserves the space it takes in the surrounding `Page`, which pads for it. On a phone with a home indicator it floats above the indicator.",
     props: [
       {
         doc: 'The pages to link to; `to` is relative to `base`.',

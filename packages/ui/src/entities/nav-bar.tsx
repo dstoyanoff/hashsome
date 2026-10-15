@@ -2,6 +2,7 @@
 import { Flex } from 'e-prim';
 import { NavLink } from 'react-router';
 import { Icon } from '../icon.tsx';
+import { isInstalledApp } from '../layout/installed-app.ts';
 import { usePageInset } from '../layout/page.tsx';
 import { useIdleReturn, useIdleReturnDefault } from '../layout/use-idle-return.ts';
 import { NAV_BAR } from '../theme/grid.ts';
@@ -52,6 +53,9 @@ export function NavBar({ items, base, idleReturn }: NavBarProps) {
     >
       {items.map((item) => (
         <NavLink
+          // In an installed app, switching pages replaces the one before it: there is no browser to go back with, and
+          // the system's swipe from the edge of the screen would otherwise walk back through every page visited.
+          replace={isInstalledApp()}
           key={item.to}
           to={item.to ? `${base}/${item.to}` : base}
           end
