@@ -13,6 +13,9 @@ export interface ActionButtonProps {
   /** Icon id, e.g. `lu:coffee`. */
   icon?: IconName;
 
+  /** A literal CSS color that fills the icon's badge, e.g. `#8B5CF6`, to tell buttons apart at a glance. Default: the usual neutral badge. */
+  color?: string;
+
   /** A second line of text under the label. */
   secondary?: string;
 
@@ -64,7 +67,14 @@ function usePressable(entity: ActionButtonProps['entity']): Pressable {
 }
 
 /** Any one-shot thing to trigger — a scene, script, button or switch, or your own `onPress` — with pending / done / error feedback. */
-export function ActionButton({ label, icon, secondary, entity, onPress }: ActionButtonProps) {
+export function ActionButton({
+  label,
+  icon,
+  color,
+  secondary,
+  entity,
+  onPress,
+}: ActionButtonProps) {
   const target = usePressable(onPress ? undefined : entity);
   const [feedback, setFeedback] = useState<'pending' | 'done' | 'error' | undefined>();
   const [error, setError] = useState<string>();
@@ -93,6 +103,7 @@ export function ActionButton({ label, icon, secondary, entity, onPress }: Action
     <Tile
       label={label ?? target.name ?? fallbackName(entity)}
       {...(icon ? { icon } : {})}
+      {...(color ? { iconColor: color } : {})}
       {...(secondary ? { secondary } : {})}
       status={onPress ? 'ready' : target.status}
       feedback={feedback}
