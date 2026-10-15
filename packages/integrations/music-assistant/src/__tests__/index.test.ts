@@ -379,7 +379,7 @@ test('the picture of what is playing is addressed through the runtime when Music
   ]);
 
   expect(ma.getEntity('own')).toMatchObject({
-    media: { artworkUrl: '/_hashsome/asset/ma?path=%2Fimageproxy%2Fabc%3Fsize%3D512' },
+    media: { artworkUrl: '/_hashsome/asset/ma?path=%2Fimageproxy%2Fabc%3Fsize%3D256' },
   });
 
   expect(ma.getEntity('cdn')).toMatchObject({

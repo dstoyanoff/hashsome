@@ -516,6 +516,7 @@ export class MusicAssistantIntegration extends BaseIntegration {
       items: toQueueItems(
         Array.isArray(raw) ? (raw as MaQueueItem[]) : [],
         typeof current === 'string' ? current : undefined,
+        this.#assetUrl,
       ),
       total,
       offset,
@@ -594,7 +595,7 @@ export class MusicAssistantIntegration extends BaseIntegration {
   #items(list: unknown): BrowseItem[] {
     return Array.isArray(list)
       ? list.flatMap((item) => {
-          const mapped = isRecord(item) ? toBrowseItem(item as MaItem) : undefined;
+          const mapped = isRecord(item) ? toBrowseItem(item as MaItem, this.#assetUrl) : undefined;
           return mapped ? [mapped] : [];
         })
       : [];
@@ -798,8 +799,8 @@ export class MusicAssistantIntegration extends BaseIntegration {
     return path.startsWith('/imageproxy/');
   }
 
-  /** A picture Music Assistant serves (what is playing), fetched with the token. Only one of its `/imageproxy/`
-   * paths is accepted, never another path or another address. */
+  /** A picture Music Assistant serves (what is playing, an item's), fetched with the token. Only one of its
+   * `/imageproxy/` paths is accepted, never another path or another address. */
   async fetchAsset(path: string): Promise<Response> {
     const base = new URL(this.#options.url);
     const target = new URL(path, base);

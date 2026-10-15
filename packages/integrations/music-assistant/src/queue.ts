@@ -19,6 +19,7 @@ export interface MaQueueItem {
 export function toQueueItems(
   items: readonly MaQueueItem[],
   currentItemId: string | undefined,
+  assetUrl?: (path: string) => string,
 ): QueueItem[] {
   return items.flatMap((item) => {
     if (typeof item.queue_item_id !== 'string' || item.queue_item_id === '') {
@@ -32,7 +33,7 @@ export function toQueueItems(
 
     const title = track?.name ?? item.name;
     const album = track?.album?.name;
-    const artwork = artworkOf({ ...(item.image ? { image: item.image } : {}), ...track });
+    const artwork = artworkOf({ ...(item.image ? { image: item.image } : {}), ...track }, assetUrl);
     return [
       {
         id: item.queue_item_id,

@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { toBrowseItem } from '../browse.ts';
 import { ownPicturePath, sourceOf } from '../mapper.ts';
 
 const entry = (media_type: string, name: string) => ({
@@ -40,10 +41,31 @@ test('the first source that is one wins', () => {
 });
 
 test('a picture Music Assistant serves itself has a path, one from elsewhere does not', () => {
+  // At the size the displays use, not the 512 it gave.
   expect(ownPicturePath('http://10.4.2.2/imageproxy/abc123?size=512&fmt=jpg')).toBe(
-    '/imageproxy/abc123?size=512&fmt=jpg',
+    '/imageproxy/abc123?size=256&fmt=jpg',
   );
 
   expect(ownPicturePath('https://i.scdn.co/image/ab67')).toBeUndefined();
   expect(ownPicturePath('not a url')).toBeUndefined();
+});
+
+test('a library item’s picture goes through the runtime when it has Music Assistant’s id for it', () => {
+  const assetUrl = (path: string) => `/asset?path=${encodeURIComponent(path)}`;
+  const item = {
+    uri: 'library://album/1',
+    name: 'Album',
+    media_type: 'album',
+    image: { path: 'https://i.scdn.co/image/xyz', remotely_accessible: true, proxy_id: 'abc' },
+  };
+
+  expect(toBrowseItem(item, assetUrl)).toMatchObject({
+    artworkUrl: '/asset?path=%2Fimageproxy%2Fabc%3Fsize%3D256%26fmt%3Djpg',
+  });
+
+  // With no way to address the runtime, or no id, the picture's own address, as before.
+  expect(toBrowseItem(item)).toMatchObject({ artworkUrl: 'https://i.scdn.co/image/xyz' });
+  expect(
+    toBrowseItem({ ...item, image: { path: '/local', remotely_accessible: false } }, assetUrl),
+  ).not.toHaveProperty('artworkUrl');
 });

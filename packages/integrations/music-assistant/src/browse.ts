@@ -16,6 +16,9 @@ export interface MaItem {
 interface MaImage {
   path?: string;
   remotely_accessible?: boolean;
+
+  /** What Music Assistant's own picture address (`/imageproxy/<proxy_id>`) is made from. */
+  proxy_id?: string;
 }
 
 /** The top level: a shelf per way into the library. Their ids are not Music Assistant uris. */
@@ -38,14 +41,17 @@ const KINDS: Record<string, BrowseKind> = {
 
 const EXPANDABLE = new Set(['album', 'artist', 'playlist']);
 
-export function toBrowseItem(item: MaItem): BrowseItem | undefined {
+export function toBrowseItem(
+  item: MaItem,
+  assetUrl?: (path: string) => string,
+): BrowseItem | undefined {
   if (typeof item.uri !== 'string' || typeof item.name !== 'string') {
     return undefined;
   }
 
   const type = item.media_type ?? '';
   const subtitle = item.artist_str ?? item.artists?.[0]?.name ?? item.owner ?? undefined;
-  const artwork = artworkOf(item);
+  const artwork = artworkOf(item, assetUrl);
   return {
     id: item.uri,
     title: item.name,
@@ -57,10 +63,23 @@ export function toBrowseItem(item: MaItem): BrowseItem | undefined {
   };
 }
 
-/** Pictures Music Assistant serves itself need its login, so only ones the browser can open on its
- * own (a streaming service's CDN) are passed on. */
-export function artworkOf(item: MaItem): string | undefined {
+/** How wide, in pixels, a picture is asked for from Music Assistant, which resizes to 80, 160, 256, 512 or 1024 only: enough
+ * for the biggest one is drawn at on the displays (a list's are about 44 px, the player's about 200), and about a
+ * quarter of what the 512 weighs (30 kB, against 108). */
+export const PICTURE_SIZE = 256;
+
+/**
+ * Where a browser gets an item's picture. Through the runtime (`assetUrl`) from Music Assistant's own picture address
+ * when the item has the id of one, which the runtime fetches with the login, can resize to what is drawn and keeps,
+ * and which a browser away from the server can reach. Without `assetUrl` or such an id, the picture's own address
+ * when a browser can open it by itself (a streaming service's), else none.
+ */
+export function artworkOf(item: MaItem, assetUrl?: (path: string) => string): string | undefined {
   const image = item.image ?? item.metadata?.images?.[0];
+  if (assetUrl && image?.proxy_id) {
+    return assetUrl(`/imageproxy/${image.proxy_id}?size=${PICTURE_SIZE}&fmt=jpg`);
+  }
+
   return image?.remotely_accessible && image.path && /^https?:\/\//.test(image.path)
     ? image.path
     : undefined;
