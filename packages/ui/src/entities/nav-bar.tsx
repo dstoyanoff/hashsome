@@ -22,7 +22,8 @@ export interface NavBarProps {
 /** The left rail's design along the bottom of the screen, for a small display where the rail would take too much
  * of the width: the same rail colour and rounded-square buttons (the open page lit), in a row at the middle of a bar
  * that runs from edge to edge, not floating like `NavDock`. Must be rendered inside a router. It is `position: fixed`
- * and reserves its height in the surrounding `Page`, which pads for it so content never sits under it. */
+ * and reserves its height in the surrounding `Page`, which pads for it so content never sits under it. On a phone with
+ * a home indicator the bar is taller by the indicator's height, and its buttons stay clear of it. */
 export function NavBar({ items, base, idleReturn }: NavBarProps) {
   const appDefault = useIdleReturnDefault();
   useIdleReturn({ to: mainPath(items, base), after: idleReturn ?? appDefault });
@@ -36,10 +37,18 @@ export function NavBar({ items, base, idleReturn }: NavBarProps) {
       justify="center"
       gap={2.5}
       background="rail"
-      height={NAV_BAR}
       position="fixed"
       zIndex="nav"
-      css={{ left: 0, right: 0, bottom: 0 }}
+      // As tall as it says, and then the phone's home indicator (nothing on a wall display), which it reaches under: the
+      // buttons stay clear of it.
+      css={{
+        left: 0,
+        right: 0,
+        bottom: 0,
+        boxSizing: 'border-box',
+        height: `calc(${NAV_BAR}px + env(safe-area-inset-bottom, 0px))`,
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
     >
       {items.map((item) => (
         <NavLink

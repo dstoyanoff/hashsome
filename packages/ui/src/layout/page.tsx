@@ -105,6 +105,10 @@ export function Page({ children, height = '100dvh' }: PageProps) {
           paddingLeft: `calc(${spacing(3)} + ${insets.left}px)`,
           paddingTop: `calc(${spacing(3)} + ${centered.top}px)`,
           paddingBottom: `calc(${spacing(3)} + ${insets.bottom + centered.bottom}px)`,
+          // And the phone's home indicator, which a fixed bar at the bottom reaches under (a wall display has none).
+          '@supports (padding-bottom: env(safe-area-inset-bottom))': {
+            paddingBottom: `calc(${spacing(3)} + ${insets.bottom + centered.bottom}px + env(safe-area-inset-bottom))`,
+          },
           boxSizing: 'border-box',
         })}
       >

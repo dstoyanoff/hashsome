@@ -935,7 +935,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     ],
   },
   NavBar: {
-    doc: "The left rail's design along the bottom of the screen, for a small display where the rail would take too much of the width: the same rail colour and rounded-square buttons (the open page lit), in a row at the middle of a bar that runs from edge to edge, not floating like `NavDock`. Must be rendered inside a router. It is `position: fixed` and reserves its height in the surrounding `Page`, which pads for it so content never sits under it.",
+    doc: "The left rail's design along the bottom of the screen, for a small display where the rail would take too much of the width: the same rail colour and rounded-square buttons (the open page lit), in a row at the middle of a bar that runs from edge to edge, not floating like `NavDock`. Must be rendered inside a router. It is `position: fixed` and reserves its height in the surrounding `Page`, which pads for it so content never sits under it. On a phone with a home indicator the bar is taller by the indicator's height, and its buttons stay clear of it.",
     props: [
       {
         doc: 'The pages to link to; `to` is relative to `base`.',
