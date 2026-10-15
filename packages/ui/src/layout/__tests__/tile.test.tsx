@@ -140,6 +140,8 @@ test('history alone (no detail) still opens the drawer, showing each entry', () 
   fireEvent.pointerDown(tile, { clientX: 0, pointerId: 1 });
   act(() => vi.advanceTimersByTime(500));
   expect(screen.getByText('History')).toBeTruthy();
+  expect(screen.queryByText('Dan')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: /History/ }));
   expect(screen.getByText(/turned on/)).toBeTruthy();
   expect(screen.getByText('Turned off')).toBeTruthy();
   expect(screen.getByText('Dan')).toBeTruthy();
@@ -223,20 +225,25 @@ test('the hold progress bar lives on the card, not inside the button, so it span
   expect(tile.contains(bar as Element)).toBe(false);
 });
 
-test('a `logbook` entity fills the History section from the backend, and only once the drawer opens', async () => {
+test('a `logbook` entity fills the History section from the backend, only once it is opened, with placeholders until then', async () => {
   const { ha } = renderWithMock(<Tile label="lamp" logbook="ha:lamp" />, {
     lamp: mockLight({ name: 'Lamp', on: true }),
   });
 
   const asked = vi.spyOn(ha, 'logbook');
-  expect(asked).not.toHaveBeenCalled();
-
   const tile = screen.getByRole('button', { name: 'lamp' });
   fireEvent.pointerDown(tile, { clientX: 0, pointerId: 1 });
   act(() => vi.advanceTimersByTime(500));
   await act(async () => {});
-  expect(asked).toHaveBeenCalledWith('lamp', { limit: 6 });
+  // The drawer is open and History is folded: nothing has been asked.
   expect(screen.getByText('History')).toBeTruthy();
+  expect(asked).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: /History/ }));
+  expect(asked).toHaveBeenCalledWith('lamp', { limit: 6 });
+  expect(screen.getByLabelText('Loading history')).toBeTruthy();
+  await act(async () => {});
+  expect(screen.queryByLabelText('Loading history')).toBeNull();
   expect(screen.getAllByText(/turned (on|off)|became unavailable/).length).toBeGreaterThan(0);
 });
 
@@ -255,11 +262,12 @@ test('a `history` prop wins over the backend, and a backend with no activity sho
   fireEvent.pointerDown(tile, { clientX: 0, pointerId: 1 });
   act(() => vi.advanceTimersByTime(500));
   await act(async () => {});
+  fireEvent.click(screen.getByRole('button', { name: /History/ }));
   expect(asked).not.toHaveBeenCalled();
   expect(screen.getByText('Turned on')).toBeTruthy();
 });
 
-test('an entity the backend has no activity for shows no History section', async () => {
+test('an entity the backend has no activity for says so when History is opened', async () => {
   const { ha } = renderWithMock(<Tile label="lamp" logbook="ha:lamp" />, {
     lamp: mockLight({ name: 'Lamp' }),
   });
@@ -270,7 +278,9 @@ test('an entity the backend has no activity for shows no History section', async
   fireEvent.pointerDown(tile, { clientX: 0, pointerId: 1 });
   act(() => vi.advanceTimersByTime(500));
   await act(async () => {});
-  expect(screen.queryByText('History')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: /History/ }));
+  await act(async () => {});
+  expect(screen.getByText('No recent activity')).toBeTruthy();
 });
 
 test('every History row has a picture, so the text lines up: initials, a workflow chip for an automation, or a quiet system chip', () => {
@@ -301,6 +311,7 @@ test('every History row has a picture, so the text lines up: initials, a workflo
   const tile = screen.getByRole('button', { name: 'lamp' });
   fireEvent.pointerDown(tile, { clientX: 0, pointerId: 1 });
   act(() => vi.advanceTimersByTime(500));
+  fireEvent.click(screen.getByRole('button', { name: /History/ }));
   expect(screen.getByRole('img', { name: 'Dan' })).toBeTruthy();
   expect(screen.getByRole('img', { name: 'Bedtime' })).toBeTruthy();
   // Rows with no cause: a connection chip, and a switch thrown one way for on and the other for off.

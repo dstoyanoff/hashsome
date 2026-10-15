@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { Flex, type PaletteKey } from 'e-prim';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useDragControls } from 'motion/react';
 import { useEffect, useState } from 'react';
 import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
@@ -8,6 +8,16 @@ import { useDetail } from './detail-provider.tsx';
 
 const COLLAPSED_WIDTH = 380;
 const EDGE_INSET = 20;
+
+/** Narrower than this (a phone), the drawer is a bottom sheet instead of a panel at the side. */
+const SHEET_BELOW = 500;
+
+/** How much of the screen's height a sheet may take; one opened tall (`expanded`) takes all of it. */
+const SHEET_HEIGHT = '92dvh';
+
+/** How far a sheet has to be pulled down, or how fast, to be let go. */
+const DISMISS_DISTANCE = 100;
+const DISMISS_VELOCITY = 500;
 
 /**
  * The single shared detail drawer, rendered once by `HashsomeProvider`. Floats `EDGE_INSET`px in
@@ -25,6 +35,7 @@ const EDGE_INSET = 20;
  */
 export function EntityDrawer() {
   const { detail, closeDetail, toggleExpanded } = useDetail();
+  const drag = useDragControls();
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 0 : window.innerWidth,
   );
@@ -56,6 +67,7 @@ export function EntityDrawer() {
   }, [detail, closeDetail]);
 
   const expanded = detail?.expanded ?? false;
+  const sheet = viewportWidth > 0 && viewportWidth < SHEET_BELOW;
   const width = expanded
     ? Math.max(0, viewportWidth - EDGE_INSET * 2)
     : Math.min(COLLAPSED_WIDTH, Math.max(0, viewportWidth - EDGE_INSET * 2));
@@ -75,68 +87,147 @@ export function EntityDrawer() {
             zIndex="scrim"
             css={{ position: 'fixed', inset: 0, background: 'rgb(0 0 0 / 0.45)' }}
           />
-          <Flex
-            justify="flex-end"
-            zIndex="scrim"
-            css={{
-              position: 'fixed',
-              inset: 0,
-              // `content-box` (the default) is the actual bug: with `inset: 0` and no explicit
-              // height, the browser resolves the auto height from the insets alone, THEN adds
-              // padding on top of that — overflowing past the viewport by exactly 2x the padding.
-              // `border-box` makes padding come out of that resolved height instead of adding to it.
-              boxSizing: 'border-box',
-              padding: EDGE_INSET,
-              pointerEvents: 'none',
-            }}
-          >
+          {sheet ? (
             <Flex
-              as={motion.div}
               direction="column"
-              key="hash-drawer"
-              role="dialog"
-              aria-modal="true"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, width }}
-              exit={{ opacity: 0 }}
-              transition={{
-                width: { duration: 0.32, ease: [0.2, 0.8, 0.2, 1] },
-                opacity: { duration: 0.28 },
-              }}
-              background="surface"
-              color="text"
-              radius="drawer"
-              shadow="drawer"
-              border
-              zIndex="drawer"
-              // Explicit, not implicit flex stretch: a flex item that's also a scroll container
-              // (`overflow: auto`) doesn't reliably stay within its parent's cross-axis size —
-              // its default `min-height: auto` can win out and push it past the stretched height
-              // instead of scrolling internally. `height: '100%'` here is well-defined regardless
-              // (the wrapper's `inset: 0` gives it an unambiguous content-box size).
-              height="100%"
-              minHeight={0}
-              maxHeight="100%"
-              overflow="auto"
-              p={5}
-              css={{ pointerEvents: 'auto' }}
+              justify="flex-end"
+              zIndex="scrim"
+              css={{ position: 'fixed', inset: 0, pointerEvents: 'none' }}
             >
-              <Flex justify="space-between" align="center" gap={2.5} mb={4}>
-                {detail.header}
-                <Flex gap={1.5} grow={0}>
-                  {detail.locked ? null : (
-                    <DrawerActionButton
-                      icon={expanded ? 'lu:minimize-2' : 'lu:maximize-2'}
-                      label={expanded ? 'Collapse' : 'Expand'}
-                      onClick={toggleExpanded}
+              <Flex
+                as={motion.div}
+                key="hash-drawer"
+                role="dialog"
+                aria-modal="true"
+                direction="column"
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 34, stiffness: 340, mass: 0.9 }}
+                drag="y"
+                dragControls={drag}
+                dragListener={false}
+                dragConstraints={{ top: 0, bottom: 0 }}
+                dragElastic={{ top: 0, bottom: 0.5 }}
+                onDragEnd={(_event, info) => {
+                  if (info.offset.y > DISMISS_DISTANCE || info.velocity.y > DISMISS_VELOCITY) {
+                    closeDetail();
+                  }
+                }}
+                background="surface"
+                color="text"
+                shadow="drawer"
+                width="100%"
+                minHeight={0}
+                css={({ palette }) => ({
+                  boxSizing: 'border-box',
+                  borderRadius: '24px 24px 0 0',
+                  borderTop: `1px solid ${palette.border}`,
+                  maxHeight: SHEET_HEIGHT,
+                  ...(expanded || detail.locked ? { height: SHEET_HEIGHT } : {}),
+                  pointerEvents: 'auto',
+                  overflow: 'hidden',
+                })}
+              >
+                {/* What is pulled to let it go: the grip and the title; the content under it scrolls on its own. */}
+                <Flex
+                  direction="column"
+                  onPointerDown={(event) => drag.start(event)}
+                  css={{ flex: 'none', touchAction: 'none', cursor: 'grab' }}
+                >
+                  <Flex justify="center" css={{ paddingTop: 8, paddingBottom: 4 }}>
+                    <Flex
+                      aria-hidden="true"
+                      background="line"
+                      radius="full"
+                      css={{ width: 36, height: 5, opacity: 0.6 }}
                     />
-                  )}
-                  <DrawerActionButton icon="lu:x" label="Close" onClick={closeDetail} />
+                  </Flex>
+                  <Flex justify="space-between" align="center" gap={2.5} px={5} pt={2} pb={3}>
+                    {detail.header}
+                    <DrawerActionButton icon="lu:x" label="Close" onClick={closeDetail} />
+                  </Flex>
+                </Flex>
+                <Flex
+                  direction="column"
+                  grow={1}
+                  minHeight={0}
+                  px={5}
+                  css={{
+                    overflowY: 'auto',
+                    overscrollBehavior: 'contain',
+                    // Clear of the phone's home indicator.
+                    paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
+                  }}
+                >
+                  {detail.body}
                 </Flex>
               </Flex>
-              {detail.body}
             </Flex>
-          </Flex>
+          ) : (
+            <Flex
+              justify="flex-end"
+              zIndex="scrim"
+              css={{
+                position: 'fixed',
+                inset: 0,
+                // `content-box` (the default) is the actual bug: with `inset: 0` and no explicit
+                // height, the browser resolves the auto height from the insets alone, THEN adds
+                // padding on top of that — overflowing past the viewport by exactly 2x the padding.
+                // `border-box` makes padding come out of that resolved height instead of adding to it.
+                boxSizing: 'border-box',
+                padding: EDGE_INSET,
+                pointerEvents: 'none',
+              }}
+            >
+              <Flex
+                as={motion.div}
+                direction="column"
+                key="hash-drawer"
+                role="dialog"
+                aria-modal="true"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, width }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  width: { duration: 0.32, ease: [0.2, 0.8, 0.2, 1] },
+                  opacity: { duration: 0.28 },
+                }}
+                background="surface"
+                color="text"
+                radius="drawer"
+                shadow="drawer"
+                border
+                zIndex="drawer"
+                // Explicit, not implicit flex stretch: a flex item that's also a scroll container
+                // (`overflow: auto`) doesn't reliably stay within its parent's cross-axis size —
+                // its default `min-height: auto` can win out and push it past the stretched height
+                // instead of scrolling internally. `height: '100%'` here is well-defined regardless
+                // (the wrapper's `inset: 0` gives it an unambiguous content-box size).
+                height="100%"
+                minHeight={0}
+                maxHeight="100%"
+                overflow="auto"
+                p={5}
+                css={{ pointerEvents: 'auto' }}
+              >
+                <Flex justify="space-between" align="center" gap={2.5} mb={4}>
+                  {detail.header}
+                  <Flex gap={1.5} grow={0}>
+                    {detail.locked ? null : (
+                      <DrawerActionButton
+                        icon={expanded ? 'lu:minimize-2' : 'lu:maximize-2'}
+                        label={expanded ? 'Collapse' : 'Expand'}
+                        onClick={toggleExpanded}
+                      />
+                    )}
+                    <DrawerActionButton icon="lu:x" label="Close" onClick={closeDetail} />
+                  </Flex>
+                </Flex>
+                {detail.body}
+              </Flex>
+            </Flex>
+          )}
         </>
       ) : null}
     </AnimatePresence>

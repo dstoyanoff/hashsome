@@ -118,7 +118,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     ],
   },
   AnimatedOutlet: {
-    doc: "A dashboard layout's `<Outlet />` with a transition between its pages: the page that was showing fades out (sliding a little toward the side it was on), then the new one fades in from the side it is on. It is a drop-in for `Outlet` in a layout route, and does nothing the first time a page shows or for a visitor who prefers reduced motion.",
+    doc: "A dashboard layout's `<Outlet />` with a transition between its pages: the page that was showing fades out (sliding a little toward the side it was on), then the new one fades in from the side it is on. It is a drop-in for `Outlet` in a layout route, and does nothing the first time a page shows or for a visitor who prefers reduced motion. A page longer than the screen just scrolls the `Page`. A page that is meant to fill the screen and scroll inside itself (a player with its library, say) gives its root `flex-basis: 0` and `min-height: 0`, so what is in it does not make the page taller; a `Board` already does.",
     props: [
       {
         doc: "The dashboard's pages in the order its nav lists them (the same `items` as `NavRail`, `NavDock` or `NavBar`). A page then slides in from the side it sits on: a later page from the right, an earlier one from the left. Left out, pages only fade.",
@@ -257,7 +257,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'LogbookEntry[]',
       },
       {
-        doc: "An entity whose recent activity to fetch from the backend when the drawer opens, for the same History section (Home Assistant's logbook). `history`, when given, is used instead. A backend that keeps none shows no section.",
+        doc: "An entity whose recent activity to fetch from the backend when the person opens the drawer's History section, which is folded by default (Home Assistant's logbook). `history`, when given, is used instead. A backend that keeps none says so there.",
         name: 'logbook',
         optional: true,
         type: 'EntityRef',
@@ -416,13 +416,25 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     ],
   },
   HistorySection: {
-    doc: "A short activity list for an entity's detail drawer. Generic — any entity type can supply it.",
+    doc: "A short activity list for an entity's detail drawer, folded away until asked for. Generic — any entity type can supply it.",
     props: [
       {
-        doc: 'Recent activity, newest first. An empty list renders nothing.',
+        doc: 'Recent activity, newest first. `undefined` until it is known. An empty list from a caller that has no way to ask for more (no `onOpen`) renders nothing.',
         name: 'entries',
         optional: false,
-        type: 'LogbookEntry[]',
+        type: 'LogbookEntry[] | undefined',
+      },
+      {
+        doc: 'The entries are on their way: the open section shows placeholder rows.',
+        name: 'loading',
+        optional: true,
+        type: 'boolean',
+      },
+      {
+        doc: 'Called when the section is opened, so whoever owns the entries can go and get them.',
+        name: 'onOpen',
+        optional: true,
+        type: '() => void',
       },
     ],
   },
@@ -477,7 +489,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'EnergyChartProps',
       },
       {
-        doc: "Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the drawer opens.",
+        doc: "Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the person opens its History.",
         name: 'history',
         optional: true,
         type: 'LogbookEntry[]',
@@ -524,7 +536,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'EnergyChartProps',
       },
       {
-        doc: "Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the drawer opens.",
+        doc: "Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the person opens its History.",
         name: 'history',
         optional: true,
         type: 'LogbookEntry[]',
@@ -912,7 +924,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     ],
   },
   NavDock: {
-    doc: "Floating bottom pill for switching between a dashboard's pages. Must be rendered inside a router. `position: fixed`, floating over the page; it reserves the space it takes in the surrounding `Page`, which pads for it.",
+    doc: "Floating bottom pill for switching between a dashboard's pages. Must be rendered inside a router. `position: fixed`, floating over the page; it reserves the space it takes in the surrounding `Page`, which pads for it. On a phone with a home indicator it floats above the indicator.",
     props: [
       {
         doc: 'The pages to link to; `to` is relative to `base`.',
@@ -935,7 +947,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     ],
   },
   NavBar: {
-    doc: "The left rail's design along the bottom of the screen, for a small display where the rail would take too much of the width: the same rail colour and rounded-square buttons (the open page lit), in a row at the middle of a bar that runs from edge to edge, not floating like `NavDock`. Must be rendered inside a router. It is `position: fixed` and reserves its height in the surrounding `Page`, which pads for it so content never sits under it.",
+    doc: "The left rail's design along the bottom of the screen, for a small display where the rail would take too much of the width: the same rail colour and rounded-square buttons (the open page lit), in a row at the middle of a bar that runs from edge to edge, not floating like `NavDock`. Must be rendered inside a router. It is `position: fixed` and reserves its height in the surrounding `Page`, which pads for it so content never sits under it. On a phone with a home indicator the bar is taller by the indicator's height, and its buttons stay clear of it.",
     props: [
       {
         doc: 'The pages to link to; `to` is relative to `base`.',

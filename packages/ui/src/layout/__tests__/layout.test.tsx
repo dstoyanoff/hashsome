@@ -34,7 +34,7 @@ test('Page pads by the density, and further for a NavRail or NavDock while it is
     { router: true },
   );
 
-  expect(getComputedStyle(pageOf()).paddingLeft).toBe('88px'); // 12 + the rail's 76
+  expect(getComputedStyle(pageOf()).paddingLeft).toBe('76px'); // 12 + the rail's 64
   expect(getComputedStyle(pageOf()).paddingBottom).toBe('12px');
   view.unmount();
 

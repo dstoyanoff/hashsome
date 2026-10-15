@@ -24,6 +24,7 @@ export function StepButton({
   onStep,
   disabled,
   size = 36,
+  plain = false,
 }: {
   icon: IconName;
   label: string;
@@ -36,6 +37,9 @@ export function StepButton({
 
   /** Button diameter in px. Default 36. */
   size?: number;
+
+  /** Just the icon, with no circle behind it. Default `false`. */
+  plain?: boolean;
 }) {
   const timers = useRef<{
     delay?: ReturnType<typeof setTimeout>;
@@ -55,7 +59,7 @@ export function StepButton({
   return (
     <RoundButton
       size={size}
-      css={{ flex: 'none' }}
+      css={{ flex: 'none', ...(plain ? { background: 'none' } : {}) }}
       aria-label={label}
       title={label}
       disabled={disabled}
@@ -94,6 +98,7 @@ export function ValueBar({
   round = 1,
   gradient,
   height = 28,
+  track = 'surface',
   onDrag,
   onCommit,
 }: {
@@ -107,6 +112,9 @@ export function ValueBar({
 
   /** Bar thickness in px. Default 28. */
   height?: number;
+
+  /** The track's color: `surfaceRaised` where the bar sits straight on the drawer, `surface` (the default) on a raised card. */
+  track?: 'surface' | 'surfaceRaised';
   onDrag: (value: number) => void;
   onCommit: (value: number) => void;
 }) {
@@ -153,7 +161,7 @@ export function ValueBar({
       width="100%"
       height={height}
       radius="full"
-      background="surface"
+      background={track}
       border={!gradient}
       cursor="pointer"
       overflow="hidden"
@@ -236,7 +244,7 @@ export function PowerButton({ on, onToggle }: { on: boolean; onToggle: () => voi
       width={36}
       height={36}
       p={0}
-      background={on ? 'accent' : 'surface'}
+      background={on ? 'accent' : 'surfaceRaised'}
       color={on ? 'accentText' : 'line'}
       css={{ flex: 'none', transition: 'background-color 0.2s ease, color 0.2s ease' }}
     >

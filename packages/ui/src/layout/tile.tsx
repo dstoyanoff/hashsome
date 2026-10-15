@@ -79,9 +79,9 @@ export interface TileProps {
   history?: LogbookEntry[];
 
   /**
-   * An entity whose recent activity to fetch from the backend when the drawer opens, for the same
-   * History section (Home Assistant's logbook). `history`, when given, is used instead. A backend
-   * that keeps none shows no section.
+   * An entity whose recent activity to fetch from the backend when the person opens the drawer's
+   * History section, which is folded by default (Home Assistant's logbook). `history`, when given, is
+   * used instead. A backend that keeps none says so there.
    */
   logbook?: EntityRef;
 }

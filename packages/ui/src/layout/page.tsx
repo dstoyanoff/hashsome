@@ -17,13 +17,17 @@ import {
 
 type Side = 'left' | 'bottom';
 
-const InsetContext = createContext<((side: Side, size: number) => () => void) | null>(null);
+const InsetContext = createContext<
+  ((side: Side, size: number, absorbs: number) => () => void) | null
+>(null);
 
 /** Reserves `size` px of the surrounding `Page`'s edge for something fixed over it (`NavRail`,
- * `NavDock`, `NavBar`), so content never sits under it. A no-op outside a `Page`. */
-export function usePageInset(side: Side, size: number): void {
+ * `NavDock`, `NavBar`), so content never sits under it. `absorbs` is how many px of a phone's home
+ * indicator the thing already stands clear of within `size` (a floating bar sits that far above the
+ * edge anyway), so the page does not pad for that part twice. A no-op outside a `Page`. */
+export function usePageInset(side: Side, size: number, absorbs = 0): void {
   const reserve = useContext(InsetContext);
-  useLayoutEffect(() => reserve?.(side, size), [reserve, side, size]);
+  useLayoutEffect(() => reserve?.(side, size, absorbs), [reserve, side, size, absorbs]);
 }
 
 export interface PageProps {
@@ -46,9 +50,19 @@ export interface PageProps {
  * content sits centered and the grid stays whole. */
 export function Page({ children, height = '100dvh' }: PageProps) {
   const [insets, setInsets] = useState<Record<Side, number>>({ left: 0, bottom: 0 });
-  const reserve = useCallback((side: Side, size: number) => {
+  const [absorbed, setAbsorbed] = useState(0);
+  const reserve = useCallback((side: Side, size: number, absorbs: number) => {
     setInsets((current) => ({ ...current, [side]: size }));
-    return () => setInsets((current) => ({ ...current, [side]: 0 }));
+    if (side === 'bottom') {
+      setAbsorbed(absorbs);
+    }
+
+    return () => {
+      setInsets((current) => ({ ...current, [side]: 0 }));
+      if (side === 'bottom') {
+        setAbsorbed(0);
+      }
+    };
   }, []);
 
   const value = useMemo(() => reserve, [reserve]);
@@ -105,6 +119,10 @@ export function Page({ children, height = '100dvh' }: PageProps) {
           paddingLeft: `calc(${spacing(3)} + ${insets.left}px)`,
           paddingTop: `calc(${spacing(3)} + ${centered.top}px)`,
           paddingBottom: `calc(${spacing(3)} + ${insets.bottom + centered.bottom}px)`,
+          // And the phone's home indicator, which a fixed bar at the bottom reaches under (a wall display has none).
+          '@supports (padding-bottom: env(safe-area-inset-bottom))': {
+            paddingBottom: `calc(${spacing(3)} + ${insets.bottom + centered.bottom}px + max(0px, env(safe-area-inset-bottom) - ${absorbed}px))`,
+          },
           boxSizing: 'border-box',
         })}
       >
