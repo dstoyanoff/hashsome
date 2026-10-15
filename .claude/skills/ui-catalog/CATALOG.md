@@ -62,10 +62,10 @@ The row along the top of a page you build yourself instead of with `TopBar`: its
 
 ### `usePageInset`
 
-Reserves `size` px of the surrounding `Page`'s edge for something fixed over it (`NavRail`, `NavDock`, `NavBar`), so content never sits under it. A no-op outside a `Page`.
+Reserves `size` px of the surrounding `Page`'s edge for something fixed over it (`NavRail`, `NavDock`, `NavBar`), so content never sits under it. `absorbs` is how many px of a phone's home indicator the thing already stands clear of within `size` (a floating bar sits that far above the edge anyway), so the page does not pad for that part twice. A no-op outside a `Page`.
 
 ```ts
-function usePageInset(side: Side, size: number): void;
+function usePageInset(side: Side, size: number, absorbs = 0): void;
 ```
 
 ### `Page`
@@ -394,7 +394,7 @@ Fixed left sidebar for switching between a dashboard's pages. Must be rendered i
 
 ### `NavDock`
 
-Floating bottom pill for switching between a dashboard's pages. Must be rendered inside a router. `position: fixed`, floating over the page; it reserves the space it takes in the surrounding `Page`, which pads for it.
+Floating bottom pill for switching between a dashboard's pages. Must be rendered inside a router. `position: fixed`, floating over the page; it reserves the space it takes in the surrounding `Page`, which pads for it. On a phone with a home indicator it floats above the indicator.
 
 | Prop         | Type              | Required |                                                                                                                                                                                                                                                                                                                    |
 | ------------ | ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -404,7 +404,7 @@ Floating bottom pill for switching between a dashboard's pages. Must be rendered
 
 ### `NavBar`
 
-The left rail's design along the bottom of the screen, for a small display where the rail would take too much of the width: the same rail colour and rounded-square buttons (the open page lit), in a row at the middle of a bar that runs from edge to edge, not floating like `NavDock`. Must be rendered inside a router. It is `position: fixed` and reserves its height in the surrounding `Page`, which pads for it so content never sits under it.
+The left rail's design along the bottom of the screen, for a small display where the rail would take too much of the width: the same rail colour and rounded-square buttons (the open page lit), in a row at the middle of a bar that runs from edge to edge, not floating like `NavDock`. Must be rendered inside a router. It is `position: fixed` and reserves its height in the surrounding `Page`, which pads for it so content never sits under it. On a phone with a home indicator the bar is taller by the indicator's height, and its buttons stay clear of it.
 
 | Prop         | Type              | Required |                                                                                                                                                                                                                                                                                                                    |
 | ------------ | ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
