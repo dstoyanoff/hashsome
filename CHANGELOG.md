@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.16.1 (2026-10-15)
+
+### Fixes
+
+- **runtime:** a missing favicon is a 404, not an empty 204 (#121) ([8115083](https://github.com/dstoyanoff/hashsome/commit/81150839dd9e26e3aa5f750977c18ea79153c541))
+
 ## 0.16.0 (2026-10-15)
 
 ### Features
