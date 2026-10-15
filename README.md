@@ -219,6 +219,31 @@ It is off by default. It accepts any login, because nothing sits behind it (see 
 it is written from Home Assistant's documented API, not from any device's firmware, so a firmware
 update could change what a display asks for.
 
+### On a phone's home screen
+
+A dashboard can be added to an iPhone's (or Android phone's) home screen and open without the browser's bars,
+like an app. Give the shell your app's name and icon in `app/root.tsx`, and put the icon and a manifest in your
+project's `public/` folder:
+
+```tsx
+export const Layout = createLayout('dark', 'Inter', { name: 'Home', icon: '/icon-180.png' });
+```
+
+```json
+{
+  "name": "Home",
+  "short_name": "Home",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101114",
+  "theme_color": "#101114",
+  "icons": [{ "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }]
+}
+```
+
+Then, in Safari, Share → Add to Home Screen. Hashsome has no login of its own, so reach it from outside the house
+only over a VPN (see Security below), not by publishing it.
+
 ## Security
 
 - **Dashboards have no login.** A Hashsome server shows and controls everything its integrations
