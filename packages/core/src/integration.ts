@@ -105,6 +105,13 @@ export interface Integration {
    */
   fetchAsset?(path: string): Promise<Response>;
 
+  /**
+   * Whether a path `fetchAsset` takes always gives the same file (an address made from the file's own identity, as
+   * Music Assistant's `/imageproxy/<id>` is), so a browser may keep it for good. Optional: without it, or for a path it
+   * says no to, a file is kept for an hour, since the same address can give another one later.
+   */
+  isStableAsset?(path: string): boolean;
+
   /** Escape hatch: a backend-specific request no command covers. `@hashsome/ui` never calls it. */
   callRaw?(request: Record<string, unknown>): Promise<unknown>;
 }
