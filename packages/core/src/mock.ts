@@ -763,7 +763,7 @@ export class MockIntegration extends BaseIntegration {
     this.#form(entityId, rest);
   }
 
-  #playMedia(entityId: string, item: unknown): Promise<void> {
+  #playMedia(entityId: string, item: unknown, mode?: unknown): Promise<void> {
     const found = Object.values(this.#library)
       .flatMap((folder) => folder.items)
       .find((candidate) => candidate.id === item);
@@ -771,6 +771,11 @@ export class MockIntegration extends BaseIntegration {
     const current = this.#inputs.get(entityId);
     if (!found?.playable || !current || current.kind !== 'mediaPlayer') {
       return Promise.reject(new Error(`Cannot play "${String(item)}"`));
+    }
+
+    // Queued for later, not played: what is playing carries on.
+    if (mode === 'next' || mode === 'add') {
+      return Promise.resolve();
     }
 
     const now = new Date().toISOString();
@@ -804,7 +809,7 @@ export class MockIntegration extends BaseIntegration {
     }
 
     if (entity.kind === 'mediaPlayer' && name === 'playMedia') {
-      return this.#playMedia(entityId, args?.item);
+      return this.#playMedia(entityId, args?.item, args?.mode);
     }
 
     if (entity.kind === 'mediaPlayer' && name === 'setGroupMembers') {
