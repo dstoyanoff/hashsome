@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { sourceOf } from '../mapper.ts';
+import { ownPicturePath, sourceOf } from '../mapper.ts';
 
 const entry = (media_type: string, name: string) => ({
   media_type,
@@ -37,4 +37,13 @@ test('the first source that is one wins', () => {
       sources: [entry('track', 'Dreams'), entry('playlist', 'Roadtrip'), entry('album', 'X')],
     }),
   ).toEqual({ title: 'Roadtrip', kind: 'playlist' });
+});
+
+test('a picture Music Assistant serves itself has a path, one from elsewhere does not', () => {
+  expect(ownPicturePath('http://10.4.2.2/imageproxy/abc123?size=512&fmt=jpg')).toBe(
+    '/imageproxy/abc123?size=512&fmt=jpg',
+  );
+
+  expect(ownPicturePath('https://i.scdn.co/image/ab67')).toBeUndefined();
+  expect(ownPicturePath('not a url')).toBeUndefined();
 });
