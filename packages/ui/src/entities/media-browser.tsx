@@ -2,7 +2,7 @@
 import type { BrowseItem, BrowseKind, EntityRef, MediaPlayerCommands } from '@hashsome/core';
 import { Box, Flex, Typography } from 'e-prim';
 import { AnimatePresence, motion } from 'motion/react';
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { useEntityHandle } from '../hooks.ts';
@@ -47,8 +47,8 @@ const KIND_LABELS: Record<BrowseKind, string> = {
   other: 'Other',
 };
 
-/** The chip for every kind at once. */
-const ALL_KINDS = 'all';
+/** How far, in px, a swipe across the list goes before it means "back". */
+const SWIPE_BACK = 72;
 
 const KIND_ICONS: Record<BrowseKind, IconName> = {
   folder: 'lu:folder',
@@ -143,6 +143,50 @@ export function MediaBrowser({
   /** Something is open inside the selected shelf (not a search): the tab shows the way back. */
   const inside = browser.canGoBack && !browser.searching;
 
+  /** Opens an album, playlist or artist, from the shelf or from search results. A search field opened from its icon
+   * is put away: it would otherwise sit blank over the row of tabs, which is where the way back is. Going back
+   * returns to the results, with what was searched for in the field again. */
+  const openItem = (item: BrowseItem) => {
+    browser.open(item);
+    setSearchOpen(false);
+  };
+
+  /** Swiping right across the list goes back out of what is open, as in a native app: a clearly sideways move, so
+   * scrolling up and down is left alone. The tap that ends a swipe is not passed on to the row under the finger. */
+  const swipe = useRef<{ x: number; y: number; swiped: boolean } | null>(null);
+  const swipeProps = {
+    onPointerDown: (event: PointerEvent<HTMLElement>) => {
+      const start = { x: event.clientX, y: event.clientY, swiped: false };
+      swipe.current = start;
+      if (!inside) {
+        return;
+      }
+
+      // The finger may lift well outside the list, so the end of the gesture is heard on the window.
+      const end = (up: globalThis.PointerEvent) => {
+        window.removeEventListener('pointerup', end);
+        window.removeEventListener('pointercancel', end);
+        const dx = up.clientX - start.x;
+        const dy = up.clientY - start.y;
+        if (up.type === 'pointerup' && dx > SWIPE_BACK && dx > 2 * Math.abs(dy)) {
+          start.swiped = true;
+          browser.back();
+        }
+      };
+
+      window.addEventListener('pointerup', end);
+      window.addEventListener('pointercancel', end);
+    },
+    onClickCapture: (event: MouseEvent<HTMLElement>) => {
+      if (swipe.current?.swiped) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+
+      swipe.current = null;
+    },
+  };
+
   /** What can be done with the whole album, playlist or artist that is open: play it, shuffle it,
    * add it to the queue. Playing it replaces the queue. They sit at the end of the row of tabs (or
    * of the heading), never in a row of their own, so opening an album moves nothing; where there is
@@ -185,7 +229,8 @@ export function MediaBrowser({
     setSearchOpen(false);
   };
 
-  /** `icon`: a thin line and the search icon, fixed at the end of the row. */
+  /** `icon`: a thin line and the search icon, fixed at the end of the row. It is left out inside an album or playlist:
+   * a search there would open empty, over the way back, and the results of one are better found from the top. */
   const searchTrigger = onDemand ? (
     <Flex align="center" gap={2} css={{ flexShrink: 0 }}>
       <Box width={1} height={20} background="border" />
@@ -242,10 +287,11 @@ export function MediaBrowser({
         minWidth={0}
         value={browser.query}
         onChange={(event: { target: { value: string } }) => browser.search(event.target.value)}
-        // Opened by pressing the icon, so it is for typing straight away.
+        // Opened by pressing the icon, so it is for typing straight away. Coming back to the results with the phrase
+        // in it is not that: the keyboard would come up over what was being looked for.
         {...(onDemand
           ? {
-              autoFocus: true,
+              autoFocus: browser.query === '',
               onKeyDown: (event: { key: string }) => {
                 if (event.key === 'Escape') {
                   closeSearch();
@@ -289,52 +335,48 @@ export function MediaBrowser({
     </Flex>
   ) : null;
 
-  /** The categories (and, with `search='icon'`, the search icon at the end). While a search has results, the
-   * same row is the kinds to narrow it to: the shelves mean nothing to a search's results, which belong to none. */
-  const tabsRow = browser.tabs ? (
-    // With the search icon in it, as tall as the field that replaces it, so the list below stays put.
-    <Flex align="center" gap={3} {...(onDemand ? { minHeight: SEARCH_HEIGHT } : {})}>
-      <Flex direction="column" grow={1} minWidth={0}>
-        {browser.searching && browser.kindsPending ? (
-          // The kinds are not known yet: not the shelves, which the results belong to none of, and which would
-          // be swapped for the kinds a moment later.
-          <KindsSkeleton />
-        ) : browser.searching && browser.kinds ? (
-          <ChipRow
-            tabs
-            options={[
-              { value: ALL_KINDS, label: 'All' },
-              ...browser.kinds.map((kind) => ({ value: kind, label: KIND_LABELS[kind] })),
-            ]}
-            value={browser.kind ?? ALL_KINDS}
-            onChange={(id) => browser.filterBy(id === ALL_KINDS ? undefined : (id as BrowseKind))}
-          />
-        ) : (
-          <ChipRow
-            tabs
-            options={browser.tabs.map((item) =>
-              // Inside a shelf the selected tab becomes the way back, so nothing is added to the
-              // layout and nothing below it moves.
-              item.id === browser.activeTab && inside
-                ? {
-                    value: item.id,
-                    label: browser.title ?? item.title,
-                    icon: 'lu:arrow-left' as const,
-                    ariaLabel: 'Back',
-                  }
-                : { value: item.id, label: item.title },
-            )}
-            value={browser.activeTab}
-            onChange={(id) =>
-              id === browser.activeTab && inside ? browser.back() : browser.selectTab(id)
-            }
-          />
-        )}
+  /** The categories (and, with `search='icon'`, the search icon at the end). While searching, the same row is the
+   * kinds to search for: the shelves mean nothing to a search's results, which belong to none. */
+  const tabsRowFor = (trailing: boolean) =>
+    browser.tabs ? (
+      // With the search icon in it, as tall as the field that replaces it, so the list below stays put.
+      <Flex align="center" gap={3} {...(onDemand && trailing ? { minHeight: SEARCH_HEIGHT } : {})}>
+        <Flex direction="column" grow={1} minWidth={0}>
+          {browser.searching && browser.kinds ? (
+            <ChipRow
+              tabs
+              options={browser.kinds.map((kind) => ({ value: kind, label: KIND_LABELS[kind] }))}
+              value={browser.kind ?? ''}
+              onChange={(id) => browser.filterBy(id as BrowseKind)}
+            />
+          ) : (
+            <ChipRow
+              tabs
+              options={browser.tabs.map((item) =>
+                // Inside a shelf the selected tab becomes the way back, so nothing is added to the
+                // layout and nothing below it moves.
+                item.id === browser.activeTab && inside
+                  ? {
+                      value: item.id,
+                      label: browser.title ?? item.title,
+                      icon: 'lu:arrow-left' as const,
+                      ariaLabel: 'Back',
+                    }
+                  : { value: item.id, label: item.title },
+              )}
+              value={browser.activeTab}
+              onChange={(id) =>
+                id === browser.activeTab && inside ? browser.back() : browser.selectTab(id)
+              }
+            />
+          )}
+        </Flex>
+        {trailing ? actionsHere : null}
+        {trailing && !inside ? searchTrigger : null}
       </Flex>
-      {actionsHere}
-      {searchTrigger}
-    </Flex>
-  ) : null;
+    ) : null;
+
+  const tabsRow = tabsRowFor(true);
 
   return (
     <Flex direction="column" gap={3} minHeight={0} position="relative">
@@ -351,7 +393,17 @@ export function MediaBrowser({
             exit={{ opacity: 0, x: fieldShown ? 0 : 28 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
           >
-            {fieldShown ? search : browser.tabs === undefined ? header : tabsRow}
+            {fieldShown ? (
+              // The field has taken the row's place, so what the results are of (the kinds to narrow to) goes under it.
+              <Flex direction="column" gap={3}>
+                {search}
+                {browser.searching ? tabsRowFor(false) : null}
+              </Flex>
+            ) : browser.tabs === undefined ? (
+              header
+            ) : (
+              tabsRow
+            )}
           </motion.div>
         </AnimatePresence>
       ) : (
@@ -402,7 +454,7 @@ export function MediaBrowser({
                   onToggle={togglePlay}
                   asked={askedOf(item)}
                   queueable={queueable}
-                  onOpen={() => browser.open(item)}
+                  onOpen={() => openItem(item)}
                   onPlay={() => play(item)}
                   onAdd={() => addToQueue(item)}
                 />
@@ -417,10 +469,11 @@ export function MediaBrowser({
           direction="column"
           gap={1}
           as="ul"
+          {...swipeProps}
           m={0}
           p={0}
           minHeight={0}
-          css={{ listStyle: 'none', overflowY: 'auto', overflowX: 'hidden' }}
+          css={{ listStyle: 'none', overflowY: 'auto', overflowX: 'hidden', touchAction: 'pan-y' }}
         >
           {browser.items.map((item, index) => (
             <li key={`${browser.listKey}:${item.id}`} css={{ flex: 'none' }}>
@@ -432,7 +485,7 @@ export function MediaBrowser({
                   onToggle={togglePlay}
                   asked={askedOf(item)}
                   queueable={queueable}
-                  onOpen={() => browser.open(item)}
+                  onOpen={() => openItem(item)}
                   onPlay={() => play(item)}
                   onNext={() => playNext(item)}
                   onAdd={() => addToQueue(item)}
@@ -448,17 +501,6 @@ export function MediaBrowser({
 
 /** What shows where the list will be while it loads: placeholders shaped like what is coming (cards in
  * the theater layout, rows in the list), in the room the real thing takes, so nothing moves. */
-/** Where the kinds to narrow a search to will be, in the chips' own height, so the list below does not move. */
-function KindsSkeleton() {
-  return (
-    <Flex gap={2} aria-busy="true" css={{ height: CHIP_HEIGHT }}>
-      {[40, 78, 74, 70, 62].map((width) => (
-        <Skeleton key={width} width={width} height={CHIP_HEIGHT} radius="full" />
-      ))}
-    </Flex>
-  );
-}
-
 function BrowseSkeleton({ theater }: { theater: boolean }) {
   return theater ? (
     <Flex

@@ -22,12 +22,12 @@ interface MaImage {
 }
 
 /** The top level: a shelf per way into the library. Their ids are not Music Assistant uris. */
-export const SHELVES: { id: string; title: string; kind: BrowseKind }[] = [
+export const SHELVES: { id: string; title: string; kind: BrowseKind; holds?: BrowseKind }[] = [
   { id: 'shelf:recent', title: 'Recently played', kind: 'folder' },
-  { id: 'shelf:playlists', title: 'Playlists', kind: 'folder' },
-  { id: 'shelf:albums', title: 'Albums', kind: 'folder' },
-  { id: 'shelf:artists', title: 'Artists', kind: 'folder' },
-  { id: 'shelf:radio', title: 'Radio', kind: 'folder' },
+  { id: 'shelf:playlists', title: 'Playlists', kind: 'folder', holds: 'playlist' },
+  { id: 'shelf:albums', title: 'Albums', kind: 'folder', holds: 'album' },
+  { id: 'shelf:artists', title: 'Artists', kind: 'folder', holds: 'artist' },
+  { id: 'shelf:radio', title: 'Radio', kind: 'folder', holds: 'radio' },
 ];
 
 /** The kinds a media type maps to; the others are `other` and cannot be opened. */

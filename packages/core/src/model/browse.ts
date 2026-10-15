@@ -17,6 +17,9 @@ export interface BrowseItem {
 
   /** `browse` can open this item to list what is inside it. */
   expandable: boolean;
+
+  /** For a shelf: the one kind of thing it holds (playlists, albums…), so a search begun on it can start with that kind. Absent for a shelf of mixed kinds. */
+  holds?: BrowseKind;
 }
 
 export interface BrowseQuery {
