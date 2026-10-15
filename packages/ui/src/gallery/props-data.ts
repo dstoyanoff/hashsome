@@ -118,7 +118,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     ],
   },
   AnimatedOutlet: {
-    doc: "A dashboard layout's `<Outlet />` with a transition between its pages: the page that was showing fades out (sliding a little toward the side it was on), then the new one fades in from the side it is on. It is a drop-in for `Outlet` in a layout route, and does nothing the first time a page shows or for a visitor who prefers reduced motion.",
+    doc: "A dashboard layout's `<Outlet />` with a transition between its pages: the page that was showing fades out (sliding a little toward the side it was on), then the new one fades in from the side it is on. It is a drop-in for `Outlet` in a layout route, and does nothing the first time a page shows or for a visitor who prefers reduced motion. A page longer than the screen just scrolls the `Page`. A page that is meant to fill the screen and scroll inside itself (a player with its library, say) gives its root `flex-basis: 0` and `min-height: 0`, so what is in it does not make the page taller; a `Board` already does.",
     props: [
       {
         doc: "The dashboard's pages in the order its nav lists them (the same `items` as `NavRail`, `NavDock` or `NavBar`). A page then slides in from the side it sits on: a later page from the right, an earlier one from the left. Left out, pages only fade.",
@@ -924,7 +924,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     ],
   },
   NavDock: {
-    doc: "Floating bottom pill for switching between a dashboard's pages. Must be rendered inside a router. `position: fixed`, floating over the page; it reserves the space it takes in the surrounding `Page`, which pads for it.",
+    doc: "Floating bottom pill for switching between a dashboard's pages. Must be rendered inside a router. `position: fixed`, floating over the page; it reserves the space it takes in the surrounding `Page`, which pads for it. On a phone with a home indicator it floats above the indicator.",
     props: [
       {
         doc: 'The pages to link to; `to` is relative to `base`.',
@@ -947,7 +947,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     ],
   },
   NavBar: {
-    doc: "The left rail's design along the bottom of the screen, for a small display where the rail would take too much of the width: the same rail colour and rounded-square buttons (the open page lit), in a row at the middle of a bar that runs from edge to edge, not floating like `NavDock`. Must be rendered inside a router. It is `position: fixed` and reserves its height in the surrounding `Page`, which pads for it so content never sits under it.",
+    doc: "The left rail's design along the bottom of the screen, for a small display where the rail would take too much of the width: the same rail colour and rounded-square buttons (the open page lit), in a row at the middle of a bar that runs from edge to edge, not floating like `NavDock`. Must be rendered inside a router. It is `position: fixed` and reserves its height in the surrounding `Page`, which pads for it so content never sits under it. On a phone with a home indicator the bar is taller by the indicator's height, and its buttons stay clear of it.",
     props: [
       {
         doc: 'The pages to link to; `to` is relative to `base`.',
