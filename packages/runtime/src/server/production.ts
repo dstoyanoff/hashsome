@@ -2,7 +2,7 @@ import type { Integration } from '@hashsome/core';
 import express, { type Express } from 'express';
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { extname, join } from 'node:path';
 import { VERSION_FILE, VERSION_PATH } from '../build-id.ts';
 import type { ResolvedConfig } from '../config.ts';
 import { serveAsset } from './assets.ts';
@@ -61,7 +61,15 @@ export function createApp(
 
   app.use(express.static(clientDir, { index: false, maxAge: '1h' }));
   // SPA fallback: client-side routing handles /{id}/...
-  app.use((_req, res) => {
+  app.use((req, res) => {
+    // A path that names a file (it has an extension) and was not found is not a page. Answering it with the app's HTML
+    // as a 200 makes whoever asked take that for the file: iOS probes /apple-touch-icon.png and
+    // /apple-touch-icon-precomposed.png before it reads the page's own icon link, and gave up on icons altogether.
+    if (extname(req.path) !== '') {
+      res.status(404).end();
+      return;
+    }
+
     res.sendFile(join(clientDir, 'index.html'));
   });
 
