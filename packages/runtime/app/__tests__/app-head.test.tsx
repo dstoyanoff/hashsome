@@ -23,6 +23,7 @@ test('the short name is what goes under the icon, and the manifest can be elsewh
   expect(html({ name: 'Home', manifest: '/app.json' })).toContain(
     '<link rel="manifest" href="/app.json"/>',
   );
+
   expect(html({ name: 'Home', manifest: false })).not.toContain('rel="manifest"');
   expect(html({ name: 'Home' })).not.toContain('apple-touch-icon');
 });
