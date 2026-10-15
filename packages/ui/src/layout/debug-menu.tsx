@@ -136,6 +136,11 @@ export function DebugMenu({
         width: BUTTON,
         height: BUTTON,
         minHeight: 0,
+        // Clear of a phone's home indicator and rounded corners (a wall display has none).
+        '@supports (padding-bottom: env(safe-area-inset-bottom))': {
+          left: `calc(${INSET}px + env(safe-area-inset-left, 0px))`,
+          bottom: `calc(${INSET}px + env(safe-area-inset-bottom, 0px))`,
+        },
       }}
     >
       {open ? (
