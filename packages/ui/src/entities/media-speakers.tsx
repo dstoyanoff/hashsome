@@ -111,11 +111,18 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
   const send = (target: EntityRef, command: string, args?: Record<string, unknown>) =>
     client.command(target, command, args);
 
-  const reset = () =>
-    press('group:reset', () =>
-      follows
-        ? send(me, 'leaveGroup')
-        : send(me, 'setGroupMembers', { remove: group?.members ?? [] }),
+  // A follower leaves the stream, which goes on without it.
+  const leave = () => press('group:reset', () => send(me, 'leaveGroup'));
+
+  // A leader cannot just leave: the stream is its own. It hands it to a speaker that follows, which takes it over (the
+  // old leader leaves and stops, the rest go on with it). With one other speaker that is who gets it, so leaving is
+  // one press; with several each one has a button to lead, and the leader picks.
+  const handsOver = !follows && others.length > 0;
+  const soleHeir = handsOver && others.length === 1 ? others[0] : undefined;
+  const heirName = soleHeir ? offeredStates[offered.indexOf(soleHeir)]?.name : undefined;
+  const handOver = (heir: EntityRef) =>
+    press(heir === soleHeir ? 'group:handover' : `group:lead:${heir}`, () =>
+      send(heir, 'takeOverGroup'),
     );
 
   const addHere = (speaker: Speaker) => {
@@ -162,18 +169,6 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
       minHeight={0}
       css={{ overflowY: 'auto', overflowX: 'hidden' }}
     >
-      {!follows && others.length > 1 ? (
-        <Flex justify="flex-end">
-          <PillButton
-            label="Remove all"
-            icon="lu:x"
-            description={`Take everyone else out of this stream, back to just ${own}`}
-            state={feedbackFor('group:reset')}
-            onClick={reset}
-          />
-        </Flex>
-      ) : null}
-
       <Section title="This stream">
         <SpeakerRow speaker={me} label={own} volume handle={handle}>
           {() =>
@@ -183,7 +178,15 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
                 icon="lu:log-out"
                 description={`Take ${own} out of this stream`}
                 state={feedbackFor('group:reset')}
-                onClick={reset}
+                onClick={leave}
+              />
+            ) : soleHeir ? (
+              <PillButton
+                label="Leave"
+                icon="lu:log-out"
+                description={`Leave this stream; ${heirName ?? 'the other speaker'} carries on and leads it`}
+                state={feedbackFor('group:handover')}
+                onClick={() => handOver(soleHeir)}
               />
             ) : null
           }
@@ -205,17 +208,28 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
                   onClick={() => press('group:takeover', () => send(me, 'takeOverGroup'))}
                 />
               ) : (
-                <PillButton
-                  label="Remove"
-                  icon="lu:x"
-                  description={`Take ${speaker.name} out of this stream`}
-                  state={feedbackFor(`group:remove:${ref}`)}
-                  onClick={() =>
-                    press(`group:remove:${ref}`, () =>
-                      send(head, 'setGroupMembers', { remove: [ref] }),
-                    )
-                  }
-                />
+                <>
+                  {handsOver && !soleHeir ? (
+                    <PillButton
+                      label="Lead"
+                      icon="lu:crown"
+                      description={`Hand this stream to ${speaker.name}; ${own} leaves it`}
+                      state={feedbackFor(`group:lead:${ref}`)}
+                      onClick={() => handOver(ref)}
+                    />
+                  ) : null}
+                  <PillButton
+                    label="Remove"
+                    icon="lu:x"
+                    description={`Take ${speaker.name} out of this stream`}
+                    state={feedbackFor(`group:remove:${ref}`)}
+                    onClick={() =>
+                      press(`group:remove:${ref}`, () =>
+                        send(head, 'setGroupMembers', { remove: [ref] }),
+                      )
+                    }
+                  />
+                </>
               )
             }
           </SpeakerRow>
