@@ -79,7 +79,7 @@ The page every dashboard renders into: padded by the density's spacing, a column
 
 ### `AnimatedOutlet`
 
-A dashboard layout's `<Outlet />` with a transition between its pages: the page that was showing fades out (sliding a little toward the side it was on), then the new one fades in from the side it is on. It is a drop-in for `Outlet` in a layout route, and does nothing the first time a page shows or for a visitor who prefers reduced motion.
+A dashboard layout's `<Outlet />` with a transition between its pages: the page that was showing fades out (sliding a little toward the side it was on), then the new one fades in from the side it is on. It is a drop-in for `Outlet` in a layout route, and does nothing the first time a page shows or for a visitor who prefers reduced motion. A page longer than the screen just scrolls the `Page`. A page that is meant to fill the screen and scroll inside itself (a player with its library, say) gives its root `flex-basis: 0` and `min-height: 0`, so what is in it does not make the page taller; a `Board` already does.
 
 | Prop    | Type        | Required |                                                                                                                                                                                                                                                     |
 | ------- | ----------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
