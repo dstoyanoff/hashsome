@@ -12,13 +12,13 @@ const items: NavItem[] = [
 ];
 
 /** The home dashboard's own layout: a nav rail, and the shared top bar above whichever page is
- * showing. `showThemeToggle` is a dev convenience — drop it for a real kiosk. */
+ * showing. */
 export const meta = () => [{ title: 'Home' }];
 
 export default function Layout() {
   return (
     <>
-      <NavRail items={items} base="/home" showThemeToggle />
+      <NavRail items={items} base="/home" />
       <HomeTopBar title="Home" scenes={['ha:scene.movie_night', 'ha:scene.cooking_time']} />
       <Outlet />
     </>

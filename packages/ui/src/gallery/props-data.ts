@@ -904,12 +904,6 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'string',
       },
       {
-        doc: 'Adds a light/dark toggle at the bottom of the rail. Off by default — meant for development or a project that deliberately exposes it, not every kiosk install.',
-        name: 'showThemeToggle',
-        optional: true,
-        type: 'boolean',
-      },
-      {
         doc: "How long, in ms, the display may be left alone on a page other than the main one (the item whose `to` is `''`) before it goes back to that page; `false` for never. Any touch, click, key or scroll starts the time again. Defaults to `HashsomeProvider`'s `idleReturn`, which is off unless the app turns it on.",
         name: 'idleReturn',
         optional: true,
@@ -931,12 +925,6 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         name: 'base',
         optional: false,
         type: 'string',
-      },
-      {
-        doc: 'Adds a light/dark toggle at the end of the dock. Off by default — meant for development or a project that deliberately exposes it, not every kiosk install.',
-        name: 'showThemeToggle',
-        optional: true,
-        type: 'boolean',
       },
       {
         doc: "How long, in ms, the display may be left alone on a page other than the main one (the item whose `to` is `''`) before it goes back to that page; `false` for never. Any touch, click, key or scroll starts the time again. Defaults to `HashsomeProvider`'s `idleReturn`, which is off unless the app turns it on.",
@@ -1157,7 +1145,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: "Omit<RemoteClientOptions, 'url'>",
       },
       {
-        doc: "`'light'`, `'dark'`, `'system'` (follows the browser/OS preference and updates live), or a schedule: `{ dark: { from: '19:00', to: '07:00' } }` is dark between those times on the display's clock, `{ sun: 'ha:sun.sun' }` is dark while that entity, a `daylight` sensor (`on` while the sun is up; the Home Assistant integration makes one of `sun.sun`), is `off`. Default `'dark'`. A schedule and the document shell's first paint use `'system'` until the time or the entity is known. A `useThemeToggle()` caller (e.g. `NavRail`'s dev toggle) can still override this at runtime. Pass a constant defined outside the component.",
+        doc: "`'light'`, `'dark'`, `'system'` (follows the browser/OS preference and updates live), or a schedule: `{ dark: { from: '19:00', to: '07:00' } }` is dark between those times on the display's clock, `{ sun: 'ha:sun.sun' }` is dark while that entity, a `daylight` sensor (`on` while the sun is up; the Home Assistant integration makes one of `sun.sun`), is `off`. Default `'dark'`. A schedule and the document shell's first paint use `'system'` until the time or the entity is known. A `useThemeToggle()` caller (a toggle of the project's own) can still override this at runtime. Pass a constant defined outside the component.",
         name: 'theme',
         optional: true,
         type: 'ThemeMode',
