@@ -111,9 +111,9 @@ test('the menu is as big as its button, whatever the page says about divs', () =
   const style = getComputedStyle(menu);
   // The document shell makes a `body > div` as tall as the window; the menu must not follow it.
   expect([style.position, style.height, style.minHeight]).toEqual(['fixed', '40px', '0px']);
-  // Centered on the line the navigation rail's icons are centered on (a 76px rail, a 40px button).
-  expect(style.left).toBe('18px');
-  expect(style.bottom).toBe('18px');
+  // Centered on the line the navigation rail's icons are centered on (a 64px rail, a 40px button).
+  expect(style.left).toBe('12px');
+  expect(style.bottom).toBe('12px');
 });
 
 test('the button is over the page and its navigation but under a drawer and its scrim', () => {

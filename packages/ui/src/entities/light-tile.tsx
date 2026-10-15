@@ -42,7 +42,7 @@ export interface LightTileProps {
    * No default source yet — pass explicitly. */
   energy?: EnergyChartProps;
 
-  /** Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the drawer opens. */
+  /** Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the person opens its History. */
   history?: LogbookEntry[];
 
   /** Swatches shown when the palette button is opened. Default: four white temperatures. Each takes `kelvin` (color-temp lights) and/or `hs` (color lights) and is skipped if the light can't apply it. */
@@ -250,7 +250,7 @@ function LightColorSection({
   }
 
   return (
-    <Flex direction="column" gap={2} background="surfaceRaised" radius="row" py={3.5} px={4}>
+    <Flex direction="column" gap={2} py={3.5}>
       <PlainButton
         aria-expanded={open}
         onClick={onToggle}
@@ -398,14 +398,7 @@ function LightDetailBody({
 
   return (
     <Flex direction="column" gap={2}>
-      <Flex
-        justify="space-between"
-        align="center"
-        background="surfaceRaised"
-        radius="row"
-        py={3.5}
-        px={4}
-      >
+      <Flex justify="space-between" align="center" py={3.5}>
         <Flex direction="column">
           <Typography as="span" variant="bodyStrong">
             Power
@@ -417,7 +410,7 @@ function LightDetailBody({
         <PowerButton on={on} onToggle={onToggle} />
       </Flex>
       {onBrightness ? (
-        <Flex direction="column" gap={2} background="surfaceRaised" radius="row" py={3.5} px={4}>
+        <Flex direction="column" gap={2} py={3.5}>
           <Flex justify="space-between" align="center">
             <Typography as="span" variant="bodyStrong">
               Brightness
@@ -427,10 +420,17 @@ function LightDetailBody({
             </Typography>
           </Flex>
           <Flex align="center" gap={2}>
-            <StepButton icon="lu:minus" label="Decrease brightness" delta={-1} onStep={step} />
+            <StepButton
+              plain
+              icon="lu:minus"
+              label="Decrease brightness"
+              delta={-1}
+              onStep={step}
+            />
             <Box grow={1}>
               <ValueBar
                 label="Brightness"
+                track="surfaceRaised"
                 value={value}
                 min={0}
                 max={100}
@@ -439,7 +439,7 @@ function LightDetailBody({
                 onCommit={commit}
               />
             </Box>
-            <StepButton icon="lu:plus" label="Increase brightness" delta={1} onStep={step} />
+            <StepButton plain icon="lu:plus" label="Increase brightness" delta={1} onStep={step} />
           </Flex>
         </Flex>
       ) : null}

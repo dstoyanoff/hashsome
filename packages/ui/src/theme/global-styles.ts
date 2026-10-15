@@ -19,6 +19,9 @@ export function globalStyles({ palette, typography }: Theme): Interpolation<Them
       colorScheme: isDark(palette.bg) ? 'dark' : 'light',
     },
     '*, *::before, *::after': { boxSizing: 'border-box' },
+    // The page scrolls inside itself, never the document, so an overscroll has nothing to show: it is not left to
+    // pull the page about, or to browsers that take a sideways one for "back".
+    'html, body': { overscrollBehavior: 'none' },
     body: {
       background: palette.bg,
       color: palette.text,
