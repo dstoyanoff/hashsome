@@ -625,8 +625,11 @@ describe('a request the player has not answered yet', () => {
       (screen.getByRole('button', { name: 'Play Dreams' }) as HTMLButtonElement).disabled,
     ).toBe(false);
 
+    // Queueing changes nothing the player shows, so it clears when the wait for a sign of it runs out.
     await act(async () => release());
-    await waitFor(() => expect((add as HTMLButtonElement).disabled).toBe(false));
+    await waitFor(() => expect((add as HTMLButtonElement).disabled).toBe(false), {
+      timeout: 4000,
+    });
   });
 
   test('starting an item puts a spinner over its artwork until it answers', async () => {
@@ -647,5 +650,43 @@ describe('a request the player has not answered yet', () => {
     await waitFor(() => expect(screen.queryAllByRole('status')).toHaveLength(0), {
       timeout: 2000,
     });
+  });
+});
+
+describe('what the player is playing', () => {
+  const playing = (playback: 'playing' | 'paused' = 'playing') => ({
+    room: mockMediaPlayer({
+      name: 'Room',
+      playback,
+      media: { title: 'Dreams', artist: 'Fleetwood Mac' },
+      source: { id: 'pl-morning', title: 'Morning coffee', kind: 'playlist' },
+      capabilities: { browse: true, search: true, queue: true },
+    }),
+  });
+
+  test("the playlist it plays from has the player's pause in place of its other actions", async () => {
+    const { ha } = render(playing());
+    fireEvent.click(await screen.findByRole('tab', { name: 'Playlists' }));
+    expect(await screen.findByRole('button', { name: 'Pause Morning coffee' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Play Morning coffee next' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add Morning coffee to the queue' })).toBeNull();
+    // The others keep theirs.
+    expect(screen.getByRole('button', { name: 'Add Dinner party to the queue' })).toBeTruthy();
+
+    const toggled = vi.spyOn(ha, 'command');
+    fireEvent.click(screen.getByRole('button', { name: 'Pause Morning coffee' }));
+    expect(toggled).toHaveBeenCalledWith('room', 'togglePlay', undefined);
+  });
+
+  test('a paused player offers to resume it', async () => {
+    render(playing('paused'));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Playlists' }));
+    expect(await screen.findByRole('button', { name: 'Resume Morning coffee' })).toBeTruthy();
+  });
+
+  test('the track playing is marked in a list, and plays and pauses instead of starting again', async () => {
+    render(playing());
+    expect(await screen.findByRole('button', { name: 'Pause Dreams' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add Dreams to the queue' })).toBeNull();
   });
 });

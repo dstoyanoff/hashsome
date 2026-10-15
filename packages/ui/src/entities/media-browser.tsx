@@ -94,6 +94,22 @@ export function MediaBrowser({
       handle.command('playMedia', args),
     );
 
+  /** The playlist, album, artist or station the queue was filled from, and the track playing, are marked in the list
+   * and carry the player's play/pause in place of their own actions (it would only start itself again). The track is
+   * found by its name and artist: the player does not say which item it is. */
+  const media = player?.media;
+  const activeOf = (item: BrowseItem) =>
+    (player?.source !== undefined && item.id === player.source.id) ||
+    (item.kind === 'track' &&
+      media?.title !== undefined &&
+      item.title === media.title &&
+      (item.subtitle === undefined ||
+        media.artist === undefined ||
+        item.subtitle === media.artist));
+
+  const nowPlaying = player?.playback === 'playing';
+  const togglePlay = () => void handle.command('togglePlay');
+
   const askedOf = (item: BrowseItem) =>
     waiting.filter((entry) => entry.item === item.id).map((entry) => entry.kind);
 
@@ -381,6 +397,9 @@ export function MediaBrowser({
               <Reveal index={browser.searching ? 0 : index}>
                 <BrowseCard
                   item={item}
+                  active={activeOf(item)}
+                  playing={nowPlaying}
+                  onToggle={togglePlay}
                   asked={askedOf(item)}
                   queueable={queueable}
                   onOpen={() => browser.open(item)}
@@ -408,6 +427,9 @@ export function MediaBrowser({
               <Reveal index={browser.searching ? 0 : index}>
                 <BrowseRow
                   item={item}
+                  active={activeOf(item)}
+                  playing={nowPlaying}
+                  onToggle={togglePlay}
                   asked={askedOf(item)}
                   queueable={queueable}
                   onOpen={() => browser.open(item)}
@@ -550,6 +572,9 @@ function PillButton({
 
 function BrowseRow({
   item,
+  active,
+  playing,
+  onToggle,
   asked,
   queueable,
   onOpen,
@@ -558,6 +583,13 @@ function BrowseRow({
   onAdd,
 }: {
   item: BrowseItem;
+
+  /** It is what the player is playing, or playing from. */
+  active: boolean;
+
+  /** The player is playing, so the active item's button pauses it. */
+  playing: boolean;
+  onToggle: () => void;
 
   /** What has been asked of the player for this item and not answered yet. */
   asked: string[];
@@ -569,7 +601,14 @@ function BrowseRow({
 }) {
   // A row opens what can be opened and otherwise plays; an openable thing that can also be played
   // (an album) gets its own play button.
-  const main = item.expandable ? onOpen : item.playable ? onPlay : undefined;
+  // The track playing carries the player's play/pause, not another start; a playlist or album opens as any does.
+  const main = item.expandable ? onOpen : item.playable ? (active ? onToggle : onPlay) : undefined;
+  // How many buttons the row has when it is not the active one, less the one that takes their place.
+  const spare = Math.max(
+    0,
+    (queueable && item.playable ? 2 : 0) + (item.expandable && item.playable ? 1 : 0) - 1,
+  );
+
   return (
     <Flex align="center" gap={2}>
       <PlainButton
@@ -606,7 +645,7 @@ function BrowseRow({
           {asked.includes('playItem') ? <Waiting size={20} /> : null}
         </Flex>
         <Flex direction="column" minWidth={0} grow={1}>
-          <Typography as="span" variant="bodyStrong">
+          <Typography as="span" variant="bodyStrong" {...(active ? { color: 'accent' } : {})}>
             <MarqueeText>{item.title}</MarqueeText>
           </Typography>
           {item.subtitle ? (
@@ -617,7 +656,25 @@ function BrowseRow({
         </Flex>
         {item.expandable ? <Opens /> : null}
       </PlainButton>
-      {queueable && item.playable ? (
+      {active ? (
+        <>
+          {/* The room the other buttons take is kept, empty, so the text and the chevron line up with
+              the rows around it. */}
+          {Array.from({ length: spare }, (_, slot) => (
+            <Box key={slot} aria-hidden="true" css={{ visibility: 'hidden' }}>
+              <IconButton icon="lu:play" label="" glyph={16} disabled />
+            </Box>
+          ))}
+          <IconButton
+            icon={playing ? 'lu:pause' : 'lu:play'}
+            label={playing ? `Pause ${item.title}` : `Resume ${item.title}`}
+            glyph={16}
+            primary
+            onClick={onToggle}
+          />
+        </>
+      ) : null}
+      {!active && queueable && item.playable ? (
         <>
           <IconButton
             icon="lu:list-start"
@@ -637,7 +694,7 @@ function BrowseRow({
           />
         </>
       ) : null}
-      {item.expandable && item.playable ? (
+      {!active && item.expandable && item.playable ? (
         <IconButton
           icon="lu:play"
           label={`Play ${item.title}`}
@@ -677,6 +734,9 @@ const CARD_SIZE = `min(${CARD}px, max(${MIN_CARD}px, calc(100cqh - ${LABEL}px)))
  * button over the artwork's corner. */
 function BrowseCard({
   item,
+  active,
+  playing,
+  onToggle,
   asked,
   queueable,
   onOpen,
@@ -685,6 +745,13 @@ function BrowseCard({
 }: {
   item: BrowseItem;
 
+  /** It is what the player is playing, or playing from. */
+  active: boolean;
+
+  /** The player is playing, so the active item's button pauses it. */
+  playing: boolean;
+  onToggle: () => void;
+
   /** What has been asked of the player for this item and not answered yet. */
   asked: string[];
   queueable: boolean;
@@ -692,7 +759,7 @@ function BrowseCard({
   onPlay: () => void;
   onAdd: () => void;
 }) {
-  const main = item.expandable ? onOpen : item.playable ? onPlay : undefined;
+  const main = item.expandable ? onOpen : item.playable ? (active ? onToggle : onPlay) : undefined;
   return (
     <Box position="relative" css={{ width: CARD_SIZE }}>
       <PlainButton
@@ -723,7 +790,12 @@ function BrowseCard({
         </Flex>
         <Flex direction="column" minWidth={0} px={1}>
           <Flex align="center" gap={1} minWidth={0}>
-            <Typography as="span" variant="bodyStrong" css={{ minWidth: 0 }}>
+            <Typography
+              as="span"
+              variant="bodyStrong"
+              css={{ minWidth: 0 }}
+              {...(active ? { color: 'accent' } : {})}
+            >
               <MarqueeText>{item.title}</MarqueeText>
             </Typography>
             {item.expandable ? <Opens /> : null}
@@ -735,7 +807,17 @@ function BrowseCard({
           ) : null}
         </Flex>
       </PlainButton>
-      {item.playable && (queueable || item.expandable) ? (
+      {active ? (
+        <Flex position="absolute" css={{ right: 10, top: `calc(${CARD_SIZE} - 54px)` }}>
+          <IconButton
+            icon={playing ? 'lu:pause' : 'lu:play'}
+            label={playing ? `Pause ${item.title}` : `Resume ${item.title}`}
+            glyph={16}
+            primary
+            onClick={onToggle}
+          />
+        </Flex>
+      ) : item.playable && (queueable || item.expandable) ? (
         // Over the artwork's lower right corner: add to the queue, and play all of an album or playlist.
         <Flex
           align="center"
