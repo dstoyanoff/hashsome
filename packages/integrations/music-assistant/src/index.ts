@@ -1,4 +1,5 @@
 import {
+  assetUrl,
   BaseIntegration,
   parseEntityRef,
   UnknownEntityError,
@@ -789,10 +790,30 @@ export class MusicAssistantIntegration extends BaseIntegration {
   /** The ref of a player of this integration. */
   #refOf = (playerId: string): EntityRef => `${this.id}:${playerId}`;
 
+  /** Where a browser asks the runtime for a picture of Music Assistant's. */
+  #assetUrl = (path: string): string => assetUrl(this.id, path);
+
+  /** A picture Music Assistant serves (what is playing), fetched with the token. Only one of its `/imageproxy/`
+   * paths is accepted, never another path or another address. */
+  async fetchAsset(path: string): Promise<Response> {
+    const base = new URL(this.#options.url);
+    const target = new URL(path, base);
+    if (!path.startsWith('/imageproxy/') || target.origin !== base.origin) {
+      throw new Error('Not a picture of Music Assistant');
+    }
+
+    return fetch(target, { headers: { Authorization: `Bearer ${this.#options.token}` } });
+  }
+
   /** A player as it is by itself, with its queue's shuffle setting and position copied onto it. */
   #ownEntity(player: MaPlayer, options: ToMediaPlayerOptions): EntityInput {
     const queue = this.#queues.get(player.player_id);
-    options = { ...options, ...(queue?.source ? { source: queue.source } : {}) };
+    options = {
+      ...options,
+      assetUrl: this.#assetUrl,
+      ...(queue?.source ? { source: queue.source } : {}),
+    };
+
     if (!queue) {
       // A stopped player's own counter is back at the start: until the queue says more, no position.
       return toMediaPlayer(

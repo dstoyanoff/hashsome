@@ -52,6 +52,22 @@ export interface ToMediaPlayerOptions {
 
   /** What its queue was filled from, from `sourceOf`. */
   source?: MediaPlayerSource | undefined;
+
+  /** Addresses a picture Music Assistant serves itself through the runtime (the runtime fetches it with the token), as `assetUrl` of `@hashsome/core` does. Without it such a picture keeps the address Music Assistant gave. */
+  assetUrl?: ((path: string) => string) | undefined;
+}
+
+/** The path of a picture Music Assistant serves itself (`/imageproxy/…`), from the address it gave for it. That address
+ * is Music Assistant's own for itself, which a browser away from the server cannot open and an https page will not
+ * load, so it is asked for through the runtime instead. A picture from anywhere else (a streaming service's own
+ * address) has none and is left as it is. */
+export function ownPicturePath(url: string): string | undefined {
+  try {
+    const { pathname, search } = new URL(url);
+    return pathname.startsWith('/imageproxy/') ? `${pathname}${search}` : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 const PLAYBACK: Record<string, 'playing' | 'paused' | 'idle' | 'buffering'> = {
@@ -60,6 +76,12 @@ const PLAYBACK: Record<string, 'playing' | 'paused' | 'idle' | 'buffering'> = {
   idle: 'idle',
   buffering: 'buffering',
 };
+
+/** The address a browser is given for a picture: through the runtime for one Music Assistant serves, else as it was. */
+function artworkOf(url: string, assetUrl: ToMediaPlayerOptions['assetUrl']): string {
+  const path = assetUrl ? ownPicturePath(url) : undefined;
+  return path !== undefined && assetUrl ? assetUrl(path) : url;
+}
 
 /** Maps a Music Assistant player to the generic `mediaPlayer` entity (everything but `ref`). */
 export function toMediaPlayer(player: MaPlayer, options: ToMediaPlayerOptions = {}): EntityInput {
@@ -81,7 +103,9 @@ export function toMediaPlayer(player: MaPlayer, options: ToMediaPlayerOptions = 
             ...(media.title ? { title: media.title } : {}),
             ...(media.artist ? { artist: media.artist } : {}),
             ...(media.album ? { album: media.album } : {}),
-            ...(media.image_url ? { artworkUrl: media.image_url } : {}),
+            ...(media.image_url
+              ? { artworkUrl: artworkOf(media.image_url, options.assetUrl) }
+              : {}),
           },
         }
       : {}),
