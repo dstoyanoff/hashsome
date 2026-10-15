@@ -1,5 +1,4 @@
-import { NavRail, type NavItem } from '@hashsome/ui';
-import { Outlet } from 'react-router';
+import { NavRail, type NavItem, AnimatedOutlet } from '@hashsome/ui';
 import { HomeTopBar } from '../../shared/top-bar.tsx';
 
 const items: NavItem[] = [
@@ -20,7 +19,7 @@ export default function Layout() {
     <>
       <NavRail items={items} base="/home" />
       <HomeTopBar title="Home" scenes={['ha:scene.movie_night', 'ha:scene.cooking_time']} />
-      <Outlet />
+      <AnimatedOutlet items={items} base="/home" />
     </>
   );
 }

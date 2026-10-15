@@ -3,6 +3,7 @@ import { Flex } from 'e-prim';
 import { NavLink } from 'react-router';
 import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
+import { isInstalledApp } from '../layout/installed-app.ts';
 import { usePageInset } from '../layout/page.tsx';
 import { NAV_RAIL } from '../theme/grid.ts';
 import { AttentionDot } from './attention-dot.tsx';
@@ -59,6 +60,9 @@ export function NavRail({ items, base, idleReturn }: NavRailProps) {
     >
       {items.map((item) => (
         <NavLink
+          // In an installed app, switching pages replaces the one before it: there is no browser to go back with, and
+          // the system's swipe from the edge of the screen would otherwise walk back through every page visited.
+          replace={isInstalledApp()}
           key={item.to}
           to={item.to ? `${base}/${item.to}` : base}
           end
