@@ -1,5 +1,5 @@
 import type { EntityRef } from './entity.ts';
-import type { ConnectionStatus } from './integration.ts';
+import type { AssetSize, ConnectionStatus } from './integration.ts';
 import type { Entity } from './model/index.ts';
 
 /** Where the runtime serves files an integration's entities point at (artwork, pictures). */
@@ -10,6 +10,16 @@ export const ASSET_PATH = '/_hashsome/asset';
  * `path` is the backend's own path, e.g. `/api/image/serve/…`. */
 export function assetUrl(integration: string, path: string): string {
   return `${ASSET_PATH}/${encodeURIComponent(integration)}?path=${encodeURIComponent(path)}`;
+}
+
+/** The sizes a picture can be asked for in, as the runtime takes them. */
+export const ASSET_SIZES: readonly AssetSize[] = ['small', 'medium', 'large'];
+
+/** The same address, asking for the picture at a `size`: the runtime hands it to the backend as a hint, which gives the
+ * size it calls that (a backend that cannot resize gives the picture as it is). A file that is not one of the runtime's
+ * (a streaming service's own address) comes back unchanged. */
+export function sizedAssetUrl(url: string, size: AssetSize): string {
+  return url.startsWith(`${ASSET_PATH}/`) ? `${url.replace(/&size=[a-z]+/, '')}&size=${size}` : url;
 }
 
 /** Messages sent by the browser to the runtime's `/ws` endpoint. */

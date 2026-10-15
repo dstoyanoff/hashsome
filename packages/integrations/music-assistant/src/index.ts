@@ -3,6 +3,7 @@ import {
   BaseIntegration,
   parseEntityRef,
   UnknownEntityError,
+  type AssetOptions,
   type BrowseItem,
   type BrowseKind,
   type BrowseQuery,
@@ -13,7 +14,7 @@ import {
   type QueueQuery,
   type QueueResult,
 } from '@hashsome/core';
-import { parseUri, SHELVES, toBrowseItem, type MaItem } from './browse.ts';
+import { parseUri, PICTURE_SIZES, SHELVES, toBrowseItem, type MaItem } from './browse.ts';
 import { groupOf } from './group.ts';
 import { sourceOf, toMediaPlayer, type MaPlayer, type ToMediaPlayerOptions } from './mapper.ts';
 import { toQueueItems, type MaQueueItem } from './queue.ts';
@@ -516,6 +517,7 @@ export class MusicAssistantIntegration extends BaseIntegration {
       items: toQueueItems(
         Array.isArray(raw) ? (raw as MaQueueItem[]) : [],
         typeof current === 'string' ? current : undefined,
+        this.#assetUrl,
       ),
       total,
       offset,
@@ -594,7 +596,7 @@ export class MusicAssistantIntegration extends BaseIntegration {
   #items(list: unknown): BrowseItem[] {
     return Array.isArray(list)
       ? list.flatMap((item) => {
-          const mapped = isRecord(item) ? toBrowseItem(item as MaItem) : undefined;
+          const mapped = isRecord(item) ? toBrowseItem(item as MaItem, this.#assetUrl) : undefined;
           return mapped ? [mapped] : [];
         })
       : [];
@@ -798,13 +800,18 @@ export class MusicAssistantIntegration extends BaseIntegration {
     return path.startsWith('/imageproxy/');
   }
 
-  /** A picture Music Assistant serves (what is playing), fetched with the token. Only one of its `/imageproxy/`
-   * paths is accepted, never another path or another address. */
-  async fetchAsset(path: string): Promise<Response> {
+  /** A picture Music Assistant serves (what is playing, an item's), fetched with the token, at the size asked for (see
+   * `PICTURE_SIZES`); the size in the path when none is said. Only one of its `/imageproxy/` paths is accepted,
+   * never another path or another address. */
+  async fetchAsset(path: string, options: AssetOptions = {}): Promise<Response> {
     const base = new URL(this.#options.url);
     const target = new URL(path, base);
     if (!path.startsWith('/imageproxy/') || target.origin !== base.origin) {
       throw new Error('Not a picture of Music Assistant');
+    }
+
+    if (options.size !== undefined) {
+      target.searchParams.set('size', String(PICTURE_SIZES[options.size]));
     }
 
     return fetch(target, { headers: { Authorization: `Bearer ${this.#options.token}` } });

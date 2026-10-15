@@ -25,6 +25,17 @@ export type Unsubscribe = () => void;
  * Integrations work only in **local ids** (the part of a ref after `<integration>:`); the runtime
  * does all the addressing, and `BaseIntegration` stamps `ref` onto the entities it stores.
  */
+/** How big a picture is wanted, in words: a `small` one is for a thumbnail (a list's row), a `medium` one for a cover
+ * (a card, the player's), a `large` one for a picture that fills a screen. What each is, in pixels, is for the
+ * integration to say, since a backend has its own sizes. */
+export type AssetSize = 'small' | 'medium' | 'large';
+
+/** What a browser asks of a file besides which one it is. */
+export interface AssetOptions {
+  /** How big it is wanted: a backend that can resize gives the size it calls that, one that cannot gives the file as it is. */
+  size?: AssetSize;
+}
+
 export interface Integration {
   /** The prefix of every ref this integration owns. Fixed for the instance's lifetime. */
   readonly id: string;
@@ -103,7 +114,7 @@ export interface Integration {
    * refuse anything else. The runtime serves only image responses. Optional: omit it when entities
    * only carry addresses the browser can open itself.
    */
-  fetchAsset?(path: string): Promise<Response>;
+  fetchAsset?(path: string, options?: AssetOptions): Promise<Response>;
 
   /**
    * Whether a path `fetchAsset` takes always gives the same file (an address made from the file's own identity, as

@@ -599,7 +599,7 @@ function BrowseRow({
           css={{ flex: 'none' }}
         >
           {item.artworkUrl ? (
-            <Cover src={item.artworkUrl} />
+            <Cover src={item.artworkUrl} size="small" />
           ) : (
             <Icon name={KIND_ICONS[item.kind]} size={20} />
           )}
@@ -715,7 +715,7 @@ function BrowseCard({
           css={{ width: CARD_SIZE, height: CARD_SIZE }}
         >
           {item.artworkUrl ? (
-            <Cover src={item.artworkUrl} />
+            <Cover src={item.artworkUrl} size="medium" />
           ) : (
             <Icon name={KIND_ICONS[item.kind]} size={56} />
           )}

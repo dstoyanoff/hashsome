@@ -182,3 +182,29 @@ test('a browser keeps a file for good only when its address always gives the sam
   expect(stable.headers['cache-control']).toContain('max-age=31536000');
   expect(other.headers['cache-control']).toBe('private, max-age=3600');
 });
+
+test('the size asked for goes to the integration, and a file of another size is another file', async () => {
+  const fetchAsset = vi.fn<(path: string, options?: { size?: string }) => Promise<Response>>(
+    async () => image(),
+  );
+
+  const integrations = [integration(fetchAsset as never)];
+  const ask = (size: string) => {
+    const served = fakeResponse();
+    const url = `/_hashsome/asset/ha?path=%2Fa&size=${size}`;
+    return serveAsset(integrations, { method: 'GET', url }, served.asResponse);
+  };
+
+  await ask('small');
+  await ask('small');
+  await ask('medium');
+  expect(fetchAsset).toHaveBeenCalledTimes(2);
+  expect(fetchAsset).toHaveBeenCalledWith('/a', { size: 'small' });
+  expect(fetchAsset).toHaveBeenCalledWith('/a', { size: 'medium' });
+
+  // Anything that is not one of the sizes there are is not passed on.
+  await ask('80');
+  await ask('huge');
+  expect(fetchAsset).toHaveBeenCalledWith('/a');
+  expect(fetchAsset).not.toHaveBeenCalledWith('/a', { size: 'huge' });
+});

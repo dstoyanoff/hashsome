@@ -379,12 +379,33 @@ test('the picture of what is playing is addressed through the runtime when Music
   ]);
 
   expect(ma.getEntity('own')).toMatchObject({
-    media: { artworkUrl: '/_hashsome/asset/ma?path=%2Fimageproxy%2Fabc%3Fsize%3D512' },
+    media: { artworkUrl: '/_hashsome/asset/ma?path=%2Fimageproxy%2Fabc%3Fsize%3D256' },
   });
 
   expect(ma.getEntity('cdn')).toMatchObject({
     media: { artworkUrl: 'https://i.scdn.co/image/xyz' },
   });
+});
+
+test('a picture is fetched at the pixels Music Assistant calls small, medium and large', async () => {
+  const spy = vi.fn<(url: URL, init?: RequestInit) => Promise<Response>>(() =>
+    Promise.resolve(new Response('img')),
+  );
+
+  vi.stubGlobal('fetch', spy);
+  const { ma } = make();
+  const sizeOf = async (size?: 'small' | 'medium' | 'large') => {
+    await ma.fetchAsset('/imageproxy/abc?size=512&fmt=jpg', size === undefined ? {} : { size });
+
+    return new URL(String(spy.mock.calls.at(-1)?.[0])).searchParams.get('size');
+  };
+
+  // None said: the size in the path.
+  expect(await sizeOf()).toBe('512');
+  expect(await sizeOf('small')).toBe('80');
+  expect(await sizeOf('medium')).toBe('256');
+  expect(await sizeOf('large')).toBe('512');
+  vi.unstubAllGlobals();
 });
 
 test('a picture is fetched from Music Assistant with the token, and nothing else is', async () => {

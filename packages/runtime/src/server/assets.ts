@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { ASSET_PATH, type Integration } from '@hashsome/core';
+import { ASSET_PATH, ASSET_SIZES, type AssetSize, type Integration } from '@hashsome/core';
 
 /** How long a browser may reuse a file whose address can give another one later. */
 const CACHE_CONTROL = 'private, max-age=3600';
@@ -79,8 +79,15 @@ interface Fetched {
 }
 
 /** One file from the integration: an image, or nothing. */
-async function fetchImage(integration: Integration, path: string): Promise<Fetched> {
-  const upstream = await integration.fetchAsset!(path);
+async function fetchImage(
+  integration: Integration,
+  path: string,
+  size: AssetSize | undefined,
+): Promise<Fetched> {
+  const upstream = await (size === undefined
+    ? integration.fetchAsset!(path)
+    : integration.fetchAsset!(path, { size }));
+
   const type = upstream.headers.get('content-type') ?? '';
   if (!upstream.ok || !type.startsWith('image/')) {
     return { status: upstream.ok ? 415 : 404 };
@@ -129,13 +136,16 @@ export async function serveAsset(
     return fail(404, 'No such asset');
   }
 
-  const key = `${id}\u0000${path}`;
+  // How big it is wanted, if said and one of the sizes there are; anything else is ignored.
+  const wanted = url.searchParams.get('size');
+  const size = ASSET_SIZES.find((candidate) => candidate === wanted);
+  const key = `${id}\u0000${path}\u0000${size ?? ''}`;
   try {
     let file = recall(key, Date.now());
     if (!file) {
       const waiting =
         fetching.get(key) ??
-        fetchImage(integration, path)
+        fetchImage(integration, path, size)
           .then((result) => {
             if (result.file && result.file.body.length <= KEEP_AT_MOST) {
               remember(key, result.file);

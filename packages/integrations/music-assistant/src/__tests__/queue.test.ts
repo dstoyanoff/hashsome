@@ -51,4 +51,35 @@ describe('toQueueItems', () => {
       { id: 'b', title: 'Other', current: true },
     ]);
   });
+
+  test('an item with the id of a Music Assistant picture gets it through the runtime, at 256 pixels', () => {
+    const assetUrl = (path: string) => `/asset?path=${encodeURIComponent(path)}`;
+    const items = toQueueItems(
+      [
+        {
+          queue_item_id: 'a',
+          name: 'Artist - Song',
+          image: {
+            path: 'https://i.scdn.co/image/xyz',
+            remotely_accessible: true,
+            proxy_id: 'abc',
+          },
+        },
+        {
+          queue_item_id: 'b',
+          name: 'No id',
+          image: { path: 'https://i.scdn.co/image/zzz', remotely_accessible: true },
+        },
+      ],
+      undefined,
+      assetUrl,
+    );
+
+    expect(items[0]).toMatchObject({
+      artworkUrl: '/asset?path=%2Fimageproxy%2Fabc%3Fsize%3D256%26fmt%3Djpg',
+    });
+
+    // Without an id of its own, the picture's own address, as before.
+    expect(items[1]).toMatchObject({ artworkUrl: 'https://i.scdn.co/image/zzz' });
+  });
 });

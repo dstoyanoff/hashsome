@@ -1,4 +1,5 @@
 import type { EntityInput, EntityRef, MediaPlayerSource } from '@hashsome/core';
+import { PICTURE_SIZE } from './browse.ts';
 import type { MaGroup } from './group.ts';
 
 export interface MaPlayerMedia {
@@ -57,14 +58,21 @@ export interface ToMediaPlayerOptions {
   assetUrl?: ((path: string) => string) | undefined;
 }
 
-/** The path of a picture Music Assistant serves itself (`/imageproxy/…`), from the address it gave for it. That address
+/** The path of a picture Music Assistant serves itself (`/imageproxy/…`), from the address it gave for it, at the size
+ * the displays use. That address
  * is Music Assistant's own for itself, which a browser away from the server cannot open and an https page will not
  * load, so it is asked for through the runtime instead. A picture from anywhere else (a streaming service's own
  * address) has none and is left as it is. */
 export function ownPicturePath(url: string): string | undefined {
   try {
-    const { pathname, search } = new URL(url);
-    return pathname.startsWith('/imageproxy/') ? `${pathname}${search}` : undefined;
+    const parsed = new URL(url);
+    if (!parsed.pathname.startsWith('/imageproxy/')) {
+      return undefined;
+    }
+
+    // It gave one at 512 pixels; the displays do not need so much.
+    parsed.searchParams.set('size', String(PICTURE_SIZE));
+    return `${parsed.pathname}${parsed.search}`;
   } catch {
     return undefined;
   }
