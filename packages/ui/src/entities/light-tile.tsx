@@ -42,7 +42,7 @@ export interface LightTileProps {
    * No default source yet — pass explicitly. */
   energy?: EnergyChartProps;
 
-  /** Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the drawer opens. */
+  /** Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the person opens its History. */
   history?: LogbookEntry[];
 
   /** Swatches shown when the palette button is opened. Default: four white temperatures. Each takes `kelvin` (color-temp lights) and/or `hs` (color lights) and is skipped if the light can't apply it. */

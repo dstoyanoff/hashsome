@@ -257,7 +257,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'LogbookEntry[]',
       },
       {
-        doc: "An entity whose recent activity to fetch from the backend when the drawer opens, for the same History section (Home Assistant's logbook). `history`, when given, is used instead. A backend that keeps none shows no section.",
+        doc: "An entity whose recent activity to fetch from the backend when the person opens the drawer's History section, which is folded by default (Home Assistant's logbook). `history`, when given, is used instead. A backend that keeps none says so there.",
         name: 'logbook',
         optional: true,
         type: 'EntityRef',
@@ -416,13 +416,25 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     ],
   },
   HistorySection: {
-    doc: "A short activity list for an entity's detail drawer. Generic — any entity type can supply it.",
+    doc: "A short activity list for an entity's detail drawer, folded away until asked for. Generic — any entity type can supply it.",
     props: [
       {
-        doc: 'Recent activity, newest first. An empty list renders nothing.',
+        doc: 'Recent activity, newest first. `undefined` until it is known. An empty list from a caller that has no way to ask for more (no `onOpen`) renders nothing.',
         name: 'entries',
         optional: false,
-        type: 'LogbookEntry[]',
+        type: 'LogbookEntry[] | undefined',
+      },
+      {
+        doc: 'The entries are on their way: the open section shows placeholder rows.',
+        name: 'loading',
+        optional: true,
+        type: 'boolean',
+      },
+      {
+        doc: 'Called when the section is opened, so whoever owns the entries can go and get them.',
+        name: 'onOpen',
+        optional: true,
+        type: '() => void',
       },
     ],
   },
@@ -477,7 +489,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'EnergyChartProps',
       },
       {
-        doc: "Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the drawer opens.",
+        doc: "Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the person opens its History.",
         name: 'history',
         optional: true,
         type: 'LogbookEntry[]',
@@ -524,7 +536,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'EnergyChartProps',
       },
       {
-        doc: "Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the drawer opens.",
+        doc: "Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the person opens its History.",
         name: 'history',
         optional: true,
         type: 'LogbookEntry[]',
