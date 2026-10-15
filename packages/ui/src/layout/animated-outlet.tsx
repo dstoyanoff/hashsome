@@ -30,6 +30,10 @@ function indexAt(pathname: string, items: NavItem[] | undefined, base: string | 
  * fades out (sliding a little toward the side it was on), then the new one fades in from the side
  * it is on. It is a drop-in for `Outlet` in a layout route, and does nothing the first time a page
  * shows or for a visitor who prefers reduced motion.
+ *
+ * A page longer than the screen just scrolls the `Page`. A page that is meant to fill the screen and scroll
+ * inside itself (a player with its library, say) gives its root `flex-basis: 0` and `min-height: 0`, so
+ * what is in it does not make the page taller; a `Board` already does.
  */
 export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
   const outlet = useOutlet();
@@ -61,8 +65,9 @@ export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
         animate="show"
         exit="exit"
         transition={{ duration: seconds, ease: 'easeOut' }}
-        // A page fills the space it is given, as it does without the wrapper.
-        css={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0 }}
+        // A page fills the space it is given and is no shorter than what is in it, as it is
+        // without the wrapper: a long page scrolls the `Page` (with its padding) instead of spilling out.
+        css={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto' }}
       >
         {outlet}
       </motion.div>
