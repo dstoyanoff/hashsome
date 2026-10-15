@@ -37,6 +37,13 @@ const show = (
   return onComplete;
 };
 
+test('the year is only there when the day is in another year', () => {
+  const sameYear = new Date(NOW.getFullYear(), 11, 31);
+  const later = new Date(NOW.getFullYear() + 1, 2, 10);
+  expect(taskLine('ok', sameYear, NOW)).not.toContain(String(NOW.getFullYear()));
+  expect(taskLine('ok', later, NOW)).toContain(String(NOW.getFullYear() + 1));
+});
+
 test('a tap only asks: nothing is done until it is confirmed, and backing out does nothing', () => {
   const onComplete = show();
   expect(screen.queryByRole('dialog')).toBeNull();

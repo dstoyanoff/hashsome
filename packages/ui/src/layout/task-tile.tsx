@@ -41,8 +41,13 @@ const daysTo = (then: Date, now: Date) =>
 
 const plural = (n: number) => `${n} day${n === 1 ? '' : 's'}`;
 
-const short = (date: Date) =>
-  date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+/** A day as "Mar 10", with the year ("Mar 10, 2027") when it is not this year's. */
+const short = (date: Date, now: Date) =>
+  date.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    ...(date.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
+  });
 
 /** The line under a task's name. */
 export function taskLine(state: TaskState, dueAt: Date | undefined, now: Date): string {
@@ -52,7 +57,7 @@ export function taskLine(state: TaskState, dueAt: Date | undefined, now: Date): 
 
   const days = daysTo(dueAt, now);
   if (state === 'ok') {
-    return `Next ${short(dueAt)}`;
+    return `Next ${short(dueAt, now)}`;
   }
 
   if (days === 0) {
@@ -137,7 +142,7 @@ export function TaskTile({
       <ConfirmDialog
         open={open}
         title={`Mark “${label}” as done?`}
-        description={lastDoneAt ? `Last done ${short(lastDoneAt)}.` : undefined}
+        description={lastDoneAt ? `Last done ${short(lastDoneAt, now)}.` : undefined}
         confirmLabel="Mark as done"
         busy={busy}
         onConfirm={() => void confirm()}
