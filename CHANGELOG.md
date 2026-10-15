@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.15.0 (2026-10-15)
+
+### ⚠ Breaking changes
+
+- **ui:** the library marks what is playing (#115) ([ea9d54a](https://github.com/dstoyanoff/hashsome/commit/ea9d54a5b4afc3618153ec70246590c8290413e2))
+- **core:** a player's source says which library item it is, and the queue shows it instead of the player (#114) ([4e83417](https://github.com/dstoyanoff/hashsome/commit/4e83417765f704bac21f4ae8e895be4eef24af98))
+- **ui:** NavRail and NavDock no longer have a theme toggle, the debug menu has one (#102) ([50b8fb2](https://github.com/dstoyanoff/hashsome/commit/50b8fb2154c7231c5c0448ba72bbb9d6e022b85f))
+
+### Features
+
+- **ui:** a scene or action button can have its own colour (#118) ([b58308b](https://github.com/dstoyanoff/hashsome/commit/b58308b017b0ae9d4b0d51b8341a43dc2cedd369))
+- **ui:** a compact full player, with a speaker dropdown and the volume in the button row (#117) ([100b31b](https://github.com/dstoyanoff/hashsome/commit/100b31b9e0569f9986f5ebc7768b84447f5b2e89))
+- **ui:** library search is for one kind at a time, starts on the open shelf and puts an exact match first (#116) ([7de556e](https://github.com/dstoyanoff/hashsome/commit/7de556e26f3134d5c412bcf6a6d700c941b79246))
+- **ui:** the light drawer's Power, Brightness and Color sit on the drawer, not on cards (#113) ([456ecce](https://github.com/dstoyanoff/hashsome/commit/456ecce635792ba111615818e3fa72c9852b418d))
+- **ui:** a drawer's History is folded away and fetched when opened (#112) ([7cc81b0](https://github.com/dstoyanoff/hashsome/commit/7cc81b0572278743d5107dc56a594fc8891ccdb4))
+- **ui:** the drawer is a bottom sheet on a phone (#111) ([070f593](https://github.com/dstoyanoff/hashsome/commit/070f5937d75c38fc12fa69e361b2f59a3962bedf))
+- **ui:** the navigation rail is 64px wide, like the bar (#109) ([90c7d72](https://github.com/dstoyanoff/hashsome/commit/90c7d7213a72257484563d3069ef5059849b50e9))
+- **ui:** the floating dock clears the home indicator, and an installed app does not walk back through its pages (#108) ([f89e4ba](https://github.com/dstoyanoff/hashsome/commit/f89e4ba0985d5673ac9ba9aa488b66bdf24d2f65))
+- **ui:** the page and the navigation bar leave room for a phone's home indicator (#107) ([d405097](https://github.com/dstoyanoff/hashsome/commit/d405097960c2f37577dea7f80b9a249dc627811f))
+- **ui:** pictures are asked for as small, medium or large, and Music Assistant's go through the runtime (#106) ([3be3576](https://github.com/dstoyanoff/hashsome/commit/3be357617a9f8bd978dd3af87163ba725a5dcbc3))
+- **runtime:** the server keeps the pictures it has fetched, and a browser keeps stable ones for good (#105) ([9450de3](https://github.com/dstoyanoff/hashsome/commit/9450de37ede293026e943301ac36ae4a821be50f))
+- **runtime:** the document can be an app on a phone's home screen (#104) ([a342a0b](https://github.com/dstoyanoff/hashsome/commit/a342a0ba798de57b34da3de8a9942ae264bf6d44))
+- **music-assistant:** the picture of what is playing is served through the runtime (#103) ([1afd266](https://github.com/dstoyanoff/hashsome/commit/1afd2664f9bc005551dece51068adb4be63e78be))
+
+### Fixes
+
+- **ui:** AnimatedOutlet lets a long page scroll to its end (#110) ([7fdd55a](https://github.com/dstoyanoff/hashsome/commit/7fdd55a1c504d4a31993171e851474607eddaa9f))
+
 ## 0.14.0 (2026-10-14)
 
 ### Features
