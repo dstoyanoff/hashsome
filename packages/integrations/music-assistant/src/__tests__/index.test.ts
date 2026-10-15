@@ -365,6 +365,51 @@ test('playing something turns on autoplay on its queue, so it goes on with simil
   ).toHaveLength(0);
 });
 
+test('the picture of what is playing is addressed through the runtime when Music Assistant serves it, and left alone when it does not', async () => {
+  const { ma, socket } = make();
+  await connect(ma, socket, [
+    player({
+      player_id: 'own',
+      current_media: { title: 'A', image_url: 'http://10.4.2.2/imageproxy/abc?size=512' },
+    }),
+    player({
+      player_id: 'cdn',
+      current_media: { title: 'B', image_url: 'https://i.scdn.co/image/xyz' },
+    }),
+  ]);
+
+  expect(ma.getEntity('own')).toMatchObject({
+    media: { artworkUrl: '/_hashsome/asset/ma?path=%2Fimageproxy%2Fabc%3Fsize%3D512' },
+  });
+
+  expect(ma.getEntity('cdn')).toMatchObject({
+    media: { artworkUrl: 'https://i.scdn.co/image/xyz' },
+  });
+});
+
+test('a picture is fetched from Music Assistant with the token, and nothing else is', async () => {
+  const spy = vi.fn<(url: URL, init?: RequestInit) => Promise<Response>>(() =>
+    Promise.resolve(new Response('img')),
+  );
+
+  vi.stubGlobal('fetch', spy);
+  const { ma } = make();
+  await ma.fetchAsset('/imageproxy/abc?size=512');
+  expect(String(spy.mock.calls[0]?.[0])).toBe('http://mass.local:8095/imageproxy/abc?size=512');
+  expect(spy.mock.calls[0]?.[1]).toMatchObject({ headers: { Authorization: 'Bearer tok' } });
+  for (const path of [
+    '/api/players',
+    'imageproxy/x',
+    '//evil.test/imageproxy/x',
+    'http://evil.test/imageproxy/x',
+  ]) {
+    await expect(ma.fetchAsset(path)).rejects.toThrow('Not a picture of Music Assistant');
+  }
+
+  expect(spy).toHaveBeenCalledTimes(1);
+  vi.unstubAllGlobals();
+});
+
 test('browse lists the shelves, then what is in a shelf, an album and an artist', async () => {
   const { ma, socket } = make();
   await connect(ma, socket);
