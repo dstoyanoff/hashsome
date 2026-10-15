@@ -1,7 +1,36 @@
 import type { BrowseItem, BrowseKind, EntityRef } from '@hashsome/core';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useReconnects } from './hooks.ts';
 import { useClient } from './provider.tsx';
+
+/** How well an item's title answers what was searched for, lowest first: the whole title, then its start, then a word's
+ * start, then anywhere in it, then not in the title at all (found by its artist, say). */
+function matchRank(title: string, needle: string): number {
+  const text = title.toLowerCase();
+  const wanted = needle.toLowerCase();
+  if (text === wanted) {
+    return 0;
+  }
+
+  if (text.startsWith(wanted)) {
+    return 1;
+  }
+
+  if (text.split(/[\s\-_/.,:;()[\]]+/).some((word) => word.startsWith(wanted))) {
+    return 2;
+  }
+
+  return text.includes(wanted) ? 3 : 4;
+}
+
+/** Search results in the order of how well their titles match, an exact match first. Items that match equally keep the
+ * order the library gave them, which is its own idea of what matters. */
+export function rankSearchResults(items: BrowseItem[], needle: string): BrowseItem[] {
+  return items
+    .map((item, index) => ({ item, index, rank: matchRank(item.title, needle) }))
+    .toSorted((a, b) => a.rank - b.rank || a.index - b.index)
+    .map(({ item }) => item);
+}
 
 interface Level {
   /** The item that was opened to get here; `undefined` for the top level. */
@@ -58,20 +87,17 @@ export interface MediaBrowserState {
   /** Lists what matches `text`; an empty string goes back to where the browser was. */
   search(text: string): void;
 
-  /** The kinds of thing the search found (albums, playlists…), when it found any, so there is something to narrow it to (to a lone kind too, which brings far more of it than the mixed list); in a fixed order. Absent when not searching. While another search is on its way these are the last one's, so what is shown does not flicker as someone types. */
+  /** The kinds a search can be narrowed to (tracks, playlists…), in a fixed order: it is always one of them, never a mix. Absent when not searching. */
   kinds: BrowseKind[] | undefined;
 
-  /** Searching, with no kinds to show yet (the first answer has not come) and nothing from an earlier search to show instead: a placeholder for them. */
-  kindsPending: boolean;
-
-  /** The kind the results are narrowed to; absent for all of them. */
+  /** The kind the results are of: the open shelf's, when it holds one kind, else tracks, until another is chosen. Absent when not searching. */
   kind: BrowseKind | undefined;
 
-  /** Narrows the search results to one kind, which asks for more of it than the mixed list has, or back to all of them. */
-  filterBy(kind: BrowseKind | undefined): void;
+  /** Searches for another kind of thing. */
+  filterBy(kind: BrowseKind): void;
 }
 
-/** The order the kinds of a search result are offered in: what is played most, first. */
+/** The order the kinds of a search are offered in: what is played most, first. */
 const KIND_ORDER: BrowseKind[] = [
   'track',
   'playlist',
@@ -82,14 +108,16 @@ const KIND_ORDER: BrowseKind[] = [
   'other',
 ];
 
-/** The kinds among some items, in the order they are offered. */
-const kindsOf = (items: BrowseItem[]) =>
-  KIND_ORDER.filter((candidate) => items.some((item) => item.kind === candidate));
+/** What a search is offered for whatever the library, and then for each kind a shelf says it holds (radio, say). */
+const ALWAYS_SEARCHABLE: BrowseKind[] = ['track', 'playlist', 'album', 'artist'];
 
 /** A top level that is nothing but folders to look inside is a set of shelves, which read better
  * as tabs than as a list that always looks the same. */
 const isShelves = (items: BrowseItem[]) =>
   items.length >= 2 && items.every((item) => item.expandable && !item.playable);
+
+/** How long typing stops before a search is sent. */
+const SEARCH_PAUSE = 300;
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -104,12 +132,8 @@ export function useMediaBrowser(ref: EntityRef): MediaBrowserState {
   const [trail, setTrail] = useState<Level[]>([{}]);
   const [text, setText] = useState('');
   const [tab, setTab] = useState<string | undefined>();
-  // The kind of result chosen to narrow a search to; only counts while that kind is among the results.
+  // The kind of thing a search is for, once one has been chosen; until then it is the open shelf's, or tracks.
   const [kindChoice, setKindChoice] = useState<BrowseKind | undefined>();
-  // The search with no kind chosen: it says which kinds there are, and is the list while none is chosen.
-  const [overview, setOverview] = useState<Answer | null>(null);
-  // The kinds the last answered search found, kept while the next one is on its way.
-  const [lastKinds, setLastKinds] = useState<BrowseKind[] | undefined>();
   // Answers are kept with the request they answer, so a stale one is never shown for a new one.
   const [top, setTop] = useState<Answer | null>(null);
   const [answer, setAnswer] = useState<Answer | null>(null);
@@ -135,78 +159,47 @@ export function useMediaBrowser(ref: EntityRef): MediaBrowserState {
   const tabs = top && !top.error && isShelves(top.items) ? top.items : undefined;
   const selected = tabs ? (tabs.find((item) => item.id === tab) ?? tabs[0])?.id : undefined;
 
-  // The kinds the search found, once it has answered, and the one chosen if it is among them.
-  const overviewKey = `search:${needle}`;
-  const found = searching && overview?.key === overviewKey ? overview : null;
-  const foundKinds = found ? kindsOf(found.items) : undefined;
+  // A search is for one kind at a time (Music Assistant answers a kind at a time): the one chosen, or the open
+  // shelf's when it holds one (the Playlists tab searches playlists), or tracks.
+  const holds = tabs?.find((item) => item.id === selected)?.holds;
+  const offered = KIND_ORDER.filter(
+    (candidate) =>
+      ALWAYS_SEARCHABLE.includes(candidate) || tabs?.some((item) => item.holds === candidate),
+  );
 
-  if (!searching && lastKinds !== undefined) {
-    setLastKinds(undefined);
-  }
+  const kind: BrowseKind = [kindChoice, holds, 'track' as const].find(
+    (candidate): candidate is BrowseKind => candidate !== undefined && offered.includes(candidate),
+  )!;
 
-  // What to offer: this search's kinds once they are in, the last search's until then.
-  const kinds = searching ? (foundKinds ?? lastKinds) : undefined;
-  const kind =
-    kinds && kindChoice !== undefined && kinds.includes(kindChoice) ? kindChoice : undefined;
-
-  // What to ask for, if anything: a folder, the open tab, or one kind of a search's results. A top level
-  // that is not shelves is already in hand, and so is the search with no kind chosen.
+  // What to ask for, if anything: a folder, the open tab, or a kind of thing matching what was typed. A top
+  // level that is not shelves is already in hand.
   const path = atTop ? selected : here.path;
-  const key = searching ? `search:${needle}:${kind ?? ''}` : `path:${path ?? ''}`;
+  const key = searching ? `search:${needle}:${kind}` : `path:${path ?? ''}`;
   const result = answer?.key === key ? answer : null;
-
-  // The search with no kind chosen, always: its kinds are the choices, whichever one is showing.
-  useEffect(() => {
-    if (!searching) {
-      return;
-    }
-
-    let current = true;
-    const timer = setTimeout(() => {
-      client.browse(ref, { search: needle }).then(
-        (level) => {
-          if (current) {
-            setOverview({ key: `search:${needle}`, ...level });
-            setLastKinds(kindsOf(level.items));
-          }
-        },
-        (error: unknown) =>
-          current && setOverview({ key: `search:${needle}`, items: [], error: messageOf(error) }),
-      );
-    }, 300);
-
-    return () => {
-      current = false;
-      clearTimeout(timer);
-    };
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies
-  }, [client, ref, searching, needle, reconnects]);
+  // The phrase last sent: typing waits for a pause; opening a folder or a tab, or another kind of the same phrase, does not.
+  const sent = useRef('');
 
   useEffect(() => {
-    const request =
-      searching && kind
-        ? { search: needle, kind }
-        : searching
-          ? undefined
-          : path === undefined
-            ? undefined
-            : { path };
+    const request = searching
+      ? { search: needle, kind }
+      : path === undefined
+        ? undefined
+        : { path };
 
     if (!request) {
       return;
     }
 
+    const pause = searching && sent.current !== needle ? SEARCH_PAUSE : 0;
+    sent.current = searching ? needle : '';
+
     let current = true;
-    const timer = setTimeout(
-      () => {
-        client.browse(ref, request).then(
-          (level) => current && setAnswer({ key, ...level }),
-          (error: unknown) => current && setAnswer({ key, items: [], error: messageOf(error) }),
-        );
-      },
-      // Typing in the search box waits for a pause; opening a folder or a tab or choosing a kind does not.
-      0,
-    );
+    const timer = setTimeout(() => {
+      client.browse(ref, request).then(
+        (level) => current && setAnswer({ key, ...level }),
+        (error: unknown) => current && setAnswer({ key, items: [], error: messageOf(error) }),
+      );
+    }, pause);
 
     return () => {
       current = false;
@@ -235,6 +228,15 @@ export function useMediaBrowser(ref: EntityRef): MediaBrowserState {
     [text, kind],
   );
 
+  // Clearing the search forgets the kind chosen: the next one starts on the shelf's again.
+  const search = useCallback((next: string) => {
+    if (next.trim() === '') {
+      setKindChoice(undefined);
+    }
+
+    setText(next);
+  }, []);
+
   const selectTab = useCallback((id: string) => {
     setTab(id);
     setText('');
@@ -257,10 +259,16 @@ export function useMediaBrowser(ref: EntityRef): MediaBrowserState {
   }, [text, trail]);
 
   // The plain top-level list, when there are no shelves to make tabs of.
-  const listing = searching && !kind ? found : !searching && atTop && !tabs ? top : result;
+  const listing = !searching && atTop && !tabs ? top : result;
+  const listed = listing?.items;
+  const items = useMemo(
+    () => (listed && searching ? rankSearchResults(listed, needle) : (listed ?? [])),
+    [listed, searching, needle],
+  );
+
   return {
-    items: listing?.items ?? [],
-    listKey: searching ? `search:${kind ?? ''}` : `path:${path ?? 'top'}`,
+    items,
+    listKey: searching ? `search:${kind}` : `path:${path ?? 'top'}`,
     title: searching
       ? (result?.title ?? `Results for “${needle}”`)
       : atTop
@@ -277,10 +285,9 @@ export function useMediaBrowser(ref: EntityRef): MediaBrowserState {
     open,
     back,
     query: text,
-    search: setText,
-    kinds: kinds && kinds.length >= 1 ? kinds : undefined,
-    kindsPending: searching && foundKinds === undefined && !(lastKinds && lastKinds.length >= 1),
-    kind,
+    search,
+    kinds: searching ? offered : undefined,
+    kind: searching ? kind : undefined,
     filterBy: setKindChoice,
   };
 }
