@@ -3,47 +3,51 @@ import { screen } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { renderWithMock } from '../../test-utils.tsx';
 import { MediaPlayerColumn } from '../media-player-column.tsx';
-import { sourceLabel, sourceParts } from '../now-playing.tsx';
+import { MediaQueue } from '../media-queue.tsx';
+import { sourceLine } from '../media-source.ts';
 
 const player = (extra: Record<string, unknown> = {}) => ({
   porch: mockMediaPlayer({
     name: 'Porch',
     playback: 'playing',
     media: { title: 'Dreams', artist: 'Fleetwood Mac', album: 'Rumours' },
+    capabilities: { queue: true },
     ...extra,
   }),
 });
 
-test('the player says which playlist it plays from, under the artist', async () => {
+test('the player does not say where it plays from under the artist', async () => {
   renderWithMock(
     <MediaPlayerColumn entity="ha:porch" />,
-    player({ source: { title: 'Daily Mix 2', kind: 'playlist' } }),
+    player({ source: { id: 'pl-1', title: 'Daily Mix 2', kind: 'playlist' } }),
   );
 
-  // "from playlist" and the playlist's name are two pieces, the name set apart from the rest.
-  expect(await screen.findByText('from playlist')).toBeTruthy();
-  expect(screen.getByText('Daily Mix 2')).toBeTruthy();
-  expect(screen.getByText('Fleetwood Mac · Rumours')).toBeTruthy();
+  expect(await screen.findByText('Fleetwood Mac · Rumours')).toBeTruthy();
+  expect(screen.queryByText(/Daily Mix 2/)).toBeNull();
 });
 
-test('with no source, nothing is said', async () => {
-  renderWithMock(<MediaPlayerColumn entity="ha:porch" />, player());
-  expect(await screen.findByText('Fleetwood Mac · Rumours')).toBeTruthy();
-  expect(screen.queryByText(/^from /)).toBeNull();
+test('the queue says what it was filled from, under its heading', async () => {
+  renderWithMock(
+    <MediaQueue entity="ha:porch" />,
+    player({ source: { id: 'pl-1', title: 'Daily Mix 2', kind: 'playlist' } }),
+  );
+
+  expect(await screen.findByText('Playlist · Daily Mix 2')).toBeTruthy();
+});
+
+test('with no source, the queue says nothing of the kind', async () => {
+  renderWithMock(<MediaQueue entity="ha:porch" />, player());
+  expect(await screen.findByRole('heading', { name: /Queue/ })).toBeTruthy();
+  expect(screen.queryByText(/Playlist ·/)).toBeNull();
 });
 
 test('the words for each kind of source', () => {
-  expect(sourceLabel({ title: 'Rumours', kind: 'album' })).toBe('from album Rumours');
-  expect(sourceLabel({ title: 'Hessian', kind: 'artist' })).toBe('from artist Hessian');
-  expect(sourceLabel({ title: 'BBC 6', kind: 'radio' })).toBe('from radio station BBC 6');
-  expect(sourceLabel({ title: 'Mix' })).toBe('from Mix');
-});
+  expect(sourceLine({ id: 'x', title: 'Daily Mix 2', kind: 'playlist' })).toBe(
+    'Playlist · Daily Mix 2',
+  );
 
-test('the line is made of a lowercase lead and the name', () => {
-  expect(sourceParts({ title: 'Daily Mix 2', kind: 'playlist' })).toEqual({
-    lead: 'from playlist',
-    title: 'Daily Mix 2',
-  });
-
-  expect(sourceParts({ title: 'Mix' })).toEqual({ lead: 'from', title: 'Mix' });
+  expect(sourceLine({ id: 'x', title: 'Rumours', kind: 'album' })).toBe('Album · Rumours');
+  expect(sourceLine({ id: 'x', title: 'Hessian', kind: 'artist' })).toBe('Artist · Hessian');
+  expect(sourceLine({ id: 'x', title: 'BBC 6', kind: 'radio' })).toBe('Radio station · BBC 6');
+  expect(sourceLine({ id: 'x', title: 'Mix' })).toBe('Mix');
 });

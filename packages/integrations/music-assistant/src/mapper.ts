@@ -161,10 +161,15 @@ export function sourceOf(queue: Record<string, unknown>): MediaPlayerSource | un
       continue;
     }
 
-    const { name, media_type: type } = entry as { name?: unknown; media_type?: unknown };
+    const {
+      name,
+      uri,
+      media_type: type,
+    } = entry as { name?: unknown; uri?: unknown; media_type?: unknown };
+
     const kind = SOURCE_KINDS.find((candidate) => candidate === type);
-    if (kind && typeof name === 'string' && name !== '') {
-      return { title: name, kind };
+    if (kind && typeof name === 'string' && name !== '' && typeof uri === 'string' && uri !== '') {
+      return { id: uri, title: name, kind };
     }
   }
 

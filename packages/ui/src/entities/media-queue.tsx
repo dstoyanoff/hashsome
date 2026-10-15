@@ -10,6 +10,7 @@ import { MarqueeText } from '../layout/marquee-text.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { useMediaQueue } from '../use-media-queue.ts';
 import { formatDuration } from './media-progress.ts';
+import { sourceLine } from './media-source.ts';
 
 export interface MediaQueueProps {
   /** The media player, as a ref like `ma:living_room`. Shows nothing for a player with no queue. */
@@ -117,17 +118,33 @@ export function MediaQueue({ entity }: MediaQueueProps) {
     run('moveQueueItem', item, by);
   };
 
+  const source = handle.entity?.source;
   const hidden = Math.max(0, queue.total - queue.offset - queue.items.length);
   return (
     <Flex direction="column" minHeight={0} grow={1} gap={2}>
       <Flex align="center" justify="space-between" gap={2}>
-        <Typography as="h2" variant="heading" m={0}>
-          Queue
-          <Typography as="span" variant="secondary" color="textMuted">
-            {' '}
-            · {queue.total} {queue.total === 1 ? 'track' : 'tracks'}
+        <Flex direction="column" minWidth={0}>
+          <Typography as="h2" variant="heading" m={0}>
+            Queue
+            <Typography as="span" variant="secondary" color="textMuted">
+              {' '}
+              · {queue.total} {queue.total === 1 ? 'track' : 'tracks'}
+            </Typography>
           </Typography>
-        </Typography>
+          {source ? (
+            <Typography
+              as="span"
+              variant="secondary"
+              color="textMuted"
+              noWrap
+              textOverflow="ellipsis"
+              overflow="hidden"
+              title={sourceLine(source)}
+            >
+              {sourceLine(source)}
+            </Typography>
+          ) : null}
+        </Flex>
         {queue.total > 0 ? (
           <PlainButton
             aria-label="Clear the queue"

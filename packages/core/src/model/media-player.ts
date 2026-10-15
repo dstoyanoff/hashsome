@@ -14,6 +14,8 @@ export interface MediaPlayerGroup {
 
 /** The playlist, album, artist or radio station a player is playing from. */
 export interface MediaPlayerSource {
+  /** The same `id` the browse list gives that playlist, album, artist or station, so a library can mark what is playing. A backend with no such id makes one up that is unique to the item. */
+  id: string;
   title: string;
   kind?: 'playlist' | 'album' | 'artist' | 'radio';
 }

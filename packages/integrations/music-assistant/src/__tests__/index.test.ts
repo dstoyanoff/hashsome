@@ -310,12 +310,12 @@ test('the playlist or album the queue was filled from is on the player, and goes
     data: {
       queue_id: 'kitchen_speaker',
       state: 'playing',
-      sources: [{ media_type: 'playlist', name: 'Daily Mix 2' }],
+      sources: [{ media_type: 'playlist', name: 'Daily Mix 2', uri: 'library://playlist/7' }],
     },
   });
 
   expect(ma.getEntity('kitchen_speaker')).toMatchObject({
-    source: { title: 'Daily Mix 2', kind: 'playlist' },
+    source: { id: 'library://playlist/7', title: 'Daily Mix 2', kind: 'playlist' },
   });
 
   socket().receive({
