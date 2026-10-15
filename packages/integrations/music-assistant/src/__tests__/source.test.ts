@@ -10,11 +10,13 @@ const entry = (media_type: string, name: string) => ({
 
 test('a queue filled from a playlist, an album, an artist or a station says which', () => {
   expect(sourceOf({ sources: [entry('playlist', 'Daily Mix 2')] })).toEqual({
+    id: 'library://playlist/1',
     title: 'Daily Mix 2',
     kind: 'playlist',
   });
 
   expect(sourceOf({ sources: [entry('album', 'Colours of the Sky')] })).toEqual({
+    id: 'library://album/1',
     title: 'Colours of the Sky',
     kind: 'album',
   });
@@ -37,7 +39,7 @@ test('the first source that is one wins', () => {
     sourceOf({
       sources: [entry('track', 'Dreams'), entry('playlist', 'Roadtrip'), entry('album', 'X')],
     }),
-  ).toEqual({ title: 'Roadtrip', kind: 'playlist' });
+  ).toEqual({ id: 'library://playlist/1', title: 'Roadtrip', kind: 'playlist' });
 });
 
 test('a picture Music Assistant serves itself has a path, one from elsewhere does not', () => {
