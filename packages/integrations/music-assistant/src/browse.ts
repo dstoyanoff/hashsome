@@ -1,4 +1,4 @@
-import type { BrowseItem, BrowseKind } from '@hashsome/core';
+import type { AssetSize, BrowseItem, BrowseKind } from '@hashsome/core';
 
 /** The fields of a Music Assistant media item that a library list needs. Items come back as plain
  * JSON; anything missing is simply left out of the result. */
@@ -63,10 +63,13 @@ export function toBrowseItem(
   };
 }
 
-/** How wide, in pixels, a picture is asked for from Music Assistant, which resizes to 80, 160, 256, 512 or 1024 only: enough
- * for the biggest one is drawn at on the displays (a list's are about 44 px, the player's about 200), and about a
- * quarter of what the 512 weighs (30 kB, against 108). */
-export const PICTURE_SIZE = 256;
+/** What the sizes a picture is asked for in are, in pixels: Music Assistant resizes to 80, 160, 256, 512 or 1024 only. A
+ * `small` one is for a thumbnail (a list's row, about 44 px), a `medium` one for a cover (about 200 px), a `large` one for
+ * a picture that fills a screen. The same picture weighs 4 kB at 80, 30 kB at 256 and 108 kB at 512. */
+export const PICTURE_SIZES: Record<AssetSize, number> = { small: 80, medium: 256, large: 512 };
+
+/** What a picture is asked for as when nothing says how big it will be drawn. */
+export const PICTURE_SIZE = PICTURE_SIZES.medium;
 
 /**
  * Where a browser gets an item's picture. Through the runtime (`assetUrl`) from Music Assistant's own picture address

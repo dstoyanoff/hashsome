@@ -715,7 +715,7 @@ function BrowseCard({
           css={{ width: CARD_SIZE, height: CARD_SIZE }}
         >
           {item.artworkUrl ? (
-            <Cover src={item.artworkUrl} size="large" />
+            <Cover src={item.artworkUrl} size="medium" />
           ) : (
             <Icon name={KIND_ICONS[item.kind]} size={56} />
           )}

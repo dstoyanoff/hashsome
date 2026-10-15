@@ -6,9 +6,10 @@ import { Cover } from '../cover.tsx';
 const srcOf = (container: HTMLElement) => container.querySelector('img')?.getAttribute('src');
 const url = assetUrl('ma', '/imageproxy/abc?size=256&fmt=jpg');
 
-test('a thumbnail asks for a small picture and a cover for a large one', () => {
-  expect(srcOf(render(<Cover src={url} size="small" />).container)).toBe(`${url}&size=80`);
-  expect(srcOf(render(<Cover src={url} size="large" />).container)).toBe(`${url}&size=256`);
+test('a picture is asked for at the size it is given, in words', () => {
+  expect(srcOf(render(<Cover src={url} size="small" />).container)).toBe(`${url}&size=small`);
+  expect(srcOf(render(<Cover src={url} size="medium" />).container)).toBe(`${url}&size=medium`);
+  expect(srcOf(render(<Cover src={url} size="large" />).container)).toBe(`${url}&size=large`);
 });
 
 test('a picture from anywhere else is used as it is', () => {

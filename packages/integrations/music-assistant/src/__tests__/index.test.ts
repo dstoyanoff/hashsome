@@ -387,29 +387,24 @@ test('the picture of what is playing is addressed through the runtime when Music
   });
 });
 
-test('a picture is fetched at the size Music Assistant has that is nearest above the one asked for', async () => {
+test('a picture is fetched at the pixels Music Assistant calls small, medium and large', async () => {
   const spy = vi.fn<(url: URL, init?: RequestInit) => Promise<Response>>(() =>
     Promise.resolve(new Response('img')),
   );
 
   vi.stubGlobal('fetch', spy);
   const { ma } = make();
-  const sizes = async (wanted?: number) => {
-    await ma.fetchAsset(
-      '/imageproxy/abc?size=512&fmt=jpg',
-      wanted === undefined ? {} : { size: wanted },
-    );
+  const sizeOf = async (size?: 'small' | 'medium' | 'large') => {
+    await ma.fetchAsset('/imageproxy/abc?size=512&fmt=jpg', size === undefined ? {} : { size });
 
     return new URL(String(spy.mock.calls.at(-1)?.[0])).searchParams.get('size');
   };
 
-  expect(await sizes()).toBe('512');
-  expect(await sizes(44)).toBe('80');
-  expect(await sizes(80)).toBe('80');
-  expect(await sizes(100)).toBe('160');
-  expect(await sizes(256)).toBe('256');
-  expect(await sizes(300)).toBe('512');
-  expect(await sizes(5000)).toBe('1024');
+  // None said: the size in the path.
+  expect(await sizeOf()).toBe('512');
+  expect(await sizeOf('small')).toBe('80');
+  expect(await sizeOf('medium')).toBe('256');
+  expect(await sizeOf('large')).toBe('512');
   vi.unstubAllGlobals();
 });
 

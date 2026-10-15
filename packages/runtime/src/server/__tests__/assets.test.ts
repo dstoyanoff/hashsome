@@ -184,7 +184,7 @@ test('a browser keeps a file for good only when its address always gives the sam
 });
 
 test('the size asked for goes to the integration, and a file of another size is another file', async () => {
-  const fetchAsset = vi.fn<(path: string, options?: { size?: number }) => Promise<Response>>(
+  const fetchAsset = vi.fn<(path: string, options?: { size?: string }) => Promise<Response>>(
     async () => image(),
   );
 
@@ -195,17 +195,16 @@ test('the size asked for goes to the integration, and a file of another size is 
     return serveAsset(integrations, { method: 'GET', url }, served.asResponse);
   };
 
-  await ask('80');
-  await ask('80');
-  await ask('256');
+  await ask('small');
+  await ask('small');
+  await ask('medium');
   expect(fetchAsset).toHaveBeenCalledTimes(2);
-  expect(fetchAsset).toHaveBeenCalledWith('/a', { size: 80 });
-  expect(fetchAsset).toHaveBeenCalledWith('/a', { size: 256 });
+  expect(fetchAsset).toHaveBeenCalledWith('/a', { size: 'small' });
+  expect(fetchAsset).toHaveBeenCalledWith('/a', { size: 'medium' });
 
-  // Anything that is not a sensible whole number is not passed on.
-  await ask('abc');
-  await ask('-5');
-  await ask('99999');
+  // Anything that is not one of the sizes there are is not passed on.
+  await ask('80');
+  await ask('huge');
   expect(fetchAsset).toHaveBeenCalledWith('/a');
-  expect(fetchAsset).not.toHaveBeenCalledWith('/a', { size: 99999 });
+  expect(fetchAsset).not.toHaveBeenCalledWith('/a', { size: 'huge' });
 });

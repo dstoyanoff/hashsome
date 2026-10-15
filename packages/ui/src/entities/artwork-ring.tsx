@@ -240,7 +240,7 @@ export function ArtworkRing({
             : {})}
         >
           {artworkUrl ? (
-            <Cover src={artworkUrl} size="large" />
+            <Cover src={artworkUrl} size="medium" />
           ) : (
             <Icon name="lu:music" size={40} />
           )}

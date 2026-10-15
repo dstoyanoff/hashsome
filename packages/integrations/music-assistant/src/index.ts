@@ -14,7 +14,7 @@ import {
   type QueueQuery,
   type QueueResult,
 } from '@hashsome/core';
-import { parseUri, SHELVES, toBrowseItem, type MaItem } from './browse.ts';
+import { parseUri, PICTURE_SIZES, SHELVES, toBrowseItem, type MaItem } from './browse.ts';
 import { groupOf } from './group.ts';
 import { sourceOf, toMediaPlayer, type MaPlayer, type ToMediaPlayerOptions } from './mapper.ts';
 import { toQueueItems, type MaQueueItem } from './queue.ts';
@@ -61,9 +61,6 @@ export interface MusicAssistantOptions {
   reconnectMinMs?: number;
   reconnectMaxMs?: number;
 }
-
-/** The sizes Music Assistant resizes a picture to; anything else it refuses. */
-const PICTURE_SIZES = [80, 160, 256, 512, 1024];
 
 /** The most tracks Clear looks for after the one that plays, and how many it takes out at once. */
 const UPCOMING_LIMIT = 5000;
@@ -803,9 +800,9 @@ export class MusicAssistantIntegration extends BaseIntegration {
     return path.startsWith('/imageproxy/');
   }
 
-  /** A picture Music Assistant serves (what is playing, an item's), fetched with the token, at the size it has that is
-   * nearest above the one wanted (it has 80, 160, 256, 512 and 1024 pixels); the size in the path when none is said.
-   * Only one of its `/imageproxy/` paths is accepted, never another path or another address. */
+  /** A picture Music Assistant serves (what is playing, an item's), fetched with the token, at the size asked for (see
+   * `PICTURE_SIZES`); the size in the path when none is said. Only one of its `/imageproxy/` paths is accepted,
+   * never another path or another address. */
   async fetchAsset(path: string, options: AssetOptions = {}): Promise<Response> {
     const base = new URL(this.#options.url);
     const target = new URL(path, base);
@@ -814,9 +811,7 @@ export class MusicAssistantIntegration extends BaseIntegration {
     }
 
     if (options.size !== undefined) {
-      const wanted = options.size;
-      const size = PICTURE_SIZES.find((step) => step >= wanted) ?? PICTURE_SIZES.at(-1);
-      target.searchParams.set('size', String(size));
+      target.searchParams.set('size', String(PICTURE_SIZES[options.size]));
     }
 
     return fetch(target, { headers: { Authorization: `Bearer ${this.#options.token}` } });

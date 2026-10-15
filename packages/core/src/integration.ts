@@ -25,10 +25,15 @@ export type Unsubscribe = () => void;
  * Integrations work only in **local ids** (the part of a ref after `<integration>:`); the runtime
  * does all the addressing, and `BaseIntegration` stamps `ref` onto the entities it stores.
  */
+/** How big a picture is wanted, in words: a `small` one is for a thumbnail (a list's row), a `medium` one for a cover
+ * (a card, the player's), a `large` one for a picture that fills a screen. What each is, in pixels, is for the
+ * integration to say, since a backend has its own sizes. */
+export type AssetSize = 'small' | 'medium' | 'large';
+
 /** What a browser asks of a file besides which one it is. */
 export interface AssetOptions {
-  /** About how many pixels wide it will be drawn: a backend that can resize gives the nearest size it has that is not smaller, one that cannot gives the file as it is. */
-  size?: number;
+  /** How big it is wanted: a backend that can resize gives the size it calls that, one that cannot gives the file as it is. */
+  size?: AssetSize;
 }
 
 export interface Integration {

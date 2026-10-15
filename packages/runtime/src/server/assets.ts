@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { ASSET_PATH, type Integration } from '@hashsome/core';
+import { ASSET_PATH, ASSET_SIZES, type AssetSize, type Integration } from '@hashsome/core';
 
 /** How long a browser may reuse a file whose address can give another one later. */
 const CACHE_CONTROL = 'private, max-age=3600';
@@ -82,7 +82,7 @@ interface Fetched {
 async function fetchImage(
   integration: Integration,
   path: string,
-  size: number | undefined,
+  size: AssetSize | undefined,
 ): Promise<Fetched> {
   const upstream = await (size === undefined
     ? integration.fetchAsset!(path)
@@ -136,9 +136,9 @@ export async function serveAsset(
     return fail(404, 'No such asset');
   }
 
-  // How wide it is wanted, if said: a whole number of a sensible size, or it is ignored.
-  const wanted = Number(url.searchParams.get('size'));
-  const size = Number.isInteger(wanted) && wanted > 0 && wanted <= 4096 ? wanted : undefined;
+  // How big it is wanted, if said and one of the sizes there are; anything else is ignored.
+  const wanted = url.searchParams.get('size');
+  const size = ASSET_SIZES.find((candidate) => candidate === wanted);
   const key = `${id}\u0000${path}\u0000${size ?? ''}`;
   try {
     let file = recall(key, Date.now());
