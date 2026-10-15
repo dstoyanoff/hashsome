@@ -100,9 +100,8 @@ test('does nothing unless it is turned on', async () => {
   const response = await fetch(`${base}/auth/login_flow`, post({}));
   expect(response.headers.get('content-type')).not.toContain('application/json');
   expect(await response.text()).toContain('the app');
-  expect((await fetch(`${base}/manifest.json`)).headers.get('content-type')).not.toContain(
-    'manifest',
-  );
+  // Not the compat manifest, and, being a file that is not there, not the app's page either.
+  expect((await fetch(`${base}/manifest.json`)).status).toBe(404);
 });
 
 test('is off in a config that does not ask for it', () => {
