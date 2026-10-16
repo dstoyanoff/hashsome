@@ -28,6 +28,7 @@ import { IconButton } from '../layout/tile.tsx';
 import { useMediaBrowser } from '../use-media-browser.ts';
 import { useRows } from '../use-rows.ts';
 import { trackMedia, useMediaPending, type MediaPending } from './media-pending.ts';
+import { formatLength } from './media-progress.ts';
 
 export interface MediaBrowserProps {
   /** The media player whose own library to browse, as a ref like `ma:living_room`. The backend that owns the player is the media source, so a Music Assistant player lists Music Assistant's library and a Home Assistant player Home Assistant's. */
@@ -41,6 +42,26 @@ export interface MediaBrowserProps {
 
   /** How the search is offered, for a library that can be searched. `bar` is a field above the list. `icon` is a search icon at the right end of the row of tabs (or of the heading), after a thin line, which becomes the field when pressed, in that same row, so search takes no room of its own; its close button puts the tabs back. Default `bar`. */
   search?: 'bar' | 'icon';
+}
+
+/** What is in an album, a playlist or an artist that has been opened, in a few words: `42 songs · 2 h 51 min`, `12 albums`.
+ * The length is only said when every track has one, so it is never a total of some of them. */
+function summaryOf(items: readonly BrowseItem[]): string {
+  const NOUNS: Partial<Record<BrowseKind, [string, string]>> = {
+    track: ['song', 'songs'],
+    album: ['album', 'albums'],
+    playlist: ['playlist', 'playlists'],
+    artist: ['artist', 'artists'],
+    radio: ['station', 'stations'],
+  };
+
+  const kinds = new Set(items.map((item) => item.kind));
+  const [one, many] = (kinds.size === 1 ? NOUNS[items[0]!.kind] : undefined) ?? ['item', 'items'];
+  const count = `${items.length} ${items.length === 1 ? one : many}`;
+  const lengths = items.map((item) => item.duration);
+  return kinds.size === 1 && items[0]!.kind === 'track' && lengths.every((x) => x !== undefined)
+    ? `${count} · ${formatLength(lengths.reduce((sum, x) => sum + x, 0))}`
+    : count;
 }
 
 /** The height of the search field, and of the row of tabs it replaces. */
@@ -525,6 +546,15 @@ export function MediaBrowser({
               </Reveal>
             </li>
           ))}
+          {/* What is in what is open, at the end of its list: a line above the rows would push them down on opening, and
+              opening something moves nothing. */}
+          {inside ? (
+            <li css={{ flex: 'none' }}>
+              <Typography as="p" variant="secondary" color="textMuted" m={0} px={2} py={2}>
+                {summaryOf(browser.items)}
+              </Typography>
+            </li>
+          ) : null}
         </Flex>
       )}
     </Flex>

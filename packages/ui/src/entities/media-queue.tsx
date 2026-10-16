@@ -10,7 +10,7 @@ import { MarqueeText } from '../layout/marquee-text.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { useMediaQueue } from '../use-media-queue.ts';
 import { useRows } from '../use-rows.ts';
-import { formatDuration } from './media-progress.ts';
+import { formatDuration, formatLength } from './media-progress.ts';
 import { sourceLine } from './media-source.ts';
 import { useStill } from '../layout/use-still.ts';
 
@@ -31,7 +31,7 @@ const ROW = 56;
  */
 export function MediaQueue({ entity }: MediaQueueProps) {
   const handle = useEntityHandle('mediaPlayer', entity);
-  const { queue, refresh } = useMediaQueue(entity);
+  const { queue, refresh } = useMediaQueue(entity, { duration: true });
   // Clearing a long queue takes a moment: the button waits, and what is being taken out is dimmed meanwhile.
   const [clearing, setClearing] = useState(false);
   // The order of what comes next while it is being changed, until the queue read afterwards replaces it.
@@ -136,6 +136,9 @@ export function MediaQueue({ entity }: MediaQueueProps) {
             <Typography as="span" variant="secondary" color="textMuted">
               {' '}
               · {queue.total} {queue.total === 1 ? 'track' : 'tracks'}
+              {queue.duration !== undefined && queue.total > 0
+                ? ` · ${formatLength(queue.duration)}`
+                : ''}
             </Typography>
           </Typography>
           {source ? (

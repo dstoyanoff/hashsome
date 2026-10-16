@@ -337,6 +337,31 @@ describe('queue queries', () => {
     expect(socket.sent.at(-1)).toMatchObject({ id: 2, ok: true, data: { total: 0 } });
   });
 
+  test('asking for the whole queue’s length reaches the integration only when it is exactly true', async () => {
+    const { ha, socket } = await withQueue();
+    socket.receive({
+      type: 'query',
+      id: 1,
+      ref: 'ha:room',
+      query: 'queue',
+      args: { duration: true },
+    });
+
+    socket.receive({
+      type: 'query',
+      id: 2,
+      ref: 'ha:room',
+      query: 'queue',
+      args: { duration: 'yes' },
+    });
+
+    await settle();
+    expect(ha.asked).toEqual([
+      ['room', { duration: true }],
+      ['room', {}],
+    ]);
+  });
+
   test('an integration with no queue is an error', async () => {
     const { ha, socket } = await withQueue();
     (ha as unknown as { queue?: undefined }).queue = undefined;

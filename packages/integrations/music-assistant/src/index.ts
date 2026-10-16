@@ -226,6 +226,16 @@ const SEARCHABLE_KINDS: BrowseKind[] = ['album', 'artist', 'track', 'playlist', 
 
 /** How many of each kind an unfiltered search brings, and how many a search for one kind does. */
 const SEARCH_LIMIT = 8;
+
+/** The id of the first item of a read of a queue, or nothing. */
+const firstItemId = (raw: unknown) =>
+  Array.isArray(raw) && isRecord(raw[0]) && typeof raw[0].queue_item_id === 'string'
+    ? raw[0].queue_item_id
+    : '';
+
+/** Queues longer than this are not read through to say how long they play, and how many items are read at a time. */
+const QUEUE_DURATION_LIMIT = 2000;
+const QUEUE_DURATION_PAGE = 200;
 const SEARCH_LIMIT_ONE_KIND = 50;
 
 const samePosition = (a: Position, b: Position) =>
@@ -273,6 +283,10 @@ export class MusicAssistantIntegration extends BaseIntegration {
    * has the player's id. */
   #players = new Map<string, MaPlayer>();
   #queues = new Map<string, QueueState>();
+
+  /** How long each queue plays, with what it was worked out from. */
+  #queueLengths = new Map<string, { key: string; seconds: number | undefined }>();
+
   #pending = new Map<
     string,
     { resolve: (result: unknown) => void; reject: (error: Error) => void }
@@ -506,11 +520,14 @@ export class MusicAssistantIntegration extends BaseIntegration {
     const total = typeof queue.items === 'number' ? queue.items : 0;
     const playing = typeof queue.current_index === 'number' ? queue.current_index : 0;
     const offset = Math.max(0, playing - 2);
-    const raw = await this.#send('player_queues/items', {
-      queue_id: entityId,
-      limit: query.limit ?? 30,
-      offset,
-    });
+    const [raw, duration] = await Promise.all([
+      this.#send('player_queues/items', {
+        queue_id: entityId,
+        limit: query.limit ?? 30,
+        offset,
+      }),
+      query.duration ? this.#queueDuration(entityId, total).catch(() => undefined) : undefined,
+    ]);
 
     const current = isRecord(queue.current_item) ? queue.current_item.queue_item_id : undefined;
     return {
@@ -521,7 +538,55 @@ export class MusicAssistantIntegration extends BaseIntegration {
       ),
       total,
       offset,
+      ...(duration !== undefined ? { duration } : {}),
     };
+  }
+
+  /** How long the whole queue plays, in seconds: every item's, which the window the queue is read in does not hold. A
+   * queue is long and Music Assistant gives its items only in full, so they are read once, in pages, and not again until
+   * the queue is another: its size and its first and last item (two small reads) stand for it. Nothing for one too long
+   * to be worth reading. */
+  async #queueDuration(queueId: string, total: number): Promise<number | undefined> {
+    if (total === 0) {
+      return 0;
+    }
+
+    if (total > QUEUE_DURATION_LIMIT) {
+      return undefined;
+    }
+
+    const [first, last] = await Promise.all([
+      this.#send('player_queues/items', { queue_id: queueId, limit: 1, offset: 0 }),
+      this.#send('player_queues/items', { queue_id: queueId, limit: 1, offset: total - 1 }),
+    ]);
+
+    const key = `${total}:${firstItemId(first)}:${firstItemId(last)}`;
+    const known = this.#queueLengths.get(queueId);
+    if (known?.key === key) {
+      return known.seconds;
+    }
+
+    let seconds = 0;
+    for (let at = 0; at < total; at += QUEUE_DURATION_PAGE) {
+      const page = await this.#send('player_queues/items', {
+        queue_id: queueId,
+        limit: QUEUE_DURATION_PAGE,
+        offset: at,
+      });
+
+      if (!Array.isArray(page)) {
+        return undefined;
+      }
+
+      for (const item of page) {
+        if (isRecord(item) && typeof item.duration === 'number') {
+          seconds += item.duration;
+        }
+      }
+    }
+
+    this.#queueLengths.set(queueId, { key, seconds });
+    return seconds;
   }
 
   /** One level of the library, or a search across it, through Music Assistant's own API. */

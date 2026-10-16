@@ -1228,6 +1228,56 @@ const deletions = (socket: () => FakeSocket) =>
     .sent.filter((sent) => sent.command === 'player_queues/delete_item')
     .map((sent) => sent.args?.item_id_or_index);
 
+test('asked for it, the queue also says how long the whole of it plays, reading it once', async () => {
+  const { ma, socket } = make();
+  await connect(ma, socket);
+  // Five tracks of 10, 20, 30, 40 and 50 seconds, read through whatever window is asked for.
+  const items = Array.from({ length: 5 }, (_, i) => ({
+    queue_item_id: `q${i}`,
+    name: `Track ${i}`,
+    duration: (i + 1) * 10,
+  }));
+
+  const serve = () => {
+    answerAll(socket, 'player_queues/get', () => ({
+      result: { items: 5, current_index: 0, current_item: { queue_item_id: 'q0' } },
+    }));
+
+    answerAll(socket, 'player_queues/items', (message) => {
+      const { offset = 0, limit = 30 } = message.args as { offset?: number; limit?: number };
+      return { result: items.slice(offset, offset + limit) };
+    });
+  };
+
+  const read = async () => {
+    const asked = ma.queue('kitchen_speaker', { limit: 2, duration: true });
+    for (let round = 0; round < 6; round++) {
+      await flush();
+      serve();
+    }
+
+    return asked;
+  };
+
+  expect(await read()).toMatchObject({ total: 5, duration: 150 });
+  const reads = () => socket().sent.filter((sent) => sent.command === 'player_queues/items').length;
+  const first = reads();
+  // Asked again for the same queue, it is not read through again: only the two small reads that say it is the same.
+  expect(await read()).toMatchObject({ duration: 150 });
+  expect(reads() - first).toBe(3);
+
+  // And left out, it is not worked out at all.
+  const before = reads();
+  const plain = ma.queue('kitchen_speaker', { limit: 2 });
+  for (let round = 0; round < 4; round++) {
+    await flush();
+    serve();
+  }
+
+  expect(await plain).not.toHaveProperty('duration');
+  expect(reads() - before).toBe(1);
+});
+
 test('Clear while something plays takes out only what follows it, last first, and never the track playing', async () => {
   const { ma, socket } = make();
   await connect(ma, socket);

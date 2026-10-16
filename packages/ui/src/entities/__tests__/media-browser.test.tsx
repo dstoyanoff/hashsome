@@ -42,6 +42,17 @@ test('the top level is a row of tabs, opening on the first, and no list of folde
   expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
 });
 
+test('an album that is open says how many songs it has and how long they play, and a list of albums says nothing', async () => {
+  render();
+  fireEvent.click(await screen.findByRole('tab', { name: 'Albums' }));
+  await screen.findByRole('button', { name: 'Open Rumours' });
+  expect(screen.queryByText(/songs?/)).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Open Rumours' }));
+  await screen.findByRole('button', { name: 'Play Go Your Own Way' });
+  const count = screen.getAllByRole('button', { name: /^Play / }).length;
+  expect(screen.getByText(new RegExp(`^${count} songs? · \\d+ (min|h)`))).toBeTruthy();
+});
+
 test('opening something changes only what is below the tabs, and the selected tab becomes the way back', async () => {
   render();
   fireEvent.click(await screen.findByRole('tab', { name: 'Albums' }));

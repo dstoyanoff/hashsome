@@ -12,6 +12,9 @@ export interface BrowseItem {
   artworkUrl?: string;
   kind: BrowseKind;
 
+  /** For a track: how long it plays, in seconds, so a list of them can say how long it plays all together. */
+  duration?: number;
+
   /** `playMedia` accepts this item. */
   playable: boolean;
 

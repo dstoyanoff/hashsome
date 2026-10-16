@@ -65,12 +65,15 @@ function logbookArgs(args: Record<string, unknown> | undefined): LogbookQuery {
     : {};
 }
 
-/** A queue query's one field, kept only when it is a sensible number: the rest came from a browser. */
+/** A queue query's fields, kept only when they are what they should be: the rest came from a browser. */
 function queueArgs(args: Record<string, unknown> | undefined): QueueQuery {
-  const { limit } = args ?? {};
-  return typeof limit === 'number' && Number.isFinite(limit)
-    ? { limit: Math.max(1, Math.min(Math.floor(limit), 200)) }
-    : {};
+  const { limit, duration } = args ?? {};
+  return {
+    ...(typeof limit === 'number' && Number.isFinite(limit)
+      ? { limit: Math.max(1, Math.min(Math.floor(limit), 200)) }
+      : {}),
+    ...(duration === true ? { duration: true } : {}),
+  };
 }
 
 /** The only fields a browse query has, kept only when they are strings: the rest came from a browser. */

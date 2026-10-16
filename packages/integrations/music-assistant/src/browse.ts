@@ -9,6 +9,7 @@ export interface MaItem {
   artists?: { name?: string }[] | null;
   artist_str?: string | null;
   owner?: string | null;
+  duration?: number | null;
   image?: MaImage | null;
   metadata?: { images?: MaImage[] | null } | null;
 }
@@ -60,6 +61,7 @@ export function toBrowseItem(
     expandable: EXPANDABLE.has(type),
     ...(subtitle ? { subtitle } : {}),
     ...(artwork ? { artworkUrl: artwork } : {}),
+    ...(type === 'track' && typeof item.duration === 'number' ? { duration: item.duration } : {}),
   };
 }
 
