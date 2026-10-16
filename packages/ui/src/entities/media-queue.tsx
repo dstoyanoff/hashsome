@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import type { EntityRef, QueueItem } from '@hashsome/core';
 import { Flex, Typography } from 'e-prim';
-import { AnimatePresence, motion, Reorder, useDragControls, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, Reorder, useDragControls } from 'motion/react';
 import { useState, type KeyboardEvent } from 'react';
 import { useEntityHandle } from '../hooks.ts';
 import { Icon } from '../icon.tsx';
@@ -9,8 +9,10 @@ import { Cover } from '../layout/cover.tsx';
 import { MarqueeText } from '../layout/marquee-text.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { useMediaQueue } from '../use-media-queue.ts';
+import { useRows } from '../use-rows.ts';
 import { formatDuration } from './media-progress.ts';
 import { sourceLine } from './media-source.ts';
+import { useStill } from '../layout/use-still.ts';
 
 export interface MediaQueueProps {
   /** The media player, as a ref like `ma:living_room`. Shows nothing for a player with no queue. */
@@ -35,7 +37,26 @@ export function MediaQueue({ entity }: MediaQueueProps) {
   // The order of what comes next while it is being changed, until the queue read afterwards replaces it.
   // It belongs to the queue it was made from: a queue read afterwards leaves it behind.
   const [draft, setDraft] = useState<{ of: unknown; ids: string[] } | null>(null);
-  const still = useReducedMotion();
+  const still = useStill();
+  // What comes next, in the order it is being put in, as far as it is drawn: a queue can be hundreds of tracks long,
+  // and the rest come as the end of the list is scrolled to.
+  const items = queue?.items ?? [];
+  const at = items.findIndex((x) => x.current);
+  const firstUpcoming = at === -1 ? items.length : at + 1;
+  const leading = items.slice(0, firstUpcoming);
+  const upcoming = items.slice(firstUpcoming);
+
+  // A draft only counts while it is a reordering of the very tracks that are there.
+  const byId = new Map(upcoming.map((item) => [item.id, item]));
+  const shown =
+    draft !== null &&
+    draft.of === queue &&
+    draft.ids.length === upcoming.length &&
+    draft.ids.every((id) => byId.has(id))
+      ? draft.ids.map((id) => byId.get(id)!)
+      : upcoming;
+
+  const { shown: visible, attach, onScroll } = useRows(shown, 'queue');
   if (!queue || handle.entity?.capabilities.queue !== true) {
     return null;
   }
@@ -62,20 +83,6 @@ export function MediaQueue({ entity }: MediaQueueProps) {
       .catch(() => setDraft(null))
       .finally(() => setClearing(false));
   };
-
-  const at = queue.items.findIndex((x) => x.current);
-  const firstUpcoming = at === -1 ? queue.items.length : at + 1;
-  const leading = queue.items.slice(0, firstUpcoming);
-  const upcoming = queue.items.slice(firstUpcoming);
-
-  // A draft only counts while it is a reordering of the very tracks that are there.
-  const byId = new Map(upcoming.map((item) => [item.id, item]));
-  const shown =
-    draft?.of === queue &&
-    draft.ids.length === upcoming.length &&
-    draft.ids.every((id) => byId.has(id))
-      ? draft.ids.map((id) => byId.get(id)!)
-      : upcoming;
 
   // The player has stopped on the last track and its position is at the end: it is over. A track
   // that was merely paused or stopped part way through is not, whatever state the player reports.
@@ -175,8 +182,16 @@ export function MediaQueue({ entity }: MediaQueueProps) {
         <Reorder.Group
           as="ul"
           axis="y"
-          values={shown.map((item) => item.id)}
-          onReorder={(ids) => setDraft({ of: queue, ids })}
+          ref={attach}
+          onScroll={onScroll}
+          values={visible.map((item) => item.id)}
+          // What is drawn is put in its new order; what is not drawn yet stays after it.
+          onReorder={(ids) =>
+            setDraft({
+              of: queue,
+              ids: [...ids, ...shown.slice(visible.length).map((x) => x.id)],
+            })
+          }
           css={({ density }) => ({
             display: 'flex',
             flexDirection: 'column',
@@ -203,7 +218,7 @@ export function MediaQueue({ entity }: MediaQueueProps) {
                 onPlay={() => run('playQueueItem', item)}
               />
             ))}
-            {shown.map((item) => (
+            {visible.map((item) => (
               <QueueRow
                 key={item.id}
                 item={item}
@@ -404,6 +419,8 @@ function QueueRow({
     >
       {content}
     </Reorder.Item>
+  ) : still ? (
+    <li css={css}>{content}</li>
   ) : (
     <motion.li {...shared} css={css}>
       {content}

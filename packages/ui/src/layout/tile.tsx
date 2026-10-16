@@ -14,6 +14,7 @@ import {
 import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { RoundButton } from './round-button.tsx';
+import { useStill } from './use-still.ts';
 import { SpinnerRing } from './spinner.tsx';
 import { statusLabels, type EntityStatus } from '../status.ts';
 import { BADGE } from '../theme/grid.ts';
@@ -121,6 +122,7 @@ export function Tile({
   history,
   logbook,
 }: TileProps) {
+  const still = useStill();
   const ready = status === 'ready';
   const adjustable = fill !== undefined && onFillChange !== undefined && ready;
   const holdable =
@@ -325,16 +327,20 @@ export function Tile({
 
   const iconBadge = icon ? (
     <Flex
-      as={motion.span}
+      as={still ? 'span' : motion.span}
       align="center"
       justify="center"
       position="relative"
       radius="full"
       width={32}
       height={32}
-      initial={false}
-      animate={{ backgroundColor: iconBg, color: iconColor }}
-      transition={COLOR_TRANSITION}
+      {...(still
+        ? { style: { backgroundColor: iconBg, color: iconColor } }
+        : {
+            initial: false,
+            animate: { backgroundColor: iconBg, color: iconColor },
+            transition: COLOR_TRANSITION,
+          })}
       css={{ flex: 'none' }}
     >
       <Icon name={icon} size={16} />
@@ -343,7 +349,7 @@ export function Tile({
 
   return (
     <Flex
-      as={motion.div}
+      as={still ? 'div' : motion.div}
       radius="card"
       position="relative"
       align="center"
@@ -358,10 +364,15 @@ export function Tile({
       data-overlay={overlay !== undefined}
       data-pending={feedback === 'pending'}
       data-feedback={feedback === 'pending' ? undefined : feedback}
-      // A card that mounts (a page opened) is drawn as it is, not animated from nothing.
-      initial={false}
-      animate={{ backgroundColor: cardBg, color: cardColor, opacity: cardOpacity }}
-      transition={COLOR_TRANSITION}
+      // A card that mounts (a page opened) is drawn as it is, not animated from nothing. Where nothing moves it is
+      // just drawn: a color that is animated is a motion element on every tile, and the main thread repainting it.
+      {...(still
+        ? { style: { backgroundColor: cardBg, color: cardColor, opacity: cardOpacity } }
+        : {
+            initial: false,
+            animate: { backgroundColor: cardBg, color: cardColor, opacity: cardOpacity },
+            transition: COLOR_TRANSITION,
+          })}
       css={({ palette, spacing }) => ({
         // The badge between its padding, written down rather than left to the content, so a tile is a
         // whole number of grid modules (12, in the comfortable density) whatever is in it.
@@ -373,15 +384,19 @@ export function Tile({
     >
       {hasFill ? (
         <Box
-          as={motion.span}
+          as={still ? 'span' : motion.span}
           position="absolute"
           background="accent"
           // Spans the whole card, including behind `trailing` (e.g. a color-capable light's
           // picker button) — it's a sibling of the button and `trailing`, not nested inside the
           // button, specifically so its width isn't capped at the button's own narrower bounds.
-          initial={false}
-          animate={{ width: `${(shownFill ?? 0) * 100}%`, opacity: overlaid ? 0 : shownFill }}
-          transition={drag !== null ? { duration: 0 } : COLOR_TRANSITION}
+          {...(still
+            ? { style: { width: `${(shownFill ?? 0) * 100}%`, opacity: overlaid ? 0 : shownFill } }
+            : {
+                initial: false,
+                animate: { width: `${(shownFill ?? 0) * 100}%`, opacity: overlaid ? 0 : shownFill },
+                transition: drag !== null ? { duration: 0 } : COLOR_TRANSITION,
+              })}
           css={{ inset: '0 auto 0 0', pointerEvents: 'none' }}
         />
       ) : null}
@@ -536,42 +551,71 @@ export function IconButton({
   feedback?: 'pending' | 'done' | 'error' | undefined;
 }) {
   const ring = feedback === 'pending';
-  return (
+  const still = useStill();
+  // The icon morphs (turns out, the next turns in) only once it has changed: a list of rows has a few of these in each,
+  // and almost none of them ever change, so the animation machinery is not there until it has something to do.
+  const [morphs, setMorphs] = useState(false);
+  const [drawn, setDrawn] = useState(icon);
+  if (icon !== drawn) {
+    setDrawn(icon);
+    if (!still && !morphs) {
+      setMorphs(true);
+    }
+  }
+
+  const glyphSize = glyph !== undefined ? { size: glyph } : size !== undefined ? { size } : {};
+  const content = (
+    <>
+      {morphs && !still ? (
+        <AnimatePresence mode="popLayout">
+          <Box
+            as={motion.span}
+            key={icon}
+            css={{ display: 'grid' }}
+            initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
+            animate={{ rotate: 0, opacity: 1, scale: 1 }}
+            exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
+            transition={{ duration: 0.18 }}
+          >
+            <Icon name={icon} {...glyphSize} />
+          </Box>
+        </AnimatePresence>
+      ) : (
+        <Box as="span" css={{ display: 'grid' }}>
+          <Icon name={icon} {...glyphSize} />
+        </Box>
+      )}
+      {ring ? <SpinnerRing /> : null}
+    </>
+  );
+
+  const common = {
+    // A circle twice the glyph, or the density's usual one.
+    ...(size !== undefined ? { size: size * 2 } : {}),
+    // A literal color (a light's own) has to outrank the state colors the shared styles give
+    // `data-active`, hence the doubled selector for the extra specificity.
+    ...(color ? { css: { '&&&': { color } } } : {}),
+    'data-feedback': feedback,
+    'aria-label': label,
+    title: label,
+    disabled: disabled || feedback === 'pending',
+    'data-active': active,
+    'aria-pressed': pressed,
+    'data-primary': primary,
+    onClick,
+  };
+
+  // A plain button where nothing moves; the squeeze on a press is a motion element's.
+  return still ? (
+    <RoundButton {...common}>{content}</RoundButton>
+  ) : (
     <RoundButton
       as={motion.button}
-      // A circle twice the glyph, or the density's usual one.
-      {...(size !== undefined ? { size: size * 2 } : {})}
-      // A literal color (a light's own) has to outrank the state colors the shared styles give
-      // `data-active`, hence the doubled selector for the extra specificity.
-      {...(color ? { css: { '&&&': { color } } } : {})}
       whileTap={disabled || feedback === 'pending' ? {} : { scale: 0.88 }}
       transition={{ duration: 0.12 }}
-      data-feedback={feedback}
-      aria-label={label}
-      title={label}
-      disabled={disabled || feedback === 'pending'}
-      data-active={active}
-      aria-pressed={pressed}
-      data-primary={primary}
-      onClick={onClick}
+      {...common}
     >
-      <AnimatePresence initial={false} mode="popLayout">
-        <Box
-          as={motion.span}
-          key={icon}
-          css={{ display: 'grid' }}
-          initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
-          animate={{ rotate: 0, opacity: 1, scale: 1 }}
-          exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
-          transition={{ duration: 0.18 }}
-        >
-          <Icon
-            name={icon}
-            {...(glyph !== undefined ? { size: glyph } : size !== undefined ? { size } : {})}
-          />
-        </Box>
-      </AnimatePresence>
-      {ring ? <SpinnerRing /> : null}
+      {content}
     </RoundButton>
   );
 }

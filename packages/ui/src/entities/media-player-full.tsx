@@ -12,6 +12,7 @@ import { SpeakersButton, SpeakersOverlay, SpeakersPill } from './media-speakers-
 import { IconButton } from '../layout/tile.tsx';
 import { NowPlaying } from './now-playing.tsx';
 import { PlayerSwitcher, type PlayerOption } from './player-switcher.tsx';
+import { useStill } from '../layout/use-still.ts';
 
 /** The artwork ring's diameter in a full-size player, against the usual 168px. */
 const FULL_SIZE = 260;
@@ -81,6 +82,7 @@ function ListTabs({
 }) {
   // One line that slides between the tabs; its own id, so two players on a page do not share it.
   const line = useId();
+  const still = useStill();
   const all: { id: ListTab; label: string; icon: 'lu:library' | 'lu:list-music' }[] = [
     { id: 'library', label: 'Library', icon: 'lu:library' },
     { id: 'queue', label: 'Queue', icon: 'lu:list-music' },
@@ -122,14 +124,23 @@ function ListTabs({
           >
             {/* The line under the open tab sits on the row's own line. */}
             {selected ? (
-              <Box
-                as={motion.span}
-                layoutId={line}
-                position="absolute"
-                background="accent"
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-                css={{ left: 0, right: 0, bottom: 0, height: 2 }}
-              />
+              still ? (
+                <Box
+                  as="span"
+                  position="absolute"
+                  background="accent"
+                  css={{ left: 0, right: 0, bottom: 0, height: 2 }}
+                />
+              ) : (
+                <Box
+                  as={motion.span}
+                  layoutId={line}
+                  position="absolute"
+                  background="accent"
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  css={{ left: 0, right: 0, bottom: 0, height: 2 }}
+                />
+              )
             ) : null}
             <Icon name={tab.icon} size={16} />
             <Typography as="span" variant={selected ? 'bodyStrong' : 'body'}>

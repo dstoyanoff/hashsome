@@ -1,6 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { Box, type BoxProps } from 'e-prim';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
+import { useStill } from './use-still.ts';
 
 /** A placeholder block for something that is on its way, in the size it will have, so what is around
  * it does not move when the real thing arrives. It pulses gently, and holds still where the person
@@ -15,7 +16,7 @@ export function Skeleton({
   height: number | string;
   radius?: BoxProps['radius'];
 }) {
-  const still = useReducedMotion();
+  const still = useStill();
   return (
     <Box
       aria-hidden="true"

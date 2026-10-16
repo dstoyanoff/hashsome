@@ -1,5 +1,5 @@
 import type { EntityRef, QueueResult } from '@hashsome/core';
-import { useCallback, useEffect, useState } from 'react';
+import { startTransition, useCallback, useEffect, useState } from 'react';
 import { useEntity, useReconnects } from './hooks.ts';
 import { useMediaPending } from './entities/media-pending.ts';
 import { useClient } from './provider.tsx';
@@ -45,7 +45,7 @@ export function useMediaQueue(ref: EntityRef | undefined): MediaQueueState {
     let current = true;
     const read = () =>
       client.queue(ref, {}).then(
-        (queue) => current && setState({ ref, queue }),
+        (queue) => current && startTransition(() => setState({ ref, queue })),
         () => current && setState({ ref, queue: undefined }),
       );
 

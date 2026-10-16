@@ -1,11 +1,12 @@
 /** @jsxImportSource @emotion/react */
 import { Flex, Grid, Typography } from 'e-prim';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import { Icon } from '../icon.tsx';
 import { ValueBar } from '../layout/drawer-controls.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { IconButton } from '../layout/tile.tsx';
 import type { useVolumeControl } from './media-controls.ts';
+import { useStill } from '../layout/use-still.ts';
 
 /** How long the button row and the volume take to fade, one out and the other in. */
 export const ROW_FADE = 0.12;
@@ -25,7 +26,7 @@ export function VolumeRow({
   canMute?: boolean;
   onClose: () => void;
 }) {
-  const still = useReducedMotion();
+  const still = useStill();
   return (
     <Grid
       as={motion.div}

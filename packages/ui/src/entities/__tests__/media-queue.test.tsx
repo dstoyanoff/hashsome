@@ -19,7 +19,10 @@ describe('MediaQueue', () => {
     expect(playing.getAttribute('aria-current')).toBe('true');
     // The first two have played, the third plays, then it carries on.
     expect(screen.getAllByRole('listitem').length).toBeGreaterThan(5);
-    expect(screen.getAllByRole('button', { name: 'Play Blank Space' }).length).toBeGreaterThan(0);
+    // The rows come a screenful at a time, and a list with room to spare gets the rest as soon as it is drawn.
+    expect(
+      (await screen.findAllByRole('button', { name: 'Play Blank Space' })).length,
+    ).toBeGreaterThan(0);
   });
 
   test('tapping a track jumps to it', async () => {
@@ -36,7 +39,7 @@ describe('MediaQueue', () => {
     const { ha } = render();
     await screen.findByText(/24 tracks/);
     fireEvent.click(
-      screen.getAllByRole('button', { name: 'Remove Blank Space from the queue' })[0]!,
+      (await screen.findAllByRole('button', { name: 'Remove Blank Space from the queue' }))[0]!,
     );
 
     expect(ha.calls.at(-1)).toMatchObject({ command: 'removeQueueItem' });

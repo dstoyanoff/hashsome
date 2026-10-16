@@ -12,6 +12,8 @@ export function Cover({ src, size }: { src: string; size: AssetSize }) {
       as="img"
       src={sizedAssetUrl(src, size)}
       alt=""
+      loading="lazy"
+      decoding="async"
       width="100%"
       height="100%"
       css={{ objectFit: 'cover' }}
