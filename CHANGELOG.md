@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.18.0 (2026-10-16)
+
+### Features
+
+- **ui:** the queue says how long it plays, and an open album or playlist how many songs it has (#125) ([274ec21](https://github.com/dstoyanoff/hashsome/commit/274ec21b51efdb010d5d73becee1594e7cedd11b))
+
+### Performance
+
+- **ui:** a slow display no longer freezes on a page switch, the library or the queue (#124) ([747ac11](https://github.com/dstoyanoff/hashsome/commit/747ac11e4f72e3b669530be41ec89b8523f5ccdd))
+- **ui:** load less up front: icons as text and the chart library on first use (#123) ([17ef7af](https://github.com/dstoyanoff/hashsome/commit/17ef7afb2ef768794b5594f4364ad3912e913dc0))
+
 ## 0.17.0 (2026-10-16)
 
 ### Features

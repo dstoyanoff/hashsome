@@ -1,6 +1,6 @@
 {
   "name": "@hashsome/integration.home-assistant",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "description": "Home Assistant integration: entities, services, area/entity registry",
   "type": "module",
   "scripts": {
