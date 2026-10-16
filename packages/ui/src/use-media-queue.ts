@@ -20,9 +20,12 @@ const POLL_MS = 15_000;
  * A player's queue, read when `ref` changes and again whenever the track that plays changes (the
  * window of the queue moves with it), after `refresh()`, and every so often. A player with no queue,
  * or an error, leaves `queue` undefined: the queue is an extra, so a component just shows nothing.
- * Pass `undefined` to not ask at all.
+ * Pass `undefined` to not ask at all. With `duration`, the answer also says how long the whole queue plays.
  */
-export function useMediaQueue(ref: EntityRef | undefined): MediaQueueState {
+export function useMediaQueue(
+  ref: EntityRef | undefined,
+  { duration = false }: { duration?: boolean } = {},
+): MediaQueueState {
   const client = useClient();
   const player = useEntity(ref);
   const [state, setState] = useState<{ ref: string; queue: QueueResult | undefined }>();
@@ -44,7 +47,7 @@ export function useMediaQueue(ref: EntityRef | undefined): MediaQueueState {
 
     let current = true;
     const read = () =>
-      client.queue(ref, {}).then(
+      client.queue(ref, duration ? { duration } : {}).then(
         (queue) => current && setState({ ref, queue }),
         () => current && setState({ ref, queue: undefined }),
       );
@@ -57,7 +60,7 @@ export function useMediaQueue(ref: EntityRef | undefined): MediaQueueState {
     };
     // `track`, `shuffle`, `tick`, `reconnects` and `asked` are not read inside: a change to any of them is the reason to read again.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
-  }, [client, ref, has, track, shuffle, tick, reconnects, asked]);
+  }, [client, ref, has, duration, track, shuffle, tick, reconnects, asked]);
 
   const answered = state !== undefined && state.ref === ref;
   return {

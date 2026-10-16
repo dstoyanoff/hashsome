@@ -51,5 +51,10 @@ export function mockQueue(
     };
   });
 
-  return { items: items.slice(0, query.limit ?? 30), total: TOTAL, offset: 0 };
+  return {
+    items: items.slice(0, query.limit ?? 30),
+    total: TOTAL,
+    offset: 0,
+    duration: items.reduce((sum, item) => sum + (item.duration ?? 0), 0),
+  };
 }

@@ -189,6 +189,8 @@ const libraryTrack = (id: string, title: string, artist: string): BrowseItem => 
   title,
   subtitle: artist,
   artworkUrl: cover(id),
+  // Between two and a half and four minutes, the same for a track every time.
+  duration: 150 + ((id.length * 37) % 90),
   kind: 'track',
   playable: true,
   expandable: false,

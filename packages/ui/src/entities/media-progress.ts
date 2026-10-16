@@ -10,6 +10,18 @@ export function formatDuration(seconds: number): string {
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${rest}` : `${minutes}:${rest}`;
 }
 
+/** How long something plays, said plainly: `42 min`, `2 h`, `7 h 33 min`. For a whole queue or album, not a position. */
+export function formatLength(seconds: number): string {
+  const minutes = Math.round(Math.max(0, seconds) / 60);
+  if (minutes < 60) {
+    return `${Math.max(1, minutes)} min`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
+
 /** Where playback is now. The player reports a position as of a moment; while it plays, this
  * moves it forward from there on its own clock, so the bar advances without a message per second.
  * `undefined` until the player reports a position. */

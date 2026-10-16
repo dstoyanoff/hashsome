@@ -25,6 +25,12 @@ describe('MediaQueue', () => {
     ).toBeGreaterThan(0);
   });
 
+  test('the heading says how long the whole queue plays, besides how many tracks it has', async () => {
+    render();
+    // Twenty-four made-up tracks of about three minutes each.
+    expect(await screen.findByText(/24 tracks · 1 h \d+ min/)).toBeTruthy();
+  });
+
   test('tapping a track jumps to it', async () => {
     const { ha } = render();
     const [first] = await screen.findAllByRole('button', { name: 'Play Blank Space' });

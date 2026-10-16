@@ -71,3 +71,13 @@ test('a library item’s picture goes through the runtime when it has Music Assi
     toBrowseItem({ ...item, image: { path: '/local', remotely_accessible: false } }, assetUrl),
   ).not.toHaveProperty('artworkUrl');
 });
+
+test('a track says how long it plays, and nothing else does', () => {
+  expect(
+    toBrowseItem({ uri: 'library://track/1', name: 'Song', media_type: 'track', duration: 215 }),
+  ).toMatchObject({ kind: 'track', duration: 215 });
+
+  expect(
+    toBrowseItem({ uri: 'library://album/1', name: 'Album', media_type: 'album', duration: 3000 }),
+  ).not.toHaveProperty('duration');
+});
