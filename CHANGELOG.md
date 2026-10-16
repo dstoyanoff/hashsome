@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.0 (2026-10-16)
+
+### Features
+
+- **ui:** a task's date shows its year when it is not this year (#122) ([1a4e32e](https://github.com/dstoyanoff/hashsome/commit/1a4e32ec6af316b887660f2fccfadc777456b088))
+
 ## 0.16.1 (2026-10-15)
 
 ### Fixes
