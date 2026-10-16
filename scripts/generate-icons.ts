@@ -64,6 +64,10 @@ function loadAllTabler(): [string, readonly IconNode[]][] {
   return Object.entries(data).map(([name, nodes]) => [`tb:${name}`, nodes]);
 }
 
+/** `text` as a template literal: JSON is full of double quotes, which this leaves as they are. */
+const templateLiteral = (text: string) =>
+  `\`${text.replaceAll('\\', '\\\\').replaceAll('`', '\\`').replaceAll('${', '\\${')}\``;
+
 const entries = [...(await loadAllLucide()), ...loadAllTabler()].toSorted(([a], [b]) =>
   a.localeCompare(b),
 );
@@ -80,8 +84,12 @@ export type IconNode = readonly [tag: string, attrs: Record<string, string>];
 // autocomplete) grind to a halt. \`IconName\` below is a cheap template-literal type instead: it
 // checks the pack prefix, not every exact name: a real but mistyped icon id (\`lu:lihgtbulb\`)
 // still typechecks, so \`Icon\` also checks at runtime and warns once if the name isn't found.
-export const ICON_NODES: Record<string, readonly IconNode[]> = {
-${entries.map(([id, nodes]) => `  ${JSON.stringify(id)}: ${JSON.stringify(nodes)},`).join('\n')}
+//
+// Each icon is its nodes as one JSON string, not a nested literal: seven thousand icons as arrays and objects is
+// megabytes of heap and a long evaluation on a slow display, for the few a page draws. \`Icon\` parses the ones it
+// is asked for, once.
+export const ICON_NODES: Record<string, string> = {
+${entries.map(([id, nodes]) => `  ${JSON.stringify(id)}: ${templateLiteral(JSON.stringify(nodes))},`).join('\n')}
 };
 
 /** An icon id, e.g. \`'lu:lightbulb'\`, \`'tb:vacuum-cleaner'\` — see \`ICON_NODES\` for how exact-name

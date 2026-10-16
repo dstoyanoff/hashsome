@@ -1,17 +1,6 @@
 /** @jsxImportSource @emotion/react */
-import type { ComponentProps } from 'react';
-import { Box, Flex, Typography, useColorByKey } from 'e-prim';
-import { useTypographySize } from '../theme/use-typography.ts';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  type TooltipContentProps,
-} from 'recharts';
+import { lazy, Suspense } from 'react';
+import { Box, Flex, Typography } from 'e-prim';
 
 export interface SeriesSample {
   /** ISO 8601. */
@@ -38,43 +27,7 @@ export function formatTick(range: SeriesRange, iso: string): string {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-/** The grid's dashed lines, but not one along the chart's bottom edge: that is the solid axis line. */
-const dashedExceptBottom =
-  (stroke: string): NonNullable<ComponentProps<typeof CartesianGrid>['horizontal']> =>
-  ({
-    x1,
-    x2,
-    y1,
-    offset,
-  }: {
-    x1: number;
-    x2: number;
-    y1: number;
-    offset: { top: number; height: number };
-  }) =>
-    y1 >= offset.top + offset.height - 1 ? (
-      <g />
-    ) : (
-      <line
-        x1={x1}
-        x2={x2}
-        y1={y1}
-        y2={y1}
-        stroke={stroke}
-        strokeOpacity={0.3}
-        strokeDasharray="3 3"
-      />
-    );
-
-/** A bare sparkline, or — when `expanded` — the full chart with axes, grid and a tooltip. Shared by the power and sensor drawers. */
-export function SeriesChart({
-  samples,
-  range,
-  expanded,
-  unit,
-  fitDomain = false,
-  height,
-}: {
+export interface SeriesChartProps {
   samples: SeriesSample[];
   range: SeriesRange;
   expanded: boolean;
@@ -85,66 +38,17 @@ export function SeriesChart({
 
   /** The chart's height in px. Default 48 for the sparkline, 220 when expanded. */
   height?: number;
-}) {
-  const accent = useColorByKey('accent') ?? '';
-  const textMuted = useColorByKey('textMuted') ?? '';
-  const line = useColorByKey('line') ?? '';
-  const tickSize = useTypographySize('secondary');
+}
 
+const SeriesPlot = lazy(() => import('./series-plot.tsx'));
+
+/** A bare sparkline, or — when `expanded` — the full chart with axes, grid and a tooltip. Shared by the power and sensor drawers. */
+export function SeriesChart(props: SeriesChartProps) {
+  // The room the chart will take is there meanwhile, so nothing moves when it arrives.
   return (
-    <Box height={height ?? (expanded ? 220 : 48)} mt={3}>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={samples} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-          {expanded ? (
-            <CartesianGrid
-              stroke={line}
-              strokeOpacity={0.3}
-              strokeDasharray="3 3"
-              vertical={false}
-              // The chart's bottom edge is the solid axis line, so no dashed line goes under it.
-              horizontal={dashedExceptBottom(line)}
-            />
-          ) : null}
-          {expanded ? (
-            <XAxis
-              dataKey="timestamp"
-              tickFormatter={(value: string) => formatTick(range, value)}
-              tick={{ fontSize: tickSize, fill: textMuted }}
-              // The bottom of the chart is a solid line; the grid above it is dashed and lighter.
-              axisLine={{ stroke: line, strokeOpacity: 0.5, strokeWidth: 0.5 }}
-              tickLine={false}
-              minTickGap={24}
-            />
-          ) : null}
-          {expanded ? (
-            <YAxis
-              width={36}
-              {...(fitDomain ? { domain: ['auto', 'auto'] as [string, string] } : {})}
-              tick={{ fontSize: tickSize, fill: textMuted }}
-              axisLine={false}
-              tickLine={false}
-            />
-          ) : null}
-          <Tooltip
-            content={<ChartTooltip unit={unit} />}
-            // The collapsed sparkline is too short to hold the tooltip, so float it above.
-            {...(expanded
-              ? {}
-              : { allowEscapeViewBox: { x: false, y: true }, position: { y: -52 } })}
-          />
-          <Area
-            type="monotone"
-            dataKey="value"
-            stroke={accent}
-            fill={accent}
-            fillOpacity={0.2}
-            strokeWidth={2}
-            dot={false}
-            isAnimationActive={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </Box>
+    <Suspense fallback={<Box height={props.height ?? (props.expanded ? 220 : 48)} mt={3} />}>
+      <SeriesPlot {...props} />
+    </Suspense>
   );
 }
 
@@ -184,51 +88,5 @@ export function RangeSwitcher<T extends string>({
         );
       })}
     </Flex>
-  );
-}
-
-function ChartTooltip({
-  active,
-  payload,
-  unit,
-}: Partial<TooltipContentProps<number, string>> & { unit: string }) {
-  if (!active || !payload?.length) {
-    return null;
-  }
-
-  const sample = payload[0]?.payload as SeriesSample | undefined;
-  if (!sample) {
-    return null;
-  }
-
-  return (
-    <Box
-      background="surfaceRaised"
-      color="text"
-      border
-      radius="small"
-      typography="body"
-      py={1.5}
-      px={2.5}
-    >
-      <Flex direction="column">
-        <Typography as="span" variant="secondary" color="textMuted">
-          {new Date(sample.timestamp).toLocaleString([], {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </Typography>
-        <Typography as="span" variant="bodyStrong">
-          {Math.round(sample.value * 10) / 10} {unit}
-        </Typography>
-        {sample.notes?.map((note) => (
-          <Typography key={note} as="span" variant="secondary" color="textMuted">
-            {note}
-          </Typography>
-        ))}
-      </Flex>
-    </Box>
   );
 }
