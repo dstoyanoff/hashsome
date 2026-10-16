@@ -1,5 +1,5 @@
 import type { BrowseItem, BrowseKind, EntityRef } from '@hashsome/core';
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useReconnects } from './hooks.ts';
 import { useClient } from './provider.tsx';
 
@@ -141,10 +141,8 @@ export function useMediaBrowser(ref: EntityRef): MediaBrowserState {
   useEffect(() => {
     let current = true;
     client.browse(ref, {}).then(
-      (level) => current && startTransition(() => setTop({ key: 'top', ...level })),
-      (error: unknown) =>
-        current &&
-        startTransition(() => setTop({ key: 'top', items: [], error: messageOf(error) })),
+      (level) => current && setTop({ key: 'top', ...level }),
+      (error: unknown) => current && setTop({ key: 'top', items: [], error: messageOf(error) }),
     );
 
     return () => {
@@ -198,10 +196,8 @@ export function useMediaBrowser(ref: EntityRef): MediaBrowserState {
     let current = true;
     const timer = setTimeout(() => {
       client.browse(ref, request).then(
-        // A transition: the rows of an answer are a lot to draw, and the page stays alive while they are.
-        (level) => current && startTransition(() => setAnswer({ key, ...level })),
-        (error: unknown) =>
-          current && startTransition(() => setAnswer({ key, items: [], error: messageOf(error) })),
+        (level) => current && setAnswer({ key, ...level }),
+        (error: unknown) => current && setAnswer({ key, items: [], error: messageOf(error) }),
       );
     }, pause);
 

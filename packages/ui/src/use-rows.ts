@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type UIEvent } from 'react';
+import { startTransition, useCallback, useEffect, useRef, useState, type UIEvent } from 'react';
 
 /** How many rows of a list are drawn to begin with, and how many more each time the end comes near: a library can be
  * hundreds of rows long, and drawing them all at once is seconds of work on a slow display, for rows nobody has scrolled to. */
@@ -20,7 +20,8 @@ export function useRows<T>(items: readonly T[], key: string) {
   const more = useCallback(() => {
     const el = list.current;
     if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 200) {
-      setCount((now) => Math.min(total, now + MORE_ROWS));
+      // A transition: the next rows are not what was asked for, so drawing them must not hold up what was.
+      startTransition(() => setCount((now) => Math.min(total, now + MORE_ROWS)));
     }
   }, [total]);
 
