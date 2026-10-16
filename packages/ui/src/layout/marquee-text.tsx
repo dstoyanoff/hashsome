@@ -1,6 +1,7 @@
 /** @jsxImportSource @emotion/react */
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useStill } from './use-still.ts';
 
 /** How fast the text rolls, in px a second. */
 const SPEED = 36;
@@ -19,7 +20,8 @@ export function MarqueeText({ children }: { children: ReactNode }) {
   const outer = useRef<HTMLSpanElement>(null);
   const inner = useRef<HTMLSpanElement>(null);
   const [overflow, setOverflow] = useState(0);
-  const still = useReducedMotion();
+  const still = useStill();
+  const rolling = overflow > 0 && !still;
 
   useEffect(() => {
     const frame = outer.current;
@@ -39,9 +41,10 @@ export function MarqueeText({ children }: { children: ReactNode }) {
     watch.observe(frame);
     watch.observe(text);
     return () => watch.disconnect();
-  }, []);
+    // The text's element is another one once it rolls (see below), which is the one to watch.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [rolling]);
 
-  const rolling = overflow > 0 && !still;
   const seconds = overflow / SPEED;
   return (
     <span
@@ -58,29 +61,33 @@ export function MarqueeText({ children }: { children: ReactNode }) {
         textOverflow: rolling ? 'clip' : 'ellipsis',
       }}
     >
-      <motion.span
-        ref={inner}
-        css={{ display: 'inline-block' }}
-        {...(rolling
-          ? {
-              animate: { x: [0, 0, -overflow, -overflow, 0] },
-              transition: {
-                duration: 2 * seconds + 2 * PAUSE,
-                times: [
-                  0,
-                  PAUSE / (2 * seconds + 2 * PAUSE),
-                  (PAUSE + seconds) / (2 * seconds + 2 * PAUSE),
-                  (2 * PAUSE + seconds) / (2 * seconds + 2 * PAUSE),
-                  1,
-                ],
-                ease: 'linear',
-                repeat: Infinity,
-              },
-            }
-          : {})}
-      >
-        {children}
-      </motion.span>
+      {/* A motion element only for text that rolls: a list has a title and a line under it in every row, and
+          nearly all of them fit. */}
+      {rolling ? (
+        <motion.span
+          ref={inner}
+          css={{ display: 'inline-block' }}
+          animate={{ x: [0, 0, -overflow, -overflow, 0] }}
+          transition={{
+            duration: 2 * seconds + 2 * PAUSE,
+            times: [
+              0,
+              PAUSE / (2 * seconds + 2 * PAUSE),
+              (PAUSE + seconds) / (2 * seconds + 2 * PAUSE),
+              (2 * PAUSE + seconds) / (2 * seconds + 2 * PAUSE),
+              1,
+            ],
+            ease: 'linear',
+            repeat: Infinity,
+          }}
+        >
+          {children}
+        </motion.span>
+      ) : (
+        <span ref={inner} css={{ display: 'inline-block' }}>
+          {children}
+        </span>
+      )}
     </span>
   );
 }

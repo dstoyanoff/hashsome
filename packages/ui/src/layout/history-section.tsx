@@ -1,12 +1,13 @@
 /** @jsxImportSource @emotion/react */
 import type { LogbookEntry } from '@hashsome/core';
 import { Flex, Typography } from 'e-prim';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { Icon } from '../icon.tsx';
 import { capitalize } from '../status.ts';
 import { PlainButton } from './plain-button.tsx';
 import { Skeleton } from './skeleton.tsx';
+import { useStill } from './use-still.ts';
 
 export type { LogbookEntry };
 
@@ -122,7 +123,7 @@ function SkeletonRows() {
  * entity type can supply it. */
 export function HistorySection({ entries, loading = false, onOpen }: HistorySectionProps) {
   const [open, setOpen] = useState(false);
-  const still = useReducedMotion();
+  const still = useStill();
   if (entries?.length === 0 && !onOpen) {
     return null;
   }

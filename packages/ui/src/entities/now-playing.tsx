@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { useTheme } from '@emotion/react';
 import { Flex, Grid, Typography } from 'e-prim';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useState, type ReactNode } from 'react';
 import type { EntityHandle } from '../entity-handle.ts';
 import { Icon } from '../icon.tsx';
@@ -15,6 +15,7 @@ import { useSeekHold } from './media-seek.ts';
 import { ArtworkRing } from './artwork-ring.tsx';
 import { LoadingLine, useLoadingLabel } from './media-loading-line.tsx';
 import { ROW_FADE, VolumeRow } from './volume-row.tsx';
+import { useStill } from '../layout/use-still.ts';
 
 /** The upright "now playing" panel the media column and page share: the artwork on a record, what is playing, how
  * far along it is, the transport buttons and a volume bar that is always there. Not exported from
@@ -71,7 +72,7 @@ export function NowPlaying({
   const { feedbackFor, press } = usePressFeedback(player?.ref);
   const volume = useVolumeControl(handle);
   const [volumeOpen, setVolumeOpen] = useState(false);
-  const still = useReducedMotion();
+  const still = useStill();
   const iconVolume =
     volumeControl === 'icon' &&
     shufflePlacement === 'title' &&

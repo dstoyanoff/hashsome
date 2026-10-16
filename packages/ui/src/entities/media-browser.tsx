@@ -2,7 +2,15 @@
 import type { BrowseItem, BrowseKind, EntityRef, MediaPlayerCommands } from '@hashsome/core';
 import { Box, Flex, Typography } from 'e-prim';
 import { AnimatePresence, motion } from 'motion/react';
-import { useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
+import {
+  memo,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+} from 'react';
 import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { useEntityHandle } from '../hooks.ts';
@@ -14,9 +22,11 @@ import { MarqueeText } from '../layout/marquee-text.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { Spinner } from '../layout/spinner.tsx';
 import { Reveal } from '../layout/reveal.tsx';
+import { useStill } from '../layout/use-still.ts';
 import { Skeleton } from '../layout/skeleton.tsx';
 import { IconButton } from '../layout/tile.tsx';
 import { useMediaBrowser } from '../use-media-browser.ts';
+import { useRows } from '../use-rows.ts';
 import { trackMedia, useMediaPending, type MediaPending } from './media-pending.ts';
 
 export interface MediaBrowserProps {
@@ -74,6 +84,13 @@ export function MediaBrowser({
   const { detail } = useDetail();
   const theater = layout === 'theater' || (layout === 'auto' && detail?.expanded === true);
   const browser = useMediaBrowser(entity);
+  const {
+    shown: rows,
+    attach: attachRows,
+    onScroll: scrollRows,
+  } = useRows(browser.items, browser.listKey);
+
+  const still = useStill();
   // `icon`: the field is open (or has something in it); otherwise only the icon is there.
   const [searchOpen, setSearchOpen] = useState(false);
   const player = handle.entity;
@@ -150,6 +167,13 @@ export function MediaBrowser({
     browser.open(item);
     setSearchOpen(false);
   };
+
+  /** What a row does, as of the latest render: a row is not drawn again for a change that is not its own (see
+   * `BrowseRow`), so what it holds must never be what was true when it was last drawn. */
+  const latest = useRef({ openItem, play, playNext, addToQueue, togglePlay });
+  useLayoutEffect(() => {
+    latest.current = { openItem, play, playNext, addToQueue, togglePlay };
+  });
 
   /** Swiping right across the list goes back out of what is open, as in a native app: a clearly sideways move, so
    * scrolling up and down is left alone. The tap that ends a swipe is not passed on to the row under the finger. */
@@ -378,6 +402,18 @@ export function MediaBrowser({
 
   const tabsRow = tabsRowFor(true);
 
+  const fieldOrRow = fieldShown ? (
+    // The field has taken the row's place, so what the results are of (the kinds to narrow to) goes under it.
+    <Flex direction="column" gap={3}>
+      {search}
+      {browser.searching ? tabsRowFor(false) : null}
+    </Flex>
+  ) : browser.tabs === undefined ? (
+    header
+  ) : (
+    tabsRow
+  );
+
   return (
     <Flex direction="column" gap={3} minHeight={0} position="relative">
       {/* With shelves, search and tabs are a fixed frame and only what is below them changes; a
@@ -385,27 +421,21 @@ export function MediaBrowser({
       {onDemand ? (
         // The field comes in from the icon's side as the row fades out under it; the row is as tall as
         // the field, so neither moves what is below. Nothing to wait for: they cross.
-        <AnimatePresence initial={false} mode="popLayout">
-          <motion.div
-            key={fieldShown ? 'field' : 'row'}
-            initial={{ opacity: 0, x: fieldShown ? 28 : 0 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: fieldShown ? 0 : 28 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
-          >
-            {fieldShown ? (
-              // The field has taken the row's place, so what the results are of (the kinds to narrow to) goes under it.
-              <Flex direction="column" gap={3}>
-                {search}
-                {browser.searching ? tabsRowFor(false) : null}
-              </Flex>
-            ) : browser.tabs === undefined ? (
-              header
-            ) : (
-              tabsRow
-            )}
-          </motion.div>
-        </AnimatePresence>
+        still ? (
+          fieldOrRow
+        ) : (
+          <AnimatePresence initial={false} mode="popLayout">
+            <motion.div
+              key={fieldShown ? 'field' : 'row'}
+              initial={{ opacity: 0, x: fieldShown ? 28 : 0 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: fieldShown ? 0 : 28 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+            >
+              {fieldOrRow}
+            </motion.div>
+          </AnimatePresence>
+        )
       ) : (
         <>
           {browser.tabs === undefined ? header : null}
@@ -470,25 +500,27 @@ export function MediaBrowser({
           gap={1}
           as="ul"
           {...swipeProps}
+          ref={attachRows}
+          onScroll={scrollRows}
           m={0}
           p={0}
           minHeight={0}
           css={{ listStyle: 'none', overflowY: 'auto', overflowX: 'hidden', touchAction: 'pan-y' }}
         >
-          {browser.items.map((item, index) => (
+          {rows.map((item, index) => (
             <li key={`${browser.listKey}:${item.id}`} css={{ flex: 'none' }}>
               <Reveal index={browser.searching ? 0 : index}>
                 <BrowseRow
                   item={item}
                   active={activeOf(item)}
                   playing={nowPlaying}
-                  onToggle={togglePlay}
+                  onToggle={() => latest.current.togglePlay()}
                   asked={askedOf(item)}
                   queueable={queueable}
-                  onOpen={() => openItem(item)}
-                  onPlay={() => play(item)}
-                  onNext={() => playNext(item)}
-                  onAdd={() => addToQueue(item)}
+                  onOpen={() => latest.current.openItem(item)}
+                  onPlay={() => latest.current.play(item)}
+                  onNext={() => latest.current.playNext(item)}
+                  onAdd={() => latest.current.addToQueue(item)}
                 />
               </Reveal>
             </li>
@@ -612,7 +644,23 @@ function PillButton({
   );
 }
 
-function BrowseRow({
+/** A row is drawn again when what it shows changes: the item, whether it is the one playing (and, if so, whether it
+ * plays), what has been asked of it. The handlers are not compared, they only ever call the latest of what they stand for. */
+function sameRow(a: RowProps, b: RowProps) {
+  return (
+    a.item === b.item &&
+    a.active === b.active &&
+    (!a.active || a.playing === b.playing) &&
+    a.queueable === b.queueable &&
+    a.asked.join() === b.asked.join()
+  );
+}
+
+type RowProps = Parameters<typeof BrowseRowView>[0];
+
+const BrowseRow = memo(BrowseRowView, sameRow);
+
+function BrowseRowView({
   item,
   active,
   playing,

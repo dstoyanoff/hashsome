@@ -14,6 +14,7 @@ import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { FADE, FadeScroll } from './fade-scroll.tsx';
 import { RoundButton } from './round-button.tsx';
+import { useStill } from './use-still.ts';
 
 /** Fine adjustment: a press nudges by `delta` (1%); holding repeats in steps of 10 until released. */
 export function StepButton({
@@ -272,6 +273,7 @@ export function ChipRow({
   // The accent behind the selected chip is one pill that glides to the next; its own id, so two rows
   // on a page do not share it.
   const pill = useId();
+  const still = useStill();
   // The selected tab is brought into view when it is not (it is a long name that has just opened, or a
   // tab part way out of the row), by scrolling the row so it is at its start.
   const marker = useRef<HTMLSpanElement>(null);
@@ -297,6 +299,11 @@ export function ChipRow({
 
       scroll?.stop();
       const from = scroller.scrollLeft;
+      if (still) {
+        scroller.scrollLeft = from + (at.left - row.left) - FADE;
+        return;
+      }
+
       // To the start of the row, clear of the fade there (a position before the start is the start).
       scroll = animate(from, from + (at.left - row.left) - FADE, {
         duration: 0.35,
@@ -317,7 +324,7 @@ export function ChipRow({
     };
     // `selectedLabel` is not read inside: a new name for the selected tab is its length changing, which is a reason to look again.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
-  }, [tabs, value, selectedLabel]);
+  }, [tabs, value, selectedLabel, still]);
 
   // Tabs scroll sideways when there are more than fit, and fade at the edge that has more.
   const Wrap: ElementType = tabs ? FadeScroll : Flex;
@@ -365,17 +372,27 @@ export function ChipRow({
           >
             {selected ? <span ref={marker} hidden /> : null}
             {selected ? (
-              <Box
-                as={motion.span}
-                layoutId={pill}
-                position="absolute"
-                radius="full"
-                background="accent"
-                transition={{ type: 'spring', duration: 0.32, bounce: 0.12 }}
-                // Above every chip's own background, whichever way it is going: a later chip paints over
-                // an earlier one's pill otherwise.
-                css={{ inset: 0, zIndex: 1 }}
-              />
+              still ? (
+                <Box
+                  as="span"
+                  position="absolute"
+                  radius="full"
+                  background="accent"
+                  css={{ inset: 0, zIndex: 1 }}
+                />
+              ) : (
+                <Box
+                  as={motion.span}
+                  layoutId={pill}
+                  position="absolute"
+                  radius="full"
+                  background="accent"
+                  transition={{ type: 'spring', duration: 0.32, bounce: 0.12 }}
+                  // Above every chip's own background, whichever way it is going: a later chip paints over
+                  // an earlier one's pill otherwise.
+                  css={{ inset: 0, zIndex: 1 }}
+                />
+              )
             ) : null}
             {/* Above the pill. */}
             <Flex

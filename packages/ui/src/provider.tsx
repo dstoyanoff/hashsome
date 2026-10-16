@@ -69,7 +69,7 @@ export interface HashsomeProviderProps {
   /** `'compact'` for small square displays: tighter spacing, shorter tiles, smaller icon circles. Default `'comfortable'`. */
   density?: Density;
 
-  /** `'reduced'` turns animations and transitions off, for a slow display, `'full'` keeps them and `'auto'` (the default) leaves things as they are. A device can choose for itself with `?motion=reduced` (or `full`) on the address it opens, which wins over this prop. Nothing is kept: it holds while the app is open, moving between its pages, and a reload without the parameter goes back to this prop. */
+  /** `'reduced'` turns animations and transitions off, for a slow display (and draws what would animate as plain elements, which is most of what such a display saves), `'full'` keeps them and `'auto'` (the default) leaves things as they are. A device can choose for itself with `?motion=reduced` (or `full`) on the address it opens, which wins over this prop. Nothing is kept: it holds while the app is open, moving between its pages, and a reload without the parameter goes back to this prop. */
   motion?: MotionPreference;
 
   /** Partial changes to the built-in theme — colors per light/dark, radii, typography, spacing, density sizes. Pass a constant defined outside the component: a new object each render rebuilds the theme each render. */

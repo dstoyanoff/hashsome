@@ -1,8 +1,9 @@
 /** @jsxImportSource @emotion/react */
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { useLocation, useOutlet } from 'react-router';
 import type { NavItem } from '../entities/nav-rail.tsx';
+import { useStill } from './use-still.ts';
 
 export interface AnimatedOutletProps {
   /** The dashboard's pages in the order its nav lists them (the same `items` as `NavRail`, `NavDock` or `NavBar`). A page then slides in from the side it sits on: a later page from the right, an earlier one from the left. Left out, pages only fade. */
@@ -11,6 +12,10 @@ export interface AnimatedOutletProps {
   /** The path `items` are relative to, e.g. `/bathroom`. Needed with `items`. */
   base?: string;
 }
+
+/** A page fills the space it is given and is no shorter than what is in it, as it is without the wrapper: a long page
+ * scrolls the `Page` (with its padding) instead of spilling out. */
+const PAGE = { display: 'flex', flexDirection: 'column', flex: '1 1 auto' } as const;
 
 /** How far a page slides, in px, as it comes and goes. */
 const SLIDE = 24;
@@ -38,7 +43,7 @@ function indexAt(pathname: string, items: NavItem[] | undefined, base: string | 
 export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
   const outlet = useOutlet();
   const { pathname } = useLocation();
-  const still = useReducedMotion();
+  const still = useStill();
   const index = indexAt(pathname, items, base);
   // Moving to a later page is +1, to an earlier one -1; with no order to go by, 0 is just a fade.
   const [seen, setSeen] = useState({ index, direction: 0 });
@@ -49,8 +54,14 @@ export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
     });
   }
 
-  const seconds = still ? 0 : 0.14;
-  const slide = still ? 0 : SLIDE;
+  // Nothing to animate: the page is there at once, rendered once. The exit-then-enter of the transition is two
+  // renders of a page, which is the last thing a slow display needs for a transition that takes no time.
+  if (still) {
+    return <div css={PAGE}>{outlet}</div>;
+  }
+
+  const seconds = 0.14;
+  const slide = SLIDE;
   return (
     <AnimatePresence mode="wait" initial={false} custom={seen.direction}>
       <motion.div
@@ -67,7 +78,7 @@ export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
         transition={{ duration: seconds, ease: 'easeOut' }}
         // A page fills the space it is given and is no shorter than what is in it, as it is
         // without the wrapper: a long page scrolls the `Page` (with its padding) instead of spilling out.
-        css={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto' }}
+        css={PAGE}
       >
         {outlet}
       </motion.div>
