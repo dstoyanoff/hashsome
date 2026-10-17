@@ -37,6 +37,9 @@
 }
 
 .playerBody {
+  /* A flex item is no narrower than its content unless it says so: a long artist line would make it wider than the player, centered, cut off
+     at both ends. */
+  min-width: 0;
   width: 100%;
   max-width: 420px;
 }
