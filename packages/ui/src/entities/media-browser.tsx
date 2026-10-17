@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import type { BrowseItem, BrowseKind, EntityRef, MediaPlayerCommands } from '@hashsome/core';
-import { Box, Flex, Typography } from 'e-prim';
+import { Box, Flex, Typography } from '../style/prim.tsx';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   memo,

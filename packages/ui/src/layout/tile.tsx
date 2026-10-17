@@ -1,6 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import type { EntityRef } from '@hashsome/core';
-import { Box, Flex, Typography, useColorByKey } from 'e-prim';
+import { useColorByKey } from 'e-prim';
+import { Box, Flex, Typography } from '../style/prim.tsx';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   useEffect,

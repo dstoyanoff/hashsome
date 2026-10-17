@@ -1,4 +1,5 @@
-import type { ThemeConfig, TypographyKey, TypographySpecs } from 'e-prim';
+import type { ThemeConfig, TypographySpecs } from 'e-prim';
+import type { TypographyKey } from '../style/prim.tsx';
 import { DENSITY, type Density, type DensityTokens } from './density.ts';
 
 /** Changes to the built-in theme. Everything is optional and partial: name only what differs and

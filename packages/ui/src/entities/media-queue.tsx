@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import type { EntityRef, QueueItem } from '@hashsome/core';
-import { Flex, Typography } from 'e-prim';
+import { Flex, Typography } from '../style/prim.tsx';
 import { AnimatePresence, motion, Reorder, useDragControls } from 'motion/react';
 import { useState, type KeyboardEvent } from 'react';
 import { useEntityHandle } from '../hooks.ts';

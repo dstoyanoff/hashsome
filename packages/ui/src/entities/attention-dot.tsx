@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Flex } from 'e-prim';
+import { Flex } from '../style/prim.tsx';
 
 /** The dot at the corner of a nav item: its ring is the rail's own color, so it reads as cut out of the button. */
 export function AttentionDot({ level }: { level: 'notice' | 'urgent' }) {

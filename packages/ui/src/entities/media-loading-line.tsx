@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Flex, Typography } from 'e-prim';
+import { Flex, Typography } from '../style/prim.tsx';
 import type { EntityRef } from '@hashsome/core';
 import { Spinner } from '../layout/spinner.tsx';
 import { useMediaPending } from './media-pending.ts';

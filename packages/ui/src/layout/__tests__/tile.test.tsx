@@ -2,7 +2,7 @@ import { LocalClient, mockLight, MockIntegration } from '@hashsome/core';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { HashsomeProvider } from '../../provider.tsx';
-import { renderWithMock } from '../../test-utils.tsx';
+import { computed, renderWithMock } from '../../test-utils.tsx';
 import { Tile } from '../tile.tsx';
 
 beforeEach(() => vi.useFakeTimers());
@@ -61,7 +61,7 @@ test("an on tile's percentage text is readable regardless of dimmable-ness", () 
   // own `fill` bar is the "how on" indicator, not a solid-colored card), so this stays `false`.
   expect(card?.getAttribute('data-solid-accent')).toBe('false');
   // `line`, not `accentText` (white) — readable against the tile's neutral `surface` background.
-  expect(getComputedStyle(screen.getByText('60%')).color).toBe('rgb(114, 108, 106)');
+  expect(computed(screen.getByText('60%'), 'color')).toBe('#726C6A');
 });
 
 test('dragging an off (inactive) tile shows the live fill bar, not just once it turns on', () => {

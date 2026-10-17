@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import type { EntityRef, ForecastPoint, ForecastResult, WeatherEntity } from '@hashsome/core';
-import { Box, Flex, Typography } from 'e-prim';
+import { Box, Flex, Typography } from '../style/prim.tsx';
 import type { ReactNode } from 'react';
 import type { IconName } from '../icon-data.ts';
 import { useEntityHandle } from '../hooks.ts';

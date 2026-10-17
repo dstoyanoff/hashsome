@@ -1,6 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import type { ComponentProps } from 'react';
-import { Box, Flex, Typography, useColorByKey } from 'e-prim';
+import { useColorByKey } from 'e-prim';
+import { Box, Flex, Typography } from '../style/prim.tsx';
 import { useTypographySize } from '../theme/use-typography.ts';
 import {
   Area,

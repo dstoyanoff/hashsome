@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import type { Interpolation, Theme } from '@emotion/react';
-import { Flex, type FlexProps } from 'e-prim';
+import { Flex, type FlexProps } from '../style/prim.tsx';
 import type { ElementType } from 'react';
 
 /** A button with the browser's look removed: no border, no background, no padding, text on the

@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Flex, Typography } from 'e-prim';
+import { Flex, Typography } from '../style/prim.tsx';
 import { LocalClient } from '@hashsome/core';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { NavLink, Route, Routes } from 'react-router';

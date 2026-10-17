@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import type { Interpolation, Theme } from '@emotion/react';
-import { Flex, type FlexProps } from 'e-prim';
+import { Flex, type FlexProps } from '../style/prim.tsx';
 import { useCallback, useEffect, useRef, useState, type ElementType } from 'react';
 
 /** How wide the fade at a scrolled edge is. */

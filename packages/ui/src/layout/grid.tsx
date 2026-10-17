@@ -1,4 +1,4 @@
-import { Grid as EPrimGrid } from 'e-prim';
+import { Grid as EPrimGrid } from '../style/prim.tsx';
 import type { ReactNode } from 'react';
 
 export interface GridProps {

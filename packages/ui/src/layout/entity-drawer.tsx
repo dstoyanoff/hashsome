@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Flex, type PaletteKey } from 'e-prim';
+import { Flex, type PaletteKey } from '../style/prim.tsx';
 import { AnimatePresence, motion, useDragControls } from 'motion/react';
 import { useEffect, useState } from 'react';
 import type { IconName } from '../icon-data.ts';

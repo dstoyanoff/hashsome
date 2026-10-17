@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { useTheme } from '@emotion/react';
-import { Box } from 'e-prim';
+import { Box } from '../style/prim.tsx';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { gridMetrics, offGrid } from '../theme/grid.ts';
 

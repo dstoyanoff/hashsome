@@ -1,5 +1,5 @@
 import type { ClimateEntity, ClimateMode, EntityRef } from '@hashsome/core';
-import { Flex, Typography } from 'e-prim';
+import { Flex, Typography } from '../style/prim.tsx';
 import { useEffect, useRef, useState } from 'react';
 import type { IconName } from '../icon-data.ts';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';

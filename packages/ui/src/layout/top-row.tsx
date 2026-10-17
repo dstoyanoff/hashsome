@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Flex } from 'e-prim';
+import { Flex } from '../style/prim.tsx';
 import type { ReactNode } from 'react';
 import { TOP_ROW } from '../theme/grid.ts';
 

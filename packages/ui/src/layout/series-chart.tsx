@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { lazy, Suspense } from 'react';
-import { Box, Flex, Typography } from 'e-prim';
+import { Box, Flex, Typography } from '../style/prim.tsx';
 
 export interface SeriesSample {
   /** ISO 8601. */

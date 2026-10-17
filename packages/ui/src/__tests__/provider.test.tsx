@@ -1,9 +1,10 @@
 import { LocalClient, MockIntegration, mockSensor } from '@hashsome/core';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useTheme } from '@emotion/react';
-import { Box, Flex } from 'e-prim';
+import { Box, Flex } from '../style/prim.tsx';
 import { MotionGlobalConfig } from 'motion/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { computed } from '../test-utils.tsx';
 import { HashsomeProvider, useThemeToggle, type ThemeMode } from '../provider.tsx';
 
 afterEach(cleanup);
@@ -20,25 +21,25 @@ function renderWithTheme(theme?: ThemeMode) {
     </HashsomeProvider>,
   );
 
-  return getComputedStyle(screen.getByTestId('probe')).backgroundColor;
+  return computed(screen.getByTestId('probe'), 'background');
 }
 
 test('defaults to the dark theme when no theme prop is given', () => {
-  expect(renderWithTheme()).toBe('rgb(11, 10, 13)'); // darkTheme.palette.bg #0B0A0D
+  expect(renderWithTheme()).toBe('#0B0A0D'); // darkTheme.palette.bg
 });
 
 test('theme="dark" resolves to the dark palette', () => {
-  expect(renderWithTheme('dark')).toBe('rgb(11, 10, 13)');
+  expect(renderWithTheme('dark')).toBe('#0B0A0D');
 });
 
 test('theme="light" resolves to the light palette', () => {
-  expect(renderWithTheme('light')).toBe('rgb(244, 241, 235)'); // lightTheme.palette.bg #F4F1EB
+  expect(renderWithTheme('light')).toBe('#F4F1EB'); // lightTheme.palette.bg
 });
 
 test('theme="system" degrades to light instead of throwing when matchMedia is unavailable', () => {
   // jsdom has no matchMedia at all; this just confirms the guard in provider.tsx doesn't crash —
   // a real browser would resolve this against the live OS preference instead.
-  expect(renderWithTheme('system')).toBe('rgb(244, 241, 235)');
+  expect(renderWithTheme('system')).toBe('#F4F1EB');
 });
 
 function ToggleProbe() {
@@ -59,9 +60,9 @@ test('useThemeToggle() flips the resolved theme, overriding the configured one',
     </HashsomeProvider>,
   );
 
-  expect(getComputedStyle(screen.getByTestId('probe')).backgroundColor).toBe('rgb(11, 10, 13)');
+  expect(computed(screen.getByTestId('probe'), 'background')).toBe('#0B0A0D');
   fireEvent.click(screen.getByRole('button', { name: 'dark' }));
-  expect(getComputedStyle(screen.getByTestId('probe')).backgroundColor).toBe('rgb(244, 241, 235)');
+  expect(computed(screen.getByTestId('probe'), 'background')).toBe('#F4F1EB');
   expect(screen.getByRole('button', { name: 'light' })).toBeTruthy();
 });
 
@@ -185,8 +186,8 @@ const spacingOf = (props: Partial<React.ComponentProps<typeof HashsomeProvider>>
 
   const result = {
     unit: screen.getByTestId('space').textContent,
-    gap: getComputedStyle(screen.getByTestId('gap')).gap,
-    pad: getComputedStyle(screen.getByTestId('pad')).padding,
+    gap: computed(screen.getByTestId('gap'), 'gap'),
+    pad: computed(screen.getByTestId('pad'), 'padding'),
   };
 
   cleanup();
@@ -207,9 +208,9 @@ test('changing the density’s space rescales all spacing', () => {
 
 // A theme that follows the time of day.
 
-const DARK_BG = 'rgb(11, 10, 13)';
-const LIGHT_BG = 'rgb(244, 241, 235)';
-const bgOf = () => getComputedStyle(screen.getByTestId('probe')).backgroundColor;
+const DARK_BG = '#0B0A0D';
+const LIGHT_BG = '#F4F1EB';
+const bgOf = () => computed(screen.getByTestId('probe'), 'background');
 const FAKE = ['Date', 'setTimeout', 'clearTimeout'] as const;
 
 function mountScheduled(theme: ThemeMode, integration = new MockIntegration({})) {

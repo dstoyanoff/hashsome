@@ -28,6 +28,8 @@ import { DebugMenu } from './layout/debug-menu.tsx';
 import { DetailProvider } from './layout/detail-provider.tsx';
 import { EntityDrawer } from './layout/entity-drawer.tsx';
 import { IdleReturnContext } from './layout/use-idle-return.ts';
+import { themeCss } from './style/variables.ts';
+import { useThemeStyle } from './style/use-theme-style.ts';
 import { UNITS_PER_SPACE, type Density } from './theme/density.ts';
 import { globalStyles } from './theme/global-styles.ts';
 import { applyThemeOverrides, densityTokens, type ThemeOverrides } from './theme/overrides.ts';
@@ -369,6 +371,13 @@ export function HashsomeProvider({
       spacing: densityTokens(density, overrides).space / UNITS_PER_SPACE,
     }),
     [themeMode.resolved, font, overrides, density],
+  );
+
+  useThemeStyle(
+    useMemo(
+      () => themeCss(resolvedTheme, densityTokens(density, overrides)),
+      [resolvedTheme, density, overrides],
+    ),
   );
 
   useEffect(() => {

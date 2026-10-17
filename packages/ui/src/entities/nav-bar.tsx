@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Flex } from 'e-prim';
+import { Flex } from '../style/prim.tsx';
 import { NavLink } from 'react-router';
 import { Icon } from '../icon.tsx';
 import { isInstalledApp } from '../layout/installed-app.ts';

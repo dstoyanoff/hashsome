@@ -4,7 +4,7 @@ import { expect, test } from 'vitest';
 import { NavDock } from '../../entities/nav-dock.tsx';
 import { NavRail } from '../../entities/nav-rail.tsx';
 import { HashsomeProvider } from '../../provider.tsx';
-import { renderWithMock } from '../../test-utils.tsx';
+import { computed, renderWithMock } from '../../test-utils.tsx';
 import { Page } from '../page.tsx';
 import { Grid } from '../grid.tsx';
 import { RoomHeader } from '../room-header.tsx';
@@ -62,5 +62,5 @@ test('Page uses the compact density’s spacing', () => {
     </HashsomeProvider>,
   );
 
-  expect(getComputedStyle(pageOf()).padding).toBe('8px');
+  expect(computed(pageOf(), 'padding')).toBe('8px');
 });

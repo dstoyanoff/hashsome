@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import type { EntityRef } from '@hashsome/core';
-import { Flex, Typography } from 'e-prim';
+import { Flex, Typography } from '../style/prim.tsx';
 import { useId, useRef, useState } from 'react';
 import { Icon } from '../icon.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';

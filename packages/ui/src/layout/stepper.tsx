@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Flex, Typography } from 'e-prim';
+import { Flex, Typography } from '../style/prim.tsx';
 import type { ReactNode } from 'react';
 
 /** A pill holding a minus button, a value and a plus button. The buttons inside lose their own

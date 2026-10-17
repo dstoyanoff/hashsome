@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Box, Flex, Typography } from 'e-prim';
+import { Box, Flex, Typography } from '../style/prim.tsx';
 import { animate, motion } from 'motion/react';
 import { MarqueeText } from './marquee-text.tsx';
 import {

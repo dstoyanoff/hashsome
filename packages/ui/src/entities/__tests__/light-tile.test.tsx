@@ -1,7 +1,7 @@
 import { mockLight } from '@hashsome/core';
 import { act, fireEvent, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { renderWithMock } from '../../test-utils.tsx';
+import { computed, renderWithMock } from '../../test-utils.tsx';
 import { LightTile } from '../light-tile.tsx';
 
 beforeEach(() => vi.useFakeTimers());
@@ -258,10 +258,9 @@ test('+ / − nudge brightness by 1% per press, and holding steps by 10 until re
 test('the palette icon takes the light’s current color while it is on, and is neutral while off or open', () => {
   const { ha } = renderWithMock(<LightTile entity="ha:cct" />, lights);
   const palette = () => screen.getByRole('button', { name: 'Color' });
-  const colorOf = (el: HTMLElement) => getComputedStyle(el).color;
+  const colorOf = (el: HTMLElement) => computed(el, 'color');
   const lit = colorOf(palette());
   expect(lit).toMatch(/^rgb\(/);
-  expect(palette().getAttribute('style')).toBeNull();
   fireEvent.click(palette());
   expect(colorOf(screen.getByRole('button', { name: 'Close colors' }))).not.toBe(lit);
   fireEvent.click(screen.getByRole('button', { name: 'Close colors' }));

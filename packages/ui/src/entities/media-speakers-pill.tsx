@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import type { EntityRef, MediaPlayerEntity } from '@hashsome/core';
-import { Box, Flex, Typography } from 'e-prim';
+import { Box, Flex, Typography } from '../style/prim.tsx';
 import { memo } from 'react';
 import { useEntities } from '../hooks.ts';
 import { Icon } from '../icon.tsx';

@@ -1,5 +1,5 @@
 import { useTheme } from '@emotion/react';
-import type { TypographyKey } from 'e-prim';
+import type { TypographyKey } from '../style/prim.tsx';
 
 /** A typography variant's resolved font size, for the rare consumer that can't render a
  * `<Typography>` — e.g. an SVG chart's axis ticks. Everything else should use `<Typography>`. */

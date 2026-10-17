@@ -22,6 +22,7 @@ const DEFINES_TYPOGRAPHY = new Set([
   'theme/index.ts',
   'theme/tokens.ts',
   'theme/use-typography.ts',
+  'style/variables.ts',
 ]);
 
 test('components size text through `<Typography>` variants, never raw font sizes/weights', () => {

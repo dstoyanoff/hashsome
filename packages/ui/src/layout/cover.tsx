@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { sizedAssetUrl, type AssetSize } from '@hashsome/core';
-import { Box } from 'e-prim';
+import { Box } from '../style/prim.tsx';
 
 /** A picture (artwork, an avatar) that fills the box it is in, cropped to fit. Decorative: the
  * name of what it shows is always written beside it. A picture the runtime serves is asked for at the `size` given, which

@@ -1,7 +1,7 @@
 import { mockLibrary, mockMediaPlayer, type MockIntegration } from '@hashsome/core';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
-import { renderWithMock } from '../../test-utils.tsx';
+import { computed, renderWithMock } from '../../test-utils.tsx';
 import { MediaBrowser } from '../media-browser.tsx';
 
 const rooms = {
@@ -424,7 +424,7 @@ describe('layouts', () => {
     const artwork = artist.querySelector('img')!.parentElement as HTMLElement;
     // Up to 200px, and less only when the row is too short for that (a container query, not measured in jsdom).
     expect(getComputedStyle(artwork).width).toMatch(/^min\(200px,/);
-    expect(getComputedStyle(artwork).borderRadius).toBe('999px');
+    expect(computed(artwork, 'border-radius')).toBe('999px');
     fireEvent.click(screen.getByRole('button', { name: 'Play Fleetwood Mac' }));
     expect(ha.calls.at(-1)).toMatchObject({ command: 'playMedia', args: { item: 'ar-mac' } });
 

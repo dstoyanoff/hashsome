@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Box } from 'e-prim';
+import { Box } from '../style/prim.tsx';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 export interface BoardProps {

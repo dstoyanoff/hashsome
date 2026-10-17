@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Box, Flex } from 'e-prim';
+import { Box, Flex } from '../style/prim.tsx';
 import { motion } from 'motion/react';
 import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';

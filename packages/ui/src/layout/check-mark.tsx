@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Box } from 'e-prim';
+import { Box } from '../style/prim.tsx';
 import { motion } from 'motion/react';
 
 /** A check that draws itself, in the text color of what it is in. It plays once, as it appears; with

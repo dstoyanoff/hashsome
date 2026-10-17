@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Flex, Grid, Typography } from 'e-prim';
+import { Flex, Grid, Typography } from '../style/prim.tsx';
 import { motion } from 'motion/react';
 import { Icon } from '../icon.tsx';
 import { ValueBar } from '../layout/drawer-controls.tsx';

@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Box, type BoxProps } from 'e-prim';
+import { Box, type BoxProps } from '../style/prim.tsx';
 import { motion } from 'motion/react';
 import { useStill } from './use-still.ts';
 

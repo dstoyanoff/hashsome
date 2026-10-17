@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Box, Flex, Typography } from 'e-prim';
+import { Box, Flex, Typography } from '../style/prim.tsx';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';

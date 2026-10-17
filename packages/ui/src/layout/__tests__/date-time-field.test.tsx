@@ -3,6 +3,7 @@ import { LocalClient } from '@hashsome/core';
 import { useState } from 'react';
 import { afterEach, expect, test } from 'vitest';
 import { HashsomeProvider } from '../../provider.tsx';
+import { computed } from '../../test-utils.tsx';
 import { DateTimeField } from '../date-time-field.tsx';
 
 afterEach(cleanup);
@@ -103,10 +104,9 @@ test('the calendar is positioned, sized and layered from theme tokens, not inlin
   open();
   const picker = screen.getByRole('group', { name: 'When picker' });
   const style = getComputedStyle(picker);
-  expect(picker.getAttribute('style')).toBeNull();
   expect(style.position).toBe('absolute');
-  expect(style.width).toBe('288px');
-  expect(style.zIndex).toBe('30');
+  expect(computed(picker, 'width')).toBe('288px');
+  expect(computed(picker, 'z-index')).toBe('30');
   // Hangs under the field with one theme space of 8px between them, aligned to one edge.
   expect(style.top).toBe('calc(100% + 8px)');
   expect(style.left === '0px' || style.right === '0px').toBe(true);
@@ -117,43 +117,43 @@ test('the days are a seven-column grid of round buttons, from e-prim props', () 
   open();
   const day = screen.getByRole('button', { name: 'June 17, 2026' });
   const grid = day.parentElement as HTMLElement;
-  expect(grid.getAttribute('style')).toBeNull();
   expect(getComputedStyle(grid).display).toBe('grid');
-  expect(getComputedStyle(grid).gridTemplateColumns).toBe('repeat(7, 1fr)');
-  expect(getComputedStyle(grid).gap).toBe('2px');
-  expect(day.getAttribute('style')).toBeNull();
-  expect(getComputedStyle(day).width).toBe('32px');
-  expect(getComputedStyle(day).height).toBe('32px');
-  expect(getComputedStyle(day).borderRadius).toBe('999px');
+  expect(computed(grid, 'grid-template-columns')).toBe('repeat(7, 1fr)');
+  expect(computed(grid, 'gap')).toBe('2px');
+  expect(computed(day, 'width')).toBe('32px');
+  expect(computed(day, 'height')).toBe('32px');
+  expect(computed(day, 'border-radius')).toBe('999px');
   // The weekday headings get their vertical padding from the spacing props.
-  expect(getComputedStyle(screen.getByText('Mon')).paddingTop).toBe('4px');
+  expect(computed(screen.getByText('Mon'), 'padding-top')).toBe('4px');
 });
 
 test('the month arrows are 28px round buttons without inline styles', () => {
   render(<Harness initial="2026-06-17T14:30" />);
   open();
   const arrow = screen.getByRole('button', { name: 'Previous month' });
-  expect(arrow.getAttribute('style')).toBeNull();
-  expect(getComputedStyle(arrow).width).toBe('28px');
-  expect(getComputedStyle(arrow).height).toBe('28px');
-  expect(getComputedStyle(arrow).borderRadius).toBe('999px');
+  expect(computed(arrow, 'width')).toBe('28px');
+  expect(computed(arrow, 'height')).toBe('28px');
+  expect(computed(arrow, 'border-radius')).toBe('999px');
 });
 
 test('the time boxes get their size, spacing, border, colors and alignment from props, and their font from the theme', () => {
   render(<Harness initial="2026-06-17T14:30" />);
   open();
   const hour = screen.getByRole('spinbutton', { name: 'When hour' });
+  expect(computed(hour, 'width')).toBe('44px');
+  expect(computed(hour, 'padding-top')).toBe('4px');
+  expect(computed(hour, 'padding-left')).toBe('6px');
   const style = getComputedStyle(hour);
-  expect(hour.getAttribute('style')).toBeNull();
-  expect(style.width).toBe('44px');
-  expect(style.paddingTop).toBe('4px');
-  expect(style.paddingLeft).toBe('6px');
-  expect(style.borderTopWidth).toBe('1px');
+  // The theme's border color, 1px wide: the class that says so, and what the theme gives its variable.
+  expect(hour.classList.contains('hs-bd-border')).toBe(true);
+  expect(computed(hour, '--hs-border')).toBe('rgba(255,255,255,0.09)');
   expect(style.textAlign).toBe('center');
-  expect(style.backgroundColor).toBe('rgb(33, 30, 38)'); // the dark theme's surfaceRaised
-  expect(style.color).toBe('rgb(242, 239, 234)');
+  expect(computed(hour, 'background')).toBe('#211E26'); // the dark theme's surfaceRaised
+  expect(computed(hour, 'color')).toBe('#F2EFEA');
   expect(style.fontVariantNumeric).toBe('tabular-nums');
   // The font is the app's, from the theme's body typography, with no `font: inherit` needed.
-  expect(style.fontSize).toBe('13px');
-  expect(style.fontFamily).toBe(getComputedStyle(document.body).fontFamily);
+  expect(computed(hour, 'font-size')).toBe('13px');
+  expect(computed(hour, 'font-family')).toBe(
+    getComputedStyle(document.documentElement).getPropertyValue('--hs-font-family').trim(),
+  );
 });

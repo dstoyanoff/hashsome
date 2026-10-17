@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import type { ConnectionStatus, EntityRef, LinkStatus } from '@hashsome/core';
-import { Box, Flex, Typography } from 'e-prim';
+import { Box, Flex, Typography } from '../style/prim.tsx';
 import { motion } from 'motion/react';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { useEffect, useRef, useState, type ReactNode } from 'react';

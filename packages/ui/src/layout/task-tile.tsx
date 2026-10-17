@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Flex, Typography } from 'e-prim';
+import { Flex, Typography } from '../style/prim.tsx';
 import { useEffect, useState } from 'react';
 import type { IconName } from '../icon-data.ts';
 import type { EntityStatus } from '../status.ts';

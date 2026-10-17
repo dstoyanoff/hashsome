@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { useTheme } from '@emotion/react';
-import { Flex, Grid, Typography } from 'e-prim';
+import { Flex, Grid, Typography } from '../style/prim.tsx';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState, type ReactNode } from 'react';
 import type { EntityHandle } from '../entity-handle.ts';

@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react';
 import { expect, test } from 'vitest';
-import { renderWithMock } from '../../test-utils.tsx';
+import { computed, renderWithMock } from '../../test-utils.tsx';
 import { Tile } from '../tile.tsx';
 
 // In its own file, with no fake-timer `beforeEach` (unlike tile.test.tsx) — `motion`'s `animate`
@@ -33,9 +33,9 @@ test('the status text goes dark only once the orange fill reaches it; the label 
   );
 
   await new Promise((resolve) => setTimeout(resolve, 400));
-  const color = (text: string) => getComputedStyle(screen.getByText(text)).color;
-  expect(color('100%')).toBe('rgb(27, 27, 31)');
-  expect(color('10%')).toBe('rgb(114, 108, 106)');
+  const color = (text: string) => computed(screen.getByText(text), 'color');
+  expect(color('100%')).toBe('#1B1B1F');
+  expect(color('10%')).toBe('#726C6A');
   for (const card of container.querySelectorAll('[data-active="true"]')) {
     expect(getComputedStyle(card).color).toBe('rgb(242, 239, 234)');
   }

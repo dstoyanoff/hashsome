@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { keyframes } from '@emotion/react';
-import { Box } from 'e-prim';
+import { Box } from '../style/prim.tsx';
 import { HOLD_MS } from './use-hold.ts';
 
 /** Grows the line from its left end by scaling it, which the browser animates on its own, without

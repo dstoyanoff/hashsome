@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Box, Flex, Grid, Typography } from 'e-prim';
+import { Box, Flex, Grid, Typography } from '../style/prim.tsx';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../icon.tsx';
 import { RoundButton } from './round-button.tsx';

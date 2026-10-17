@@ -1,5 +1,5 @@
 /** @jsxImportSource @emotion/react */
-import { Box } from 'e-prim';
+import { Box } from '../style/prim.tsx';
 import { useRef, type KeyboardEvent, type PointerEvent } from 'react';
 import type { SeekHold } from './media-seek.ts';
 

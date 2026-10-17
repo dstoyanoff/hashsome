@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import type { Interpolation, Theme } from '@emotion/react';
-import { Box, type BoxProps } from 'e-prim';
+import { Box, type BoxProps } from '../style/prim.tsx';
 import type { ElementType } from 'react';
 import { iconButtonSize, iconButtonStyles } from './icon-button-styles.ts';
 

@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { keyframes } from '@emotion/react';
-import { Box, type PaletteKey } from 'e-prim';
+import { Box, type PaletteKey } from '../style/prim.tsx';
 import { Icon } from '../icon.tsx';
 
 const turn = keyframes({ to: { transform: 'rotate(360deg)' } });

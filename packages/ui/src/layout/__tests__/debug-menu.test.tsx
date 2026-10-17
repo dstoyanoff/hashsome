@@ -4,6 +4,7 @@ import { Box } from 'e-prim';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { HashsomeProvider, type ThemeMode } from '../../provider.tsx';
 import { Page } from '../page.tsx';
+import { computed } from '../../test-utils.tsx';
 
 const DARK_BG = 'rgb(11, 10, 13)';
 const LIGHT_BG = 'rgb(244, 241, 235)';
@@ -120,7 +121,7 @@ test('the button is over the page and its navigation but under a drawer and its 
   mount({ debug: true });
   const menu = document.querySelector('[data-debug-menu]') as HTMLElement;
   // The theme's `dropdown` (10): above the navigation rail (5), below the drawer's scrim (20) and the drawer (21).
-  expect(getComputedStyle(menu).zIndex).toBe('10');
+  expect(computed(menu, 'z-index')).toBe('10');
 });
 
 test('Show grid draws the grid over the page, and is kept on the device', async () => {

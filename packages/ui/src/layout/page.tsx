@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { useTheme } from '@emotion/react';
-import { Flex } from 'e-prim';
+import { Flex } from '../style/prim.tsx';
 import { useDebug } from '../debug.ts';
 import { centeringOffsets, gridMetrics } from '../theme/grid.ts';
 import { GridOverlay } from './grid-overlay.tsx';

@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import type { LogbookEntry } from '@hashsome/core';
-import { Flex, Typography } from 'e-prim';
+import { Flex, Typography } from '../style/prim.tsx';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { Icon } from '../icon.tsx';

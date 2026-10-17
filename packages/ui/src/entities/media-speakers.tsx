@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import type { EntityRef } from '@hashsome/core';
-import { Flex, Typography } from 'e-prim';
+import { Flex, Typography } from '../style/prim.tsx';
 import { useState, type ReactNode } from 'react';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
 import { useEntities, useEntityHandle } from '../hooks.ts';
