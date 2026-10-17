@@ -770,6 +770,12 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         optional: true,
         type: 'EntityRef[]',
       },
+      {
+        doc: 'The card takes all the height its parent gives it (a column that fills a page), the artwork growing to use the room and the controls staying at the bottom, instead of being only as tall as it needs. Default `false`.',
+        name: 'fill',
+        optional: true,
+        type: 'boolean',
+      },
     ],
   },
   MediaPlayerFull: {
