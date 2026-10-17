@@ -4,11 +4,17 @@ import { Icon } from '../icon.tsx';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
 import { useEntityHandle } from '../hooks.ts';
 import { AnimatedNumber } from '../layout/animated-number.tsx';
-import { SensorHistory, type SensorSample } from '../layout/sensor-history.tsx';
+import type { SensorSample } from '../layout/sensor-history.tsx';
+import { lazyExport } from '../layout/lazy.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { DrawerTrigger } from '../layout/use-drawer.tsx';
 import { capitalize, statusLabels } from '../status.ts';
 import styles from './sensor-readout.module.css';
+
+const SensorHistory = lazyExport<{ samples?: SensorSample[]; entity?: EntityRef; unit: string }>(
+  () => import('../layout/sensor-history.tsx'),
+  'SensorHistory',
+);
 
 /** Bounds a reading is considered safe within; either end can be left open. */
 export interface SafeRange {

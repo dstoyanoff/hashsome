@@ -17,11 +17,22 @@ import { useStill } from './use-still.ts';
 import { SpinnerRing } from './spinner.tsx';
 import { statusLabels, type EntityStatus } from '../status.ts';
 import { useDrawer } from './use-drawer.tsx';
-import { EnergyChart, type EnergyChartProps } from './energy-chart.tsx';
-import { HistorySection, type LogbookEntry } from './history-section.tsx';
+import type { EnergyChartProps } from './energy-chart.tsx';
+import type { LogbookEntry } from './history-section.tsx';
 import { HoldProgress } from './hold-progress.tsx';
-import { LogbookHistory } from './logbook-history.tsx';
+import { lazyExport } from './lazy.tsx';
 import styles from './tile.module.css';
+
+const EnergyChart = lazyExport<EnergyChartProps>(() => import('./energy-chart.tsx'), 'EnergyChart');
+const HistorySection = lazyExport<{ entries: LogbookEntry[] }>(
+  () => import('./history-section.tsx'),
+  'HistorySection',
+);
+
+const LogbookHistory = lazyExport<{ entity: EntityRef }>(
+  () => import('./logbook-history.tsx'),
+  'LogbookHistory',
+);
 
 export interface TileProps {
   /** The tile's name. */

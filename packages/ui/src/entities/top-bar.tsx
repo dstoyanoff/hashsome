@@ -19,10 +19,15 @@ import { DrawerTrigger } from '../layout/use-drawer.tsx';
 import { useTimed } from '../layout/use-timed.ts';
 import { useWeatherForecast } from '../use-weather-forecast.ts';
 import { SensorReadout } from './sensor-readout.tsx';
-import { WeatherForecast } from './weather-forecast.tsx';
+import { lazyExport } from '../layout/lazy.tsx';
 import { WeatherIcon } from './weather-icon.tsx';
 import styles from './top-bar.module.css';
 import { CONDITION_LOOK } from './weather-look.ts';
+
+const WeatherForecast = lazyExport<{ entity: EntityRef }>(
+  () => import('./weather-forecast.tsx'),
+  'WeatherForecast',
+);
 
 /** One entry in the title's dashboard-switcher dropdown. */
 export interface DashboardOption {

@@ -524,7 +524,7 @@ components drawn again. `style/base.css` (in `@layer hs-base`, so nothing of a c
 it) is the page's colors, font, reset and scrollbars; `style/type.module.css` (kept in sync by hand with
 `TYPOGRAPHY_KEYS`) is one class per variant of the type scale, taken with `composes:`. A value only known at
 run time (a measured size, a color an app chose) is an inline custom property the CSS reads. JavaScript that needs a
-number (the grid arithmetic) reads `useDensity()`, and a chart's SVG `useColor()`, from `ThemeContext`. A published
+number (the grid arithmetic) reads `useDensity()`, and a chart's SVG `useColor()`, from `ThemeContext`. Icons: the full Lucide and Tabler sets are `packages/ui/icons.json` (`pnpm generate:icons`), read at build time only; `hashsomeIcons` (`@hashsome/ui/vite`, in the runtime's Vite config) finds the ids (`lu:lightbulb`) written anywhere in the project's and the `@hashsome/*` packages' source and bundles just those as `virtual:hashsome-icons`, so a name built at run time must also be written out somewhere (a comment will do). The bodies of drawers and overlays (library, queue, forecast, history) are `lazyExport`s, fetched when first opened. A published
 `dist` carries the `.css` files next to the scripts (`scripts/copy-css.ts`), so a consumer's bundler handles them.
 
 **Status:** built. `useEntity`, `useCommand` and `useEntityHandle` are in `packages/ui/src/hooks.ts`;

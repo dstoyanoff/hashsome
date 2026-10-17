@@ -15,13 +15,11 @@ import { Cover } from '../layout/cover.tsx';
 import { Spinner } from '../layout/spinner.tsx';
 import { MarqueeText } from '../layout/marquee-text.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
-import { MediaBrowser } from './media-browser.tsx';
 import { LoadingLine, useLoadingLabel } from './media-loading-line.tsx';
-import { MediaPlayerFull } from './media-player-full.tsx';
-import { MediaQueue } from './media-queue.tsx';
 import { SpeakersOverlay } from './media-speakers-pill.tsx';
 import { formatDuration, useMediaPosition, useSteadyPlaying } from './media-progress.ts';
 import { useSeekHold } from './media-seek.ts';
+import { MediaBrowser, MediaPlayerFull, MediaQueue } from './media-lazy.ts';
 import styles from './media-player-bar.module.css';
 import { SeekLine } from './seek-line.tsx';
 

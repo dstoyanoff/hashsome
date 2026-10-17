@@ -6,10 +6,8 @@ import { HoldProgress } from '../layout/hold-progress.tsx';
 import { IconButton } from '../layout/tile.tsx';
 import { DrawerTrigger } from '../layout/use-drawer.tsx';
 import { useHold } from '../layout/use-hold.ts';
-import { MediaBrowser } from './media-browser.tsx';
+import { MediaBrowser, MediaPlayerFull, MediaQueue } from './media-lazy.ts';
 import styles from './media-player-column.module.css';
-import { MediaPlayerFull } from './media-player-full.tsx';
-import { MediaQueue } from './media-queue.tsx';
 import { SpeakersOverlay } from './media-speakers-pill.tsx';
 import { NowPlaying } from './now-playing.tsx';
 

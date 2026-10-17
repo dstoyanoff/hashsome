@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./package.json": "./package.json",
-    "./gallery": "./src/gallery/index.ts"
+    "./gallery": "./src/gallery/index.ts",
+    "./vite": "./src/vite/icons.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -40,7 +41,8 @@
   "homepage": "https://github.com/dstoyanoff/hashsome#readme",
   "bugs": "https://github.com/dstoyanoff/hashsome/issues",
   "files": [
-    "dist"
+    "dist",
+    "icons.json"
   ],
   "publishConfig": {
     "access": "public",
@@ -54,7 +56,14 @@
       "./gallery": {
         "types": "./dist/gallery/index.d.ts",
         "default": "./dist/gallery/index.js"
+      },
+      "./vite": {
+        "types": "./dist/vite/icons.d.ts",
+        "default": "./dist/vite/icons.js"
       }
     }
-  }
+  },
+  "sideEffects": [
+    "**/*.css"
+  ]
 }

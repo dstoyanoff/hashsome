@@ -5,7 +5,14 @@ import { Icon } from '../icon.tsx';
 import { IconButton } from '../layout/tile.tsx';
 import { DrawerTrigger } from '../layout/use-drawer.tsx';
 import styles from './media-speakers-pill.module.css';
-import { MediaSpeakers, offeredSpeakers } from './media-speakers.tsx';
+import { lazyExport } from '../layout/lazy.tsx';
+import type { MediaSpeakersProps } from './media-speakers.tsx';
+import { offeredSpeakers } from './offered-speakers.ts';
+
+const MediaSpeakers = lazyExport<MediaSpeakersProps>(
+  () => import('./media-speakers.tsx'),
+  'MediaSpeakers',
+);
 
 /** What the pill says: how many speakers play together, or which stream is playing in another room, or nothing. */
 export interface SpeakersSummary {

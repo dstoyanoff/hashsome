@@ -12,7 +12,10 @@ import { Spinner } from '../layout/spinner.tsx';
 import { useClient } from '../provider.tsx';
 import { statusLabels } from '../status.ts';
 import { usePressFeedback, useVolumeControl } from './media-controls.ts';
+import { offeredSpeakers } from './offered-speakers.ts';
 import styles from './media-speakers.module.css';
+
+export { offeredSpeakers };
 
 export interface MediaSpeakersProps {
   /** The player whose stream this is, as a ref like `ma:porch` or a handle (a custom source). */
@@ -23,15 +26,6 @@ export interface MediaSpeakersProps {
 
   /** An allowlist of the speakers that can be added to this stream (or joined). Only those that are in it and that the player can be grouped with are offered; a speaker the player cannot be grouped with is left out, and one that is but is unavailable shows dimmed. Absent, every speaker it can be grouped with is offered. Speakers already in the stream are always shown, so they can be taken out. */
   speakers?: EntityRef[];
-}
-
-/** The speakers to offer: the ones the player can be grouped with, narrowed to an allowlist when there is one. */
-export function offeredSpeakers(
-  groupable: readonly EntityRef[] | undefined,
-  allowed: readonly EntityRef[] | undefined,
-): EntityRef[] {
-  const can = groupable ?? [];
-  return allowed ? can.filter((ref) => allowed.includes(ref)) : [...can];
 }
 
 /** What a row says about its player. */

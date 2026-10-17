@@ -1,5 +1,5 @@
 import { LocalClient, MockIntegration, type EntityInput, type MockLibrary } from '@hashsome/core';
-import { cleanup, render, type RenderResult } from '@testing-library/react';
+import { act, cleanup, render, type RenderResult } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router';
 import { afterEach } from 'vitest';
@@ -177,4 +177,11 @@ function specificity(selector: string): number {
   const classes = (bare.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+/g) ?? []).length;
   const types = (bare.match(/(^|[\s>+~])[a-z][\w-]*/gi) ?? []).length;
   return ids * 10_000 + classes * 100 + types;
+}
+
+/** Lets what is waiting on a module being fetched (`lazyExport`) and the promises behind it finish, under fake timers too. */
+export async function settle(): Promise<void> {
+  for (let round = 0; round < 5; round++) {
+    await act(async () => {});
+  }
 }
