@@ -327,6 +327,7 @@ export function Tile({
       : ready
         ? 'ready'
         : 'muted';
+
   const statusTone = !ready ? 'muted' : statusOnAccent ? 'on-accent' : 'dim';
 
   const iconBadge = icon ? (
