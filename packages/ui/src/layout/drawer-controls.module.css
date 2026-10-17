@@ -73,6 +73,7 @@
 }
 
 .chips {
+  position: relative;
   display: flex;
   gap: calc(var(--hs-unit) * 2);
   isolation: isolate;
@@ -113,13 +114,25 @@
   color: var(--hs-accent-text);
 }
 
-/* Above every chip's own background, whichever way it is going: a later chip paints over an earlier one's pill otherwise. */
+/* One pill behind the selected chip, above every chip's own background, which glides to the next (`useGlide` writes where the selected one is). */
 .pill {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
   z-index: 1;
+  width: var(--glide-w, 0px);
+  height: var(--glide-h, 0px);
   border-radius: var(--hs-radius-full);
   background: var(--hs-accent);
+  transform: translate(var(--glide-x, 0px), var(--glide-y, 0px));
+  pointer-events: none;
+}
+
+.chips[data-glide='on'] .pill {
+  transition:
+    transform 0.25s ease-out,
+    width 0.25s ease-out,
+    height 0.25s ease-out;
 }
 
 /* Above the pill. */

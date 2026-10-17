@@ -22,6 +22,7 @@ export const FADE = 40;
 export function FadeScroll<E extends ElementType = 'div'>({
   as,
   className,
+  ref: outer,
   ...props
 }: { as?: E } & Omit<ComponentPropsWithRef<E>, 'as'>) {
   const Tag: ElementType = as ?? 'div';
@@ -64,7 +65,15 @@ export function FadeScroll<E extends ElementType = 'div'>({
 
   return (
     <Tag
-      ref={ref}
+      // The row's own ref, and the caller's when there is one.
+      ref={(el: HTMLElement | null) => {
+        ref.current = el;
+        if (typeof outer === 'function') {
+          outer(el);
+        } else if (outer) {
+          (outer as { current: HTMLElement | null }).current = el;
+        }
+      }}
       data-fade-start={edges.start}
       data-fade-end={edges.end}
       className={cx(styles.scroll, className as string | undefined)}

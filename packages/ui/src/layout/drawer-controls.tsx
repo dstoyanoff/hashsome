@@ -1,9 +1,8 @@
 import { Power } from 'lucide-react';
-import { animate, motion } from 'motion/react';
+import { animate } from 'motion/react';
 import { MarqueeText } from './marquee-text.tsx';
 import {
   useEffect,
-  useId,
   useRef,
   type CSSProperties,
   type KeyboardEvent,
@@ -15,6 +14,7 @@ import { FADE, FadeScroll } from './fade-scroll.tsx';
 import { RoundButton } from './round-button.tsx';
 import { cx } from '../style/cx.ts';
 import styles from './drawer-controls.module.css';
+import { useGlide } from './use-glide.ts';
 import { useStill } from './use-still.ts';
 
 /** Fine adjustment: a press nudges by `delta` (1%); holding repeats in steps of 10 until released. */
@@ -243,9 +243,9 @@ export function ChipRow({
   onChange: (value: string) => void;
   tabs?: boolean;
 }) {
-  // The accent behind the selected chip is one pill that glides to the next; its own id, so two rows
-  // on a page do not share it.
-  const pill = useId();
+  // The accent behind the selected chip is one pill that glides to the next, by CSS (`useGlide`).
+  const chipRow = useRef<HTMLDivElement>(null);
+  useGlide(chipRow, value);
   const still = useStill();
   // The selected tab is brought into view when it is not (it is a long name that has just opened, or a
   // tab part way out of the row), by scrolling the row so it is at its start.
@@ -314,17 +314,6 @@ export function ChipRow({
             onClick={() => onChange(option.value)}
           >
             {selected ? <span ref={marker} hidden /> : null}
-            {selected ? (
-              still ? (
-                <span className={styles.pill} />
-              ) : (
-                <motion.span
-                  className={styles.pill}
-                  layoutId={pill}
-                  transition={{ type: 'spring', duration: 0.32, bounce: 0.12 }}
-                />
-              )
-            ) : null}
             <span className={styles.content}>
               {option.icon ? <Icon size={14}>{option.icon}</Icon> : null}
               <span className={styles.chipLabel}>
@@ -339,10 +328,14 @@ export function ChipRow({
 
   // Tabs scroll sideways when there are more than fit, and fade at the edge that has more.
   return tabs ? (
-    <FadeScroll className={cx(styles.chips, styles.tabs)} role="tablist">
+    <FadeScroll ref={chipRow} className={cx(styles.chips, styles.tabs)} role="tablist">
+      <span className={styles.pill} aria-hidden="true" />
       {chips}
     </FadeScroll>
   ) : (
-    <div className={cx(styles.chips, styles.wrapping)}>{chips}</div>
+    <div ref={chipRow} className={cx(styles.chips, styles.wrapping)}>
+      <span className={styles.pill} aria-hidden="true" />
+      {chips}
+    </div>
   );
 }
