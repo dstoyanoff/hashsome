@@ -34,3 +34,8 @@ test('browsers that take the standard properties get a thin bar in the theme’s
     /@supports \(scrollbar-width: thin\) \{\s*\* \{\s*scrollbar-width: thin;\s*scrollbar-color: var\(--hs-border\) transparent;/,
   );
 });
+
+test('a touch screen has no scrollbars', () => {
+  expect(css).toMatch(/@media \(pointer: coarse\) \{\s*\* \{\s*scrollbar-width: none;/);
+  expect(css).toMatch(/::-webkit-scrollbar \{\s*display: none;/);
+});
