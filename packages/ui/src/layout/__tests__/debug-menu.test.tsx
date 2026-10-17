@@ -112,7 +112,7 @@ test('the menu is as big as its button, whatever the page says about divs', () =
   expect(['position', 'height', 'min-height'].map((property) => computed(menu, property))).toEqual([
     'fixed',
     '40px',
-    '0',
+    '0px',
   ]);
   // Centered on the line the navigation rail's icons are centered on (a 64px rail, a 40px button).
   expect(computed(menu, 'left')).toBe('12px');
