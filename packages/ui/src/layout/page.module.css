@@ -1,0 +1,23 @@
+.page {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 3);
+  overflow: auto;
+  /* The padding of one space, plus room for a nav that is fixed over the page (`--page-*`, from what the nav says it takes). */
+  padding: calc(var(--hs-unit) * 3);
+  padding-left: calc(var(--hs-unit) * 3 + var(--page-left, 0px));
+  padding-top: calc(var(--hs-unit) * 3 + var(--page-top, 0px));
+  padding-bottom: calc(var(--hs-unit) * 3 + var(--page-bottom, 0px));
+}
+
+/* And the phone's home indicator, which a fixed bar at the bottom reaches under (a wall display has none). */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .page {
+    padding-bottom: calc(
+      var(--hs-unit) * 3 + var(--page-bottom, 0px) +
+        max(0px, env(safe-area-inset-bottom) - var(--page-absorbed, 0px))
+    );
+  }
+}

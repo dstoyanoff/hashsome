@@ -32,6 +32,7 @@ import { IdleReturnContext } from './layout/use-idle-return.ts';
 import { themeCss } from './style/variables.ts';
 import { useThemeStyle } from './style/use-theme-style.ts';
 import { UNITS_PER_SPACE, type Density } from './theme/density.ts';
+import { DensityContext } from './theme/use-density.ts';
 import './style/base.css';
 import { applyThemeOverrides, densityTokens, type ThemeOverrides } from './theme/overrides.ts';
 import { isDarkAt, msUntilSwitch, sunIsDown, type ThemeSchedule } from './theme/schedule.ts';
@@ -374,11 +375,9 @@ export function HashsomeProvider({
     [themeMode.resolved, font, overrides, density],
   );
 
+  const densityValue = useMemo(() => densityTokens(density, overrides), [density, overrides]);
   useThemeStyle(
-    useMemo(
-      () => themeCss(resolvedTheme, densityTokens(density, overrides)),
-      [resolvedTheme, density, overrides],
-    ),
+    useMemo(() => themeCss(resolvedTheme, densityValue), [resolvedTheme, densityValue]),
   );
 
   useEffect(() => {
@@ -389,19 +388,21 @@ export function HashsomeProvider({
   return (
     <HashsomeContext.Provider value={instance}>
       <ThemeModeContext.Provider value={themeMode}>
-        <ThemeProvider theme={resolvedTheme}>
-          <EmotionThemeProvider theme={withDensity}>
-            <DebugContext.Provider value={debugState}>
-              <IdleReturnContext.Provider value={idleReturn}>
-                <DetailProvider>
-                  {children}
-                  <EntityDrawer />
-                  {debug ? <DebugMenu configured={theme} sun={sunEntity} /> : null}
-                </DetailProvider>
-              </IdleReturnContext.Provider>
-            </DebugContext.Provider>
-          </EmotionThemeProvider>
-        </ThemeProvider>
+        <DensityContext.Provider value={densityValue}>
+          <ThemeProvider theme={resolvedTheme}>
+            <EmotionThemeProvider theme={withDensity}>
+              <DebugContext.Provider value={debugState}>
+                <IdleReturnContext.Provider value={idleReturn}>
+                  <DetailProvider>
+                    {children}
+                    <EntityDrawer />
+                    {debug ? <DebugMenu configured={theme} sun={sunEntity} /> : null}
+                  </DetailProvider>
+                </IdleReturnContext.Provider>
+              </DebugContext.Provider>
+            </EmotionThemeProvider>
+          </ThemeProvider>
+        </DensityContext.Provider>
       </ThemeModeContext.Provider>
     </HashsomeContext.Provider>
   );

@@ -1,9 +1,8 @@
-/** @jsxImportSource @emotion/react */
-import { useTheme } from '@emotion/react';
-import { Flex } from '../style/prim.tsx';
 import { useDebug } from '../debug.ts';
 import { centeringOffsets, gridMetrics } from '../theme/grid.ts';
+import { useDensity } from '../theme/use-density.ts';
 import { GridOverlay } from './grid-overlay.tsx';
+import styles from './page.module.css';
 import {
   createContext,
   useCallback,
@@ -12,6 +11,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from 'react';
 
@@ -71,13 +71,12 @@ export function Page({ children, height = '100dvh' }: PageProps) {
 
   // What is left of the height after whole modules goes half to the top padding and half to the
   // bottom one (in whole pixels, so edges stay crisp).
-  const theme = useTheme();
-  const space = theme.density?.space;
+  const { space } = useDensity();
   const main = useRef<HTMLElement>(null);
   const [centered, setCentered] = useState({ top: 0, bottom: 0 });
   useLayoutEffect(() => {
     const element = main.current;
-    if (!element || space === undefined) {
+    if (!element) {
       return;
     }
 
@@ -104,31 +103,23 @@ export function Page({ children, height = '100dvh' }: PageProps) {
 
   return (
     <InsetContext.Provider value={value}>
-      <Flex
-        as="main"
+      <main
         ref={main}
         data-centered={`${centered.top} ${centered.bottom}`}
-        direction="column"
-        height={height}
-        overflow="auto"
-        position="relative"
-        gap={3}
-        p={3}
-        css={({ spacing }) => ({
-          // The padding of one space, plus room for a nav that is fixed over the page.
-          paddingLeft: `calc(${spacing(3)} + ${insets.left}px)`,
-          paddingTop: `calc(${spacing(3)} + ${centered.top}px)`,
-          paddingBottom: `calc(${spacing(3)} + ${insets.bottom + centered.bottom}px)`,
-          // And the phone's home indicator, which a fixed bar at the bottom reaches under (a wall display has none).
-          '@supports (padding-bottom: env(safe-area-inset-bottom))': {
-            paddingBottom: `calc(${spacing(3)} + ${insets.bottom + centered.bottom}px + max(0px, env(safe-area-inset-bottom) - ${absorbed}px))`,
-          },
-          boxSizing: 'border-box',
-        })}
+        className={styles.page}
+        style={
+          {
+            height,
+            '--page-left': `${insets.left}px`,
+            '--page-top': `${centered.top}px`,
+            '--page-bottom': `${insets.bottom + centered.bottom}px`,
+            '--page-absorbed': `${absorbed}px`,
+          } as CSSProperties
+        }
       >
         {children}
         {showGrid ? <GridOverlay /> : null}
-      </Flex>
+      </main>
     </InsetContext.Provider>
   );
 }

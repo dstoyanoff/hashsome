@@ -32,25 +32,84 @@ export function renderWithMock(
   return { ha, client, ...render(tree) };
 }
 
-/** A CSS value as it comes to once the theme's custom properties are in it (`var(--hs-bg)` as `#0B0A0D`, `calc(var(--hs-unit) * 2)`
- * as `8px`): jsdom keeps `var()` as it was written and does not work out `calc`. */
+/** Works a stylesheet value out as far as jsdom will not: `var(--x)` and `var(--x, fallback)` (the element's own inline custom
+ * properties, then its ancestors', then the theme's), and `calc` / `max` over pixel lengths. */
 export function resolveCss(element: Element, value: string): string {
-  const style = getComputedStyle(document.documentElement);
+  const root = getComputedStyle(document.documentElement);
+  const lookup = (name: string): string => {
+    for (let node: Element | null = element; node; node = node.parentElement) {
+      const own = (node as HTMLElement).style?.getPropertyValue(name).trim();
+      if (own) {
+        return own;
+      }
+    }
+
+    return root.getPropertyValue(name).trim();
+  };
+
   let out = value;
-  for (let round = 0; round < 4 && out.includes('var('); round++) {
-    out = out.replace(/var\((--[\w-]+)\)/g, (_, name: string) =>
-      style.getPropertyValue(name).trim(),
+  for (let round = 0; round < 6 && out.includes('var('); round++) {
+    out = out.replace(
+      /var\((--[\w-]+)\s*(?:,\s*([^()]*))?\)/g,
+      (_, name: string, fallback?: string) => {
+        return lookup(name) || (fallback ?? '').trim();
+      },
     );
   }
 
-  // `calc(4px * 2)`, the only shape the stylesheets use.
-  out = out.replace(
-    /calc\(\s*(-?[\d.]+)px\s*\*\s*(-?[\d.]+)\s*\)/g,
-    (_, a: string, b: string) => `${+(Number(a) * Number(b)).toFixed(4)}px`,
-  );
+  for (let round = 0; round < 6 && /\b(calc|max)\(/.test(out); round++) {
+    out = out.replace(/\b(calc|max)\(([^()]*)\)/g, (whole, fn: string, body: string) => {
+      const result = evaluate(fn, body);
+      return result === undefined ? whole : `${+result.toFixed(4)}px`;
+    });
+  }
 
-  void element;
   return out;
+}
+
+/** A pixel-length expression with `+ - *` and, for `max`, comma-separated alternatives; undefined when it is not one. */
+function evaluate(fn: string, body: string): number | undefined {
+  const sum = (text: string): number | undefined => {
+    let total = 0;
+    let sign = 1;
+    const tokens = text.trim().split(/\s+/);
+    let term: number | undefined;
+    let pending: 'mul' | undefined;
+    for (const token of tokens) {
+      if (token === '+' || token === '-') {
+        if (term === undefined) {
+          return undefined;
+        }
+
+        total += sign * term;
+        sign = token === '+' ? 1 : -1;
+        term = undefined;
+        continue;
+      }
+
+      if (token === '*') {
+        pending = 'mul';
+        continue;
+      }
+
+      const number = Number.parseFloat(token);
+      if (Number.isNaN(number) || !/^-?[\d.]+(px)?$/.test(token)) {
+        return undefined;
+      }
+
+      term = pending && term !== undefined ? term * number : number;
+      pending = undefined;
+    }
+
+    return term === undefined ? undefined : total + sign * term;
+  };
+
+  if (fn === 'max') {
+    const values = body.split(',').map(sum);
+    return values.includes(undefined) ? undefined : Math.max(...(values as number[]));
+  }
+
+  return sum(body);
 }
 
 /** An element's `property` as the page's stylesheets give it, with the theme's custom properties and simple `calc`s worked out: the

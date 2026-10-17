@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { cleanup } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { computed, renderWithMock } from '../../test-utils.tsx';
@@ -9,12 +11,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** The CSS Emotion wrote for the page, as one string: jsdom does not know grid properties, so what
- * the board and its cells ask for is read from the rules themselves. */
-const css = () =>
-  [...document.querySelectorAll('style')]
-    .flatMap((style) => [...(style.sheet?.cssRules ?? [])].map((rule) => rule.cssText))
-    .join('\n');
+/** The board's stylesheet as text: jsdom does not know grid properties, so what the board asks for is read from the file. */
+const css = () => readFileSync(join(process.cwd(), 'src/layout/board.module.css'), 'utf8');
 
 test('a board is columns with a gap between them and rows as tall as their content', () => {
   renderWithMock(
@@ -26,9 +24,9 @@ test('a board is columns with a gap between them and rows as tall as their conte
 
   const board = document.querySelector('[data-board]') as HTMLElement;
   expect(board).not.toBeNull();
-  expect(css()).toContain('repeat(6, minmax(0, 1fr))');
+  expect(board.style.getPropertyValue('--columns')).toBe('6');
+  expect(css()).toContain('repeat(var(--columns), minmax(0, 1fr))');
   expect(css()).toContain('max-content');
-  expect(getComputedStyle(board).display).toBe('grid');
 });
 
 test('a cell says only how big it is: columns wide, rows tall, and all columns by default', () => {
@@ -43,14 +41,14 @@ test('a cell says only how big it is: columns wide, rows tall, and all columns b
     {},
   );
 
-  const rules = css();
-  expect(rules).toContain('grid-column: 1/-1');
-  expect(rules).toContain('grid-column: span 8');
-  expect(rules).toContain('grid-column: span 4');
-  expect(rules).toContain('grid-row: span 3');
+  const [everything, room, player] = [...document.querySelectorAll<HTMLElement>('[data-cell]')];
+  expect(everything?.style.gridColumn).toBe('1 / -1');
+  expect(room?.style.gridColumn).toBe('span 8');
+  expect(player?.style.gridColumn).toBe('span 4');
+  expect(player?.style.gridRow).toBe('span 3');
   // A cell that reaches across rows stretches; one that does not takes the height of its content.
-  expect(rules).toContain('align-self: stretch');
-  expect(rules).toContain('align-self: start');
+  expect(css()).toContain('align-self: stretch');
+  expect(css()).toContain('align-self: start');
 });
 
 test('a filling cell goes from where it starts to the bottom of the page, whatever rows are beside it', () => {

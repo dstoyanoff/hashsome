@@ -1,12 +1,8 @@
-/** @jsxImportSource @emotion/react */
-import { Flex } from '../style/prim.tsx';
-import { NavLink } from 'react-router';
-import { Icon } from '../icon.tsx';
-import { isInstalledApp } from '../layout/installed-app.ts';
 import { usePageInset } from '../layout/page.tsx';
 import { useIdleReturn, useIdleReturnDefault } from '../layout/use-idle-return.ts';
 import { NAV_BAR } from '../theme/grid.ts';
-import { AttentionDot } from './attention-dot.tsx';
+import { NavItemLink } from './nav-item.tsx';
+import styles from './nav-bar.module.css';
 import { mainPath, type NavItem } from './nav-rail.tsx';
 
 export interface NavBarProps {
@@ -31,56 +27,10 @@ export function NavBar({ items, base, idleReturn }: NavBarProps) {
   usePageInset('bottom', NAV_BAR);
 
   return (
-    <Flex
-      as="nav"
-      aria-label="Pages"
-      align="center"
-      justify="center"
-      gap={2.5}
-      background="rail"
-      position="fixed"
-      zIndex="nav"
-      // As tall as it says, and then the phone's home indicator (nothing on a wall display), which it reaches under: the
-      // buttons stay clear of it.
-      css={{
-        left: 0,
-        right: 0,
-        bottom: 0,
-        boxSizing: 'border-box',
-        height: `calc(${NAV_BAR}px + env(safe-area-inset-bottom, 0px))`,
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
-    >
+    <nav aria-label="Pages" className={styles.bar}>
       {items.map((item) => (
-        <NavLink
-          // In an installed app, switching pages replaces the one before it: there is no browser to go back with, and
-          // the system's swipe from the edge of the screen would otherwise walk back through every page visited.
-          replace={isInstalledApp()}
-          key={item.to}
-          to={item.to ? `${base}/${item.to}` : base}
-          end
-          aria-label={item.attention ? `${item.label}, needs attention` : item.label}
-          title={item.label}
-        >
-          {({ isActive }) => (
-            <Flex
-              as="span"
-              align="center"
-              justify="center"
-              width={44}
-              height={44}
-              radius="chrome"
-              cursor="pointer"
-              position="relative"
-              color={isActive ? 'accentText' : 'line'}
-              {...(isActive ? { background: 'accent' } : {})}
-            >
-              <Icon name={item.icon} size={22} />
-              {item.attention ? <AttentionDot level={item.attention} /> : null}
-            </Flex>
-          )}
-        </NavLink>
+        <NavItemLink key={item.to} item={item} base={base} />
       ))}
-    </Flex>
+    </nav>
   );
 }

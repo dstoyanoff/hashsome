@@ -1,0 +1,17 @@
+/* As tall as it says, and then the phone's home indicator (nothing on a wall display), which it reaches under: the buttons
+   stay clear of it. */
+.bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: var(--hs-z-nav);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--hs-unit) * 2.5);
+  height: calc(var(--hs-nav-bar) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--hs-rail);
+}

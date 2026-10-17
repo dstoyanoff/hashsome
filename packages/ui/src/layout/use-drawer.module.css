@@ -1,0 +1,31 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2.5);
+}
+
+.badge {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+  color: var(--hs-text);
+}
+
+.names {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  composes: heading from '../style/type.module.css';
+}
+
+.kind {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}

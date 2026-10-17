@@ -1,0 +1,61 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--hs-unit) * 0.5);
+  min-width: 0;
+}
+
+.swatch {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: var(--hs-radius-full);
+  background: transparent;
+  cursor: pointer;
+}
+
+.dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--hs-radius-full);
+  color: var(--hs-accent-text);
+}
+
+.withIcon {
+  width: 24px;
+  height: 24px;
+}
+
+/* A ring in the page's own colors, so it reads on either theme. */
+.selected {
+  box-shadow:
+    0 0 0 2px var(--hs-surface),
+    0 0 0 4px var(--hs-text);
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  margin: 0 calc(var(--hs-unit) * 1.5);
+  background: var(--hs-line);
+  opacity: 0.4;
+}
+
+.custom {
+  background: conic-gradient(#ff5a4d, #ffd24a, #5fd17a, #4dc9ff, #6a7bff, #c75bff, #ff5a4d);
+}
+
+.hub {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface);
+}

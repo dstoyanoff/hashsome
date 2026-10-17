@@ -1,0 +1,47 @@
+/* The thin progress line along the bottom of the media bar, in a tall invisible strip that is the touch target. */
+.line {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 16px;
+  touch-action: none;
+  cursor: default;
+}
+
+.line::before,
+.line::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  transition: height 0.12s ease;
+}
+
+/* The track only shows when there is something to grab. */
+.line::before {
+  right: 0;
+  background: transparent;
+}
+
+.line::after {
+  width: var(--fraction);
+  background: var(--hs-accent);
+}
+
+.seekable {
+  cursor: pointer;
+  outline: none;
+}
+
+.seekable::before {
+  background: var(--hs-border);
+}
+
+.seekable:hover::before,
+.seekable:hover::after,
+.seekable:focus-visible::before,
+.seekable:focus-visible::after {
+  height: 6px;
+}

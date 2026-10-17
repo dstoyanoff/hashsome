@@ -1,0 +1,21 @@
+.dock {
+  position: fixed;
+  bottom: calc(var(--hs-unit) * 5);
+  left: 50%;
+  z-index: var(--hs-z-nav);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 1.5);
+  padding: calc(var(--hs-unit) * 1.5);
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-rail);
+  box-shadow: var(--hs-shadow-dock);
+  transform: translateX(-50%);
+}
+
+/* On a phone it floats above the home indicator, not on it (a wall display has none). */
+@supports (bottom: env(safe-area-inset-bottom)) {
+  .dock {
+    bottom: max(calc(var(--hs-unit) * 5), env(safe-area-inset-bottom));
+  }
+}
