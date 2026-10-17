@@ -322,3 +322,19 @@ test('every History row has a picture, so the text lines up: initials, a workflo
   const icon = (el: HTMLElement | undefined) => el!.querySelector('svg')!.innerHTML;
   expect(new Set([icon(lost), icon(on), icon(off)]).size).toBe(3);
 });
+
+test('a drag the browser cancels (a touch it took for a scroll) is ended where the finger was, not dropped', () => {
+  const onFillChange = vi.fn<(fill: number) => void>();
+  renderWithMock(
+    <Tile label="led" active fill={0.3} secondary="30%" onFillChange={onFillChange} />,
+    {},
+  );
+
+  const tile = screen.getByRole('button', { name: 'led' });
+  vi.spyOn(tile, 'getBoundingClientRect').mockReturnValue({ left: 0, width: 200 } as DOMRect);
+  fireEvent.pointerDown(tile, { clientX: 60, pointerId: 1 });
+  fireEvent.pointerMove(tile, { clientX: 150, pointerId: 1 });
+  fireEvent.pointerCancel(tile, { pointerId: 1 });
+  expect(onFillChange).toHaveBeenCalledWith(0.75);
+  expect(screen.getByText('75%')).toBeTruthy();
+});
