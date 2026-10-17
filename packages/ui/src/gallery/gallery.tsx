@@ -1,5 +1,3 @@
-/** @jsxImportSource @emotion/react */
-import { Flex, Typography } from '../style/prim.tsx';
 import { LocalClient } from '@hashsome/core';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { NavLink, Route, Routes } from 'react-router';
@@ -47,6 +45,8 @@ import { TopRow } from '../layout/top-row.tsx';
 import type { LogbookEntry } from '../layout/history-section.tsx';
 import { HashsomeProvider } from '../provider.tsx';
 import { createGalleryIntegration } from './fixtures.ts';
+import styles from './gallery.module.css';
+import { Flex, Typography } from './layout.tsx';
 import { COMPONENT_PROPS } from './props-data.ts';
 
 const ICON_PACKS = [
@@ -70,27 +70,10 @@ const ATTENTION_ITEMS = NAV_ITEMS.map((item) =>
       : item,
 );
 
-const codeStyles = {
-  fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
-  overflowWrap: 'anywhere',
-} as const;
-
 /** A bounded "stage" card rendering real `@hashsome/ui` components on the app background, so the demos
  * read as they would on a dashboard against the gallery's own page chrome. */
 function Stage({ children }: { children: ReactNode }) {
-  return (
-    <Flex
-      direction="column"
-      gap={3}
-      background="bg"
-      color="text"
-      radius="card"
-      p={8}
-      minHeight={72}
-    >
-      {children}
-    </Flex>
-  );
+  return <div className={styles.stage}>{children}</div>;
 }
 
 /** One documented component: a heading, a one-line description, and a `Stage` demoing its
@@ -104,19 +87,7 @@ function PropsTable({ name }: { name: string }) {
   }
 
   return (
-    <details
-      css={({ palette }) => ({
-        marginTop: 12,
-        '& summary': { cursor: 'pointer', padding: '4px 0' },
-        '& table': { width: '100%', marginTop: 8, borderCollapse: 'collapse' },
-        '& th, & td': {
-          padding: '8px 12px 8px 0',
-          textAlign: 'left',
-          verticalAlign: 'top',
-          borderBottom: `1px solid ${palette.border}`,
-        },
-      })}
-    >
+    <details className={styles.props}>
       <summary>
         <Typography as="span" variant="label" color="textMuted">
           Props · {name} ({entry.props.length})
@@ -138,13 +109,13 @@ function PropsTable({ name }: { name: string }) {
           {entry.props.map((prop) => (
             <tr key={prop.name}>
               <td>
-                <Typography as="span" variant="label" css={codeStyles}>
+                <Typography as="span" variant="label" className={styles.code}>
                   {prop.name}
                   {prop.optional ? '' : ' *'}
                 </Typography>
               </td>
               <td>
-                <Typography as="span" variant="secondary" color="textMuted" css={codeStyles}>
+                <Typography as="span" variant="secondary" color="textMuted" className={styles.code}>
                   {prop.type}
                 </Typography>
               </td>
@@ -175,7 +146,7 @@ function ComponentDoc({
   children: ReactNode;
 }) {
   return (
-    <section css={{ marginBottom: 40 }}>
+    <section className={styles.section}>
       <Flex direction="column" gap={1} maxWidth="60ch" mb={4}>
         <Typography as="h2" variant="heading">
           {title}
@@ -363,7 +334,7 @@ function SubPreview({
         radius="row"
         border
         height={height}
-        css={{ transform: 'translateZ(0)' }}
+        style={{ transform: 'translateZ(0)' }}
       >
         {children}
       </Flex>
@@ -653,25 +624,9 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
   const [mode, setMode] = useState<'dark' | 'light'>('dark');
   return (
     <HashsomeProvider client={client} theme={mode} density={density}>
-      <div
-        css={({ palette }) => ({
-          background: palette.surfaceRaised,
-          color: palette.text,
-          minHeight: '100%',
-          padding: '32px 20px 64px',
-        })}
-      >
-        <div css={{ maxWidth: 960, margin: '0 auto' }}>
-          <header
-            css={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-              gap: 16,
-              flexWrap: 'wrap',
-              marginBottom: 36,
-            }}
-          >
+      <div className={styles.page}>
+        <div className={styles.wrap}>
+          <header className={styles.header}>
             <Flex direction="column" gap={1.5} maxWidth="60ch">
               <Typography as="h1" variant="stat">
                 @hashsome/ui component gallery
@@ -683,56 +638,12 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
             </Flex>
             <button
               type="button"
-              css={({ palette, radius }) => ({
-                position: 'relative',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexShrink: 0,
-                boxSizing: 'border-box',
-                width: 60,
-                height: 32,
-                margin: 0,
-                padding: '0 8px',
-                borderRadius: radius.full,
-                border: `1px solid ${palette.border}`,
-                background: palette.border,
-                font: 'inherit',
-                lineHeight: 'normal',
-                cursor: 'pointer',
-                transition: 'border-color 0.15s',
-                '&:hover': { borderColor: palette.textMuted },
-                '& svg': {
-                  position: 'relative',
-                  zIndex: 1,
-                  color: palette.textMuted,
-                  transition: 'color 0.2s',
-                },
-                // Sun lit while in light mode, moon lit while in dark mode — both icons are always
-                // visible at fixed positions; only their color and the thumb underneath change.
-                "&[aria-pressed='false'] svg:first-of-type, &[aria-pressed='true'] svg:last-of-type":
-                  { color: palette.text },
-              })}
+              className={styles.modeToggle}
               onClick={() => setMode((m) => (m === 'dark' ? 'light' : 'dark'))}
               aria-label={`Switch to ${mode === 'dark' ? 'light' : 'dark'} theme`}
               aria-pressed={mode === 'dark'}
             >
-              <span
-                css={({ palette, radius }) => ({
-                  position: 'absolute',
-                  // `top: 50%` + `translateY(-50%)` centers it despite the border eating into the
-                  // button's content box; a fixed `top: 3px` sat 2px above true center.
-                  top: '50%',
-                  left: 3,
-                  width: 26,
-                  height: 26,
-                  borderRadius: radius.full,
-                  background: palette.surfaceRaised,
-                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.25)',
-                  transform: mode === 'dark' ? 'translate(28px, -50%)' : 'translateY(-50%)',
-                  transition: 'transform 0.2s ease',
-                })}
-              />
+              <span className={styles.thumb} data-dark={mode === 'dark'} />
               <Icon name="lu:sun" size={14} />
               <Icon name="lu:moon" size={14} />
             </button>
@@ -766,7 +677,7 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
               </Board>
 
               {/* A page as tall as a small display, so `fill` has a bottom to reach. */}
-              <Flex direction="column" height={460} css={{ outline: '1px dashed currentColor' }}>
+              <Flex direction="column" height={460} style={{ outline: '1px dashed currentColor' }}>
                 <Board>
                   <Cell>
                     <TopRow>
@@ -924,19 +835,14 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
                 <Icon name="tb:vacuum-cleaner" />
                 <Icon name="tb:car-fan" size={16} />
               </Flex>
-              <Flex align="center" gap={4} css={{ flexWrap: 'wrap' }}>
+              <Flex align="center" gap={4} wrap>
                 <Typography as="span" variant="body" color="textMuted">
                   Find an icon:
                 </Typography>
                 {ICON_PACKS.map((pack) => (
                   <Typography key={pack.prefix} as="span" variant="body">
-                    <a
-                      css={({ palette }) => ({ color: palette.accent, textUnderlineOffset: 3 })}
-                      href={pack.href}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Search {pack.name} icons (<span css={codeStyles}>{pack.prefix}:</span>)
+                    <a className={styles.link} href={pack.href} target="_blank" rel="noreferrer">
+                      Search {pack.name} icons (<span className={styles.code}>{pack.prefix}:</span>)
                     </a>
                   </Typography>
                 ))}
