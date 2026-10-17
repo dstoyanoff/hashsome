@@ -57,11 +57,20 @@ export function resolveCss(element: Element, value: string): string {
     );
   }
 
-  for (let round = 0; round < 6 && /\b(calc|max)\(/.test(out); round++) {
-    out = out.replace(/\b(calc|max)\(([^()]*)\)/g, (whole, fn: string, body: string) => {
-      const result = evaluate(fn, body);
-      return result === undefined ? whole : `${+result.toFixed(4)}px`;
-    });
+  for (let round = 0; round < 8; round++) {
+    const next = out.replace(
+      /\b(calc|max)\(([^()]*)\)|(?<![\w-])\(([^()]*)\)/g,
+      (whole, fn: string | undefined, body: string | undefined, bare: string | undefined) => {
+        const result = evaluate(fn ?? 'calc', body ?? bare ?? '');
+        return result === undefined ? whole : `${+result.toFixed(4)}px`;
+      },
+    );
+
+    if (next === out) {
+      break;
+    }
+
+    out = next;
   }
 
   return out;

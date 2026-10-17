@@ -1,15 +1,11 @@
-/** @jsxImportSource @emotion/react */
-import { useRef, type KeyboardEvent, type PointerEvent } from 'react';
-import { Box, Flex } from '../style/prim.tsx';
+import { useRef, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { Icon } from '../icon.tsx';
 import { Cover } from '../layout/cover.tsx';
+import styles from './artwork-ring.module.css';
 import type { SeekHold } from './media-seek.ts';
 
 /** The ring's diameter when none is given. */
 const DEFAULT_SIZE = 168;
-
-/** The smallest it shrinks to, when the space is short. */
-const MIN_SIZE = 72;
 
 /** The player's artwork in a circle, like the one in the bar but larger: an inner outline around
  * it, and an outer ring that shows how far along playback is. With `onSeek` the ring is a slider:
@@ -103,35 +99,16 @@ export function ArtworkRing({
   };
 
   return (
-    // The room the ring has: `SIZE` tall when the column has no more to give, taller when it has (a card
-    // stretched beside other cards), and shorter when it has less (never below `MIN_SIZE`). The ring in it is a
-    // square as big as that room allows, its width or its height, whichever is less.
-    <Box
-      css={{
-        flex: `1 1 ${SIZE}px`,
-        minHeight: MIN_SIZE,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        containerType: 'size',
-      }}
+    <div
+      className={styles.room}
+      style={
+        { '--size': `${SIZE}px`, '--max-size': `${Math.max(maxSize, SIZE)}px` } as CSSProperties
+      }
     >
-      <Box
-        position="relative"
-        css={{
-          aspectRatio: '1',
-          // A browser that does not know container units keeps the first, fixed size.
-          width: [
-            `${SIZE}px`,
-            `min(100cqw, 100cqh, ${Math.max(maxSize, SIZE)}px)`,
-          ] as unknown as string,
-          flex: 'none',
-        }}
-      >
-        <Box
+      <div className={styles.ring}>
+        <div
           ref={ring}
-          position="absolute"
-          cursor={total !== undefined ? 'pointer' : 'default'}
+          className={styles.track}
           {...(total !== undefined
             ? {
                 role: 'slider',
@@ -186,19 +163,12 @@ export function ArtworkRing({
                 },
               }
             : {})}
-          css={{ inset: 0, touchAction: 'none' }}
         >
           <svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">
-            <circle
-              cx="50"
-              cy="50"
-              r="47"
-              fill="none"
-              strokeWidth="3"
-              css={({ palette }) => ({ stroke: palette.border })}
-            />
+            <circle className={styles.base} cx="50" cy="50" r="47" fill="none" strokeWidth="3" />
             {fraction !== undefined ? (
               <circle
+                className={styles.progress}
                 cx="50"
                 cy="50"
                 r="47"
@@ -208,21 +178,13 @@ export function ArtworkRing({
                 pathLength={100}
                 strokeDasharray={`${fraction * 100} 100`}
                 transform="rotate(-90 50 50)"
-                css={({ palette }) => ({ stroke: palette.accent })}
               />
             ) : null}
           </svg>
-        </Box>
-        <Box position="absolute" radius="full" border css={{ inset: '9%' }} />
-        <Flex
-          center
-          position="absolute"
-          radius="full"
-          overflow="hidden"
-          background="surfaceRaised"
-          color="textMuted"
-          cursor={onOpen ? 'pointer' : 'inherit'}
-          css={{ inset: '14%' }}
+        </div>
+        <div className={styles.outline} />
+        <div
+          className={styles.art}
           {...(onOpen
             ? {
                 role: 'button',
@@ -244,8 +206,8 @@ export function ArtworkRing({
           ) : (
             <Icon name="lu:music" size={40} />
           )}
-        </Flex>
-      </Box>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 }

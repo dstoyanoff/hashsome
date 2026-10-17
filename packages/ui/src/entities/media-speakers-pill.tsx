@@ -1,11 +1,10 @@
-/** @jsxImportSource @emotion/react */
 import type { EntityRef, MediaPlayerEntity } from '@hashsome/core';
-import { Box, Flex, Typography } from '../style/prim.tsx';
 import { memo } from 'react';
 import { useEntities } from '../hooks.ts';
 import { Icon } from '../icon.tsx';
 import { IconButton } from '../layout/tile.tsx';
 import { DrawerTrigger } from '../layout/use-drawer.tsx';
+import styles from './media-speakers-pill.module.css';
 import { MediaSpeakers, offeredSpeakers } from './media-speakers.tsx';
 
 /** What the pill says: how many speakers play together, or which stream is playing in another room, or nothing. */
@@ -107,44 +106,23 @@ export function SpeakersPill({
   const words = compact ? (grouped ? String(summary.together) : undefined) : label;
 
   return (
-    <Flex
-      as="button"
+    <button
       type="button"
+      className={styles.pill}
+      data-grouped={grouped}
+      data-bare={words === undefined}
       aria-label={`Speakers: ${label}`}
       aria-haspopup="dialog"
       aria-expanded={pressed}
       title={label}
       onClick={onClick}
-      align="center"
-      justify="center"
-      gap={2}
-      radius="full"
-      height={30}
-      px={words === undefined ? 0 : 3}
-      background="surfaceRaised"
-      color={grouped ? 'text' : 'textMuted'}
-      cursor="pointer"
-      css={{ flex: 'none', minWidth: 30, maxWidth: '100%', border: 0 }}
     >
-      <Box color={grouped ? 'accent' : 'textMuted'} css={{ display: 'grid' }}>
+      <span className={styles.icon}>
         <Icon name="lu:speaker" size={14} />
-      </Box>
-      {offering ? (
-        <Box
-          background="accent"
-          radius="full"
-          width={7}
-          height={7}
-          aria-hidden="true"
-          css={{ flex: 'none' }}
-        />
-      ) : null}
-      {words !== undefined ? (
-        <Typography as="span" variant="label" noWrap textOverflow="ellipsis" overflow="hidden">
-          {words}
-        </Typography>
-      ) : null}
-    </Flex>
+      </span>
+      {offering ? <span className={styles.dot} aria-hidden="true" /> : null}
+      {words !== undefined ? <span className={styles.words}>{words}</span> : null}
+    </button>
   );
 }
 

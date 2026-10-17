@@ -1,0 +1,228 @@
+.forecast {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 5);
+}
+
+.now {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 3);
+}
+
+.nowText {
+  display: flex;
+  flex-direction: column;
+}
+
+.temp {
+  composes: heading from '../style/type.module.css';
+}
+
+.sub {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}
+
+.windNow {
+  display: flex;
+  align-items: center;
+  gap: var(--hs-unit);
+  color: var(--hs-text-muted);
+}
+
+.glyph {
+  display: flex;
+}
+
+.arrow {
+  display: flex;
+  transform: rotate(var(--turn));
+}
+
+.metric {
+  display: flex;
+  align-items: center;
+  gap: var(--hs-unit);
+  color: var(--hs-text-muted);
+}
+
+.metricText {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+  white-space: nowrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 0.5);
+  padding: calc(var(--hs-unit) * 2.5) calc(var(--hs-unit) * 3);
+  border: var(--hs-border-width) solid var(--hs-border);
+  border-radius: var(--hs-radius-row);
+}
+
+.statLabel {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}
+
+.statValue {
+  composes: bodyStrong from '../style/type.module.css';
+}
+
+.stats {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hs-unit);
+}
+
+.heading {
+  composes: label from '../style/type.module.css';
+  margin: 0;
+  color: var(--hs-text-muted);
+}
+
+/* The 24 hours in one row, each a column with no box of its own: as many as fit show, and the rest are a swipe or a scroll away. */
+.hours {
+  display: flex;
+  margin-top: calc(var(--hs-unit) * 2);
+  padding-bottom: 4px;
+  overflow-x: auto;
+}
+
+.hour {
+  display: flex;
+  flex: 1 0 84px;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 1.5);
+  padding: var(--hs-unit) calc(var(--hs-unit) * 2);
+}
+
+.hourName {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}
+
+.hourTemp {
+  composes: bodyStrong from '../style/type.module.css';
+}
+
+.metrics {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 0.5);
+}
+
+/* A few hours along the curve, with their sky and temperature. */
+.along {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--hs-unit);
+}
+
+.alongHour {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--hs-unit);
+}
+
+.alongTemp {
+  composes: label from '../style/type.module.css';
+}
+
+.days {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.dayList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hs-unit);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.day {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 3);
+  padding: calc(var(--hs-unit) * 1.5) 0;
+}
+
+.dayName {
+  composes: body from '../style/type.module.css';
+  width: 104px;
+  white-space: nowrap;
+}
+
+.dayRain {
+  composes: secondary from '../style/type.module.css';
+  width: 40px;
+  color: var(--hs-text-muted);
+  white-space: nowrap;
+}
+
+.days[data-expanded='true'] .dayRain {
+  width: 90px;
+}
+
+.low {
+  composes: label from '../style/type.module.css';
+  width: 36px;
+  color: var(--hs-text-muted);
+  text-align: right;
+}
+
+.high {
+  composes: label from '../style/type.module.css';
+  width: 36px;
+}
+
+.range {
+  position: relative;
+  flex-grow: 1;
+  height: 6px;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+}
+
+.rangeBar {
+  position: absolute;
+  left: var(--from);
+  width: var(--width);
+  height: 6px;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-accent);
+}
+
+.extras {
+  display: flex;
+  flex: none;
+  gap: calc(var(--hs-unit) * 4);
+}
+
+.wind {
+  width: 84px;
+}
+
+.humidity {
+  width: 64px;
+}
+
+.uv {
+  width: 72px;
+}

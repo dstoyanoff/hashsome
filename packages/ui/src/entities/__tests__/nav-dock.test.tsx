@@ -1,23 +1,19 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { ThemeProvider } from 'e-prim';
 import { MemoryRouter, RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, expect, test } from 'vitest';
-import { darkTheme } from '../../theme/index.ts';
 import { NavDock } from '../nav-dock.tsx';
 
 test('nav dock resolves items against base and marks the current page', () => {
   render(
-    <ThemeProvider theme={darkTheme}>
-      <MemoryRouter initialEntries={['/home']}>
-        <NavDock
-          base="/home"
-          items={[
-            { to: '', label: 'Downstairs', icon: 'lu:house' },
-            { to: 'upstairs', label: 'Upstairs', icon: 'tb:stairs-up' },
-          ]}
-        />
-      </MemoryRouter>
-    </ThemeProvider>,
+    <MemoryRouter initialEntries={['/home']}>
+      <NavDock
+        base="/home"
+        items={[
+          { to: '', label: 'Downstairs', icon: 'lu:house' },
+          { to: 'upstairs', label: 'Upstairs', icon: 'tb:stairs-up' },
+        ]}
+      />
+    </MemoryRouter>,
   );
 
   expect(screen.getByRole('link', { name: 'Downstairs' }).getAttribute('aria-current')).toBe(
@@ -55,11 +51,7 @@ const openUpstairs = (installed: boolean) => {
     { initialEntries: ['/home'] },
   );
 
-  render(
-    <ThemeProvider theme={darkTheme}>
-      <RouterProvider router={router} />
-    </ThemeProvider>,
-  );
+  render(<RouterProvider router={router} />);
 
   fireEvent.click(screen.getByRole('link', { name: 'Upstairs' }));
   return router.state.historyAction;

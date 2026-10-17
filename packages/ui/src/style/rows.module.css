@@ -1,0 +1,35 @@
+/* The raised rows a drawer is made of (a mode, a target, a preset): shared by the entities that have them. */
+.row {
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--hs-unit) * 3.5) calc(var(--hs-unit) * 4);
+  border-radius: var(--hs-radius-row);
+  background: var(--hs-surface-raised);
+}
+
+.spread {
+  composes: row;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.name {
+  composes: bodyStrong from './type.module.css';
+}
+
+.hint {
+  composes: secondary from './type.module.css';
+  color: var(--hs-text-muted);
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+}

@@ -1,6 +1,4 @@
-/** @jsxImportSource @emotion/react */
 import type { EntityRef } from '@hashsome/core';
-import { Flex, Typography } from '../style/prim.tsx';
 import { useState, type ReactNode } from 'react';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
 import { useEntities, useEntityHandle } from '../hooks.ts';
@@ -14,6 +12,7 @@ import { Spinner } from '../layout/spinner.tsx';
 import { useClient } from '../provider.tsx';
 import { statusLabels } from '../status.ts';
 import { usePressFeedback, useVolumeControl } from './media-controls.ts';
+import styles from './media-speakers.module.css';
 
 export interface MediaSpeakersProps {
   /** The player whose stream this is, as a ref like `ma:porch` or a handle (a custom source). */
@@ -69,24 +68,18 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
 
   if (handle.status !== 'ready' || !player || !me) {
     return (
-      <Flex direction="column" gap={2} aria-busy="true">
+      <div className={styles.skeletons} aria-busy="true">
         {handle.status === 'ready' || handle.status === 'loading' ? (
           [0, 1, 2].map((row) => <Skeleton key={row} width="100%" height={44} radius="row" />)
         ) : (
-          <Typography as="p" variant="body" color="textMuted">
-            {statusLabels[handle.status]}
-          </Typography>
+          <p className={styles.note}>{statusLabels[handle.status]}</p>
         )}
-      </Flex>
+      </div>
     );
   }
 
   if (!player.capabilities.group) {
-    return (
-      <Typography as="p" variant="body" color="textMuted">
-        {own} cannot be grouped with other speakers.
-      </Typography>
-    );
+    return <p className={styles.note}>{own} cannot be grouped with other speakers.</p>;
   }
 
   const group = player.group;
@@ -162,13 +155,7 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
   };
 
   return (
-    <Flex
-      direction="column"
-      gap={4}
-      grow={1}
-      minHeight={0}
-      css={{ overflowY: 'auto', overflowX: 'hidden' }}
-    >
+    <div className={styles.speakers}>
       <Section title="This stream">
         <SpeakerRow speaker={me} label={own} volume handle={handle}>
           {() =>
@@ -267,9 +254,7 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
 
       <Section title="Add to this stream">
         {quiet.length === 0 ? (
-          <Typography as="p" variant="body" color="textMuted">
-            No other speakers to add.
-          </Typography>
+          <p className={styles.note}>No other speakers to add.</p>
         ) : (
           quiet.map((ref) => (
             <SpeakerRow key={ref} speaker={ref}>
@@ -299,18 +284,16 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
         }}
         onCancel={() => setAsk(null)}
       />
-    </Flex>
+    </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Flex direction="column" gap={1}>
-      <Typography as="h4" variant="eyebrow" uppercase color="textMuted">
-        {title}
-      </Typography>
+    <div className={styles.section}>
+      <h4 className={styles.sectionTitle}>{title}</h4>
       {children}
-    </Flex>
+    </div>
   );
 }
 
@@ -368,30 +351,18 @@ function SpeakerRow({
 
   if (volume) {
     return (
-      <Flex direction="column" gap={2} py={2} css={{ opacity: available ? 1 : 0.55 }}>
-        <Flex align="center" gap={3}>
-          <Flex align="baseline" gap={2} grow={1} minWidth={0}>
-            <Typography
-              as="span"
-              variant="bodyStrong"
-              noWrap
-              textOverflow="ellipsis"
-              overflow="hidden"
-            >
-              {info.name}
-            </Typography>
+      <div className={styles.volumeRow} data-available={available}>
+        <div className={styles.head}>
+          <div className={styles.names}>
+            <span className={styles.name}>{info.name}</span>
             {!available || note ? (
-              <Typography as="span" variant="secondary" color="textMuted" css={{ flex: 'none' }}>
-                {available ? note : status}
-              </Typography>
+              <span className={styles.aside}>{available ? note : status}</span>
             ) : null}
-          </Flex>
-          <Flex align="center" gap={2} css={{ flex: 'none' }}>
-            {children(info)}
-          </Flex>
-        </Flex>
+          </div>
+          <div className={styles.actions}>{children(info)}</div>
+        </div>
         {available && player?.capabilities.volume ? (
-          <Flex align="center" gap={2}>
+          <div className={styles.level}>
             <ValueBar
               label={`${info.name} volume`}
               value={level.shown}
@@ -402,60 +373,28 @@ function SpeakerRow({
               onDrag={level.drag}
               onCommit={level.commit}
             />
-            <Typography
-              as="span"
-              variant="secondary"
-              color="textMuted"
-              minWidth={32}
-              align="right"
-              css={{ flex: 'none', fontVariantNumeric: 'tabular-nums' }}
-            >
-              {level.shown}%
-            </Typography>
-          </Flex>
+            <span className={styles.percent}>{level.shown}%</span>
+          </div>
         ) : null}
-      </Flex>
+      </div>
     );
   }
 
   return (
-    <Flex align="center" gap={3} py={1.5} css={{ opacity: available ? 1 : 0.55 }}>
-      <Flex
-        align="center"
-        justify="center"
-        background="surfaceRaised"
-        color="textMuted"
-        radius="small"
-        width={40}
-        height={40}
-        overflow="hidden"
-        css={{ flex: 'none' }}
-      >
+    <div className={styles.row} data-available={available}>
+      <div className={styles.picture}>
         {player?.media?.artworkUrl && info.playing !== undefined ? (
           <Cover src={player.media.artworkUrl} size="small" />
         ) : (
           <Icon name="lu:speaker" size={18} />
         )}
-      </Flex>
-      <Flex direction="column" grow={1} minWidth={0}>
-        <Typography as="span" variant="bodyStrong" noWrap textOverflow="ellipsis" overflow="hidden">
-          {info.name}
-        </Typography>
-        <Typography
-          as="span"
-          variant="secondary"
-          color="textMuted"
-          noWrap
-          textOverflow="ellipsis"
-          overflow="hidden"
-        >
-          {status}
-        </Typography>
-      </Flex>
-      <Flex align="center" gap={2} css={{ flex: 'none' }}>
-        {children(info)}
-      </Flex>
-    </Flex>
+      </div>
+      <div className={styles.text}>
+        <span className={styles.name}>{info.name}</span>
+        <span className={styles.status}>{status}</span>
+      </div>
+      <div className={styles.actions}>{children(info)}</div>
+    </div>
   );
 }
 
@@ -480,28 +419,17 @@ function PillButton({
 }) {
   const busy = state === 'pending';
   return (
-    <Flex
-      as="button"
+    <button
       type="button"
+      className={styles.pill}
+      data-state={state}
       aria-label={description ?? label}
       title={description ?? label}
       onClick={onClick}
       disabled={disabled || busy}
-      align="center"
-      justify="center"
-      gap={1.5}
-      radius="full"
-      height={32}
-      px={3.5}
-      background="surfaceRaised"
-      color={state === 'error' ? 'danger' : 'text'}
-      cursor={disabled ? 'default' : busy ? 'progress' : 'pointer'}
-      css={{ flex: 'none', border: 0, opacity: disabled ? 0.5 : 1 }}
     >
       {busy ? <Spinner size={14} /> : <Icon name={icon} size={14} />}
-      <Typography as="span" variant="label">
-        {label}
-      </Typography>
-    </Flex>
+      {label}
+    </button>
   );
 }

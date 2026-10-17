@@ -1,10 +1,10 @@
-/** @jsxImportSource @emotion/react */
 import type { EntityRef, LightEntity } from '@hashsome/core';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
 import { useEntityHandle } from '../hooks.ts';
-import { useColorByKey } from 'e-prim';
-import { Box, Flex, Typography } from '../style/prim.tsx';
+import { useColor } from '../theme/use-theme.ts';
+import rows from '../style/rows.module.css';
+import styles from './light-tile.module.css';
 import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { PowerButton, StepButton, ValueBar } from '../layout/drawer-controls.tsx';
@@ -85,7 +85,7 @@ export function LightTile({
   const brightness = light?.brightness;
   const percent = brightness === undefined ? undefined : Math.round(brightness * 100);
   const rgb = resolveLightColor(light);
-  const chipBg = hexToRgb(useColorByKey('surfaceRaised') ?? '');
+  const chipBg = hexToRgb(useColor('surfaceRaised'));
   const paletteColor = rgb ? rgbCss(chipBg ? ensureContrast(rgb, chipBg) : rgb) : undefined;
   const caps = { colorTemp: supportsTemp, hs: supportsHs };
   const swatches = colors.flatMap((preset) => {
@@ -251,43 +251,28 @@ function LightColorSection({
   }
 
   return (
-    <Flex direction="column" gap={2} py={3.5}>
-      <PlainButton
-        aria-expanded={open}
-        onClick={onToggle}
-        justify="space-between"
-        align="center"
-        color="text"
-      >
-        <Typography as="span" variant="bodyStrong">
-          Color
-        </Typography>
-        <Flex align="center" gap={2}>
+    <div className={styles.section}>
+      <PlainButton className={styles.toggle} aria-expanded={open} onClick={onToggle}>
+        <span className={styles.toggleName}>Color</span>
+        <span className={styles.current}>
           {rgb ? (
-            <Box
-              as="span"
-              width={16}
-              height={16}
-              radius="full"
+            <span
+              className={styles.dot}
               aria-hidden="true"
-              css={{ background: rgbCss(rgb) }}
+              style={{ '--dot': rgbCss(rgb) } as CSSProperties}
             />
           ) : null}
           <Icon name={open ? 'lu:chevron-up' : 'lu:chevron-down'} size={16} />
-        </Flex>
+        </span>
       </PlainButton>
       {open ? (
-        <Flex direction="column" gap={3} pt={1}>
+        <div className={styles.bars}>
           {supportsTemp ? (
-            <Flex direction="column" gap={2}>
-              <Flex justify="space-between" align="center">
-                <Typography as="span" variant="secondary" color="textMuted">
-                  Temperature
-                </Typography>
-                <Typography as="span" variant="secondary" color="textMuted">
-                  {dragK ?? kelvin} K
-                </Typography>
-              </Flex>
+            <div className={styles.bar}>
+              <div className={styles.line}>
+                <span className={styles.small}>Temperature</span>
+                <span className={styles.small}>{dragK ?? kelvin} K</span>
+              </div>
               <ValueBar
                 label="Color temperature"
                 value={dragK ?? kelvin}
@@ -302,13 +287,11 @@ function LightColorSection({
                   onKelvin(next);
                 }}
               />
-            </Flex>
+            </div>
           ) : null}
           {supportsHs ? (
-            <Flex direction="column" gap={2}>
-              <Typography as="span" variant="secondary" color="textMuted">
-                Hue
-              </Typography>
+            <div className={styles.bar}>
+              <span className={styles.small}>Hue</span>
               <ValueBar
                 label="Hue"
                 value={dragH ?? hue}
@@ -322,24 +305,11 @@ function LightColorSection({
                   onHue(next);
                 }}
               />
-              <Flex justify="space-between" align="center">
-                <Typography as="span" variant="secondary" color="textMuted">
-                  Any color
-                </Typography>
-                <Flex align="center" gap={2}>
-                  <Box
-                    as="input"
-                    width={16}
-                    height={16}
-                    p={0}
-                    radius="full"
-                    cursor="pointer"
-                    css={{
-                      background: 'none',
-                      '&::-webkit-color-swatch-wrapper': { padding: 0 },
-                      '&::-webkit-color-swatch': { border: 0, borderRadius: '50%' },
-                      '&::-moz-color-swatch': { border: 0, borderRadius: '50%' },
-                    }}
+              <div className={styles.line}>
+                <span className={styles.small}>Any color</span>
+                <div className={styles.picks}>
+                  <input
+                    className={styles.picker}
                     type="color"
                     aria-label="Pick any color"
                     title="Open the color picker"
@@ -351,13 +321,13 @@ function LightColorSection({
                       pickTimer.current = setTimeout(() => onPicked(next), 200);
                     }}
                   />
-                </Flex>
-              </Flex>
-            </Flex>
+                </div>
+              </div>
+            </div>
           ) : null}
-        </Flex>
+        </div>
       ) : null}
-    </Flex>
+    </div>
   );
 }
 
@@ -398,29 +368,23 @@ function LightDetailBody({
   };
 
   return (
-    <Flex direction="column" gap={2}>
-      <Flex justify="space-between" align="center" py={3.5}>
-        <Flex direction="column">
-          <Typography as="span" variant="bodyStrong">
-            Power
-          </Typography>
-          <Typography as="span" variant="secondary" color="textMuted">
+    <div className={rows.stack}>
+      <div className={styles.power}>
+        <div className={rows.column}>
+          <span className={rows.name}>Power</span>
+          <span className={rows.hint}>
             {on ? (percent !== undefined ? `On · ${percent}%` : 'On') : 'Off'}
-          </Typography>
-        </Flex>
+          </span>
+        </div>
         <PowerButton on={on} onToggle={onToggle} />
-      </Flex>
+      </div>
       {onBrightness ? (
-        <Flex direction="column" gap={2} py={3.5}>
-          <Flex justify="space-between" align="center">
-            <Typography as="span" variant="bodyStrong">
-              Brightness
-            </Typography>
-            <Typography as="span" variant="secondary" color="textMuted">
-              {value}%
-            </Typography>
-          </Flex>
-          <Flex align="center" gap={2}>
+        <div className={styles.brightness}>
+          <div className={styles.line}>
+            <span className={rows.name}>Brightness</span>
+            <span className={rows.hint}>{value}%</span>
+          </div>
+          <div className={styles.brightnessRow}>
             <StepButton
               plain
               icon="lu:minus"
@@ -428,7 +392,7 @@ function LightDetailBody({
               delta={-1}
               onStep={step}
             />
-            <Box grow={1}>
+            <div className={styles.grow}>
               <ValueBar
                 label="Brightness"
                 track="surfaceRaised"
@@ -439,12 +403,12 @@ function LightDetailBody({
                 onDrag={setDrag}
                 onCommit={commit}
               />
-            </Box>
+            </div>
             <StepButton plain icon="lu:plus" label="Increase brightness" delta={1} onStep={step} />
-          </Flex>
-        </Flex>
+          </div>
+        </div>
       ) : null}
       {colorSection}
-    </Flex>
+    </div>
   );
 }

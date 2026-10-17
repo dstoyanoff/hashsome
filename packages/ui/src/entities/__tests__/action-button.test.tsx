@@ -1,7 +1,7 @@
 import { mockAction, mockSwitch } from '@hashsome/core';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
-import { renderWithMock } from '../../test-utils.tsx';
+import { computed, renderWithMock } from '../../test-utils.tsx';
 import type { EntityHandle } from '../../entity-handle.ts';
 import { ActionButton } from '../action-button.tsx';
 import { SceneButton } from '../scene-button.tsx';
@@ -25,8 +25,8 @@ test('a scene button given a color fills its icon badge with it, and a plain one
   );
 
   const badges = [...container.querySelectorAll('svg')].map((icon) => icon.parentElement!);
-  expect(getComputedStyle(badges[0]!).backgroundColor).toBe('rgb(139, 92, 246)');
-  expect(getComputedStyle(badges[1]!).backgroundColor).not.toBe('rgb(139, 92, 246)');
+  expect(computed(badges[0]!, 'background')).toBe('#8B5CF6');
+  expect(computed(badges[1]!, 'background')).not.toBe('#8B5CF6');
 });
 
 test('an action button runs an action entity and shows feedback', async () => {

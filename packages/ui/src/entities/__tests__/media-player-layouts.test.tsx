@@ -2,10 +2,9 @@ import { mockLibrary, mockMediaPlayer, type EntityRef } from '@hashsome/core';
 import { act, cleanup, fireEvent, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { renderWithMock } from '../../test-utils.tsx';
+import { computed, renderWithMock } from '../../test-utils.tsx';
 import { MediaPlayerBar } from '../media-player-bar.tsx';
 import { MediaPlayerColumn } from '../media-player-column.tsx';
-import { Flex } from 'e-prim';
 import { useEntityHandle } from '../../hooks.ts';
 import { MediaBrowser } from '../media-browser.tsx';
 import { MediaPlayerFull } from '../media-player-full.tsx';
@@ -16,14 +15,14 @@ import { MediaQueue } from '../media-queue.tsx';
 function RoomPage({ entity, name }: { entity: EntityRef; name?: string }) {
   const handle = useEntityHandle('mediaPlayer', entity);
   return (
-    <Flex
-      direction="column"
-      background="surface"
-      radius="card"
-      p={5}
-      grow={1}
-      minHeight={0}
-      overflow="auto"
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        flexGrow: 1,
+        minHeight: 0,
+        overflow: 'auto',
+      }}
     >
       <MediaPlayerFull
         entity={entity}
@@ -33,7 +32,7 @@ function RoomPage({ entity, name }: { entity: EntityRef; name?: string }) {
           ? { browser: <MediaBrowser entity={entity} layout="theater" /> }
           : {})}
       />
-    </Flex>
+    </div>
   );
 }
 
@@ -771,8 +770,8 @@ describe('the queue beside the player', () => {
     expect(getComputedStyle(row).flexDirection).not.toBe('column');
     // The queue's own column is as tall as the row, with a line on its left.
     const column = beside.parentElement!.parentElement!;
-    expect(getComputedStyle(column).borderLeftWidth).toBe('1px');
-    expect(getComputedStyle(column).flexShrink).toBe('0');
+    expect(computed(column, 'border-left')).toContain('1px');
+    expect(computed(column, 'flex')).toBe('0 0 auto');
   });
 
   test('a narrow one has no room for it, when it is asked not to take turns with the library', () => {

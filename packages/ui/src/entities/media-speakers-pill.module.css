@@ -1,0 +1,48 @@
+.pill {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--hs-unit) * 2);
+  min-width: 30px;
+  max-width: 100%;
+  height: 30px;
+  padding: 0 calc(var(--hs-unit) * 3);
+  border: 0;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+  color: var(--hs-text-muted);
+  cursor: pointer;
+}
+
+.pill[data-bare='true'] {
+  padding: 0;
+}
+
+.pill[data-grouped='true'] {
+  color: var(--hs-text);
+}
+
+.icon {
+  display: grid;
+  color: var(--hs-text-muted);
+}
+
+.pill[data-grouped='true'] .icon {
+  color: var(--hs-accent);
+}
+
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-accent);
+}
+
+.words {
+  composes: label from '../style/type.module.css';
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

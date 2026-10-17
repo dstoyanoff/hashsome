@@ -423,7 +423,7 @@ describe('layouts', () => {
     const artist = await screen.findByRole('button', { name: 'Open Fleetwood Mac' });
     const artwork = artist.querySelector('img')!.parentElement as HTMLElement;
     // Up to 200px, and less only when the row is too short for that (a container query, not measured in jsdom).
-    expect(getComputedStyle(artwork).width).toMatch(/^min\(200px,/);
+    expect(computed(artwork, 'width')).toMatch(/^min\(200px,/);
     expect(computed(artwork, 'border-radius')).toBe('999px');
     fireEvent.click(screen.getByRole('button', { name: 'Play Fleetwood Mac' }));
     expect(ha.calls.at(-1)).toMatchObject({ command: 'playMedia', args: { item: 'ar-mac' } });

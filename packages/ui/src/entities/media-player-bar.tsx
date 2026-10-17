@@ -1,7 +1,4 @@
-/** @jsxImportSource @emotion/react */
 import type { EntityRef } from '@hashsome/core';
-import type { CSSObject } from '@emotion/react';
-import { Flex, Typography } from '../style/prim.tsx';
 import { motion } from 'motion/react';
 import { useState, type ReactNode } from 'react';
 import { Icon } from '../icon.tsx';
@@ -25,6 +22,7 @@ import { MediaQueue } from './media-queue.tsx';
 import { SpeakersOverlay } from './media-speakers-pill.tsx';
 import { formatDuration, useMediaPosition, useSteadyPlaying } from './media-progress.ts';
 import { useSeekHold } from './media-seek.ts';
+import styles from './media-player-bar.module.css';
 import { SeekLine } from './seek-line.tsx';
 
 export interface MediaPlayerBarProps {
@@ -62,9 +60,6 @@ export interface MediaPlayerBarProps {
   shuffle?: boolean;
 }
 
-/** Narrower than this, a bar with `rows="auto"` is two rows. */
-const TWO_ROWS_BELOW = 560;
-
 /** Glyph size inside the player's 44px circles — smaller than an icon's default so there is breathing room around it. */
 const MEDIA_GLYPH = 18;
 
@@ -80,51 +75,13 @@ function Ring({
   fraction?: number | undefined;
   children: ReactNode;
 }) {
-  return (
-    <Flex
-      {...(onOpen
-        ? {
-            as: 'button',
-            type: 'button',
-            'aria-label': 'Open player',
-            title: 'Open player',
-            onClick: onOpen,
-            cursor: 'pointer',
-          }
-        : { as: 'span' })}
-      data-part="ring"
-      center
-      position="relative"
-      p={0}
-      radius="full"
-      css={({ density }) => ({
-        width: density.iconCircle,
-        height: density.iconCircle,
-        flex: 'none',
-        background: 'none',
-      })}
-    >
-      <svg
-        viewBox="0 0 100 100"
-        aria-hidden="true"
-        css={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-        }}
-      >
-        <circle
-          cx="50"
-          cy="50"
-          r="47.5"
-          fill="none"
-          strokeWidth="4"
-          css={({ palette }) => ({ stroke: palette.border })}
-        />
+  const content = (
+    <>
+      <svg viewBox="0 0 100 100" aria-hidden="true" className={styles.ringSvg}>
+        <circle className={styles.ringTrack} cx="50" cy="50" r="47.5" fill="none" strokeWidth="4" />
         {fraction !== undefined ? (
           <circle
+            className={styles.ringProgress}
             data-part="progress"
             cx="50"
             cy="50"
@@ -135,89 +92,33 @@ function Ring({
             pathLength={100}
             strokeDasharray={`${fraction * 100} 100`}
             transform="rotate(-90 50 50)"
-            css={({ palette }) => ({ stroke: palette.accent })}
           />
         ) : null}
       </svg>
       {children}
-    </Flex>
+    </>
+  );
+
+  return onOpen ? (
+    <button
+      type="button"
+      className={styles.ring}
+      data-part="ring"
+      aria-label="Open player"
+      title="Open player"
+      onClick={onOpen}
+    >
+      {content}
+    </button>
+  ) : (
+    <span className={styles.ring} data-part="ring">
+      {content}
+    </span>
   );
 }
 
 /** The same spring the swatch rows pop in with, so the volume overlay opens like they do. */
 const VOLUME_SPRING = { type: 'spring', stiffness: 520, damping: 26 } as const;
-
-/** What the pill is like in two rows: the artwork, "title · artist" and the time on top; under them
- * the buttons share the whole width, all of one size, and while the volume slider is open it has the
- * row to itself, with only the button that closes it. The bar is as tall as two regular tiles and
- * the gap between them (a tile is its icon circle and a spacing unit), so it sits in a grid of
- * tiles. A line break between the rows comes from an empty item that fills a line of its own. */
-const stacked = ({
-  radius,
-  spacing,
-  density,
-}: {
-  radius: { card: string };
-  spacing: (n: number) => string;
-  density: { iconCircle: number; space: number };
-}): CSSObject => ({
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  alignContent: 'center',
-  columnGap: spacing(2.5),
-  rowGap: 0,
-  minHeight: 2 * (density.iconCircle + density.space / 3) + density.space,
-  paddingTop: spacing(2.5),
-  paddingBottom: spacing(2.5),
-  borderRadius: radius.card,
-  '&::before': { content: '""', order: 1, flexBasis: '100%', height: 0 },
-  '& > [data-part="track"]': {
-    flex: '1 1 0',
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing(1.5),
-    // The title and the artist share the line and shorten, with an ellipsis, before they run into
-    // the time; the artist follows the title after a dot.
-    '& > :nth-child(1)': {
-      flex: '0 1 auto',
-      minWidth: 0,
-      // The title is what gives way, not the shuffle button beside it.
-      '& > :first-child': { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' },
-    },
-    '& > :nth-child(2)': {
-      flex: '0 1 auto',
-      minWidth: 0,
-      overflow: 'hidden',
-      '&::before': { content: '"·"', marginRight: spacing(1.5) },
-    },
-  },
-  '& [data-part="tools"], & [data-part="transport"]': { display: 'contents' },
-  '& [data-part="tools"] > button, & [data-part="transport"] > button': {
-    order: 2,
-    flex: '1 1 0',
-    minWidth: 0,
-    width: 'auto',
-    height: 34,
-    marginTop: spacing(2.5),
-  },
-  '& [data-part="transport"] > button': { order: 4 },
-  '& > [data-part="volume"]': {
-    order: 3,
-    flex: '1 1 0',
-    minWidth: 0,
-    marginTop: spacing(2.5),
-  },
-  '&[data-volume-open="true"]': {
-    '& > [data-part="track"], & > [data-part="time"]': { display: 'flex' },
-    // The slider has the row: only the button that closes it stays, a circle beside it.
-    '& [data-part="tools"] > button:nth-of-type(n + 2), & [data-part="transport"] > button': {
-      display: 'none',
-    },
-    '& [data-part="tools"] > button:first-of-type': { flex: 'none', width: 34 },
-  },
-});
 
 /** The bar itself. Holding it (anywhere but on a button or slider) opens the drawer, with a thin
  * line along the top that fills while the press is timed, like a tile's. */
@@ -236,46 +137,21 @@ function HoldCard({
 }) {
   const hold = useHold(() => open?.(), open !== undefined);
   const card = (
-    <Flex
-      position="relative"
-      align="center"
-      grow={1}
-      minWidth={0}
-      gap={3}
-      pl={2.25}
-      pr={3}
-      background="surface"
-      radius="full"
-      overflow="hidden"
+    <div
+      className={styles.card}
       data-grid-card
       data-status={status}
-      data-rows={rows === 2 ? 2 : undefined}
+      data-rows={rows === 1 ? undefined : rows}
       data-volume-open={volumeOpen}
-      css={(theme) => ({
-        minHeight: theme.density.tileHeight,
-        // In one row the volume slider takes the track's place; in two it has its own row.
-        '&[data-volume-open="true"] > [data-part="track"], &[data-volume-open="true"] > [data-part="time"]':
-          { display: 'none' },
-        ...(rows === 2 ? stacked(theme) : {}),
-        ...(rows === 'auto'
-          ? { [`@container (max-width: ${TWO_ROWS_BELOW - 1}px)`]: stacked(theme) }
-          : {}),
-      })}
       {...hold.handlers}
     >
       {children}
       {hold.holding ? <HoldProgress /> : null}
-    </Flex>
+    </div>
   );
 
   // `auto` asks the width the bar is given, so its parent is the thing measured.
-  return rows === 'auto' ? (
-    <Flex width="100%" css={{ containerType: 'inline-size' }}>
-      {card}
-    </Flex>
-  ) : (
-    card
-  );
+  return rows === 'auto' ? <div className={styles.wrap}>{card}</div> : card;
 }
 
 /** Now playing with previous / play-pause / next and a volume control, for a media player entity. */
@@ -305,22 +181,13 @@ export function MediaPlayerBar({
   const volume = useVolumeControl(handle);
 
   const artwork = (
-    <Flex
-      as="span"
-      center
-      width={30}
-      height={30}
-      radius="full"
-      overflow="hidden"
-      background="surfaceRaised"
-      color="textMuted"
-    >
+    <span className={styles.artwork}>
       {player?.media?.artworkUrl ? (
         <Cover src={player.media.artworkUrl} size="small" />
       ) : (
         <Icon name="lu:music" size={14} />
       )}
-    </Flex>
+    </span>
   );
 
   const position = useMediaPosition(player);
@@ -356,12 +223,8 @@ export function MediaPlayerBar({
   const grouped = grouping && ref !== undefined && caps?.group === true;
 
   const volumeSlider = (
-    <Flex
-      as={motion.div}
-      align="center"
-      gap={2}
-      grow={1}
-      minWidth={0}
+    <motion.div
+      className={styles.volume}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.15 }}
@@ -369,6 +232,7 @@ export function MediaPlayerBar({
     >
       <PlainButton
         as={motion.button}
+        className={styles.mute}
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={VOLUME_SPRING}
@@ -376,20 +240,14 @@ export function MediaPlayerBar({
         aria-pressed={muted}
         title={muted ? 'Unmute' : 'Mute'}
         onClick={volume.toggleMute}
-        center
-        color={muted ? 'accent' : 'textMuted'}
-        css={{ flex: 'none' }}
       >
         <Icon name={muted ? 'lu:volume-x' : 'lu:volume-2'} size={16} />
       </PlainButton>
-      <Flex
-        as={motion.div}
-        grow={1}
-        minWidth={0}
+      <motion.div
+        className={styles.slider}
         initial={{ scaleX: 0.4, opacity: 0 }}
         animate={{ scaleX: 1, opacity: 1 }}
         transition={{ ...VOLUME_SPRING, delay: 0.04 }}
-        css={{ transformOrigin: 'left center' }}
       >
         <ValueBar
           label="Volume level"
@@ -401,71 +259,56 @@ export function MediaPlayerBar({
           onDrag={volume.drag}
           onCommit={volume.commit}
         />
-      </Flex>
-      <Typography
-        as={motion.span}
-        variant="secondary"
-        color="textMuted"
-        minWidth={32}
-        align="right"
-        css={{ flex: 'none' }}
+      </motion.div>
+      <motion.span
+        className={styles.percent}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2, delay: 0.1 }}
       >
         {volume.shown}%
-      </Typography>
-    </Flex>
+      </motion.span>
+    </motion.div>
   );
 
   const trackInfo = (
-    <>
-      <Flex
-        data-part="track"
-        direction="column"
-        grow={1}
-        minWidth={0}
-        {...(ready ? {} : { color: 'textMuted' as const })}
-      >
-        <Flex align="center" gap={1.5} minWidth={0}>
-          <Typography as="span" variant="label" css={{ minWidth: 0 }}>
-            <MarqueeText>
-              {ready
-                ? (player?.media?.title ?? 'Nothing playing')
-                : statusLabels[status as Exclude<typeof status, 'ready'>]}
-            </MarqueeText>
-          </Typography>
-          {ready && shuffle && caps?.shuffle ? (
-            <PlainButton
-              aria-label="Shuffle"
-              aria-pressed={player?.shuffle === true}
-              title="Shuffle"
-              onClick={() =>
-                press('setShuffle', () =>
-                  handle.command('setShuffle', { shuffle: player?.shuffle !== true }),
-                )
-              }
-              center
-              color={player?.shuffle === true ? 'accent' : 'textMuted'}
-              css={{ flex: 'none' }}
-            >
-              {feedbackFor('setShuffle') === 'pending' ? (
-                <Spinner size={14} />
-              ) : (
-                <Icon name="lu:shuffle" size={14} />
-              )}
-            </PlainButton>
-          ) : null}
-        </Flex>
-        {loading ? (
-          <LoadingLine label={loading} variant="secondary" />
-        ) : ready && player?.media?.artist ? (
-          <Typography as="span" variant="secondary" color="textMuted">
-            <MarqueeText>{player.media.artist}</MarqueeText>
-          </Typography>
+    <div className={styles.track} data-part="track" data-ready={ready}>
+      <div className={styles.titleRow}>
+        <span className={styles.title}>
+          <MarqueeText>
+            {ready
+              ? (player?.media?.title ?? 'Nothing playing')
+              : statusLabels[status as Exclude<typeof status, 'ready'>]}
+          </MarqueeText>
+        </span>
+        {ready && shuffle && caps?.shuffle ? (
+          <PlainButton
+            className={styles.shuffle}
+            aria-label="Shuffle"
+            aria-pressed={player?.shuffle === true}
+            title="Shuffle"
+            onClick={() =>
+              press('setShuffle', () =>
+                handle.command('setShuffle', { shuffle: player?.shuffle !== true }),
+              )
+            }
+          >
+            {feedbackFor('setShuffle') === 'pending' ? (
+              <Spinner size={14} />
+            ) : (
+              <Icon name="lu:shuffle" size={14} />
+            )}
+          </PlainButton>
         ) : null}
-      </Flex>
-    </>
+      </div>
+      {loading ? (
+        <LoadingLine label={loading} variant="secondary" />
+      ) : ready && player?.media?.artist ? (
+        <span className={styles.artist}>
+          <MarqueeText>{player.media.artist}</MarqueeText>
+        </span>
+      ) : null}
+    </div>
   );
 
   const bar = (open?: () => void, openExpanded?: () => void, openQueue?: () => void) => (
@@ -479,19 +322,12 @@ export function MediaPlayerBar({
       {/* The time sits at the vertical middle of the bar, beside the track; in two rows it is at the
           right of the top row. The volume slider takes the track's and the time's place in one row. */}
       {timed && time ? (
-        <Typography
-          as="span"
-          data-part="time"
-          variant="secondary"
-          color="textMuted"
-          noWrap
-          css={{ flex: 'none', fontVariantNumeric: 'tabular-nums' }}
-        >
+        <span className={styles.time} data-part="time">
           {formatDuration(seek.shown ?? 0)} / {formatDuration(duration ?? 0)}
-        </Typography>
+        </span>
       ) : null}
       {volumeOpen && ready ? volumeSlider : null}
-      <Flex data-part="tools" align="center" gap={3} css={{ flex: 'none' }}>
+      <div className={styles.tools} data-part="tools">
         <IconButton
           icon={volumeOpen ? 'lu:x' : muted ? 'lu:volume-x' : 'lu:volume-2'}
           label={volumeOpen ? 'Close volume' : 'Volume'}
@@ -524,8 +360,8 @@ export function MediaPlayerBar({
             compact
           />
         ) : null}
-      </Flex>
-      <Flex data-part="transport" align="center" gap={3} css={{ flex: 'none' }}>
+      </div>
+      <div className={styles.transport} data-part="transport">
         <IconButton
           icon="lu:skip-back"
           label="Previous"
@@ -551,7 +387,7 @@ export function MediaPlayerBar({
           feedback={feedbackFor('next')}
           onClick={() => press('next', () => handle.command('next'))}
         />
-      </Flex>
+      </div>
       {timed ? (
         <SeekLine seek={seek} duration={duration ?? 0} seekable={caps?.seek === true} />
       ) : null}

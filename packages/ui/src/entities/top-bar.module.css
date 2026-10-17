@@ -1,0 +1,304 @@
+/* A whole number of grid modules whatever is in it, so what is under it starts on the grid, and no padding of its own, so its content
+   is as far from the page's edge as the rest. */
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--hs-unit) * 4);
+  min-height: var(--hs-top-row);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 3);
+}
+
+.scenes {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2.5);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 3);
+}
+
+.title {
+  composes: title from '../style/type.module.css';
+  margin: 0;
+}
+
+.switcher {
+  position: relative;
+  display: flex;
+}
+
+.switch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--hs-unit) * 2);
+  height: 40px;
+  padding: 0 calc(var(--hs-unit) * 4);
+  border: var(--hs-border-width) solid var(--hs-border);
+  border-radius: var(--hs-radius-chrome);
+  background: var(--hs-surface);
+  color: var(--hs-text);
+  cursor: pointer;
+}
+
+.menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: var(--hs-z-dropdown);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 0.5);
+  min-width: 100%;
+  margin: calc(var(--hs-unit) * 2) 0 0;
+  padding: calc(var(--hs-unit) * 1.5);
+  border-radius: var(--hs-radius-row);
+  background: var(--hs-surface-raised);
+  box-shadow: var(--hs-shadow-drawer);
+  list-style: none;
+  white-space: nowrap;
+}
+
+/* As tall as the button that opened the list, so an entry is as easy to hit on a touch screen. */
+.option {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2);
+  width: 100%;
+  height: 40px;
+  padding: 0 calc(var(--hs-unit) * 3);
+  border: 0;
+  border-radius: var(--hs-radius-small);
+  background: transparent;
+  color: var(--hs-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.option[aria-selected='true'] {
+  background: var(--hs-surface);
+  cursor: default;
+}
+
+.optionTitle {
+  composes: body from '../style/type.module.css';
+  flex-grow: 1;
+}
+
+.dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--hs-radius-full);
+}
+
+.led {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--hs-radius-full);
+  background: var(--health);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--health) 20%, transparent);
+}
+
+.health[data-health='ok'] {
+  --health: var(--hs-success);
+}
+
+.health[data-health='pending'] {
+  --health: var(--hs-warm);
+}
+
+.health[data-health='down'] {
+  --health: var(--hs-danger);
+}
+
+.popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: var(--hs-z-dropdown);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 2);
+  min-width: 220px;
+  margin-top: calc(var(--hs-unit) * 2);
+  padding: calc(var(--hs-unit) * 3.5);
+  border-radius: var(--hs-radius-row);
+  background: var(--hs-surface-raised);
+  box-shadow: var(--hs-shadow-drawer);
+  white-space: nowrap;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.summaryDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--hs-radius-full);
+  background: var(--health);
+}
+
+.summaryText {
+  composes: bodyStrong from '../style/type.module.css';
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--hs-unit) * 6);
+}
+
+.rowName {
+  composes: body from '../style/type.module.css';
+}
+
+.rowState {
+  composes: label from '../style/type.module.css';
+  color: var(--health);
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2);
+  padding: calc(var(--hs-unit) * 2.5) calc(var(--hs-unit) * 3.5);
+  border: var(--hs-border-width) solid var(--hs-border);
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface);
+}
+
+/* As tall as a line of the label, which the trimmed texts no longer are: the pill keeps the height of the bar's other pills. */
+.skyIcon {
+  display: flex;
+  min-height: 15px;
+}
+
+/* Text boxes cut to the height of the digits, so the reading and the range, in different sizes, are both centred on their digits and
+   not on the font's line box (which sits a little low or high). Where the browser does not know `text-box` the text keeps its usual box. */
+.reading {
+  composes: label from '../style/type.module.css';
+  text-box: trim-both cap alphabetic;
+}
+
+.range {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+  text-box: trim-both cap alphabetic;
+}
+
+.plain {
+  composes: label from '../style/type.module.css';
+}
+
+.sun {
+  display: flex;
+  color: var(--hs-warm);
+}
+
+.scene {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--hs-radius-full);
+  background: var(--scene, var(--hs-accent));
+  color: var(--hs-accent-text);
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+}
+
+.scene:disabled {
+  background: var(--hs-success);
+  cursor: default;
+}
+
+.sceneIcon {
+  display: grid;
+}
+
+.check {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-left: calc(var(--hs-unit) * -2.5);
+  overflow: hidden;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-avatar);
+  color: var(--hs-accent-text);
+}
+
+.avatar[data-picture='true'] {
+  background: none;
+}
+
+/* Faded by a light overlay on top of its own color, not by opacity: a see-through avatar would show the one it overlaps underneath. */
+.avatar[data-active='false']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--hs-surface);
+  opacity: 0.6;
+}
+
+.picture {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.initials {
+  composes: bodyStrong from '../style/type.module.css';
+}
+
+.stack {
+  display: flex;
+  align-items: center;
+  padding-left: calc(var(--hs-unit) * 2.5);
+}
+
+.clockGroup {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--hs-unit);
+}
+
+.clock {
+  composes: clock from '../style/type.module.css';
+  line-height: var(--hs-top-row);
+}
+
+.period {
+  composes: label from '../style/type.module.css';
+  text-transform: uppercase;
+}

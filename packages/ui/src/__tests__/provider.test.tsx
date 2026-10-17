@@ -1,16 +1,16 @@
 import { LocalClient, MockIntegration, mockSensor } from '@hashsome/core';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useTheme } from '@emotion/react';
-import { Box, Flex } from '../style/prim.tsx';
 import { MotionGlobalConfig } from 'motion/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { computed } from '../test-utils.tsx';
+import { useDensity } from '../theme/use-density.ts';
+import { useThemeConfig } from '../theme/use-theme.ts';
 import { HashsomeProvider, useThemeToggle, type ThemeMode } from '../provider.tsx';
 
 afterEach(cleanup);
 
 function Probe() {
-  return <Box background="bg" data-testid="probe" />;
+  return <div style={{ background: 'var(--hs-bg)' }} data-testid="probe" />;
 }
 
 function renderWithTheme(theme?: ThemeMode) {
@@ -46,7 +46,7 @@ function ToggleProbe() {
   const { resolved, toggle } = useThemeToggle();
   return (
     <>
-      <Box background="bg" data-testid="probe" />
+      <div style={{ background: 'var(--hs-bg)' }} data-testid="probe" />
       <button onClick={toggle}>{resolved}</button>
     </>
   );
@@ -81,7 +81,7 @@ test('the theme is installed globally on the page, not per dashboard', () => {
 });
 
 function DensityProbe() {
-  const { density } = useTheme();
+  const density = useDensity();
   return <output data-testid="density">{JSON.stringify(density)}</output>;
 }
 
@@ -108,7 +108,8 @@ test('density is a HashsomeProvider setting: compact tightens the spacing tokens
 });
 
 function ThemeProbe() {
-  const { palette, radius, typography, density } = useTheme();
+  const { palette, radius, typography } = useThemeConfig();
+  const density = useDensity();
   return (
     <output data-testid="theme">
       {JSON.stringify({
@@ -166,12 +167,12 @@ test('density overrides apply to their density only', () => {
 });
 
 function SpacingProbe() {
-  const { spacing } = useTheme();
+  const { space } = useDensity();
   return (
     <>
-      <output data-testid="space">{spacing(3)}</output>
-      <Flex data-testid="gap" gap={3} />
-      <Flex data-testid="pad" p={6} />
+      <output data-testid="space">{`${space}px`}</output>
+      <div data-testid="gap" style={{ gap: 'calc(var(--hs-unit) * 3)' }} />
+      <div data-testid="pad" style={{ padding: 'calc(var(--hs-unit) * 6)' }} />
     </>
   );
 }

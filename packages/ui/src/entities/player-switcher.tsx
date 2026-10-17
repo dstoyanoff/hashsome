@@ -1,10 +1,9 @@
-/** @jsxImportSource @emotion/react */
 import type { EntityRef } from '@hashsome/core';
-import { Flex, Typography } from '../style/prim.tsx';
 import { useId, useRef, useState } from 'react';
 import { Icon } from '../icon.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { useDismiss } from '../layout/use-dismiss.ts';
+import styles from './player-switcher.module.css';
 
 /** One player the switcher can show: its ref and what to call it. */
 export interface PlayerOption {
@@ -33,43 +32,26 @@ export function PlayerSwitcher({
   useDismiss(open, () => setOpen(false), root);
 
   return (
-    <Flex ref={root} direction="column" align="flex-start" position="relative" zIndex="dropdown">
+    <div ref={root} className={styles.switcher}>
       <PlainButton
+        className={styles.current}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={list}
         aria-label="Speaker"
         onClick={() => setOpen((now) => !now)}
-        align="center"
-        gap={1}
-        color="textMuted"
-        py={1}
-        maxWidth={140}
       >
-        <Typography as="span" variant="label" noWrap textOverflow="ellipsis" overflow="hidden">
-          {shown?.name ?? 'Speaker'}
-        </Typography>
+        <span className={styles.name}>{shown?.name ?? 'Speaker'}</span>
         <Icon name="lu:chevron-down" size={14} />
       </PlainButton>
       {open ? (
-        <Flex
-          id={list}
-          role="listbox"
-          aria-label="Speakers"
-          direction="column"
-          background="surfaceRaised"
-          radius="row"
-          shadow="dock"
-          py={1}
-          position="absolute"
-          minWidth={160}
-          css={{ top: '100%', left: 0 }}
-        >
+        <div id={list} className={styles.list} role="listbox" aria-label="Speakers">
           {players.map((player) => {
             const selected = player.entity === current;
             return (
               <PlainButton
                 key={player.entity}
+                className={styles.option}
                 role="option"
                 aria-selected={selected}
                 onClick={() => {
@@ -78,22 +60,14 @@ export function PlayerSwitcher({
                     onChange(player.entity);
                   }
                 }}
-                align="center"
-                justify="space-between"
-                gap={3}
-                px={4}
-                py={2.5}
-                color={selected ? 'text' : 'textMuted'}
               >
-                <Typography as="span" variant={selected ? 'bodyStrong' : 'body'} noWrap>
-                  {player.name}
-                </Typography>
+                <span className={styles.optionName}>{player.name}</span>
                 {selected ? <Icon name="lu:check" size={14} /> : null}
               </PlainButton>
             );
           })}
-        </Flex>
+        </div>
       ) : null}
-    </Flex>
+    </div>
   );
 }

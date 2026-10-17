@@ -1,8 +1,6 @@
-/** @jsxImportSource @emotion/react */
 import type { EntityRef, QueueItem } from '@hashsome/core';
-import { Flex, Typography } from '../style/prim.tsx';
 import { AnimatePresence, motion, Reorder, useDragControls } from 'motion/react';
-import { useState, type KeyboardEvent } from 'react';
+import { useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { useEntityHandle } from '../hooks.ts';
 import { Icon } from '../icon.tsx';
 import { Cover } from '../layout/cover.tsx';
@@ -11,6 +9,7 @@ import { PlainButton } from '../layout/plain-button.tsx';
 import { useMediaQueue } from '../use-media-queue.ts';
 import { useRows } from '../use-rows.ts';
 import { formatDuration, formatLength } from './media-progress.ts';
+import styles from './media-queue.module.css';
 import { sourceLine } from './media-source.ts';
 import { useStill } from '../layout/use-still.ts';
 
@@ -128,59 +127,44 @@ export function MediaQueue({ entity }: MediaQueueProps) {
   const source = handle.entity?.source;
   const hidden = Math.max(0, queue.total - queue.offset - queue.items.length);
   return (
-    <Flex direction="column" minHeight={0} grow={1} gap={2}>
-      <Flex align="center" justify="space-between" gap={2}>
-        <Flex direction="column" minWidth={0}>
-          <Typography as="h2" variant="heading" m={0}>
+    <div
+      className={styles.queue}
+      style={{ '--row': `${ROW}px`, '--grip': `${GRIP}px` } as CSSProperties}
+    >
+      <div className={styles.head}>
+        <div className={styles.titles}>
+          <h2 className={styles.heading}>
             Queue
-            <Typography as="span" variant="secondary" color="textMuted">
+            <span className={styles.count}>
               {' '}
               · {queue.total} {queue.total === 1 ? 'track' : 'tracks'}
               {queue.duration !== undefined && queue.total > 0
                 ? ` · ${formatLength(queue.duration)}`
                 : ''}
-            </Typography>
-          </Typography>
+            </span>
+          </h2>
           {source ? (
-            <Typography
-              as="span"
-              variant="secondary"
-              color="textMuted"
-              noWrap
-              textOverflow="ellipsis"
-              overflow="hidden"
-              title={sourceLine(source)}
-            >
+            <span className={styles.source} title={sourceLine(source)}>
               {sourceLine(source)}
-            </Typography>
+            </span>
           ) : null}
-        </Flex>
+        </div>
         {queue.total > 0 ? (
           <PlainButton
+            className={styles.clear}
             aria-label="Clear the queue"
             title="Clear what comes next; the track playing carries on"
             disabled={clearing}
             onClick={() => run('clearQueue')}
-            align="center"
-            gap={1}
-            px={2.5}
-            height={32}
-            radius="full"
-            color="textMuted"
-            css={({ palette }) => ({ '&:hover': { background: palette.surfaceRaised } })}
           >
             <Icon name="lu:trash" size={14} />
-            <Typography as="span" variant="label" color="textMuted">
-              Clear
-            </Typography>
+            <span className={styles.clearLabel}>Clear</span>
           </PlainButton>
         ) : null}
-      </Flex>
+      </div>
 
       {queue.items.length === 0 ? (
-        <Typography as="p" variant="body" color="textMuted">
-          Nothing is queued. Play or add something from the library.
-        </Typography>
+        <p className={styles.empty}>Nothing is queued. Play or add something from the library.</p>
       ) : (
         <Reorder.Group
           as="ul"
@@ -195,17 +179,7 @@ export function MediaQueue({ entity }: MediaQueueProps) {
               ids: [...ids, ...shown.slice(visible.length).map((x) => x.id)],
             })
           }
-          css={({ density }) => ({
-            display: 'flex',
-            flexDirection: 'column',
-            gap: density.space / 6,
-            margin: 0,
-            padding: 0,
-            minHeight: 0,
-            listStyle: 'none',
-            overflowY: 'auto',
-            overflowX: 'hidden',
-          })}
+          className={styles.list}
         >
           {/* A track that arrives grows in, one that leaves closes up, and the rest slide to fill the
               space, so removing one, jumping to one or clearing the queue is something to watch rather
@@ -236,14 +210,10 @@ export function MediaQueue({ entity }: MediaQueueProps) {
               />
             ))}
           </AnimatePresence>
-          {hidden > 0 ? (
-            <Typography as="li" variant="secondary" color="textMuted" py={2} css={{ flex: 'none' }}>
-              and {hidden.toLocaleString()} more
-            </Typography>
-          ) : null}
+          {hidden > 0 ? <li className={styles.more}>and {hidden.toLocaleString()} more</li> : null}
         </Reorder.Group>
       )}
-    </Flex>
+    </div>
   );
 }
 
@@ -287,36 +257,14 @@ function QueueRow({
     transition: { duration: still ? 0 : 0.2, ease: 'easeOut' as const },
   };
 
-  const css = ({ palette }: { palette: { surfaceRaised: string } }) => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-    flex: 'none',
-    overflow: 'hidden',
-    borderRadius: 8,
-    background: dragging ? palette.surfaceRaised : 'transparent',
-    boxShadow: dragging ? '0 6px 18px rgba(0, 0, 0, 0.18)' : 'none',
-    position: 'relative' as const,
-    zIndex: dragging ? 1 : 0,
-  });
-
   const content = (
     <>
       {reorderable ? (
         <PlainButton
+          className={styles.grip}
           aria-label={`Move ${item.title}`}
           title="Drag to move, or use the arrow keys"
-          center
-          width={GRIP}
-          height={ROW}
-          color="textMuted"
-          css={{
-            flex: 'none',
-            cursor: 'grab',
-            touchAction: 'none',
-            '&:active': { cursor: 'grabbing' },
-          }}
-          onPointerDown={(event) => controls.start(event)}
+          onPointerDown={(event: React.PointerEvent) => controls.start(event)}
           onKeyDown={(event: KeyboardEvent) => {
             if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
               event.preventDefault();
@@ -327,82 +275,46 @@ function QueueRow({
           <Icon name="lu:grip-vertical" size={16} />
         </PlainButton>
       ) : (
-        <Flex width={GRIP} css={{ flex: 'none' }} />
+        <span className={styles.spacer} />
       )}
       <PlainButton
-        align="center"
-        gap={3}
-        grow={1}
-        minWidth={0}
-        height={ROW}
-        px={2}
-        radius="row"
+        className={styles.track}
         aria-label={`${playing ? 'Playing' : 'Play'} ${item.title}`}
         aria-current={playing ? 'true' : undefined}
-        background={playing ? 'surfaceRaised' : 'transparent'}
         onClick={onPlay}
-        css={({ palette }) => ({
-          transition: 'background-color 160ms ease',
-          '&:hover': { background: palette.surfaceRaised },
-        })}
       >
-        <Flex
-          align="center"
-          justify="center"
-          background="surfaceRaised"
-          color={playing ? 'accent' : 'textMuted'}
-          radius="small"
-          width={40}
-          height={40}
-          overflow="hidden"
-          css={{ flex: 'none' }}
-        >
+        <span className={styles.art}>
           {item.artworkUrl ? (
             <Cover src={item.artworkUrl} size="small" />
           ) : (
             <Icon name={playing ? 'lu:audio-lines' : 'lu:music'} size={18} />
           )}
-        </Flex>
-        <Flex direction="column" minWidth={0} grow={1} align="flex-start">
-          <Typography
-            as="span"
-            variant="bodyStrong"
-            color={playing ? 'accent' : 'text'}
-            maxWidth="100%"
-          >
+        </span>
+        <span className={styles.names}>
+          <span className={styles.title}>
             <MarqueeText>{item.title}</MarqueeText>
-          </Typography>
+          </span>
           {item.artist ? (
-            <Typography as="span" variant="secondary" color="textMuted" maxWidth="100%">
+            <span className={styles.artist}>
               <MarqueeText>{item.artist}</MarqueeText>
-            </Typography>
+            </span>
           ) : null}
-        </Flex>
+        </span>
         {item.duration !== undefined ? (
-          <Typography as="span" variant="secondary" color="textMuted">
-            {formatDuration(item.duration)}
-          </Typography>
+          <span className={styles.time}>{formatDuration(item.duration)}</span>
         ) : null}
       </PlainButton>
       {onRemove ? (
         <PlainButton
+          className={styles.remove}
           aria-label={`Remove ${item.title} from the queue`}
           title="Remove from the queue"
           onClick={onRemove}
-          center
-          width={ROW / 2}
-          height={ROW / 2}
-          radius="full"
-          color="textMuted"
-          css={({ palette }) => ({
-            flex: 'none',
-            '&:hover': { background: palette.surfaceRaised },
-          })}
         >
           <Icon name="lu:x" size={16} />
         </PlainButton>
       ) : (
-        <Flex width={ROW / 2} css={{ flex: 'none' }} />
+        <span className={styles.spacerEnd} />
       )}
     </>
   );
@@ -418,14 +330,15 @@ function QueueRow({
         onDrop?.();
       }}
       {...shared}
-      css={css}
+      className={styles.row}
+      data-dragging={dragging}
     >
       {content}
     </Reorder.Item>
   ) : still ? (
-    <li css={css}>{content}</li>
+    <li className={styles.row}>{content}</li>
   ) : (
-    <motion.li {...shared} css={css}>
+    <motion.li {...shared} className={styles.row}>
       {content}
     </motion.li>
   );

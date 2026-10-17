@@ -1,5 +1,4 @@
 import type { ClimateEntity, ClimateMode, EntityRef } from '@hashsome/core';
-import { Flex, Typography } from '../style/prim.tsx';
 import { useEffect, useRef, useState } from 'react';
 import type { IconName } from '../icon-data.ts';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
@@ -11,6 +10,7 @@ import type { LogbookEntry } from '../layout/history-section.tsx';
 import { Stepper, StepperValue } from '../layout/stepper.tsx';
 import { SwatchRow } from '../layout/swatch-row.tsx';
 import { IconButton, Tile } from '../layout/tile.tsx';
+import rows from '../style/rows.module.css';
 
 export interface ClimateTileProps {
   /** A thermostat or heater, as a ref like `ha:climate.living_room` or a handle (a custom source). */
@@ -231,16 +231,12 @@ function ClimateDetailBody({
     .join(' · ');
 
   return (
-    <Flex direction="column" gap={2}>
-      <Flex direction="column" gap={2} background="surfaceRaised" radius="row" py={3.5} px={4}>
-        <Flex direction="column">
-          <Typography as="span" variant="bodyStrong">
-            Mode
-          </Typography>
-          <Typography as="span" variant="secondary" color="textMuted">
-            {summary}
-          </Typography>
-        </Flex>
+    <div className={rows.stack}>
+      <div className={`${rows.row} ${rows.stack}`}>
+        <div className={rows.column}>
+          <span className={rows.name}>Mode</span>
+          <span className={rows.hint}>{summary}</span>
+        </div>
         <ChipRow
           options={modes.map((m) => ({
             value: m,
@@ -250,24 +246,13 @@ function ClimateDetailBody({
           value={mode}
           onChange={(value) => onMode(value as ClimateMode)}
         />
-      </Flex>
+      </div>
       {target !== undefined ? (
-        <Flex
-          justify="space-between"
-          align="center"
-          background="surfaceRaised"
-          radius="row"
-          py={3.5}
-          px={4}
-        >
-          <Flex direction="column">
-            <Typography as="span" variant="bodyStrong">
-              Target
-            </Typography>
-            <Typography as="span" variant="secondary" color="textMuted">
-              Hold a button to change faster
-            </Typography>
-          </Flex>
+        <div className={rows.spread}>
+          <div className={rows.column}>
+            <span className={rows.name}>Target</span>
+            <span className={rows.hint}>Hold a button to change faster</span>
+          </div>
           <Stepper>
             <StepButton
               icon="lu:minus"
@@ -291,20 +276,18 @@ function ClimateDetailBody({
               size={28}
             />
           </Stepper>
-        </Flex>
+        </div>
       ) : null}
       {presets.length > 0 ? (
-        <Flex direction="column" gap={2} background="surfaceRaised" radius="row" py={3.5} px={4}>
-          <Typography as="span" variant="bodyStrong">
-            Preset
-          </Typography>
+        <div className={`${rows.row} ${rows.stack}`}>
+          <span className={rows.name}>Preset</span>
           <ChipRow
             options={presets.map((p) => ({ value: p, label: title(p) }))}
             value={preset}
             onChange={onPreset}
           />
-        </Flex>
+        </div>
       ) : null}
-    </Flex>
+    </div>
   );
 }
