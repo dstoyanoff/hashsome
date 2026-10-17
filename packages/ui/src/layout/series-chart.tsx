@@ -1,6 +1,6 @@
-/** @jsxImportSource @emotion/react */
 import { lazy, Suspense } from 'react';
-import { Box, Flex, Typography } from '../style/prim.tsx';
+import type { CSSProperties } from 'react';
+import styles from './series-chart.module.css';
 
 export interface SeriesSample {
   /** ISO 8601. */
@@ -46,7 +46,18 @@ const SeriesPlot = lazy(() => import('./series-plot.tsx'));
 export function SeriesChart(props: SeriesChartProps) {
   // The room the chart will take is there meanwhile, so nothing moves when it arrives.
   return (
-    <Suspense fallback={<Box height={props.height ?? (props.expanded ? 220 : 48)} mt={3} />}>
+    <Suspense
+      fallback={
+        <div
+          className={styles.placeholder}
+          style={
+            {
+              '--chart-height': `${props.height ?? (props.expanded ? 220 : 48)}px`,
+            } as CSSProperties
+          }
+        />
+      }
+    >
       <SeriesPlot {...props} />
     </Suspense>
   );
@@ -62,31 +73,18 @@ export function RangeSwitcher<T extends string>({
   onChange: (range: T) => void;
 }) {
   return (
-    <Flex background="surfaceRaised" radius="full" p={0.5} gap={0.5}>
-      {options.map((option) => {
-        const active = option.value === range;
-        return (
-          <Flex
-            as="button"
-            key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
-            grow={1}
-            radius="full"
-            cursor="pointer"
-            align="center"
-            justify="center"
-            py={1.25}
-            px={2.5}
-            background={active ? 'accent' : 'transparent'}
-            color={active ? 'accentText' : 'text'}
-          >
-            <Typography as="span" variant="label">
-              {option.label}
-            </Typography>
-          </Flex>
-        );
-      })}
-    </Flex>
+    <div className={styles.switcher}>
+      {options.map((option) => (
+        <button
+          type="button"
+          key={option.value}
+          className={styles.option}
+          aria-pressed={option.value === range}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
   );
 }

@@ -1,9 +1,8 @@
-/** @jsxImportSource @emotion/react */
-import { Flex, Typography } from '../style/prim.tsx';
 import { useEffect, useState } from 'react';
 import type { IconName } from '../icon-data.ts';
 import type { EntityStatus } from '../status.ts';
 import { ConfirmDialog } from './confirm-dialog.tsx';
+import styles from './task-tile.module.css';
 import { IconButton, Tile } from './tile.tsx';
 
 /** Where a recurring task stands: not due for a while, due before long, or past its date. */
@@ -71,9 +70,6 @@ export function taskLine(state: TaskState, dueAt: Date | undefined, now: Date): 
   return `Overdue by ${plural(-days)}`;
 }
 
-/** The palette color of each state's line. */
-const TONE = { ok: 'textMuted', dueSoon: 'warm', overdue: 'danger' } as const;
-
 /**
  * A recurring task as a tile: its name, where it stands (up to date, due soon, overdue) and when it is due.
  * Tapping it asks whether it is done, with the day it was done on (today, or an earlier one if it was
@@ -130,13 +126,9 @@ export function TaskTile({
         status={status}
         onPress={ask}
         secondary={
-          <Typography
-            as="span"
-            variant="secondary"
-            css={({ colorByKey }) => ({ color: colorByKey(TONE[state]) })}
-          >
+          <span className={styles.line} data-state={state}>
             {taskLine(state, dueAt, now)}
-          </Typography>
+          </span>
         }
       />
       <ConfirmDialog
@@ -148,14 +140,14 @@ export function TaskTile({
         onConfirm={() => void confirm()}
         onCancel={() => setOpen(false)}
       >
-        <Flex direction="column" gap={2}>
+        <div className={styles.body}>
           <DayStepper label="Done on" daysAgo={daysAgo} now={now} onChange={setDaysAgo} />
           {error ? (
-            <Typography as="span" variant="secondary" color="danger" role="alert">
+            <span className={styles.error} role="alert">
               {error}
-            </Typography>
+            </span>
           ) : null}
-        </Flex>
+        </div>
       </ConfirmDialog>
     </>
   );
@@ -182,20 +174,16 @@ function DayStepper({
         : day.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
 
   return (
-    <Flex align="center" justify="space-between" gap={3} role="group" aria-label={label}>
-      <Typography as="span" variant="secondary" color="textMuted">
-        {label}
-      </Typography>
-      <Flex align="center" gap={2}>
+    <div className={styles.stepper} role="group" aria-label={label}>
+      <span className={styles.stepperLabel}>{label}</span>
+      <div className={styles.days}>
         <IconButton
           icon="lu:chevron-left"
           label="Previous day"
           glyph={16}
           onClick={() => onChange(daysAgo + 1)}
         />
-        <Typography as="span" variant="bodyStrong" css={{ minWidth: 96, textAlign: 'center' }}>
-          {words}
-        </Typography>
+        <span className={styles.day}>{words}</span>
         <IconButton
           icon="lu:chevron-right"
           label="Next day"
@@ -203,7 +191,7 @@ function DayStepper({
           disabled={daysAgo === 0}
           onClick={() => onChange(daysAgo - 1)}
         />
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 }

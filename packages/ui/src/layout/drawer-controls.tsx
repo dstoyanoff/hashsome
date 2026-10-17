@@ -1,12 +1,10 @@
-/** @jsxImportSource @emotion/react */
-import { Box, Flex, Typography } from '../style/prim.tsx';
 import { animate, motion } from 'motion/react';
 import { MarqueeText } from './marquee-text.tsx';
 import {
   useEffect,
   useId,
   useRef,
-  type ElementType,
+  type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
 } from 'react';
@@ -14,6 +12,8 @@ import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { FADE, FadeScroll } from './fade-scroll.tsx';
 import { RoundButton } from './round-button.tsx';
+import { cx } from '../style/cx.ts';
+import styles from './drawer-controls.module.css';
 import { useStill } from './use-still.ts';
 
 /** Fine adjustment: a press nudges by `delta` (1%); holding repeats in steps of 10 until released. */
@@ -60,7 +60,7 @@ export function StepButton({
   return (
     <RoundButton
       size={size}
-      css={{ flex: 'none', ...(plain ? { background: 'none' } : {}) }}
+      className={cx(styles.step, plain && styles.plain)}
       aria-label={label}
       title={label}
       disabled={disabled}
@@ -149,24 +149,22 @@ export function ValueBar({
   };
 
   return (
-    <Box
+    <div
+      className={styles.bar}
+      data-track={track}
+      data-gradient={gradient !== undefined}
+      style={
+        {
+          '--bar-height': `${height}px`,
+          ...(gradient ? { '--gradient': gradient } : {}),
+        } as CSSProperties
+      }
       role="slider"
       tabIndex={0}
       aria-label={label}
       aria-valuemin={min}
       aria-valuemax={max}
       aria-valuenow={value}
-      position="relative"
-      // Explicit width: the bar has no in-flow content (its fill is absolutely positioned), so as a
-      // flex item in a row it would size to 0 and vanish.
-      width="100%"
-      height={height}
-      radius="full"
-      background={track}
-      border={!gradient}
-      cursor="pointer"
-      overflow="hidden"
-      css={{ touchAction: 'none', ...(gradient ? { backgroundImage: gradient } : {}) }}
       onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
         dragging.current = true;
         event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -201,56 +199,28 @@ export function ValueBar({
       }}
       onKeyDown={onKeyDown}
     >
-      {/* The fill follows the drag, so it is set through motion's `animate` (instantly) instead of
-          a class per value. */}
       {gradient ? (
-        <Box
-          as={motion.span}
-          position="absolute"
-          background="surface"
-          initial={false}
-          animate={{ left: `${Math.max(pct, 4)}%` }}
-          transition={{ duration: 0 }}
-          css={{ top: 0, bottom: 0, right: 0, opacity: 0.72, pointerEvents: 'none' }}
-        />
+        <span className={styles.dim} style={{ left: `${Math.max(pct, 4)}%` }} />
       ) : (
-        <Box
-          as={motion.span}
-          position="absolute"
-          background="accent"
-          initial={false}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 0 }}
-          css={{ top: 0, bottom: 0, left: 0 }}
-        />
+        <span className={styles.fill} style={{ width: `${pct}%` }} />
       )}
-    </Box>
+    </div>
   );
 }
 
 /** One round power icon button with two states: filled with the accent while on, neutral while off. */
 export function PowerButton({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
-    <Flex
-      as="button"
+    <button
       type="button"
+      className={styles.power}
       aria-pressed={on}
       aria-label={on ? 'Turn off' : 'Turn on'}
       title={on ? 'Turn off' : 'Turn on'}
       onClick={onToggle}
-      align="center"
-      justify="center"
-      radius="full"
-      cursor="pointer"
-      width={36}
-      height={36}
-      p={0}
-      background={on ? 'accent' : 'surfaceRaised'}
-      color={on ? 'accentText' : 'line'}
-      css={{ flex: 'none', transition: 'background-color 0.2s ease, color 0.2s ease' }}
     >
       <Icon name="lu:power" size={16} />
-    </Flex>
+    </button>
   );
 }
 
@@ -326,91 +296,50 @@ export function ChipRow({
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [tabs, value, selectedLabel, still]);
 
-  // Tabs scroll sideways when there are more than fit, and fade at the edge that has more.
-  const Wrap: ElementType = tabs ? FadeScroll : Flex;
-  return (
-    <Wrap
-      gap={2}
-      {...(tabs ? { role: 'tablist' } : {})}
-      css={
-        tabs
-          ? {
-              flexShrink: 0,
-              isolation: 'isolate',
-              scrollbarWidth: 'none',
-              '&::-webkit-scrollbar': { display: 'none' },
-            }
-          : { flexWrap: 'wrap', isolation: 'isolate' }
-      }
-    >
+  const chips = (
+    <>
       {options.map((option) => {
         const selected = option.value === value;
         return (
-          <Flex
-            as="button"
+          <button
             type="button"
             key={option.value}
+            className={styles.chip}
+            data-selected={selected}
             {...(tabs ? { role: 'tab', 'aria-selected': selected } : { 'aria-pressed': selected })}
             {...(option.ariaLabel ? { 'aria-label': option.ariaLabel } : {})}
             onClick={() => onChange(option.value)}
-            align="center"
-            gap={1.5}
-            radius="full"
-            cursor="pointer"
-            // A fixed height, not the text's: an emoji is drawn from another font with a taller line,
-            // which would make this one chip taller than the rest.
-            height={CHIP_HEIGHT}
-            px={3}
-            background="surface"
-            color={selected ? 'accentText' : 'text'}
-            css={{
-              flex: 'none',
-              position: 'relative',
-              whiteSpace: 'nowrap',
-              transition: 'color 160ms ease',
-            }}
           >
             {selected ? <span ref={marker} hidden /> : null}
             {selected ? (
               still ? (
-                <Box
-                  as="span"
-                  position="absolute"
-                  radius="full"
-                  background="accent"
-                  css={{ inset: 0, zIndex: 1 }}
-                />
+                <span className={styles.pill} />
               ) : (
-                <Box
-                  as={motion.span}
+                <motion.span
+                  className={styles.pill}
                   layoutId={pill}
-                  position="absolute"
-                  radius="full"
-                  background="accent"
                   transition={{ type: 'spring', duration: 0.32, bounce: 0.12 }}
-                  // Above every chip's own background, whichever way it is going: a later chip paints over
-                  // an earlier one's pill otherwise.
-                  css={{ inset: 0, zIndex: 1 }}
                 />
               )
             ) : null}
-            {/* Above the pill. */}
-            <Flex
-              as="span"
-              align="center"
-              gap={1.5}
-              position="relative"
-              minWidth={0}
-              css={{ zIndex: 2 }}
-            >
+            <span className={styles.content}>
               {option.icon ? <Icon name={option.icon} size={14} /> : null}
-              <Typography as="span" variant="body" css={{ minWidth: 0, maxWidth: 220 }}>
+              <span className={styles.chipLabel}>
                 <MarqueeText>{option.label}</MarqueeText>
-              </Typography>
-            </Flex>
-          </Flex>
+              </span>
+            </span>
+          </button>
         );
       })}
-    </Wrap>
+    </>
+  );
+
+  // Tabs scroll sideways when there are more than fit, and fade at the edge that has more.
+  return tabs ? (
+    <FadeScroll className={cx(styles.chips, styles.tabs)} role="tablist">
+      {chips}
+    </FadeScroll>
+  ) : (
+    <div className={cx(styles.chips, styles.wrapping)}>{chips}</div>
   );
 }

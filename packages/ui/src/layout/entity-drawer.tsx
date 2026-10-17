@@ -1,10 +1,9 @@
-/** @jsxImportSource @emotion/react */
-import { Flex, type PaletteKey } from '../style/prim.tsx';
-import { AnimatePresence, motion, useDragControls } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { AnimatePresence, motion, useDragControls, type MotionStyle } from 'motion/react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { useDetail } from './detail-provider.tsx';
+import styles from './entity-drawer.module.css';
 
 const COLLAPSED_WIDTH = 380;
 const EDGE_INSET = 20;
@@ -76,30 +75,24 @@ export function EntityDrawer() {
     <AnimatePresence>
       {detail ? (
         <>
-          <Flex
-            as={motion.div}
+          <motion.div
             key="hash-drawer-scrim"
+            className={styles.scrim}
             onClick={closeDetail}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            zIndex="scrim"
-            css={{ position: 'fixed', inset: 0, background: 'rgb(0 0 0 / 0.45)' }}
           />
           {sheet ? (
-            <Flex
-              direction="column"
-              justify="flex-end"
-              zIndex="scrim"
-              css={{ position: 'fixed', inset: 0, pointerEvents: 'none' }}
-            >
-              <Flex
-                as={motion.div}
+            <div className={styles.sheetHost}>
+              <motion.div
                 key="hash-drawer"
+                className={styles.sheet}
+                data-tall={expanded || detail.locked === true}
+                style={{ '--sheet-height': SHEET_HEIGHT } as MotionStyle}
                 role="dialog"
                 aria-modal="true"
-                direction="column"
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
@@ -114,76 +107,27 @@ export function EntityDrawer() {
                     closeDetail();
                   }
                 }}
-                background="surface"
-                color="text"
-                shadow="drawer"
-                width="100%"
-                minHeight={0}
-                css={({ palette }) => ({
-                  boxSizing: 'border-box',
-                  borderRadius: '24px 24px 0 0',
-                  borderTop: `1px solid ${palette.border}`,
-                  maxHeight: SHEET_HEIGHT,
-                  ...(expanded || detail.locked ? { height: SHEET_HEIGHT } : {}),
-                  pointerEvents: 'auto',
-                  overflow: 'hidden',
-                })}
               >
-                {/* What is pulled to let it go: the grip and the title; the content under it scrolls on its own. */}
-                <Flex
-                  direction="column"
-                  onPointerDown={(event) => drag.start(event)}
-                  css={{ flex: 'none', touchAction: 'none', cursor: 'grab' }}
-                >
-                  <Flex justify="center" css={{ paddingTop: 8, paddingBottom: 4 }}>
-                    <Flex
-                      aria-hidden="true"
-                      background="line"
-                      radius="full"
-                      css={{ width: 36, height: 5, opacity: 0.6 }}
-                    />
-                  </Flex>
-                  <Flex justify="space-between" align="center" gap={2.5} px={5} pt={2} pb={3}>
+                <div className={styles.handle} onPointerDown={(event) => drag.start(event)}>
+                  <div className={styles.grip}>
+                    <div className={styles.gripBar} aria-hidden="true" />
+                  </div>
+                  <div className={styles.sheetTitle}>
                     {detail.header}
                     <DrawerActionButton icon="lu:x" label="Close" onClick={closeDetail} />
-                  </Flex>
-                </Flex>
-                <Flex
-                  direction="column"
-                  grow={1}
-                  minHeight={0}
-                  px={5}
-                  css={{
-                    overflowY: 'auto',
-                    overscrollBehavior: 'contain',
-                    // Clear of the phone's home indicator.
-                    paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
-                  }}
-                >
-                  {detail.body}
-                </Flex>
-              </Flex>
-            </Flex>
+                  </div>
+                </div>
+                <div className={styles.sheetBody}>{detail.body}</div>
+              </motion.div>
+            </div>
           ) : (
-            <Flex
-              justify="flex-end"
-              zIndex="scrim"
-              css={{
-                position: 'fixed',
-                inset: 0,
-                // `content-box` (the default) is the actual bug: with `inset: 0` and no explicit
-                // height, the browser resolves the auto height from the insets alone, THEN adds
-                // padding on top of that — overflowing past the viewport by exactly 2x the padding.
-                // `border-box` makes padding come out of that resolved height instead of adding to it.
-                boxSizing: 'border-box',
-                padding: EDGE_INSET,
-                pointerEvents: 'none',
-              }}
+            <div
+              className={styles.panelHost}
+              style={{ '--edge-inset': `${EDGE_INSET}px` } as CSSProperties}
             >
-              <Flex
-                as={motion.div}
-                direction="column"
+              <motion.div
                 key="hash-drawer"
+                className={styles.panel}
                 role="dialog"
                 aria-modal="true"
                 initial={{ opacity: 0 }}
@@ -193,27 +137,10 @@ export function EntityDrawer() {
                   width: { duration: 0.32, ease: [0.2, 0.8, 0.2, 1] },
                   opacity: { duration: 0.28 },
                 }}
-                background="surface"
-                color="text"
-                radius="drawer"
-                shadow="drawer"
-                border
-                zIndex="drawer"
-                // Explicit, not implicit flex stretch: a flex item that's also a scroll container
-                // (`overflow: auto`) doesn't reliably stay within its parent's cross-axis size —
-                // its default `min-height: auto` can win out and push it past the stretched height
-                // instead of scrolling internally. `height: '100%'` here is well-defined regardless
-                // (the wrapper's `inset: 0` gives it an unambiguous content-box size).
-                height="100%"
-                minHeight={0}
-                maxHeight="100%"
-                overflow="auto"
-                p={5}
-                css={{ pointerEvents: 'auto' }}
               >
-                <Flex justify="space-between" align="center" gap={2.5} mb={4}>
+                <div className={styles.panelTitle}>
                   {detail.header}
-                  <Flex gap={1.5} grow={0}>
+                  <div className={styles.actions}>
                     {detail.locked ? null : (
                       <DrawerActionButton
                         icon={expanded ? 'lu:minimize-2' : 'lu:maximize-2'}
@@ -222,20 +149,17 @@ export function EntityDrawer() {
                       />
                     )}
                     <DrawerActionButton icon="lu:x" label="Close" onClick={closeDetail} />
-                  </Flex>
-                </Flex>
+                  </div>
+                </div>
                 {detail.body}
-              </Flex>
-            </Flex>
+              </motion.div>
+            </div>
           )}
         </>
       ) : null}
     </AnimatePresence>
   );
 }
-
-const ACTION_BACKGROUND: PaletteKey = 'surfaceRaised';
-const ACTION_COLOR: PaletteKey = 'text';
 
 function DrawerActionButton({
   icon,
@@ -247,22 +171,14 @@ function DrawerActionButton({
   onClick: () => void;
 }) {
   return (
-    <Flex
-      as="button"
+    <button
       type="button"
+      className={styles.action}
       aria-label={label}
       title={label}
       onClick={onClick}
-      background={ACTION_BACKGROUND}
-      color={ACTION_COLOR}
-      radius="small"
-      align="center"
-      justify="center"
-      cursor="pointer"
-      width={30}
-      height={30}
     >
       <Icon name={icon} size={14} />
-    </Flex>
+    </button>
   );
 }

@@ -1,25 +1,30 @@
-/** @jsxImportSource @emotion/react */
-import type { Interpolation, Theme } from '@emotion/react';
-import { Flex, type FlexProps } from '../style/prim.tsx';
-import { useCallback, useEffect, useRef, useState, type ElementType } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentPropsWithRef,
+  type ElementType,
+} from 'react';
+import { cx } from '../style/cx.ts';
+import styles from './fade-scroll.module.css';
 
 /** How wide the fade at a scrolled edge is. */
 export const FADE = 40;
 
-const maskFor = (start: boolean, end: boolean) =>
-  `linear-gradient(to right, ${start ? 'transparent' : '#000'} 0, #000 ${start ? FADE : 0}px, #000 calc(100% - ${end ? FADE : 0}px), ${end ? 'transparent' : '#000'} 100%)`;
-
 /**
  * A row that scrolls sideways and fades out at an edge that has more content beyond it, so it
  * reads as scrollable: the right edge while there is more to the right, the left once scrolled.
- * It is a `Flex` (so `as`, `gap` and the rest apply) and sets `overflow-x: auto`; hide or style the
- * scrollbar with its own `css`. Nothing fades when it all fits. `data-fade-start` and `data-fade-end`
+ * It is a flex row that sets `overflow-x: auto`; `as`, `className` and the element's own props apply (hide or
+ * style the scrollbar with a class of your own). Nothing fades when it all fits. `data-fade-start` and `data-fade-end`
  * say which edges are fading.
  */
 export function FadeScroll<E extends ElementType = 'div'>({
-  css,
+  as,
+  className,
   ...props
-}: FlexProps<E> & { css?: Interpolation<Theme> }) {
+}: { as?: E } & Omit<ComponentPropsWithRef<E>, 'as'>) {
+  const Tag: ElementType = as ?? 'div';
   const ref = useRef<HTMLElement>(null);
   const [edges, setEdges] = useState({ start: false, end: false });
   const measure = useCallback(() => {
@@ -57,18 +62,13 @@ export function FadeScroll<E extends ElementType = 'div'>({
     };
   }, [measure]);
 
-  const mask = edges.start || edges.end ? maskFor(edges.start, edges.end) : undefined;
-  const own = {
-    ref,
-    'data-fade-start': edges.start,
-    'data-fade-end': edges.end,
-    css: [
-      { overflowX: 'auto' },
-      mask ? { maskImage: mask, WebkitMaskImage: mask } : null,
-      css ?? null,
-    ],
-    ...props,
-  } as FlexProps<ElementType>;
-
-  return <Flex {...own} />;
+  return (
+    <Tag
+      ref={ref}
+      data-fade-start={edges.start}
+      data-fade-end={edges.end}
+      className={cx(styles.scroll, className as string | undefined)}
+      {...props}
+    />
+  );
 }

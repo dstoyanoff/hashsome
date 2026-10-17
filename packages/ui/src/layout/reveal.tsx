@@ -1,4 +1,3 @@
-/** @jsxImportSource @emotion/react */
 import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
 import { useStill } from './use-still.ts';

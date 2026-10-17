@@ -1,8 +1,7 @@
-/** @jsxImportSource @emotion/react */
-import { useTheme } from '@emotion/react';
-import { Box } from '../style/prim.tsx';
 import { useLayoutEffect, useRef, useState } from 'react';
+import { useDensity } from '../theme/use-density.ts';
 import { gridMetrics, offGrid } from '../theme/grid.ts';
+import styles from './grid-overlay.module.css';
 
 interface Measured {
   /** Where the grid starts, in the page's scrolling area: its edge, less what centering left over. */
@@ -37,8 +36,7 @@ function describeDevice(): string {
  * and red when they are not. For laying out a dashboard for one device: see where things fall, and
  * what to change. Never takes a touch. */
 export function GridOverlay() {
-  const theme = useTheme();
-  const metrics = gridMetrics(theme.density.space);
+  const metrics = gridMetrics(useDensity().space);
   const { module, tilePitch } = metrics;
   const ref = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<Measured | null>(null);
@@ -119,20 +117,15 @@ export function GridOverlay() {
   const [top = 0, bottom = 0] = (view?.centered ?? '').split(' ').map(Number);
 
   return (
-    // `display: contents`: the page is a flex column with a gap, and a box here, empty as it is, would
-    // be one more item in it, with a gap of its own before it.
-    <Box ref={ref} data-grid-overlay aria-hidden="true" css={{ display: 'contents' }}>
+    <div ref={ref} className={styles.overlay} data-grid-overlay aria-hidden="true">
       {view ? (
         <>
-          <Box
-            position="absolute"
-            css={{
-              left: 0,
+          <div
+            className={styles.grid}
+            style={{
               top: view.top,
               width: view.width,
               height: view.height,
-              pointerEvents: 'none',
-              zIndex: 4,
               backgroundImage: [
                 `linear-gradient(to bottom, rgba(0, 150, 255, 0.5) 1px, transparent 1px)`,
                 `linear-gradient(to right, rgba(0, 150, 255, 0.5) 1px, transparent 1px)`,
@@ -147,59 +140,31 @@ export function GridOverlay() {
               ].join(', '),
             }}
           >
-            <Box
-              position="absolute"
-              css={{
+            <div
+              className={styles.content}
+              style={{
                 left: view.content.left,
                 top: view.content.top,
                 right: view.content.right,
                 bottom: view.content.bottom,
-                outline: '1px dashed rgba(0, 150, 255, 0.9)',
               }}
             />
             {view.cards.map((card) => (
-              <Box
+              <div
                 key={`${card.x}:${card.y}:${card.width}:${card.height}`}
-                position="absolute"
-                css={{
-                  left: card.x,
-                  top: card.y,
-                  width: card.width,
-                  height: card.height,
-                  boxSizing: 'border-box',
-                  outline: `1px solid ${card.off ? '#ef4444' : '#22c55e'}`,
-                  outlineOffset: -1,
-                  color: card.off ? '#ef4444' : '#22c55e',
-                  font: '600 9px/1 system-ui, sans-serif',
-                  padding: 2,
-                  overflow: 'hidden',
-                }}
+                className={styles.card}
+                data-off={card.off}
+                style={{ left: card.x, top: card.y, width: card.width, height: card.height }}
               >
                 {card.height >= 14 ? `${Math.round((card.height / module) * 10) / 10}u` : null}
-              </Box>
+              </div>
             ))}
-          </Box>
-          <Box
-            position="fixed"
-            css={{
-              // Clear of the debug menu's button, which is how the grid is turned on.
-              left: 60,
-              bottom: 8,
-              zIndex: 100,
-              pointerEvents: 'none',
-              // On a narrow screen it wraps instead of running off the edge.
-              maxWidth: 'calc(100vw - 68px)',
-              background: 'rgba(0, 0, 0, 0.78)',
-              color: '#fff',
-              font: '600 11px/1.3 system-ui, sans-serif',
-              padding: '4px 8px',
-              borderRadius: 6,
-            }}
-          >
+          </div>
+          <div className={styles.legend}>
             {`grid · 1u = ${Math.round(module * 100) / 100}px · gap 3u · tile ${Math.round(metrics.tile / module)}u · ${off === 0 ? 'all on grid' : `${off} off grid`}${top + bottom > 0 ? ` · centered +${top}/${bottom}px` : ''}${view.device ? ` · ${view.device}` : ''}`}
-          </Box>
+          </div>
         </>
       ) : null}
-    </Box>
+    </div>
   );
 }

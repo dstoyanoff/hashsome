@@ -107,23 +107,23 @@ test('the calendar is positioned, sized and layered from theme tokens, not inlin
   expect(style.position).toBe('absolute');
   expect(computed(picker, 'width')).toBe('288px');
   expect(computed(picker, 'z-index')).toBe('30');
+  expect(picker.dataset['align']).toMatch(/left|right/);
   // Hangs under the field with one theme space of 8px between them, aligned to one edge.
-  expect(style.top).toBe('calc(100% + 8px)');
-  expect(style.left === '0px' || style.right === '0px').toBe(true);
+  expect(computed(picker, 'top')).toBe('calc(100% + 4px * 2)');
 });
 
-test('the days are a seven-column grid of round buttons, from e-prim props', () => {
+test('the days are a seven-column grid of round buttons, from its stylesheet', () => {
   render(<Harness initial="2026-06-17T14:30" />);
   open();
   const day = screen.getByRole('button', { name: 'June 17, 2026' });
   const grid = day.parentElement as HTMLElement;
   expect(getComputedStyle(grid).display).toBe('grid');
-  expect(computed(grid, 'grid-template-columns')).toBe('repeat(7, 1fr)');
+  expect(computed(grid, 'grid-template-columns')).toBe('repeat(7, minmax(0, 1fr))');
   expect(computed(grid, 'gap')).toBe('2px');
   expect(computed(day, 'width')).toBe('32px');
   expect(computed(day, 'height')).toBe('32px');
   expect(computed(day, 'border-radius')).toBe('999px');
-  // The weekday headings get their vertical padding from the spacing props.
+  // The weekday headings get their vertical padding from the spacing unit.
   expect(computed(screen.getByText('Mon'), 'padding-top')).toBe('4px');
 });
 
@@ -145,8 +145,7 @@ test('the time boxes get their size, spacing, border, colors and alignment from 
   expect(computed(hour, 'padding-left')).toBe('6px');
   const style = getComputedStyle(hour);
   // The theme's border color, 1px wide: the class that says so, and what the theme gives its variable.
-  expect(hour.classList.contains('hs-bd-border')).toBe(true);
-  expect(computed(hour, '--hs-border')).toBe('rgba(255,255,255,0.09)');
+  expect(computed(hour, 'border')).toBe('1px solid rgba(255,255,255,0.09)');
   expect(style.textAlign).toBe('center');
   expect(computed(hour, 'background')).toBe('#211E26'); // the dark theme's surfaceRaised
   expect(computed(hour, 'color')).toBe('#F2EFEA');

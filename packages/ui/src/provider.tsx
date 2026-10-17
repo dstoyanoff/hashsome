@@ -33,6 +33,7 @@ import { themeCss } from './style/variables.ts';
 import { useThemeStyle } from './style/use-theme-style.ts';
 import { UNITS_PER_SPACE, type Density } from './theme/density.ts';
 import { DensityContext } from './theme/use-density.ts';
+import { ThemeContext } from './theme/use-theme.ts';
 import './style/base.css';
 import { applyThemeOverrides, densityTokens, type ThemeOverrides } from './theme/overrides.ts';
 import { isDarkAt, msUntilSwitch, sunIsDown, type ThemeSchedule } from './theme/schedule.ts';
@@ -389,19 +390,21 @@ export function HashsomeProvider({
     <HashsomeContext.Provider value={instance}>
       <ThemeModeContext.Provider value={themeMode}>
         <DensityContext.Provider value={densityValue}>
-          <ThemeProvider theme={resolvedTheme}>
-            <EmotionThemeProvider theme={withDensity}>
-              <DebugContext.Provider value={debugState}>
-                <IdleReturnContext.Provider value={idleReturn}>
-                  <DetailProvider>
-                    {children}
-                    <EntityDrawer />
-                    {debug ? <DebugMenu configured={theme} sun={sunEntity} /> : null}
-                  </DetailProvider>
-                </IdleReturnContext.Provider>
-              </DebugContext.Provider>
-            </EmotionThemeProvider>
-          </ThemeProvider>
+          <ThemeContext.Provider value={resolvedTheme}>
+            <ThemeProvider theme={resolvedTheme}>
+              <EmotionThemeProvider theme={withDensity}>
+                <DebugContext.Provider value={debugState}>
+                  <IdleReturnContext.Provider value={idleReturn}>
+                    <DetailProvider>
+                      {children}
+                      <EntityDrawer />
+                      {debug ? <DebugMenu configured={theme} sun={sunEntity} /> : null}
+                    </DetailProvider>
+                  </IdleReturnContext.Provider>
+                </DebugContext.Provider>
+              </EmotionThemeProvider>
+            </ThemeProvider>
+          </ThemeContext.Provider>
         </DensityContext.Provider>
       </ThemeModeContext.Provider>
     </HashsomeContext.Provider>

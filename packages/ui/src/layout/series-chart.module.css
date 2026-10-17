@@ -1,0 +1,31 @@
+.placeholder {
+  margin-top: calc(var(--hs-unit) * 3);
+  height: var(--chart-height);
+}
+
+.switcher {
+  display: flex;
+  gap: calc(var(--hs-unit) * 0.5);
+  padding: calc(var(--hs-unit) * 0.5);
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+}
+
+.option {
+  composes: label from '../style/type.module.css';
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--hs-unit) * 1.25) calc(var(--hs-unit) * 2.5);
+  border: 0;
+  border-radius: var(--hs-radius-full);
+  background: transparent;
+  color: var(--hs-text);
+  cursor: pointer;
+}
+
+.option[aria-pressed='true'] {
+  background: var(--hs-accent);
+  color: var(--hs-accent-text);
+}

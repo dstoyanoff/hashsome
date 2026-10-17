@@ -1,17 +1,11 @@
 import { render } from '@testing-library/react';
-import { ThemeProvider } from 'e-prim';
 import { expect, test } from 'vitest';
-import { darkTheme } from '../../theme/index.ts';
 import { HoldProgress } from '../hold-progress.tsx';
 import { computed } from '../../test-utils.tsx';
 import { HOLD_MS } from '../use-hold.ts';
 
 test('the hold line fills by a transform animation over the hold time, not by changing its width', () => {
-  const { container } = render(
-    <ThemeProvider theme={darkTheme}>
-      <HoldProgress />
-    </ThemeProvider>,
-  );
+  const { container } = render(<HoldProgress />);
 
   const line = container.querySelector('span') as HTMLElement;
   const style = getComputedStyle(line);

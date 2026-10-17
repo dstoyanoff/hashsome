@@ -1,0 +1,25 @@
+:where(.scroll) {
+  /* The same as `FADE` in fade-scroll.tsx. */
+  --hs-fade: 40px;
+  display: flex;
+  overflow-x: auto;
+}
+
+/* The fade at an edge that has more content beyond it, so a row reads as scrollable. */
+.scroll[data-fade-end='true'] {
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - var(--hs-fade)), transparent 100%);
+}
+
+.scroll[data-fade-start='true'] {
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--hs-fade), #000 100%);
+}
+
+.scroll[data-fade-start='true'][data-fade-end='true'] {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--hs-fade),
+    #000 calc(100% - var(--hs-fade)),
+    transparent 100%
+  );
+}

@@ -1,0 +1,142 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--hs-z-scrim);
+  background: rgb(0 0 0 / 0.45);
+}
+
+/* A bottom sheet, on a phone. */
+.sheetHost {
+  position: fixed;
+  inset: 0;
+  z-index: var(--hs-z-scrim);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.sheet {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  max-height: var(--sheet-height);
+  overflow: hidden;
+  border-top: var(--hs-border-width) solid var(--hs-border);
+  border-radius: 24px 24px 0 0;
+  background: var(--hs-surface);
+  box-shadow: var(--hs-shadow-drawer);
+  color: var(--hs-text);
+  pointer-events: auto;
+}
+
+.sheet[data-tall='true'] {
+  height: var(--sheet-height);
+}
+
+/* What is pulled to let it go: the grip and the title; the content under it scrolls on its own. */
+.handle {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  cursor: grab;
+  touch-action: none;
+}
+
+.grip {
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+  padding-bottom: 4px;
+}
+
+.gripBar {
+  width: 36px;
+  height: 5px;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-line);
+  opacity: 0.6;
+}
+
+.sheetTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--hs-unit) * 2.5);
+  padding: calc(var(--hs-unit) * 2) calc(var(--hs-unit) * 5) calc(var(--hs-unit) * 3);
+}
+
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 0;
+  padding: 0 calc(var(--hs-unit) * 5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Clear of the phone's home indicator. */
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
+/* `content-box` (the default) is the actual bug: with `inset: 0` and no explicit height, the browser resolves the auto height from the
+   insets alone, THEN adds padding on top of that, overflowing past the viewport by exactly 2x the padding. `border-box` makes padding
+   come out of that resolved height instead of adding to it. */
+.panelHost {
+  position: fixed;
+  inset: 0;
+  z-index: var(--hs-z-scrim);
+  box-sizing: border-box;
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--edge-inset);
+  pointer-events: none;
+}
+
+/* Explicit height, not implicit flex stretch: a flex item that is also a scroll container does not reliably stay within its parent's
+   cross-axis size (its default `min-height: auto` can win and push it past the stretched height instead of scrolling internally). */
+.panel {
+  z-index: var(--hs-z-drawer);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  padding: calc(var(--hs-unit) * 5);
+  overflow: auto;
+  border: var(--hs-border-width) solid var(--hs-border);
+  border-radius: var(--hs-radius-drawer);
+  background: var(--hs-surface);
+  box-shadow: var(--hs-shadow-drawer);
+  color: var(--hs-text);
+  pointer-events: auto;
+}
+
+.panelTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--hs-unit) * 2.5);
+  margin-bottom: calc(var(--hs-unit) * 4);
+}
+
+.actions {
+  display: flex;
+  flex-grow: 0;
+  gap: calc(var(--hs-unit) * 1.5);
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--hs-radius-small);
+  background: var(--hs-surface-raised);
+  color: var(--hs-text);
+  cursor: pointer;
+}

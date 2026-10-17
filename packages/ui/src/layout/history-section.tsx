@@ -1,10 +1,9 @@
-/** @jsxImportSource @emotion/react */
 import type { LogbookEntry } from '@hashsome/core';
-import { Flex, Typography } from '../style/prim.tsx';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { Icon } from '../icon.tsx';
 import { capitalize } from '../status.ts';
+import styles from './history-section.module.css';
 import { PlainButton } from './plain-button.tsx';
 import { Skeleton } from './skeleton.tsx';
 import { useStill } from './use-still.ts';
@@ -63,29 +62,21 @@ function Avatar({
 }) {
   const person = actor !== undefined && kind === 'person';
   return (
-    <Flex
+    <span
+      className={styles.avatar}
       role="img"
       aria-label={actor ?? 'System'}
-      align="center"
-      justify="center"
-      background={person ? 'accent' : 'surfaceRaised'}
-      color={person ? 'accentText' : actor === undefined ? 'textMuted' : 'text'}
-      radius="full"
-      width={32}
-      height={32}
-      css={{ flex: 'none' }}
+      data-who={person ? 'person' : actor === undefined ? 'system' : 'automation'}
     >
       {person ? (
-        <Typography as="span" variant="eyebrow">
-          {initials(actor)}
-        </Typography>
+        <span className={styles.initials}>{initials(actor)}</span>
       ) : (
         <Icon
           name={actor !== undefined ? 'lu:workflow' : QUIET_ICON[change ?? 'availability']}
           size={16}
         />
       )}
-    </Flex>
+    </span>
   );
 }
 
@@ -105,17 +96,17 @@ const SKELETON_ROWS = 3;
 
 function SkeletonRows() {
   return (
-    <Flex direction="column" aria-busy="true" aria-label="Loading history">
+    <div className={styles.skeletons} aria-busy="true" aria-label="Loading history">
       {Array.from({ length: SKELETON_ROWS }, (_, row) => (
-        <Flex key={row} align="center" gap={3} py={2}>
+        <div key={row} className={styles.skeletonRow}>
           <Skeleton width={32} height={32} radius="full" />
-          <Flex direction="column" gap={1}>
+          <div className={styles.skeletonText}>
             <Skeleton width={row === 1 ? 150 : 190} height={14} />
             <Skeleton width={56} height={12} />
-          </Flex>
-        </Flex>
+          </div>
+        </div>
       ))}
-    </Flex>
+    </div>
   );
 }
 
@@ -137,20 +128,11 @@ export function HistorySection({ entries, loading = false, onOpen }: HistorySect
   };
 
   return (
-    <Flex direction="column" gap={2} pt={4} mt="auto">
-      <PlainButton
-        aria-expanded={open}
-        onClick={toggle}
-        align="center"
-        justify="space-between"
-        color="textMuted"
-        py={1}
-      >
-        <Typography as="span" variant="eyebrow" uppercase color="textMuted">
-          History
-        </Typography>
+    <div className={styles.section}>
+      <PlainButton className={styles.toggle} aria-expanded={open} onClick={toggle}>
+        <span className={styles.heading}>History</span>
         <motion.span
-          css={{ display: 'grid' }}
+          className={styles.chevron}
           initial={false}
           animate={{ rotate: open ? 180 : 0 }}
           transition={{ duration: still ? 0 : 0.2, ease: 'easeOut' }}
@@ -162,7 +144,7 @@ export function HistorySection({ entries, loading = false, onOpen }: HistorySect
         {open ? (
           <motion.div
             key="body"
-            css={{ overflow: 'hidden' }}
+            className={styles.body}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -171,44 +153,30 @@ export function HistorySection({ entries, loading = false, onOpen }: HistorySect
             {loading ? (
               <SkeletonRows />
             ) : !entries?.length ? (
-              <Typography as="span" variant="secondary" color="textMuted">
-                No recent activity
-              </Typography>
+              <span className={styles.empty}>No recent activity</span>
             ) : (
-              <Flex direction="column">
+              <div className={styles.list}>
                 {entries.map((entry) => (
-                  <Flex key={entry.id} align="center" gap={3} py={2}>
+                  <div key={entry.id} className={styles.entry}>
                     <Avatar
                       actor={entry.actor}
                       kind={entry.actorKind ?? 'person'}
                       change={entry.change}
                     />
-                    <Flex direction="column" minWidth={0}>
-                      <Typography
-                        as="span"
-                        variant="body"
-                        noWrap
-                        textOverflow="ellipsis"
-                        minWidth={0}
-                      >
-                        {entry.actor ? (
-                          <Typography as="span" variant="bodyStrong">
-                            {entry.actor}{' '}
-                          </Typography>
-                        ) : null}
+                    <div className={styles.entryText}>
+                      <span className={styles.message}>
+                        {entry.actor ? <span className={styles.actor}>{entry.actor} </span> : null}
                         {entry.actor ? entry.message : capitalize(entry.message)}
-                      </Typography>
-                      <Typography as="span" variant="secondary" color="textMuted">
-                        {relativeTime(entry.timestamp)}
-                      </Typography>
-                    </Flex>
-                  </Flex>
+                      </span>
+                      <span className={styles.when}>{relativeTime(entry.timestamp)}</span>
+                    </div>
+                  </div>
                 ))}
-              </Flex>
+              </div>
             )}
           </motion.div>
         ) : null}
       </AnimatePresence>
-    </Flex>
+    </div>
   );
 }

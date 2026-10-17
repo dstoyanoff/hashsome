@@ -1,8 +1,6 @@
-/** @jsxImportSource @emotion/react */
-import type { ComponentProps } from 'react';
-import { useColorByKey } from 'e-prim';
-import { Box, Flex, Typography } from '../style/prim.tsx';
-import { useTypographySize } from '../theme/use-typography.ts';
+import type { ComponentProps, CSSProperties } from 'react';
+import { useColor, useTypographySize } from '../theme/use-theme.ts';
+import styles from './series-plot.module.css';
 import {
   Area,
   AreaChart,
@@ -55,13 +53,16 @@ export default function SeriesPlot({
   fitDomain = false,
   height,
 }: SeriesChartProps) {
-  const accent = useColorByKey('accent') ?? '';
-  const textMuted = useColorByKey('textMuted') ?? '';
-  const line = useColorByKey('line') ?? '';
+  const accent = useColor('accent');
+  const textMuted = useColor('textMuted');
+  const line = useColor('line');
   const tickSize = useTypographySize('secondary');
 
   return (
-    <Box height={height ?? (expanded ? 220 : 48)} mt={3}>
+    <div
+      className={styles.plot}
+      style={{ '--chart-height': `${height ?? (expanded ? 220 : 48)}px` } as CSSProperties}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={samples} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
           {expanded ? (
@@ -113,7 +114,7 @@ export default function SeriesPlot({
           />
         </AreaChart>
       </ResponsiveContainer>
-    </Box>
+    </div>
   );
 }
 
@@ -132,33 +133,23 @@ function ChartTooltip({
   }
 
   return (
-    <Box
-      background="surfaceRaised"
-      color="text"
-      border
-      radius="small"
-      typography="body"
-      py={1.5}
-      px={2.5}
-    >
-      <Flex direction="column">
-        <Typography as="span" variant="secondary" color="textMuted">
-          {new Date(sample.timestamp).toLocaleString([], {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </Typography>
-        <Typography as="span" variant="bodyStrong">
-          {Math.round(sample.value * 10) / 10} {unit}
-        </Typography>
-        {sample.notes?.map((note) => (
-          <Typography key={note} as="span" variant="secondary" color="textMuted">
-            {note}
-          </Typography>
-        ))}
-      </Flex>
-    </Box>
+    <div className={styles.tooltip}>
+      <span className={styles.when}>
+        {new Date(sample.timestamp).toLocaleString([], {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
+      </span>
+      <span className={styles.value}>
+        {Math.round(sample.value * 10) / 10} {unit}
+      </span>
+      {sample.notes?.map((note) => (
+        <span key={note} className={styles.when}>
+          {note}
+        </span>
+      ))}
+    </div>
   );
 }

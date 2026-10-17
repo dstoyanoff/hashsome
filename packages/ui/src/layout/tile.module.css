@@ -1,0 +1,181 @@
+.card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  min-width: 0;
+  /* The badge between its padding, written down rather than left to the content, so a tile is a whole number of grid modules (12, in
+     the comfortable density) whatever is in it. */
+  min-height: calc(var(--hs-unit) * 4 + var(--hs-badge));
+  border-radius: var(--hs-radius-card);
+  background: var(--hs-surface);
+  color: var(--hs-text);
+  transition:
+    background-color 0.28s,
+    color 0.28s,
+    opacity 0.28s;
+}
+
+.card[data-ready='false'] {
+  color: var(--hs-text-muted);
+  opacity: 0.7;
+}
+
+.card[data-pending='true'] {
+  opacity: 0.7;
+}
+
+/* A solid on/off tile that is on turns the whole card to the accent (a dimmable one has its fill bar instead). */
+.card[data-whole-accent='true'] {
+  background: var(--hs-accent);
+}
+
+.card[data-feedback='error'] {
+  outline: 2px solid var(--hs-danger);
+  outline-offset: -2px;
+}
+
+.badge {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+  color: var(--hs-line);
+  transition:
+    background-color 0.28s,
+    color 0.28s;
+}
+
+/* The glyph sits inside a translucent badge, which adapts to whatever is behind it, so it still needs the lighter accent text. */
+.badge[data-tone='accent'] {
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--hs-accent-text);
+}
+
+/* An app's own color for the icon (a scene's), with the light glyph. */
+.badge[data-tone='tint'] {
+  background: var(--tint);
+  color: var(--hs-accent-text);
+}
+
+.badge[data-tone='muted'] {
+  color: var(--hs-text-muted);
+}
+
+/* Spans the whole card, including behind the trailing controls: a sibling of the button and them, so its width is not capped by the
+   button's own bounds. */
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--hs-accent);
+  pointer-events: none;
+  transition:
+    width 0.28s,
+    opacity 0.28s;
+}
+
+.fill[data-dragging='true'] {
+  transition: none;
+}
+
+.overlay {
+  position: relative;
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  align-self: stretch;
+  gap: calc(var(--hs-unit) * 2.5);
+  min-width: 0;
+  padding: calc(var(--hs-unit) * 2);
+}
+
+.overlayBody {
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.button {
+  position: relative;
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  align-self: stretch;
+  gap: calc(var(--hs-unit) * 2.5);
+  min-width: 0;
+  padding: calc(var(--hs-unit) * 2) calc(var(--hs-unit) * 3.5) calc(var(--hs-unit) * 2)
+    calc(var(--hs-unit) * 2);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card[data-ready='false'] .button {
+  cursor: default;
+}
+
+.button:focus-visible {
+  border-radius: inherit;
+  outline: 2px solid var(--hs-accent);
+  outline-offset: -2px;
+}
+
+.label {
+  composes: label from '../style/type.module.css';
+  position: relative;
+  flex-grow: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  composes: secondary from '../style/type.module.css';
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  color: var(--hs-line);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status[data-tone='muted'] {
+  color: var(--hs-text-muted);
+}
+
+/* On a card that is orange, the muted grey the status normally has is ~1.6:1; it goes near-black. */
+.status[data-tone='on-accent'] {
+  color: var(--hs-on-accent);
+}
+
+/* Above the fill bar, which is absolutely positioned and so would paint over it (an absolutely-positioned element paints above a
+   static one in the same stacking context). */
+.trailing {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2);
+  padding-right: calc(var(--hs-unit) * 2.5);
+}
+
+.glyph {
+  display: grid;
+}
+
+/* A literal color (a light's own) outranks the state colors the round button gives `data-active`. */
+.colored.colored.colored {
+  color: var(--glyph);
+}

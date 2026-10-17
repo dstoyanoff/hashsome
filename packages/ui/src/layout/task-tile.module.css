@@ -1,0 +1,50 @@
+.line {
+  composes: secondary from '../style/type.module.css';
+}
+
+.line[data-state='ok'] {
+  color: var(--hs-text-muted);
+}
+
+.line[data-state='dueSoon'] {
+  color: var(--hs-warm);
+}
+
+.line[data-state='overdue'] {
+  color: var(--hs-danger);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.error {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-danger);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--hs-unit) * 3);
+}
+
+.stepperLabel {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}
+
+.days {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.day {
+  composes: bodyStrong from '../style/type.module.css';
+  min-width: 96px;
+  text-align: center;
+}

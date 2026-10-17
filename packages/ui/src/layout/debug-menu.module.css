@@ -1,0 +1,63 @@
+/* Over the page and its navigation but under a drawer and its scrim, so opening a drawer covers it instead of leaving it floating over
+   the drawer. As big as the button, whatever the page's own rules say: the document shell makes every `div` that is a child of `body`
+   at least as tall as the window (`body > div { min-height: 100% }`), which this is, and the button would sit at the top of it. */
+.menu {
+  position: fixed;
+  bottom: var(--inset);
+  left: var(--inset);
+  z-index: var(--hs-z-dropdown);
+  width: var(--button);
+  height: var(--button);
+  min-height: 0;
+}
+
+/* Clear of a phone's home indicator and rounded corners (a wall display has none). */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .menu {
+    bottom: calc(var(--inset) + env(safe-area-inset-bottom, 0px));
+    left: calc(var(--inset) + env(safe-area-inset-left, 0px));
+  }
+}
+
+.popover {
+  position: absolute;
+  bottom: 52px;
+  left: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 4);
+  width: 288px;
+  padding: calc(var(--hs-unit) * 4);
+  border-radius: var(--hs-radius-row);
+  background: var(--hs-surface);
+  box-shadow: var(--hs-shadow-drawer);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.rowLabel {
+  composes: label from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}
+
+.note {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}
+
+.button {
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--button);
+  height: var(--button);
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface);
+  box-shadow: var(--hs-shadow-dock);
+  color: var(--hs-text-muted);
+}

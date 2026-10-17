@@ -126,6 +126,7 @@ export function computed(element: Element, property: string): string {
   }
 
   let found = '';
+  let best = -1;
   for (const sheet of document.styleSheets) {
     for (const rule of sheet.cssRules) {
       const { selectorText, style } = rule as CSSStyleRule;
@@ -135,7 +136,12 @@ export function computed(element: Element, property: string): string {
 
       try {
         if (element.matches(selectorText) && style.getPropertyValue(property)) {
-          found = style.getPropertyValue(property);
+          // The cascade, as far as the stylesheets here need: the more specific rule wins, the later one among equals.
+          const weight = specificity(selectorText);
+          if (weight >= best) {
+            best = weight;
+            found = style.getPropertyValue(property);
+          }
         }
       } catch {
         // A selector jsdom cannot match (a pseudo-class, say) is not the element's own.
@@ -154,4 +160,13 @@ export function computed(element: Element, property: string): string {
       (style as unknown as Record<string, string>)[property] ||
       '',
   );
+}
+
+/** A selector's specificity as one number (ids, then classes / attributes / pseudo-classes, then elements); `:where()` counts for nothing. */
+function specificity(selector: string): number {
+  const bare = selector.replace(/:where\([^)]*\)/g, '');
+  const ids = (bare.match(/#[\w-]+/g) ?? []).length;
+  const classes = (bare.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+/g) ?? []).length;
+  const types = (bare.match(/(^|[\s>+~])[a-z][\w-]*/gi) ?? []).length;
+  return ids * 10_000 + classes * 100 + types;
 }

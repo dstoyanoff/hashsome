@@ -1,12 +1,11 @@
-/** @jsxImportSource @emotion/react */
 import type { EntityRef } from '@hashsome/core';
-import { Flex, Typography } from '../style/prim.tsx';
 import { useState } from 'react';
 import { useEntityHandle } from '../hooks.ts';
 import { useEntityHistory } from '../use-entity-history.ts';
 import { usageFromDaily } from './energy-usage.ts';
 import { AnimatedNumber, decimalsOf } from './animated-number.tsx';
 import { useDetail } from './detail-provider.tsx';
+import styles from './energy-chart.module.css';
 import { RangeSwitcher, SeriesChart } from './series-chart.tsx';
 
 export interface EnergySample {
@@ -114,21 +113,19 @@ export function EnergyChart({
   };
 
   return (
-    <Flex direction="column" gap={2} mt={4}>
-      <Flex justify="space-between" align="center">
-        <Typography as="span" variant="eyebrow" uppercase color="textMuted">
-          Power
-        </Typography>
+    <div className={styles.section}>
+      <div className={styles.head}>
+        <span className={styles.heading}>Power</span>
         {expanded ? (
           <RangeSwitcher range={range} options={ENERGY_RANGES} onChange={selectRange} />
         ) : null}
-      </Flex>
+      </div>
       {power ? (
         <PowerReading entity={power} fallbackUnit={unit} />
       ) : (
-        <Typography as="span" variant="stat">
+        <span className={styles.stat}>
           {fallbackCurrent} {unit}
-        </Typography>
+        </span>
       )}
       {shownUsage ? <UsageTiles usage={shownUsage} expanded={expanded} /> : null}
       {expanded && energy ? <LifetimeEnergy entity={energy} /> : null}
@@ -140,7 +137,7 @@ export function EnergyChart({
           unit={unit}
         />
       )}
-    </Flex>
+    </div>
   );
 }
 
@@ -149,7 +146,7 @@ function PowerReading({ entity, fallbackUnit }: { entity: EntityRef; fallbackUni
   const sensor = handle.entity;
   const unit = sensor?.unit ?? fallbackUnit;
   return (
-    <Typography as="span" variant="stat" aria-live="off">
+    <span className={styles.stat} aria-live="off">
       {handle.status === 'ready' && sensor?.numeric !== undefined ? (
         <AnimatedNumber
           value={sensor.numeric}
@@ -158,7 +155,7 @@ function PowerReading({ entity, fallbackUnit }: { entity: EntityRef; fallbackUni
       ) : (
         '—'
       )}
-    </Typography>
+    </span>
   );
 }
 
@@ -170,9 +167,9 @@ function LifetimeEnergy({ entity }: { entity: EntityRef }) {
   }
 
   return (
-    <Typography as="span" variant="secondary" color="textMuted">
+    <span className={styles.lifetime}>
       Lifetime {sensor.numeric} {sensor.unit ?? 'kWh'}
-    </Typography>
+    </span>
   );
 }
 
@@ -195,26 +192,13 @@ function UsageTiles({ usage, expanded }: { usage: EnergyUsage; expanded: boolean
   }
 
   return (
-    <Flex gap={2}>
+    <div className={styles.tiles}>
       {shown.map((item) => (
-        <Flex
-          key={item.label}
-          direction="column"
-          grow={1}
-          background="surfaceRaised"
-          radius="row"
-          py={2.5}
-          px={3}
-          css={{ flexBasis: 0 }}
-        >
-          <Typography as="span" variant="secondary" color="textMuted">
-            {item.label}
-          </Typography>
-          <Typography as="span" variant="bodyStrong">
-            {formatEnergy(item.value ?? 0)}
-          </Typography>
-        </Flex>
+        <div key={item.label} className={styles.tile}>
+          <span className={styles.tileLabel}>{item.label}</span>
+          <span className={styles.tileValue}>{formatEnergy(item.value ?? 0)}</span>
+        </div>
       ))}
-    </Flex>
+    </div>
   );
 }

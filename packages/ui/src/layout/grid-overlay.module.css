@@ -1,0 +1,53 @@
+/* The page is a flex column with a gap, and a box here, empty as it is, would be one more item in it, with a gap of its own before it. */
+.overlay {
+  display: contents;
+}
+
+/* Its size, and the lines in it, are measured: inline. */
+.grid {
+  position: absolute;
+  left: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.content {
+  position: absolute;
+  outline: 1px dashed rgba(0, 150, 255, 0.9);
+}
+
+.card {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 2px;
+  overflow: hidden;
+  outline: 1px solid #22c55e;
+  outline-offset: -1px;
+  color: #22c55e;
+  font:
+    600 9px/1 system-ui,
+    sans-serif;
+}
+
+.card[data-off='true'] {
+  outline-color: #ef4444;
+  color: #ef4444;
+}
+
+.legend {
+  position: fixed;
+  /* Clear of the debug menu's button, which is how the grid is turned on. */
+  bottom: 8px;
+  left: 60px;
+  z-index: 100;
+  /* On a narrow screen it wraps instead of running off the edge. */
+  max-width: calc(100vw - 68px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  font:
+    600 11px/1.3 system-ui,
+    sans-serif;
+  pointer-events: none;
+}

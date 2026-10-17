@@ -1,0 +1,11 @@
+/* Zero specificity, so a class of the caller's own (one class) always wins over the reset, whatever order the files load in. */
+:where(.plain) {
+  display: flex;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
