@@ -339,11 +339,13 @@ test('a drag the browser cancels (a touch it took for a scroll) is ended where t
   expect(screen.getByText('75%')).toBeTruthy();
 });
 
-test('on a dimmable tile the icon badge is drawn as an off tile’s while little of the fill is behind it', () => {
+test('the icon badge of a dimmable tile that is on is the accent, at any brightness, and a solid on/off tile’s is the darker circle', () => {
   renderWithMock(
     <>
       <Tile label="dim" icon="lu:sun" active fill={0.27} onFillChange={() => {}} />
       <Tile label="bright" icon="lu:sun" active fill={0.9} onFillChange={() => {}} />
+      <Tile label="switch" icon="lu:sun" active onPress={() => {}} />
+      <Tile label="off" icon="lu:sun" fill={0} onFillChange={() => {}} />
     </>,
     {},
   );
@@ -354,6 +356,8 @@ test('on a dimmable tile the icon badge is drawn as an off tile’s while little
       .querySelector('[data-tone]')
       ?.getAttribute('data-tone');
 
-  expect(tone('dim')).toBe('ready');
-  expect(tone('bright')).toBe('accent');
+  expect(tone('dim')).toBe('lit');
+  expect(tone('bright')).toBe('lit');
+  expect(tone('switch')).toBe('accent');
+  expect(tone('off')).toBe('ready');
 });

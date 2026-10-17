@@ -103,9 +103,6 @@ export interface TileProps {
 const DRAG_THRESHOLD = 8;
 const KEY_STEP = 0.05;
 const HOLD_MS = 500;
-
-/** How much of a dimmable tile's fill has to be there for the badge on it to be drawn as on an orange card. */
-const FILL_BEHIND_BADGE = 0.6;
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
 const valueAt = (event: PointerEvent<HTMLButtonElement>) => {
@@ -316,14 +313,15 @@ export function Tile({
 
   // An app's own color for the icon (a scene's) fills the badge while the tile is ready, with the light glyph.
   const tinted = tint !== undefined && ready;
-  // On a dimmable tile the badge sits over its own fill bar, which is as see-through as the brightness is low: with little of the orange
-  // behind it the white glyph is lost against the card (in the light theme most of all), so it is drawn as an off tile's until the
-  // fill is mostly there.
-  const overFill = isDimmable && fillLevel < FILL_BEHIND_BADGE;
+  // A dimmable tile that is on has a solid accent badge: the fill bar behind it is only as strong as the brightness, so a darkened
+  // circle over it is lost against the card at some brightness or other (in the light theme most of all), while the accent one reads
+  // at any. A solid on/off tile is accent all over, so its badge is the darker circle.
   const badgeTone = tinted
     ? 'tint'
-    : accented && !overlaid && !overFill
-      ? 'accent'
+    : accented && !overlaid
+      ? isDimmable
+        ? 'lit'
+        : 'accent'
       : ready
         ? 'ready'
         : 'muted';
