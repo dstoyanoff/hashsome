@@ -28,7 +28,6 @@
 
 .title {
   composes: title from '../style/type.module.css';
-  margin: 0;
 }
 
 .switcher {

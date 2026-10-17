@@ -33,12 +33,10 @@
 
 .title {
   composes: heading from '../style/type.module.css';
-  margin: 0;
 }
 
 .description {
   composes: body from '../style/type.module.css';
-  margin: 0;
   color: var(--hs-text-muted);
 }
 
