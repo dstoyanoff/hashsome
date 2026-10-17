@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 /** The board's stylesheet as text: jsdom does not know grid properties, so what the board asks for is read from the file. */
-const css = () => readFileSync(join(process.cwd(), 'src/layout/board.module.css'), 'utf8');
+const css = () => readFileSync(join(import.meta.dirname, '../board.module.css'), 'utf8');
 
 test('a board is columns with a gap between them and rows as tall as their content', () => {
   renderWithMock(

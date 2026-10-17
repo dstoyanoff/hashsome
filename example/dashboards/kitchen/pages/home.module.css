@@ -1,0 +1,22 @@
+.body {
+  display: flex;
+  flex-grow: 1;
+  gap: calc(var(--hs-unit) * 3);
+  min-height: 0;
+}
+
+.rooms {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: calc(var(--hs-unit) * 3);
+  min-width: 0;
+  overflow: auto;
+}
+
+.player {
+  display: flex;
+  flex: 0 0 28%;
+  align-self: flex-start;
+  min-width: 280px;
+}

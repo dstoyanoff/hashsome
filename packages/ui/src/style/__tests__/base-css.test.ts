@@ -9,6 +9,7 @@ test('scrollbars are thin, have no track, and use the theme’s colors', () => {
   expect(css).toMatch(
     /::-webkit-scrollbar-track,\s*::-webkit-scrollbar-corner \{\s*background: transparent;/,
   );
+
   expect(css).toMatch(/::-webkit-scrollbar-thumb \{\s*background: var\(--hs-border\);/);
   expect(css).toMatch(/::-webkit-scrollbar-thumb:hover \{\s*background: var\(--hs-line\);/);
 });

@@ -51,9 +51,7 @@ export function resolveCss(element: Element, value: string): string {
   for (let round = 0; round < 6 && out.includes('var('); round++) {
     out = out.replace(
       /var\((--[\w-]+)\s*(?:,\s*([^()]*))?\)/g,
-      (_, name: string, fallback?: string) => {
-        return lookup(name) || (fallback ?? '').trim();
-      },
+      (_, name: string, fallback?: string) => lookup(name) || (fallback ?? '').trim(),
     );
   }
 
@@ -76,43 +74,44 @@ export function resolveCss(element: Element, value: string): string {
   return out;
 }
 
-/** A pixel-length expression with `+ - *` and, for `max`, comma-separated alternatives; undefined when it is not one. */
-function evaluate(fn: string, body: string): number | undefined {
-  const sum = (text: string): number | undefined => {
-    let total = 0;
-    let sign = 1;
-    const tokens = text.trim().split(/\s+/);
-    let term: number | undefined;
-    let pending: 'mul' | undefined;
-    for (const token of tokens) {
-      if (token === '+' || token === '-') {
-        if (term === undefined) {
-          return undefined;
-        }
-
-        total += sign * term;
-        sign = token === '+' ? 1 : -1;
-        term = undefined;
-        continue;
-      }
-
-      if (token === '*') {
-        pending = 'mul';
-        continue;
-      }
-
-      const number = Number.parseFloat(token);
-      if (Number.isNaN(number) || !/^-?[\d.]+(px)?$/.test(token)) {
+/** A sum of pixel lengths with `+ - *`: undefined when it is not one. */
+function sum(text: string): number | undefined {
+  let total = 0;
+  let sign = 1;
+  const tokens = text.trim().split(/\s+/);
+  let term: number | undefined;
+  let pending: 'mul' | undefined;
+  for (const token of tokens) {
+    if (token === '+' || token === '-') {
+      if (term === undefined) {
         return undefined;
       }
 
-      term = pending && term !== undefined ? term * number : number;
-      pending = undefined;
+      total += sign * term;
+      sign = token === '+' ? 1 : -1;
+      term = undefined;
+      continue;
     }
 
-    return term === undefined ? undefined : total + sign * term;
-  };
+    if (token === '*') {
+      pending = 'mul';
+      continue;
+    }
 
+    const number = Number.parseFloat(token);
+    if (Number.isNaN(number) || !/^-?[\d.]+(px)?$/.test(token)) {
+      return undefined;
+    }
+
+    term = pending && term !== undefined ? term * number : number;
+    pending = undefined;
+  }
+
+  return term === undefined ? undefined : total + sign * term;
+}
+
+/** A pixel-length expression with `+ - *` and, for `max`, comma-separated alternatives; undefined when it is not one. */
+function evaluate(fn: string, body: string): number | undefined {
   if (fn === 'max') {
     const values = body.split(',').map(sum);
     return values.includes(undefined) ? undefined : Math.max(...(values as number[]));

@@ -15,7 +15,7 @@
     "react/react-in-jsx-scope": "off",
     "import/no-unassigned-import": [
       "warn",
-      { "allow": ["**/*.css", "@emotion/react", "./tokens.ts", "@hashsome/runtime/entry-client"] }
+      { "allow": ["**/*.css", "./tokens.ts", "@hashsome/runtime/entry-client"] }
     ],
     "curly": ["error", "all"],
     "arrow-body-style": ["error", "as-needed"],

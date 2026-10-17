@@ -1,4 +1,3 @@
-/** @jsxImportSource @emotion/react */
 import {
   ActionButton,
   Grid,
@@ -8,8 +7,8 @@ import {
   SceneButton,
   SensorReadout,
 } from '@hashsome/ui';
-import { Flex } from 'e-prim';
 import { HomeTopBar } from '../../../shared/top-bar.tsx';
+import styles from './home.module.css';
 
 export const meta = () => [{ title: 'Kitchen' }];
 
@@ -18,8 +17,8 @@ export default function Home() {
     <>
       <HomeTopBar title="Kitchen" />
       {/* The rooms on the left; the player gets a column of its own on the right. */}
-      <Flex grow={1} minHeight={0} gap={3}>
-        <Flex direction="column" grow={1} minWidth={0} overflow="auto" gap={3}>
+      <div className={styles.body}>
+        <div className={styles.rooms}>
           <RoomHeader
             title="Kitchen"
             icon="lu:utensils-crossed"
@@ -67,11 +66,11 @@ export default function Home() {
             <ActionButton label="Exhaust Fan" icon="tb:car-fan" entity="ha:fan.kitchen_exhaust" />
             <SceneButton entity="ha:scene.cooking_time" name="Cooking Time" />
           </Grid>
-        </Flex>
-        <Flex css={{ flex: '0 0 28%', minWidth: 280, alignSelf: 'flex-start' }}>
+        </div>
+        <div className={styles.player}>
           <MediaPlayerColumn entity="ma:kitchen" />
-        </Flex>
-      </Flex>
+        </div>
+      </div>
     </>
   );
 }

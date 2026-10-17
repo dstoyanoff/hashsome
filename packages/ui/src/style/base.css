@@ -1,9 +1,7 @@
 /* What every page of a dashboard starts from: the page's colors and font from the theme, border-box sizing, a reset of
    buttons and inputs that any rule of a component's own beats, and thin scrollbars in the theme's colors. */
 
-/* Below the utilities, and below any rule a component or a project writes: a layer, so it never wins by specificity. */
-@layer hs-base, hs-utilities;
-
+/* Below any rule a component or a project writes: a layer, so it never wins by specificity. */
 @layer hs-base {
   *,
   *::before,

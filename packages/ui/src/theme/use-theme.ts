@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { ThemeConfig } from 'e-prim';
+import type { ThemeConfig } from './tokens.ts';
 import type { PaletteName, TypographyName } from '../style/names.ts';
 import { darkTheme } from './index.ts';
 

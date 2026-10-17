@@ -15,9 +15,7 @@
     "build": "tsc -b tsconfig.build.json"
   },
   "dependencies": {
-    "@emotion/react": "11.14.0",
     "@hashsome/core": "workspace:*",
-    "e-prim": "2.0.1",
     "motion": "13.4.5",
     "react": "19.3.0",
     "react-router": "8.4.0",

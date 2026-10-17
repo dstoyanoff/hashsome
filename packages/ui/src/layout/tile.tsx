@@ -16,7 +16,6 @@ import { RoundButton } from './round-button.tsx';
 import { useStill } from './use-still.ts';
 import { SpinnerRing } from './spinner.tsx';
 import { statusLabels, type EntityStatus } from '../status.ts';
-import { cx } from '../style/cx.ts';
 import { useDrawer } from './use-drawer.tsx';
 import { EnergyChart, type EnergyChartProps } from './energy-chart.tsx';
 import { HistorySection, type LogbookEntry } from './history-section.tsx';
@@ -121,7 +120,6 @@ export function Tile({
   history,
   logbook,
 }: TileProps) {
-  const still = useStill();
   const ready = status === 'ready';
   const adjustable = fill !== undefined && onFillChange !== undefined && ready;
   const holdable =

@@ -1,4 +1,4 @@
-import type { ThemeConfig } from 'e-prim';
+import type { ThemeConfig } from '../theme/tokens.ts';
 import type { DensityTokens } from '../theme/density.ts';
 import { UNITS_PER_SPACE } from '../theme/density.ts';
 import { BADGE, HEADER, NAV_BAR, NAV_RAIL, TOP_ROW } from '../theme/grid.ts';
@@ -28,7 +28,7 @@ export function themeVariables(theme: ThemeConfig, density: DensityTokens): stri
     }
   };
 
-  const palette = theme.palette as Record<string, string>;
+  const palette = theme.palette as unknown as Record<string, string>;
   for (const key of PALETTE_KEYS) {
     put(kebab(key), palette[key]);
   }
@@ -83,7 +83,7 @@ export function themeVariables(theme: ThemeConfig, density: DensityTokens): stri
 /** The `<style>` text that installs `themeVariables` for the whole page. */
 export const themeCss = (theme: ThemeConfig, density: DensityTokens): string =>
   // Native controls (a date picker's calendar glyph, scrollbars) follow the theme, not the OS.
-  `:root {\ncolor-scheme: ${isDark((theme.palette as Record<string, string>).bg ?? '') ? 'dark' : 'light'};\n${themeVariables(theme, density)}\n}`;
+  `:root {\ncolor-scheme: ${isDark((theme.palette as unknown as Record<string, string>).bg ?? '') ? 'dark' : 'light'};\n${themeVariables(theme, density)}\n}`;
 
 function isDark(hex: string): boolean {
   const n = parseInt(hex.replace('#', '').slice(0, 6), 16);

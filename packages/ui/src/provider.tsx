@@ -5,8 +5,6 @@ import {
   type EntityRef,
   type RemoteClientOptions,
 } from '@hashsome/core';
-import { ThemeProvider as EmotionThemeProvider, type Theme } from '@emotion/react';
-import { ThemeProvider } from 'e-prim';
 import { MotionGlobalConfig } from 'motion/react';
 import {
   createContext,
@@ -31,7 +29,7 @@ import { EntityDrawer } from './layout/entity-drawer.tsx';
 import { IdleReturnContext } from './layout/use-idle-return.ts';
 import { themeCss } from './style/variables.ts';
 import { useThemeStyle } from './style/use-theme-style.ts';
-import { UNITS_PER_SPACE, type Density } from './theme/density.ts';
+import { type Density } from './theme/density.ts';
 import { DensityContext } from './theme/use-density.ts';
 import { ThemeContext } from './theme/use-theme.ts';
 import './style/base.css';
@@ -352,17 +350,10 @@ export function HashsomeProvider({
     instance,
   );
 
-  // Memoized: Emotion recomputes the merged theme (and every `css` prop) when the function changes.
-  const withDensity = useMemo(
-    () =>
-      (outer: Theme): Theme => ({ ...outer, density: densityTokens(density, overrides) }),
-    [density, overrides],
-  );
-
   useGoogleFont(font);
   const resolvedTheme = useMemo(
-    () => ({
-      ...withFontFamily(
+    () =>
+      withFontFamily(
         applyThemeOverrides(
           themeMode.resolved === 'dark' ? darkTheme : lightTheme,
           themeMode.resolved,
@@ -370,10 +361,7 @@ export function HashsomeProvider({
         ),
         font,
       ),
-      // The spacing unit follows density, so `gap={3}` is always one space and the rest scale.
-      spacing: densityTokens(density, overrides).space / UNITS_PER_SPACE,
-    }),
-    [themeMode.resolved, font, overrides, density],
+    [themeMode.resolved, font, overrides],
   );
 
   const densityValue = useMemo(() => densityTokens(density, overrides), [density, overrides]);
@@ -391,19 +379,15 @@ export function HashsomeProvider({
       <ThemeModeContext.Provider value={themeMode}>
         <DensityContext.Provider value={densityValue}>
           <ThemeContext.Provider value={resolvedTheme}>
-            <ThemeProvider theme={resolvedTheme}>
-              <EmotionThemeProvider theme={withDensity}>
-                <DebugContext.Provider value={debugState}>
-                  <IdleReturnContext.Provider value={idleReturn}>
-                    <DetailProvider>
-                      {children}
-                      <EntityDrawer />
-                      {debug ? <DebugMenu configured={theme} sun={sunEntity} /> : null}
-                    </DetailProvider>
-                  </IdleReturnContext.Provider>
-                </DebugContext.Provider>
-              </EmotionThemeProvider>
-            </ThemeProvider>
+            <DebugContext.Provider value={debugState}>
+              <IdleReturnContext.Provider value={idleReturn}>
+                <DetailProvider>
+                  {children}
+                  <EntityDrawer />
+                  {debug ? <DebugMenu configured={theme} sun={sunEntity} /> : null}
+                </DetailProvider>
+              </IdleReturnContext.Provider>
+            </DebugContext.Provider>
           </ThemeContext.Provider>
         </DensityContext.Provider>
       </ThemeModeContext.Provider>

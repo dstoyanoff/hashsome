@@ -16,6 +16,7 @@ export function RoundButton<E extends ElementType = 'button'>({
   const Tag: ElementType = as ?? 'button';
   const own =
     size === undefined ? style : { ...(style as CSSProperties), '--round-size': `${size}px` };
+
   return (
     <Tag
       type="button"

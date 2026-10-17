@@ -1,5 +1,14 @@
-import type { ThemeConfig } from 'e-prim';
-import './tokens.ts';
+import type { ThemeConfig } from './tokens.ts';
+
+export type {
+  Palette,
+  Radius,
+  Shadow,
+  ThemeConfig,
+  Typography,
+  TypographySpecs,
+  ZIndex,
+} from './tokens.ts';
 
 /** The Google Fonts family loaded and applied by default — see `HashsomeProviderProps.font` . Any other Google Fonts family name works the same way. */
 export const DEFAULT_FONT = 'Inter';
@@ -35,8 +44,6 @@ export function withFontFamily(theme: ThemeConfig, family: string): ThemeConfig 
 const FONT_FAMILY = fontStack(DEFAULT_FONT);
 
 const shared = {
-  spacing: 4,
-  breakpoint: {},
   zIndex: {
     nav: 5,
     dropdown: 10,
@@ -72,11 +79,6 @@ const shared = {
     clock: { fontSize: 32, fontWeight: 400 },
   },
 } satisfies Omit<ThemeConfig, 'palette'>;
-
-// `ThemeProvider` calls e-prim's own `makeTheme()` internally on whatever it's given — passing
-// an already-`makeTheme()`-processed object here would run it twice, which silently corrupts the
-// derived `spacing()` function (every `gap`/`p`/`m`/`mb` prop then resolves to `NaN`). These stay
-// as plain `ThemeConfig` objects; `<ThemeProvider theme={darkTheme}>` does the one-time build.
 
 /** The converged "Ember" dark palette (default; the only theme currently wired up). */
 export const darkTheme: ThemeConfig = {
