@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "docs": "vite",
     "docs:build": "vite build",
-    "build": "tsc -b tsconfig.build.json"
+    "build": "tsc -b tsconfig.build.json && node scripts/copy-css.ts"
   },
   "dependencies": {
     "@hashsome/core": "workspace:*",

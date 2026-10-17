@@ -23,14 +23,17 @@ isn't documented clearly. Only proceed if it's genuinely missing.
 1. **Design it as a token consumer, not a one-off.** Follow the existing files in
    `packages/ui/src/layout/` or `packages/ui/src/entities/` for shape: a `kebab-case.tsx` filename,
    an exported `XProps` interface with a one-line doc comment per non-obvious prop, an exported
-   `function X(props: XProps)` with a leading doc comment summarizing what it does. Style with
-   e-prim top-level props first (`Box`/`Flex`/`Grid`/`Typography`: `p`, `gap`, `width`, `radius`,
-   `background`, `color`, `position`, `zIndex`, `cursor`, `align`…), theme tokens only (no raw
-   colors, radii or z-indexes). Never a `style` prop. The Emotion `css` prop is for what has no prop
-   (pseudo-selectors, `data-*` states, `inset`, `touch-action`, dynamic colors), written as a theme
-   function (`({ palette, density }) => …`), and never repeats a prop (the `css` prop outranks
-   props). Reuse `PlainButton` (unstyled button), `RoundButton` (round icon button) and `Cover`
-   (fill-the-box image) instead of re-creating their resets or spreading style objects. No entity- or dashboard-specific logic (that belongs in the entity component or the
+   `function X(props: XProps)` with a leading doc comment summarizing what it does. Style with a
+   CSS Module beside it (`kebab-case.module.css`, `import styles from './kebab-case.module.css'`),
+   written in the theme's custom properties (`var(--hs-surface)`, `var(--hs-radius-card)`,
+   `calc(var(--hs-unit) * 3)` for spacing, `var(--hs-icon-circle)` and the other density sizes), never a raw
+   color, radius or z-index. Type comes from `composes: label from '../style/type.module.css'`
+   (one class per variant of the type scale). State is a `data-*` attribute or `aria-*` the CSS
+   selects on; a value that is only known at run time (a measured size, a color the app picked) is
+   an inline custom property (`style={{ '--tint': color }}`) that the CSS reads. Join class names with
+   `cx()`. Reuse `PlainButton` (unstyled button), `RoundButton` (round icon button) and `Cover`
+   (fill-the-box image), each of which takes a `className` that beats its reset, instead of re-creating
+   their resets. No entity- or dashboard-specific logic (that belongs in the entity component or the
    dashboard itself) — a layout primitive should work for anything.
 2. **Export it** from `packages/ui/src/index.ts`.
 3. **Document every prop.** Each prop in `XProps` needs a `/** ... */` doc comment (one or several lines; it is what the IDE shows on hover) and the component needs one too. `pnpm generate:catalog` turns them into the gallery's props table (`gallery/props-data.ts`) and the catalog, and a test fails if any prop is undocumented.
