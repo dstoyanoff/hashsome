@@ -217,6 +217,8 @@
   overflow-y: auto;
   list-style: none;
   touch-action: pan-y;
+  /* Room for a scrollbar that is drawn over the list (Android's), so it is not up against the buttons. */
+  padding-right: calc(var(--hs-unit) * 3);
 }
 
 .rows > li {

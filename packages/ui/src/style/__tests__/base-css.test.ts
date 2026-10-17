@@ -28,3 +28,9 @@ test('the thumb is a few pixels wide with room around it, so it never touches th
   // The bar is an inset shadow, not a background clipped to the padding box, which a web view may ignore.
   expect(thumb).not.toContain('background-clip');
 });
+
+test('browsers that take the standard properties get a thin bar in the theme’s colors', () => {
+  expect(css).toMatch(
+    /@supports \(scrollbar-width: thin\) \{\s*\* \{\s*scrollbar-width: thin;\s*scrollbar-color: var\(--hs-border\) transparent;/,
+  );
+});

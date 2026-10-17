@@ -70,7 +70,9 @@
     box-shadow: inset 0 0 0 99px var(--hs-line);
   }
 
-  @supports not selector(::-webkit-scrollbar) {
+  /* Browsers that take the standard properties (Firefox, and Chrome from 121, which then ignores the `::-webkit-scrollbar` rules above;
+     on Android it draws an overlay bar that takes no room of its own, so a list that scrolls keeps some padding on its right). */
+  @supports (scrollbar-width: thin) {
     * {
       scrollbar-width: thin;
       scrollbar-color: var(--hs-border) transparent;

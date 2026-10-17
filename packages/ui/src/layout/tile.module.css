@@ -53,7 +53,7 @@
 
 /* The glyph sits inside a translucent badge, which adapts to whatever is behind it, so it still needs the lighter accent text. */
 .badge[data-tone='lit'] {
-  background: var(--hs-accent);
+  background: color-mix(in srgb, var(--hs-accent) 70%, black);
   color: var(--hs-accent-text);
 }
 
