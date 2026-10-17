@@ -1,6 +1,7 @@
-/** @jsxImportSource @emotion/react */
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { cx } from '../style/cx.ts';
+import styles from './marquee-text.module.css';
 import { useStill } from './use-still.ts';
 
 /** How fast the text rolls, in px a second. */
@@ -47,26 +48,13 @@ export function MarqueeText({ children }: { children: ReactNode }) {
 
   const seconds = overflow / SPEED;
   return (
-    <span
-      ref={outer}
-      css={{
-        display: 'block',
-        // A line height of its own, not the font's: an emoji comes from another font with a taller
-        // line, and would make a row with one in its title taller than the rest.
-        lineHeight: 1.3,
-        minWidth: 0,
-        maxWidth: '100%',
-        overflow: 'hidden',
-        whiteSpace: 'nowrap',
-        textOverflow: rolling ? 'clip' : 'ellipsis',
-      }}
-    >
+    <span ref={outer} className={cx(styles.frame, rolling && styles.rolling)}>
       {/* A motion element only for text that rolls: a list has a title and a line under it in every row, and
           nearly all of them fit. */}
       {rolling ? (
         <motion.span
           ref={inner}
-          css={{ display: 'inline-block' }}
+          className={styles.text}
           animate={{ x: [0, 0, -overflow, -overflow, 0] }}
           transition={{
             duration: 2 * seconds + 2 * PAUSE,
@@ -84,7 +72,7 @@ export function MarqueeText({ children }: { children: ReactNode }) {
           {children}
         </motion.span>
       ) : (
-        <span ref={inner} css={{ display: 'inline-block' }}>
+        <span ref={inner} className={styles.text}>
           {children}
         </span>
       )}

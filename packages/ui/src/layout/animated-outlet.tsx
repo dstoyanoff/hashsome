@@ -1,8 +1,8 @@
-/** @jsxImportSource @emotion/react */
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { useLocation, useOutlet } from 'react-router';
 import type { NavItem } from '../entities/nav-rail.tsx';
+import styles from './animated-outlet.module.css';
 import { useStill } from './use-still.ts';
 
 export interface AnimatedOutletProps {
@@ -12,10 +12,6 @@ export interface AnimatedOutletProps {
   /** The path `items` are relative to, e.g. `/bathroom`. Needed with `items`. */
   base?: string;
 }
-
-/** A page fills the space it is given and is no shorter than what is in it, as it is without the wrapper: a long page
- * scrolls the `Page` (with its padding) instead of spilling out. */
-const PAGE = { display: 'flex', flexDirection: 'column', flex: '1 1 auto' } as const;
 
 /** How far a page slides, in px, as it comes and goes. */
 const SLIDE = 24;
@@ -57,7 +53,7 @@ export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
   // Nothing to animate: the page is there at once, rendered once. The exit-then-enter of the transition is two
   // renders of a page, which is the last thing a slow display needs for a transition that takes no time.
   if (still) {
-    return <div css={PAGE}>{outlet}</div>;
+    return <div className={styles.page}>{outlet}</div>;
   }
 
   const seconds = 0.14;
@@ -76,9 +72,7 @@ export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
         animate="show"
         exit="exit"
         transition={{ duration: seconds, ease: 'easeOut' }}
-        // A page fills the space it is given and is no shorter than what is in it, as it is
-        // without the wrapper: a long page scrolls the `Page` (with its padding) instead of spilling out.
-        css={PAGE}
+        className={styles.page}
       >
         {outlet}
       </motion.div>

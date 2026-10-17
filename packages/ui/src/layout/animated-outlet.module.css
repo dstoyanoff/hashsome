@@ -1,0 +1,7 @@
+/* A page fills the space it is given and is no shorter than what is in it, as it is without the wrapper: a long page scrolls
+   the `Page` (with its padding) instead of spilling out. */
+.page {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}

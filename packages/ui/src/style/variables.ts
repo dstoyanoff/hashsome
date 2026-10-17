@@ -1,6 +1,7 @@
 import type { ThemeConfig } from 'e-prim';
 import type { DensityTokens } from '../theme/density.ts';
 import { UNITS_PER_SPACE } from '../theme/density.ts';
+import { BADGE, HEADER, NAV_BAR, NAV_RAIL, TOP_ROW } from '../theme/grid.ts';
 import {
   PALETTE_KEYS,
   RADIUS_KEYS,
@@ -69,9 +70,22 @@ export function themeVariables(theme: ThemeConfig, density: DensityTokens): stri
   put('icon-size', `${density.iconSize}px`);
   put('icon-circle', `${density.iconCircle}px`);
 
+  // Sizes that are the same in every density, which the grid maths in JavaScript and the stylesheets both go by.
+  put('badge', `${BADGE}px`);
+  put('header', `${HEADER}px`);
+  put('top-row', `${TOP_ROW}px`);
+  put('nav-rail', `${NAV_RAIL}px`);
+  put('nav-bar', `${NAV_BAR}px`);
+
   return lines.join('\n');
 }
 
 /** The `<style>` text that installs `themeVariables` for the whole page. */
 export const themeCss = (theme: ThemeConfig, density: DensityTokens): string =>
-  `:root {\n${themeVariables(theme, density)}\n}`;
+  // Native controls (a date picker's calendar glyph, scrollbars) follow the theme, not the OS.
+  `:root {\ncolor-scheme: ${isDark((theme.palette as Record<string, string>).bg ?? '') ? 'dark' : 'light'};\n${themeVariables(theme, density)}\n}`;
+
+function isDark(hex: string): boolean {
+  const n = parseInt(hex.replace('#', '').slice(0, 6), 16);
+  return Number.isFinite(n) && ((n >> 16) & 255) + ((n >> 8) & 255) + (n & 255) < 384;
+}

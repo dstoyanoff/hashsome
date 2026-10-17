@@ -1,6 +1,6 @@
 import { cleanup } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
-import { renderWithMock } from '../../test-utils.tsx';
+import { computed, renderWithMock } from '../../test-utils.tsx';
 import { Board, Cell } from '../board.tsx';
 import { TopRow } from '../top-row.tsx';
 
@@ -119,6 +119,6 @@ test('a top row is the height the grid gives the top row, with its pieces at the
   );
 
   const row = document.querySelector('span')?.parentElement as HTMLElement;
-  expect(getComputedStyle(row).minHeight).toBe('40px');
+  expect(computed(row, 'min-height')).toBe('40px');
   expect(getComputedStyle(row).justifyContent).toBe('flex-end');
 });

@@ -1,26 +1,13 @@
-/** @jsxImportSource @emotion/react */
-import { keyframes } from '@emotion/react';
-import { Box, type PaletteKey } from '../style/prim.tsx';
 import { Icon } from '../icon.tsx';
-
-const turn = keyframes({ to: { transform: 'rotate(360deg)' } });
+import { kebab, type PaletteName } from '../style/names.ts';
+import styles from './spinner.module.css';
 
 /** A turning ring: something is in progress and will not say how long it takes. Kept turning when the
  * app is set to reduced motion (`data-keep-motion`): a spinner that stopped would look stuck, and one
  * small turning icon costs next to nothing. */
 export function Spinner({ size = 16, label = 'Loading' }: { size?: number; label?: string }) {
   return (
-    <span
-      role="status"
-      aria-label={label}
-      data-keep-motion
-      css={{
-        display: 'inline-grid',
-        placeItems: 'center',
-        flex: 'none',
-        animation: `${turn} 0.9s linear infinite`,
-      }}
-    >
+    <span role="status" aria-label={label} data-keep-motion className={styles.spinner}>
       <Icon name="lu:loader-circle" size={size} />
     </span>
   );
@@ -36,17 +23,15 @@ export function SpinnerRing({
   label?: string;
 
   /** A palette color: the theme's accent by default. Pass `accentText` for a button that is itself accent-colored (or filled with a color of the app's own). */
-  color?: PaletteKey;
+  color?: PaletteName | 'transparent';
 }) {
   return (
-    <Box
-      as="span"
+    <span
       role="status"
       aria-label={label}
       data-keep-motion
-      position="absolute"
-      color={color}
-      css={{ inset: 0, pointerEvents: 'none', animation: `${turn} 0.9s linear infinite` }}
+      className={styles.ring}
+      style={color === 'accent' ? undefined : { color: `var(--hs-${kebab(color)})` }}
     >
       <svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">
         <circle
@@ -60,6 +45,6 @@ export function SpinnerRing({
           strokeDasharray="75 221"
         />
       </svg>
-    </Box>
+    </span>
   );
 }

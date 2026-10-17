@@ -1,0 +1,33 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 3);
+  min-height: 32px;
+  /* A header starts a new group: the extra space sits on top of the screen's own gap, so a room reads as header + its
+     tiles rather than as evenly spaced rows. */
+  margin-top: calc(var(--hs-unit) * 3);
+  color: var(--hs-text-muted);
+}
+
+.header:first-child {
+  margin-top: 0;
+}
+
+.title {
+  composes: roomTitle from '../style/type.module.css';
+  margin: 0;
+  color: var(--hs-text-muted);
+}
+
+.line {
+  flex: 1;
+  height: 1px;
+  background: var(--hs-border);
+}
+
+.readouts {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-space) * 1.5);
+  color: var(--hs-text-muted);
+}

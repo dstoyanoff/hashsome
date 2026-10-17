@@ -1,10 +1,11 @@
+/// <reference types="vite/client" />
 import {
   RemoteClient,
   type Client,
   type EntityRef,
   type RemoteClientOptions,
 } from '@hashsome/core';
-import { Global, ThemeProvider as EmotionThemeProvider, type Theme } from '@emotion/react';
+import { ThemeProvider as EmotionThemeProvider, type Theme } from '@emotion/react';
 import { ThemeProvider } from 'e-prim';
 import { MotionGlobalConfig } from 'motion/react';
 import {
@@ -31,7 +32,7 @@ import { IdleReturnContext } from './layout/use-idle-return.ts';
 import { themeCss } from './style/variables.ts';
 import { useThemeStyle } from './style/use-theme-style.ts';
 import { UNITS_PER_SPACE, type Density } from './theme/density.ts';
-import { globalStyles } from './theme/global-styles.ts';
+import './style/base.css';
 import { applyThemeOverrides, densityTokens, type ThemeOverrides } from './theme/overrides.ts';
 import { isDarkAt, msUntilSwitch, sunIsDown, type ThemeSchedule } from './theme/schedule.ts';
 import {
@@ -390,7 +391,6 @@ export function HashsomeProvider({
       <ThemeModeContext.Provider value={themeMode}>
         <ThemeProvider theme={resolvedTheme}>
           <EmotionThemeProvider theme={withDensity}>
-            <Global styles={globalStyles} />
             <DebugContext.Provider value={debugState}>
               <IdleReturnContext.Provider value={idleReturn}>
                 <DetailProvider>

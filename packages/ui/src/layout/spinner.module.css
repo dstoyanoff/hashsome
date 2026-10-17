@@ -1,0 +1,21 @@
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  animation: turn 0.9s linear infinite;
+}
+
+/* The ring around a round button, which is `position: relative`. */
+.ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: var(--hs-accent);
+  animation: turn 0.9s linear infinite;
+}

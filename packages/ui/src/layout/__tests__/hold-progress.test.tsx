@@ -18,8 +18,8 @@ test('the hold line fills by a transform animation over the hold time, not by ch
   // A full-width line that is scaled from its left end, by a CSS animation the browser runs itself.
   expect(computed(line, 'width')).toBe('100%');
   expect(style.transformOrigin).toContain('left');
-  expect(style.animation).toContain(`${HOLD_MS}ms`);
-  expect(style.animation).toContain('linear');
+  expect(computed(line, 'animation-duration')).toBe(`${HOLD_MS}ms`);
+  expect(computed(line, 'animation-timing-function')).toBe('linear');
   // Nothing in JavaScript drives it: no inline transform.
   expect(line.style.transform).toBe('');
 });

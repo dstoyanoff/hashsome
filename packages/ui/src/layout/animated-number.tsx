@@ -1,6 +1,6 @@
-/** @jsxImportSource @emotion/react */
 import { animate, MotionGlobalConfig } from 'motion/react';
 import { useLayoutEffect, useRef } from 'react';
+import styles from './animated-number.module.css';
 
 export interface AnimatedNumberProps {
   /** The number to show. When it changes, what is shown moves to it instead of jumping. */
@@ -67,7 +67,7 @@ export function AnimatedNumber({ value, format, duration = 0.6 }: AnimatedNumber
   }, [value, duration]);
 
   return (
-    <span ref={text} css={{ fontVariantNumeric: 'tabular-nums' }}>
+    <span ref={text} className={styles.number}>
       {written(value)}
     </span>
   );

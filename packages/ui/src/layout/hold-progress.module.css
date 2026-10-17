@@ -1,0 +1,38 @@
+/* Grows the line from its left end by scaling it, which the browser animates on its own, without the page's JavaScript or a
+   layout for each frame: on a slow display, animating the width is what made the hold look stuck. */
+@keyframes fill {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  pointer-events: none;
+  transform-origin: left center;
+  will-change: transform;
+  animation-name: fill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+.top {
+  top: 0;
+}
+
+.bottom {
+  bottom: 0;
+}
+
+/* Without a color of its own: a half-faded muted text color. */
+.muted {
+  background: var(--hs-text-muted);
+  opacity: 0.5;
+}

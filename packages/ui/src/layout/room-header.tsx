@@ -1,8 +1,7 @@
-/** @jsxImportSource @emotion/react */
-import { Box, Flex, Typography } from '../style/prim.tsx';
 import type { ReactNode } from 'react';
 import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
+import styles from './room-header.module.css';
 
 export interface RoomHeaderProps {
   /** The room's name. */
@@ -18,32 +17,11 @@ export interface RoomHeaderProps {
 /** The header that starts a room: muted icon and title, a hairline, and readouts on the right. Put it above a `Grid` (or any tiles); it adds its own space above, so consecutive rooms read as groups. */
 export function RoomHeader({ title, icon, readouts }: RoomHeaderProps) {
   return (
-    <Flex
-      as="header"
-      data-grid-card
-      align="center"
-      color="textMuted"
-      minHeight={32}
-      mt={3}
-      gap={3}
-      // A header starts a new group: the extra space sits on top of the screen's own gap, so a
-      // room reads as header + its tiles rather than as evenly spaced rows.
-      css={{ '&:first-child': { marginTop: 0 } }}
-    >
+    <header data-grid-card className={styles.header}>
       {icon ? <Icon name={icon} size={16} /> : null}
-      <Typography as="h2" variant="roomTitle" color="textMuted" css={{ margin: 0 }}>
-        {title}
-      </Typography>
-      <Box as="span" background="border" css={{ flex: 1, height: 1 }} />
-      {readouts ? (
-        <Flex
-          align="center"
-          color="textMuted"
-          css={({ density }) => ({ gap: density.space * 1.5 })}
-        >
-          {readouts}
-        </Flex>
-      ) : null}
-    </Flex>
+      <h2 className={styles.title}>{title}</h2>
+      <span className={styles.line} />
+      {readouts ? <div className={styles.readouts}>{readouts}</div> : null}
+    </header>
   );
 }

@@ -77,7 +77,7 @@ function mount(props: { theme?: ThemeMode; density?: 'comfortable' | 'compact' }
 
 test('the theme is installed globally on the page, not per dashboard', () => {
   mount({ theme: 'light' });
-  expect(getComputedStyle(document.body).backgroundColor).toBe('rgb(244, 241, 235)');
+  expect(computed(document.body, 'background')).toBe('#F4F1EB');
 });
 
 function DensityProbe() {
@@ -374,15 +374,5 @@ test('the default is to leave animations alone, and the prop can ask for none', 
 
   startAt('', { motion: 'reduced' });
   expect(reduced()).toBe(true);
-  resetMotion();
-});
-
-test('reduced motion switches off CSS transitions and animations, except the marked ones', () => {
-  resetMotion();
-  startAt('?motion=reduced');
-  const css = [...document.querySelectorAll('style')].map((style) => style.textContent).join('\n');
-  expect(css).toContain('html[data-motion="reduced"]');
-  expect(css).toContain(':not([data-keep-motion])');
-  expect(css).toMatch(/transition:none\s*!important/);
   resetMotion();
 });

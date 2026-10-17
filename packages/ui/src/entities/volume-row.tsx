@@ -1,12 +1,12 @@
-/** @jsxImportSource @emotion/react */
-import { Flex, Grid, Typography } from '../style/prim.tsx';
 import { motion } from 'motion/react';
 import { Icon } from '../icon.tsx';
 import { ValueBar } from '../layout/drawer-controls.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { IconButton } from '../layout/tile.tsx';
 import type { useVolumeControl } from './media-controls.ts';
+import { cx } from '../style/cx.ts';
 import { useStill } from '../layout/use-still.ts';
+import styles from './volume-row.module.css';
 
 /** How long the button row and the volume take to fade, one out and the other in. */
 export const ROW_FADE = 0.12;
@@ -28,29 +28,21 @@ export function VolumeRow({
 }) {
   const still = useStill();
   return (
-    <Grid
-      as={motion.div}
-      gap={3}
+    <motion.div
+      className={styles.row}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: still ? 0 : ROW_FADE, ease: 'easeOut' }}
-      css={({ density }) => ({
-        gridTemplateColumns: `repeat(5, ${density.iconCircle}px)`,
-        justifyContent: 'center',
-        alignItems: 'center',
-      })}
     >
-      <Flex align="center" gap={3} minWidth={0} css={{ gridColumn: '1 / 5' }}>
+      <div className={styles.main}>
         {canMute ? (
           <PlainButton
             aria-label={volume.muted ? 'Unmute' : 'Mute'}
             aria-pressed={volume.muted}
             title={volume.muted ? 'Unmute' : 'Mute'}
             onClick={volume.toggleMute}
-            center
-            color={volume.muted ? 'accent' : 'textMuted'}
-            css={{ flex: 'none' }}
+            className={cx(styles.mute, volume.muted && styles.muted)}
           >
             <Icon name={volume.muted ? 'lu:volume-x' : 'lu:volume-2'} size={18} />
           </PlainButton>
@@ -65,18 +57,9 @@ export function VolumeRow({
           onDrag={volume.drag}
           onCommit={volume.commit}
         />
-        <Typography
-          as="span"
-          variant="secondary"
-          color="textMuted"
-          minWidth={32}
-          align="right"
-          css={{ flex: 'none', fontVariantNumeric: 'tabular-nums' }}
-        >
-          {volume.shown}%
-        </Typography>
-      </Flex>
+        <span className={styles.level}>{volume.shown}%</span>
+      </div>
       <IconButton icon="lu:x" label="Close volume" glyph={18} onClick={onClose} />
-    </Grid>
+    </motion.div>
   );
 }
