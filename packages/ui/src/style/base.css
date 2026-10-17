@@ -2,6 +2,8 @@
    buttons and inputs that any rule of a component's own beats, and thin scrollbars in the theme's colors. */
 
 /* Below any rule a component or a project writes: a layer, so it never wins by specificity. */
+@layer hs-shell, hs-base;
+
 @layer hs-base {
   *,
   *::before,
