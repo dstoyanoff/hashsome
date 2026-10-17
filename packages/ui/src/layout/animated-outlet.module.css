@@ -5,3 +5,15 @@
   flex: 1 1 auto;
   flex-direction: column;
 }
+
+/* `?motion=light`: the page that comes fades in, sliding a little from the side it sits on. */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--side));
+  }
+}
+
+html[data-motion='light'] .page[data-enter='true'] {
+  animation: page-in 0.14s ease-out;
+}

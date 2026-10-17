@@ -59,3 +59,15 @@
   border-radius: var(--hs-radius-full);
   background: var(--hs-surface);
 }
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+/* `?motion=light`: the swatches pop in. */
+html[data-motion='light'] .swatch {
+  animation: pop 0.22s ease-out;
+}

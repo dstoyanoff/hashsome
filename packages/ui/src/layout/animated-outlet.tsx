@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useLocation, useOutlet } from 'react-router';
 import type { NavItem } from '../entities/nav-rail.tsx';
 import styles from './animated-outlet.module.css';
@@ -52,8 +52,20 @@ export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
 
   // Nothing to animate: the page is there at once, rendered once. The exit-then-enter of the transition is two
   // renders of a page, which is the last thing a slow display needs for a transition that takes no time.
+  // In `light` motion the page that comes still slides in from its side, by CSS (`animated-outlet.module.css`): once, with
+  // no exit, so it is one render of the page.
+  const [first] = useState(pathname);
   if (still) {
-    return <div className={styles.page}>{outlet}</div>;
+    return (
+      <div
+        key={pathname}
+        className={styles.page}
+        data-enter={pathname !== first}
+        style={{ '--side': seen.direction * SLIDE + 'px' } as CSSProperties}
+      >
+        {outlet}
+      </div>
+    );
   }
 
   const seconds = 0.14;
