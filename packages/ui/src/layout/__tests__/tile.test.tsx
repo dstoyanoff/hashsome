@@ -338,3 +338,22 @@ test('a drag the browser cancels (a touch it took for a scroll) is ended where t
   expect(onFillChange).toHaveBeenCalledWith(0.75);
   expect(screen.getByText('75%')).toBeTruthy();
 });
+
+test('on a dimmable tile the icon badge is drawn as an off tile’s while little of the fill is behind it', () => {
+  renderWithMock(
+    <>
+      <Tile label="dim" icon="lu:sun" active fill={0.27} onFillChange={() => {}} />
+      <Tile label="bright" icon="lu:sun" active fill={0.9} onFillChange={() => {}} />
+    </>,
+    {},
+  );
+
+  const tone = (label: string) =>
+    screen
+      .getByRole('button', { name: label })
+      .querySelector('[data-tone]')
+      ?.getAttribute('data-tone');
+
+  expect(tone('dim')).toBe('ready');
+  expect(tone('bright')).toBe('accent');
+});
