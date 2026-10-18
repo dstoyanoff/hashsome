@@ -770,6 +770,12 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         optional: true,
         type: 'EntityRef[]',
       },
+      {
+        doc: 'The card takes all the height its parent gives it (a column that fills a page), the artwork growing to use the room and the controls staying at the bottom, instead of being only as tall as it needs. Default `false`.',
+        name: 'fill',
+        optional: true,
+        type: 'boolean',
+      },
     ],
   },
   MediaPlayerFull: {
@@ -1205,7 +1211,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'Density',
       },
       {
-        doc: "`'reduced'` turns animations and transitions off, for a slow display (and draws what would animate as plain elements, which is most of what such a display saves), `'full'` keeps them and `'auto'` (the default) leaves things as they are. A device can choose for itself with `?motion=reduced` (or `full`) on the address it opens, which wins over this prop. Nothing is kept: it holds while the app is open, moving between its pages, and a reload without the parameter goes back to this prop.",
+        doc: "`'reduced'` turns animations and transitions off, for a slow display (and draws what would animate as plain elements, which is most of what such a display saves), `'full'` keeps them and `'auto'` (the default) leaves things as they are. A device can choose for itself with `?motion=reduced` (or `light`, or `full`) on the address it opens, which wins over this prop. Nothing is kept: it holds while the app is open, moving between its pages, and a reload without the parameter goes back to this prop.",
         name: 'motion',
         optional: true,
         type: 'MotionPreference',

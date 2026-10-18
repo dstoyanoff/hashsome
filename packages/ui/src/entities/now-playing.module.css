@@ -1,5 +1,6 @@
 .panel {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: calc(var(--hs-unit) * 4);
   min-height: 0;
@@ -7,6 +8,8 @@
 
 .titles {
   display: flex;
+  min-width: 0;
+  max-width: 100%;
   flex-direction: column;
   align-items: center;
   gap: calc(var(--hs-unit) * 0.5);

@@ -140,3 +140,25 @@
   color: var(--hs-text);
   cursor: pointer;
 }
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+/* `?motion=light`: the scrim fades in and the sheet rises (there is no exit: it is gone at once). */
+html[data-motion='light'] .scrim,
+html[data-motion='light'] .panel {
+  animation: fade 0.2s ease-out;
+}
+
+html[data-motion='light'] .sheet {
+  animation: rise 0.25s ease-out;
+}

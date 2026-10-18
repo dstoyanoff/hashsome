@@ -158,6 +158,8 @@ export function Tile({
   const [drag, setDrag] = useState<number | null>(null);
   const [holding, setHolding] = useState(false);
   const start = useRef<{ x: number; dragging: boolean } | null>(null);
+  // Where the finger last was during a drag, for a touch the browser takes away (see `onPointerCancel`).
+  const lastDrag = useRef<number | null>(null);
   const justDragged = useRef(false);
   const holdFired = useRef(false);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -220,7 +222,8 @@ export function Tile({
     }
 
     if (s.dragging) {
-      setDrag(valueAt(event));
+      lastDrag.current = valueAt(event);
+      setDrag(lastDrag.current);
     }
   };
 
@@ -238,9 +241,20 @@ export function Tile({
     onFillChange?.(next);
   };
 
+  // A touch the browser takes over (it reads the finger's small vertical drift as a scroll) ends with a cancel, never a release. A drag
+  // that was under way is then ended where the finger last was, as a release would: dropping it would put the bar back to where it
+  // started, with the new value never sent.
   const onPointerCancel = () => {
     clearHoldTimer();
+    const s = start.current;
     start.current = null;
+    if (s?.dragging && lastDrag.current !== null) {
+      justDragged.current = true;
+      setDrag(lastDrag.current);
+      onFillChange?.(lastDrag.current);
+      return;
+    }
+
     setDrag(null);
   };
 
@@ -299,7 +313,19 @@ export function Tile({
 
   // An app's own color for the icon (a scene's) fills the badge while the tile is ready, with the light glyph.
   const tinted = tint !== undefined && ready;
-  const badgeTone = tinted ? 'tint' : accented && !overlaid ? 'accent' : ready ? 'ready' : 'muted';
+  // A dimmable tile that is on has a solid accent badge: the fill bar behind it is only as strong as the brightness, so a darkened
+  // circle over it is lost against the card at some brightness or other (in the light theme most of all), while the accent one reads
+  // at any. A solid on/off tile is accent all over, so its badge is the darker circle.
+  const badgeTone = tinted
+    ? 'tint'
+    : accented && !overlaid
+      ? isDimmable
+        ? 'lit'
+        : 'accent'
+      : ready
+        ? 'ready'
+        : 'muted';
+
   const statusTone = !ready ? 'muted' : statusOnAccent ? 'on-accent' : 'dim';
 
   const iconBadge = icon ? (

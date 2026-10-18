@@ -1,7 +1,7 @@
 import { Library, ListMusic, Speaker } from 'lucide-react';
 import type { EntityRef } from '@hashsome/core';
 import { motion } from 'motion/react';
-import { useId, useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
 import { useEntityHandle } from '../hooks.ts';
 import { useDetail } from '../layout/detail-provider.tsx';
@@ -10,9 +10,9 @@ import styles from './media-player-full.module.css';
 import { MediaSpeakers } from './media-speakers.tsx';
 import { SpeakersButton, SpeakersOverlay, SpeakersPill } from './media-speakers-pill.tsx';
 import { IconButton } from '../layout/tile.tsx';
+import { useGlide } from '../layout/use-glide.ts';
 import { NowPlaying } from './now-playing.tsx';
 import { PlayerSwitcher, type PlayerOption } from './player-switcher.tsx';
-import { useStill } from '../layout/use-still.ts';
 
 /** The artwork ring's diameter in a full-size player, against the usual 168px. */
 const FULL_SIZE = 260;
@@ -78,9 +78,9 @@ function ListTabs({
   lists: ListTab[];
   onChange: (tab: ListTab) => void;
 }) {
-  // One line that slides between the tabs; its own id, so two players on a page do not share it.
-  const line = useId();
-  const still = useStill();
+  // One line that slides between the tabs, by CSS (`useGlide`).
+  const row = useRef<HTMLDivElement>(null);
+  useGlide(row, value);
   const all: { id: ListTab; label: string; icon: ReactNode }[] = [
     { id: 'library', label: 'Library', icon: <Library /> },
     { id: 'queue', label: 'Queue', icon: <ListMusic /> },
@@ -89,7 +89,8 @@ function ListTabs({
   const tabs = all.filter((tab) => lists.includes(tab.id));
 
   return (
-    <div className={styles.tabs} role="tablist" aria-label="Library or queue">
+    <div ref={row} className={styles.tabs} role="tablist" aria-label="Library or queue">
+      <span className={styles.underline} aria-hidden="true" />
       {tabs.map((tab) => {
         const selected = tab.id === value;
         return (
@@ -99,19 +100,9 @@ function ListTabs({
             className={styles.tab}
             role="tab"
             aria-selected={selected}
+            data-selected={selected}
             onClick={() => onChange(tab.id)}
           >
-            {selected ? (
-              still ? (
-                <span className={styles.underline} />
-              ) : (
-                <motion.span
-                  className={styles.underline}
-                  layoutId={line}
-                  transition={{ duration: 0.2, ease: 'easeOut' }}
-                />
-              )
-            ) : null}
             <Icon size={16}>{tab.icon}</Icon>
             <span className={styles.tabLabel}>{tab.label}</span>
           </button>

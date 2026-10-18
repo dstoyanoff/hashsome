@@ -30,6 +30,9 @@ export interface MediaPlayerColumnProps {
 
   /** An allowlist of the speakers that can be added: only those that are in it and that the player can be grouped with are offered. Absent, every speaker it can be grouped with is offered. */
   speakers?: EntityRef[];
+
+  /** The card takes all the height its parent gives it (a column that fills a page), the artwork growing to use the room and the controls staying at the bottom, instead of being only as tall as it needs. Default `false`. */
+  fill?: boolean;
 }
 
 /** The player as an upright card for a narrow column beside a dashboard (a quarter to a third of
@@ -45,6 +48,7 @@ export function MediaPlayerColumn({
   overlays = false,
   grouping = true,
   speakers,
+  fill = false,
 }: MediaPlayerColumnProps) {
   const handle = useEntityHandle('mediaPlayer', entity);
   const player = handle.entity;
@@ -96,7 +100,7 @@ export function MediaPlayerColumn({
         {(_open, _expanded, openLibrary) => (
           <DrawerTrigger icon={<ListMusic />} label="Queue" kind={title} body={queueBody ?? null}>
             {(_openToo, _expandedToo, openQueue) => (
-              <Card>
+              <Card fill={fill}>
                 <NowPlaying
                   handle={handle}
                   fallback={fallback}
@@ -134,7 +138,7 @@ export function MediaPlayerColumn({
         )}
       </DrawerTrigger>
     ) : (
-      <Card>
+      <Card fill={fill}>
         <NowPlaying
           handle={handle}
           fallback={fallback}
@@ -163,7 +167,7 @@ export function MediaPlayerColumn({
       }
     >
       {(open, openExpanded) => (
-        <Card open={open}>
+        <Card open={open} fill={fill}>
           <NowPlaying
             handle={handle}
             fallback={fallback}
@@ -183,7 +187,7 @@ export function MediaPlayerColumn({
       )}
     </DrawerTrigger>
   ) : (
-    <Card>
+    <Card fill={fill}>
       <NowPlaying
         handle={handle}
         fallback={fallback}
@@ -195,10 +199,10 @@ export function MediaPlayerColumn({
 }
 
 /** The card itself; with `open`, holding it (anywhere but on a control) calls it. */
-function Card({ open, children }: { open?: () => void; children: ReactNode }) {
+function Card({ open, fill, children }: { open?: () => void; fill: boolean; children: ReactNode }) {
   const hold = useHold(() => open?.(), open !== undefined);
   return (
-    <div data-grid-card className={styles.card} {...hold.handlers}>
+    <div data-grid-card className={styles.card} data-fill={fill} {...hold.handlers}>
       {children}
       {hold.holding ? <HoldProgress /> : null}
     </div>

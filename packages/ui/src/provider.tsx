@@ -47,8 +47,8 @@ const HashsomeContext = createContext<Client | null>(null);
 
 export type { ThemeSchedule };
 
-/** `reduced` turns every animation off, for a slow display; `full` keeps them; `auto` (the default) leaves things as they are. */
-export type MotionPreference = 'auto' | 'full' | 'reduced';
+/** `reduced` turns every animation off, for a slow display; `light` keeps the cheap ones, which the browser runs itself as CSS (a page or a drawer fading and sliding in, a button's squeeze, a color changing) and draws everything else without motion; `full` keeps them all; `auto` (the default) leaves things as they are. */
+export type MotionPreference = 'auto' | 'full' | 'light' | 'reduced';
 
 /** `'system'` follows the display's own light/dark preference; a `ThemeSchedule` changes with the time of day. */
 export type ThemeMode = 'light' | 'dark' | 'system' | ThemeSchedule;
@@ -72,7 +72,7 @@ export interface HashsomeProviderProps {
   /** `'compact'` for small square displays: tighter spacing, shorter tiles, smaller icon circles. Default `'comfortable'`. */
   density?: Density;
 
-  /** `'reduced'` turns animations and transitions off, for a slow display (and draws what would animate as plain elements, which is most of what such a display saves), `'full'` keeps them and `'auto'` (the default) leaves things as they are. A device can choose for itself with `?motion=reduced` (or `full`) on the address it opens, which wins over this prop. Nothing is kept: it holds while the app is open, moving between its pages, and a reload without the parameter goes back to this prop. */
+  /** `'reduced'` turns animations and transitions off, for a slow display (and draws what would animate as plain elements, which is most of what such a display saves), `'full'` keeps them and `'auto'` (the default) leaves things as they are. A device can choose for itself with `?motion=reduced` (or `light`, or `full`) on the address it opens, which wins over this prop. Nothing is kept: it holds while the app is open, moving between its pages, and a reload without the parameter goes back to this prop. */
   motion?: MotionPreference;
 
   /** Partial changes to the built-in theme — colors per light/dark, radii, typography, spacing, density sizes. Pass a constant defined outside the component: a new object each render rebuilds the theme each render. */
@@ -150,13 +150,13 @@ export function useThemeToggle(): ThemeModeState {
   return value;
 }
 
-/** What the address asks for motion: `?motion=reduced` or `?motion=full`. Nothing is kept, and the
+/** What the address asks for motion: `?motion=reduced`, `?motion=light` or `?motion=full`. Nothing is kept, and the
  * app reads it once, when it starts, so moving between pages inside the app keeps it and a reload
  * without it does not. `?motion=auto` (or anything else) leaves it to the prop. */
-function motionFromAddress(): 'full' | 'reduced' | undefined {
+function motionFromAddress(): 'full' | 'light' | 'reduced' | undefined {
   try {
     const asked = new URLSearchParams(window.location.search).get('motion');
-    return asked === 'reduced' || asked === 'full' ? asked : undefined;
+    return asked === 'reduced' || asked === 'light' || asked === 'full' ? asked : undefined;
   } catch {
     return undefined;
   }
@@ -168,10 +168,11 @@ function motionFromAddress(): 'full' | 'reduced' | undefined {
 function useMotionMode(preference: MotionPreference): MotionPreference {
   const [mode] = useState<MotionPreference>(() => {
     const chosen = motionFromAddress() ?? preference;
-    MotionGlobalConfig.skipAnimations = chosen === 'reduced';
+    // `light` draws what would animate as plain elements, as `reduced` does: the few motions it keeps are CSS (`html[data-motion='light']`).
+    MotionGlobalConfig.skipAnimations = chosen === 'reduced' || chosen === 'light';
     if (typeof document !== 'undefined') {
-      if (chosen === 'reduced') {
-        document.documentElement.dataset.motion = 'reduced';
+      if (chosen === 'reduced' || chosen === 'light') {
+        document.documentElement.dataset.motion = chosen;
       } else {
         delete document.documentElement.dataset.motion;
       }

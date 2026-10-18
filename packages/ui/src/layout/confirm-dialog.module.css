@@ -69,3 +69,25 @@
   background: var(--hs-accent);
   color: var(--hs-accent-text);
 }
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+
+/* `?motion=light`: the scrim fades in and the card settles. */
+html[data-motion='light'] .scrim {
+  animation: fade 0.16s ease-out;
+}
+
+html[data-motion='light'] .card {
+  animation: settle 0.18s ease-out;
+}

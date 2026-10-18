@@ -37,6 +37,9 @@
 }
 
 .playerBody {
+  /* A flex item is no narrower than its content unless it says so: a long artist line would make it wider than the player, centered, cut off
+     at both ends. */
+  min-width: 0;
   width: 100%;
   max-width: 420px;
 }
@@ -84,6 +87,7 @@
 }
 
 .tabs {
+  position: relative;
   display: flex;
   flex-shrink: 0;
   gap: calc(var(--hs-unit) * 5);
@@ -118,12 +122,20 @@
   font-weight: var(--hs-t-body-strong-weight);
 }
 
-/* The line under the open tab sits on the row's own line. */
+/* The line under the open tab sits on the row's own line, and glides to the next (`useGlide`). */
 .underline {
   position: absolute;
-  right: 0;
-  bottom: 0;
+  top: 0;
   left: 0;
+  width: var(--glide-w, 0);
   height: 2px;
   background: var(--hs-accent);
+  transform: translate(var(--glide-x, 0px), calc(var(--glide-y, 0px) + var(--glide-h, 0px) - 2px));
+  pointer-events: none;
+}
+
+.tabs[data-glide='on'] .underline {
+  transition:
+    transform 0.2s ease-out,
+    width 0.2s ease-out;
 }

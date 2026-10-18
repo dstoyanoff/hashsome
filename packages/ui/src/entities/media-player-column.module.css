@@ -17,3 +17,10 @@
 .card > [data-status] {
   flex: 1 1 auto;
 }
+
+/* `fill`: all the height the parent gives it. */
+.card[data-fill='true'] {
+  flex-grow: 1;
+  align-self: stretch;
+  max-height: none;
+}

@@ -1,3 +1,4 @@
+import { Sun } from 'lucide-react';
 import { LocalClient, mockLight, MockIntegration } from '@hashsome/core';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -321,4 +322,43 @@ test('every History row has a picture, so the text lines up: initials, a workflo
   const [lost, on, off] = screen.getAllByRole('img', { name: 'System' });
   const icon = (el: HTMLElement | undefined) => el!.querySelector('svg')!.innerHTML;
   expect(new Set([icon(lost), icon(on), icon(off)]).size).toBe(3);
+});
+
+test('a drag the browser cancels (a touch it took for a scroll) is ended where the finger was, not dropped', () => {
+  const onFillChange = vi.fn<(fill: number) => void>();
+  renderWithMock(
+    <Tile label="led" active fill={0.3} secondary="30%" onFillChange={onFillChange} />,
+    {},
+  );
+
+  const tile = screen.getByRole('button', { name: 'led' });
+  vi.spyOn(tile, 'getBoundingClientRect').mockReturnValue({ left: 0, width: 200 } as DOMRect);
+  fireEvent.pointerDown(tile, { clientX: 60, pointerId: 1 });
+  fireEvent.pointerMove(tile, { clientX: 150, pointerId: 1 });
+  fireEvent.pointerCancel(tile, { pointerId: 1 });
+  expect(onFillChange).toHaveBeenCalledWith(0.75);
+  expect(screen.getByText('75%')).toBeTruthy();
+});
+
+test('the icon badge of a dimmable tile that is on is the accent, at any brightness, and a solid on/off tile’s is the darker circle', () => {
+  renderWithMock(
+    <>
+      <Tile label="dim" icon={<Sun />} active fill={0.27} onFillChange={() => {}} />
+      <Tile label="bright" icon={<Sun />} active fill={0.9} onFillChange={() => {}} />
+      <Tile label="switch" icon={<Sun />} active onPress={() => {}} />
+      <Tile label="off" icon={<Sun />} fill={0} onFillChange={() => {}} />
+    </>,
+    {},
+  );
+
+  const tone = (label: string) =>
+    screen
+      .getByRole('button', { name: label })
+      .querySelector('[data-tone]')
+      ?.getAttribute('data-tone');
+
+  expect(tone('dim')).toBe('lit');
+  expect(tone('bright')).toBe('lit');
+  expect(tone('switch')).toBe('accent');
+  expect(tone('off')).toBe('ready');
 });
