@@ -79,3 +79,15 @@ test('without an order the pages only fade', async () => {
   // No sideways shift.
   expect(first()?.side).toBe('0px');
 });
+
+test('going back to the page the visit opened on comes in too, as going to any other does', async () => {
+  const { container } = app(true);
+  fireEvent.click(screen.getByText('to two'));
+  await waitFor(() => expect(screen.getByText('page two')).toBeTruthy());
+
+  const back = firstOf('page one', container);
+  fireEvent.click(screen.getByText('to one'));
+  await waitFor(() => expect(screen.getByText('page one')).toBeTruthy());
+  expect(back()?.enter).toBe('true');
+  expect(back()?.side).toBe('-24px');
+});

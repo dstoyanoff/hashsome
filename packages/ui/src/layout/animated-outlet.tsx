@@ -28,7 +28,7 @@ function indexAt(pathname: string, items: NavItem[] | undefined, base: string | 
  * A dashboard layout's `<Outlet />` with a transition between its pages: the page that was showing
  * fades out (sliding a little toward the side it was on), then the new one fades in from the side
  * it is on. It is a drop-in for `Outlet` in a layout route, and does nothing the first time a page
- * shows or for a visitor who prefers reduced motion.
+ * shows (the page a visit opens on) or for a visitor who prefers reduced motion.
  *
  * A page longer than the screen just scrolls the `Page`. A page that is meant to fill the screen and scroll
  * inside itself (a player with its library, say) gives its root `flex-basis: 0` and `min-height: 0`, so
@@ -38,7 +38,15 @@ export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
   const outlet = useOutlet();
   const { pathname } = useLocation();
   const index = indexAt(pathname, items, base);
-  const [first] = useState(pathname);
+  // Whether the address has changed since the page opened: only then is a page one that comes. Going back to the page that was
+  // first shown comes too, so this is a flag, not a comparison with where it started.
+  const [shown, setShown] = useState(pathname);
+  const [moved, setMoved] = useState(false);
+  if (shown !== pathname) {
+    setShown(pathname);
+    setMoved(true);
+  }
+
   // Moving to a later page is +1, to an earlier one -1; with no order to go by, 0 is just a fade.
   const [seen, setSeen] = useState({ index, direction: 0 });
   if (seen.index !== index) {
@@ -54,7 +62,7 @@ export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
     <div
       key={pathname}
       className={styles.page}
-      data-enter={pathname !== first}
+      data-enter={moved}
       style={{ '--side': `${seen.direction * SLIDE}px` } as CSSProperties}
     >
       {outlet}

@@ -118,7 +118,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     ],
   },
   AnimatedOutlet: {
-    doc: "A dashboard layout's `<Outlet />` with a transition between its pages: the page that was showing fades out (sliding a little toward the side it was on), then the new one fades in from the side it is on. It is a drop-in for `Outlet` in a layout route, and does nothing the first time a page shows or for a visitor who prefers reduced motion. A page longer than the screen just scrolls the `Page`. A page that is meant to fill the screen and scroll inside itself (a player with its library, say) gives its root `flex-basis: 0` and `min-height: 0`, so what is in it does not make the page taller; a `Board` already does.",
+    doc: "A dashboard layout's `<Outlet />` with a transition between its pages: the page that was showing fades out (sliding a little toward the side it was on), then the new one fades in from the side it is on. It is a drop-in for `Outlet` in a layout route, and does nothing the first time a page shows (the page a visit opens on) or for a visitor who prefers reduced motion. A page longer than the screen just scrolls the `Page`. A page that is meant to fill the screen and scroll inside itself (a player with its library, say) gives its root `flex-basis: 0` and `min-height: 0`, so what is in it does not make the page taller; a `Board` already does.",
     props: [
       {
         doc: "The dashboard's pages in the order its nav lists them (the same `items` as `NavRail`, `NavDock` or `NavBar`). A page then slides in from the side it sits on: a later page from the right, an earlier one from the left. Left out, pages only fade.",
