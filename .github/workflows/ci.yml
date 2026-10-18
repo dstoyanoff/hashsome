@@ -17,6 +17,11 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build:packages
+      # `tsc` leaves the stylesheets behind (`packages/ui/scripts/copy-css.ts` copies them): a package published without them cannot be built against.
+      - name: Check the built ui carries its stylesheets
+        run: |
+          test -f packages/ui/dist/icon.module.css
+          test -f packages/ui/dist/style/base.css
       - name: Check the ui catalog is up to date
         run: |
           pnpm generate:catalog

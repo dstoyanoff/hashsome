@@ -17,6 +17,9 @@ export default defineConfig(() => ({
   // React Router's SPA prerender starts a private preview server; pin it to IPv4 so it is
   // reachable in containers where `localhost` resolves to ::1.
   preview: { host: '127.0.0.1' },
+  // The build-time render of the page shell runs in Node, which cannot import the stylesheets `@hashsome/ui` ships next to its scripts: Vite
+  // has to bundle it, as it does when the package is a linked checkout rather than something in `node_modules`.
+  ssr: { noExternal: ['@hashsome/ui'] },
   resolve: {
     // One copy of these across the runtime app and the instance's dashboards.
     dedupe: ['react', 'react-dom', 'react-router', '@hashsome/core', '@hashsome/ui'],
