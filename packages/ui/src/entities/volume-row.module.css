@@ -1,0 +1,36 @@
+.row {
+  display: grid;
+  grid-template-columns: repeat(5, var(--hs-icon-circle));
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--hs-unit) * 3);
+}
+
+.main {
+  display: flex;
+  grid-column: 1 / 5;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 3);
+  min-width: 0;
+}
+
+.mute {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--hs-text-muted);
+}
+
+.muted {
+  color: var(--hs-accent);
+}
+
+.level {
+  composes: secondary from '../style/type.module.css';
+  flex: none;
+  min-width: 32px;
+  color: var(--hs-text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

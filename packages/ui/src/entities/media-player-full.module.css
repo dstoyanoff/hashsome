@@ -1,0 +1,129 @@
+.full {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: calc(var(--hs-unit) * 5);
+  min-height: 0;
+}
+
+/* Full size, the player is larger and centered in whatever room the library leaves, with the library docked to the bottom. In the
+   narrower drawer everything just stacks from the top. */
+.top {
+  display: flex;
+  flex-shrink: 0;
+  align-items: stretch;
+  justify-content: center;
+  gap: calc(var(--hs-unit) * 6);
+}
+
+.top[data-full='true'] {
+  flex-grow: 1;
+}
+
+.player {
+  position: relative;
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* In the corner, over the room the round artwork leaves, so it costs no height. */
+.switcher {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.playerBody {
+  width: 100%;
+  max-width: 420px;
+}
+
+.top[data-full='true'] .playerBody {
+  max-width: 560px;
+}
+
+/* Beside the player, the whole height of the room it has, with a quiet line between them. The queue is laid over that room rather
+   than in it, so a long one scrolls inside it and never makes the room taller. */
+.side {
+  position: relative;
+  flex: none;
+  width: 400px;
+  border-left: var(--hs-border-width) solid var(--hs-border);
+}
+
+.sideBody {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding-left: calc(var(--hs-unit) * 5);
+}
+
+.line {
+  flex-shrink: 0;
+  height: var(--hs-border-width);
+  background: var(--hs-border);
+}
+
+/* A list is capped so a row is never a long way from its play button on a very wide screen; the theater row uses the whole width.
+   The player stays put and the library is what scrolls, inside the space the drawer leaves it. */
+.list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+
+.list[data-full='false'] {
+  max-width: 960px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: calc(var(--hs-unit) * 5);
+  border-bottom: var(--hs-border-width) solid var(--hs-border);
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--hs-unit) * 2);
+  height: 40px;
+  margin-bottom: -1px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--hs-text-muted);
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  color: var(--hs-text);
+}
+
+.tabLabel {
+  composes: body from '../style/type.module.css';
+}
+
+.tab[aria-selected='true'] .tabLabel {
+  font-weight: var(--hs-t-body-strong-weight);
+}
+
+/* The line under the open tab sits on the row's own line. */
+.underline {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--hs-accent);
+}

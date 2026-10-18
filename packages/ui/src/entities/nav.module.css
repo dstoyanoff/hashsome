@@ -1,0 +1,23 @@
+/* The button a nav item is: a rounded square on a bar or rail (`chrome`), a circle in a floating dock (`round`), lit while its
+   page is open. */
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--hs-radius-chrome);
+  color: var(--hs-line);
+  cursor: pointer;
+  user-select: none;
+}
+
+.round {
+  border-radius: var(--hs-radius-full);
+}
+
+.active {
+  background: var(--hs-accent);
+  color: var(--hs-accent-text);
+}

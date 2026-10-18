@@ -39,7 +39,7 @@ test('every exported component documents itself and each of its props, and the g
   });
 });
 
-test('components are styled only through e-prim/emotion: no `className` or `style` props', () => {
+test('components are styled only through their stylesheets: no `className` or `style` props', () => {
   const offenders = Object.entries(COMPONENT_PROPS).flatMap(([name, entry]) =>
     entry.props
       .filter((p) => p.name === 'className' || p.name === 'style')

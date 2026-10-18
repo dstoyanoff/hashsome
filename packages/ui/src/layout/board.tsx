@@ -1,6 +1,6 @@
-/** @jsxImportSource @emotion/react */
-import { Box } from 'e-prim';
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { cx } from '../style/cx.ts';
+import styles from './board.module.css';
 
 export interface BoardProps {
   /** How many equal columns the page is divided into. Default 12. */
@@ -18,26 +18,9 @@ export interface BoardProps {
  * Opt in: a page of plain flex columns keeps working the same. */
 export function Board({ columns = 12, children }: BoardProps) {
   return (
-    <Box
-      data-board
-      position="relative"
-      css={({ density }) => ({
-        display: 'grid',
-        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-        gridAutoRows: 'max-content',
-        alignContent: 'start',
-        // Twice as far between rows as between columns and inside a cell: a row is a group (a room), and
-        // groups read as groups.
-        columnGap: density.space,
-        rowGap: density.space * 2,
-        // The height of its rows, or the page's if that is more: it grows into what is left, and never
-        // shrinks below its content (the page scrolls instead).
-        flex: '1 0 auto',
-        minWidth: 0,
-      })}
-    >
+    <div data-board className={styles.board} style={{ '--columns': columns } as CSSProperties}>
       {children}
-    </Box>
+    </div>
   );
 }
 
@@ -96,48 +79,30 @@ export function Cell({ cols, rows = 1, children }: CellProps) {
 
   const span = typeof rows === 'number' ? rows : 1;
   const stretches = fill || span > 1;
-  const column = (gap: number) => ({
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap,
-    '& > [data-grid-card]:last-child': stretches ? { flexGrow: 1 } : undefined,
-  });
-
   return (
-    <Box
+    <div
       ref={ref}
       data-cell
-      css={({ density }) => ({
+      className={cx(
+        styles.cell,
+        stretches && styles.stretches,
+        fill ? styles.fill : cx(styles.column, stretches && styles.grows),
+      )}
+      style={{
         gridColumn: cols === undefined ? '1 / -1' : `span ${cols}`,
-        gridRow: span > 1 ? `span ${span}` : undefined,
-        minWidth: 0,
-        // A cell takes the height of what is in it, unless it is meant to reach across rows.
-        alignSelf: stretches ? 'stretch' : 'start',
-        // One that reaches across rows, or fills, takes the height the page and the others give it; its
-        // own content does not size them (a player taller than three rooms squeezes, it does not
-        // stretch the third, or push the page past its bottom).
-        contain: stretches ? 'size' : undefined,
-        ...(fill ? { position: 'relative' as const } : column(density.space)),
-      })}
+        ...(span > 1 ? { gridRow: `span ${span}` } : {}),
+      }}
     >
       {fill ? (
-        // The card is drawn from the cell's top to the bottom of the board, outside the rows' sizing:
-        // an explicit height on the cell itself would make the row grow to it.
-        <Box
-          position="absolute"
-          css={({ density }) => ({
-            top: 0,
-            left: 0,
-            right: 0,
-            height: height > 0 ? height : '100%',
-            ...column(density.space),
-          })}
+        <div
+          className={cx(styles.filled, styles.column, styles.grows)}
+          style={{ height: height > 0 ? height : '100%' }}
         >
           {children}
-        </Box>
+        </div>
       ) : (
         children
       )}
-    </Box>
+    </div>
   );
 }

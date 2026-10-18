@@ -1,12 +1,11 @@
-/** @jsxImportSource @emotion/react */
 import type { EntityRef } from '@hashsome/core';
-import { Box, Flex, Typography } from 'e-prim';
 import { motion } from 'motion/react';
 import { useId, useState, type ReactNode } from 'react';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
 import { useEntityHandle } from '../hooks.ts';
 import { useDetail } from '../layout/detail-provider.tsx';
 import { Icon } from '../icon.tsx';
+import styles from './media-player-full.module.css';
 import { MediaSpeakers } from './media-speakers.tsx';
 import { SpeakersButton, SpeakersOverlay, SpeakersPill } from './media-speakers-pill.tsx';
 import { IconButton } from '../layout/tile.tsx';
@@ -67,8 +66,6 @@ export interface MediaPlayerFullProps {
 /** What the tabs below the player choose between. */
 export type ListTab = 'library' | 'queue';
 
-const TAB_HEIGHT = 40;
-
 /** Library and Queue, as text with an underline (not the pills the library's own categories are, so the
  * two rows read as different things). */
 function ListTabs({
@@ -91,65 +88,35 @@ function ListTabs({
   const tabs = all.filter((tab) => lists.includes(tab.id));
 
   return (
-    <Flex
-      role="tablist"
-      aria-label="Library or queue"
-      gap={5}
-      css={({ palette }) => ({ flexShrink: 0, borderBottom: `1px solid ${palette.border}` })}
-    >
+    <div className={styles.tabs} role="tablist" aria-label="Library or queue">
       {tabs.map((tab) => {
         const selected = tab.id === value;
         return (
-          <Flex
-            as="button"
+          <button
             type="button"
             key={tab.id}
+            className={styles.tab}
             role="tab"
             aria-selected={selected}
             onClick={() => onChange(tab.id)}
-            align="center"
-            justify="center"
-            gap={2}
-            height={TAB_HEIGHT}
-            cursor="pointer"
-            color={selected ? 'text' : 'textMuted'}
-            css={{
-              flex: 1,
-              background: 'none',
-              border: 0,
-              padding: 0,
-              position: 'relative',
-              marginBottom: -1,
-            }}
           >
-            {/* The line under the open tab sits on the row's own line. */}
             {selected ? (
               still ? (
-                <Box
-                  as="span"
-                  position="absolute"
-                  background="accent"
-                  css={{ left: 0, right: 0, bottom: 0, height: 2 }}
-                />
+                <span className={styles.underline} />
               ) : (
-                <Box
-                  as={motion.span}
+                <motion.span
+                  className={styles.underline}
                   layoutId={line}
-                  position="absolute"
-                  background="accent"
                   transition={{ duration: 0.2, ease: 'easeOut' }}
-                  css={{ left: 0, right: 0, bottom: 0, height: 2 }}
                 />
               )
             ) : null}
             <Icon name={tab.icon} size={16} />
-            <Typography as="span" variant={selected ? 'bodyStrong' : 'body'}>
-              {tab.label}
-            </Typography>
-          </Flex>
+            <span className={styles.tabLabel}>{tab.label}</span>
+          </button>
         );
       })}
-    </Flex>
+    </div>
   );
 }
 
@@ -251,24 +218,11 @@ export function MediaPlayerFull({
   };
 
   return (
-    <Flex direction="column" gap={5} grow={1} minHeight={0}>
-      {/* Full size, the player is larger and centered in whatever room the library leaves, with the
-          library docked to the bottom. In the narrower drawer everything just stacks from the top. */}
-      <Flex
-        align="stretch"
-        justify="center"
-        gap={6}
-        {...(full ? { grow: 1 } : {})}
-        css={{ flexShrink: 0 }}
-      >
-        <Flex align="center" justify="center" grow={1} minWidth={0} position="relative">
-          {/* In the corner, over the room the round artwork leaves, so it costs no height. */}
-          {switcher ? (
-            <Box position="absolute" css={{ top: 0, left: 0 }}>
-              {switcher}
-            </Box>
-          ) : null}
-          <Box width="100%" maxWidth={full ? 560 : 420}>
+    <div className={styles.full}>
+      <div className={styles.top} data-full={full}>
+        <div className={styles.player}>
+          {switcher ? <div className={styles.switcher}>{switcher}</div> : null}
+          <div className={styles.playerBody}>
             <NowPlaying
               handle={handle}
               fallback={fallbackName(entity)}
@@ -279,34 +233,20 @@ export function MediaPlayerFull({
               {...(compact ? { volumeControl: 'icon' as const } : {})}
               {...(full ? { size: FULL_SIZE } : {})}
             />
-          </Box>
-        </Flex>
+          </div>
+        </div>
         {full && queue !== undefined && handle.entity?.capabilities.queue === true ? (
-          // Beside the player, the whole height of the room it has, with a quiet line between them. The
-          // queue is laid over that room rather than in it, so a long one scrolls inside it and never
-          // makes the room taller.
-          <Flex
-            position="relative"
-            width={400}
-            css={({ palette }) => ({ flex: 'none', borderLeft: `1px solid ${palette.border}` })}
-          >
-            <Flex direction="column" position="absolute" pl={5} css={{ inset: 0 }}>
-              {queue}
-            </Flex>
-          </Flex>
+          <div className={styles.side}>
+            <div className={styles.sideBody}>{queue}</div>
+          </div>
         ) : null}
-      </Flex>
+      </div>
       {showSpeakers ? (
         <>
-          <Box height={1} background="border" css={{ flexShrink: 0 }} />
-          <Flex
-            direction="column"
-            width="100%"
-            minHeight={0}
-            {...(full ? {} : { maxWidth: 960, mx: 'auto' })}
-          >
+          <div className={styles.line} />
+          <div className={styles.list} data-full={full}>
             {speakersBody}
-          </Flex>
+          </div>
         </>
       ) : open !== undefined ? (
         <>
@@ -314,27 +254,21 @@ export function MediaPlayerFull({
           {lists.length > 1 ? (
             <ListTabs value={open} lists={lists} onChange={choose} />
           ) : (
-            <Box height={1} background="border" css={{ flexShrink: 0 }} />
+            <div className={styles.line} />
           )}
-          {/* A list is capped so a row is never a long way from its play button on a very wide
-              screen; the theater row uses the whole width. The player stays put and the library
-              is what scrolls, inside the space the drawer leaves it. */}
-          <Flex
+          <motion.div
             // Another list fades in where the last one was, so a tab does not cut from one to the other.
-            as={motion.div}
             key={open}
+            className={styles.list}
+            data-full={full}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            direction="column"
-            width="100%"
-            minHeight={0}
-            {...(full ? {} : { maxWidth: 960, mx: 'auto' })}
           >
             {open === 'queue' ? queue : browser}
-          </Flex>
+          </motion.div>
         </>
       ) : null}
-    </Flex>
+    </div>
   );
 }

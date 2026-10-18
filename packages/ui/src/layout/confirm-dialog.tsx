@@ -1,8 +1,8 @@
-/** @jsxImportSource @emotion/react */
-import { Box, Flex, Typography } from 'e-prim';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { cx } from '../style/cx.ts';
+import styles from './confirm-dialog.module.css';
 
 export interface ConfirmDialogProps {
   /** Whether the dialog is showing. */
@@ -94,70 +94,47 @@ export function ConfirmDialog({
   return createPortal(
     <AnimatePresence>
       {open ? (
-        <Flex
-          as={motion.div}
+        <motion.div
           key="scrim"
-          align="center"
-          justify="center"
-          position="fixed"
-          zIndex="modal"
-          p={4}
+          className={styles.scrim}
           onClick={onCancel}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.16 }}
-          css={({ palette }) => ({
-            inset: 0,
-            // The page's own color, so the dimming follows the theme.
-            background: `color-mix(in srgb, ${palette.bg} 72%, transparent)`,
-          })}
         >
-          <Flex
-            as={motion.div}
+          <motion.div
             ref={card}
+            className={styles.card}
             role="dialog"
             aria-modal="true"
             aria-labelledby={heading}
             {...(description ? { 'aria-describedby': about } : {})}
             tabIndex={-1}
-            direction="column"
-            gap={4}
-            background="surfaceRaised"
-            radius="card"
-            shadow="drawer"
-            p={5}
-            onClick={(event: { stopPropagation: () => void }) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
             onKeyDown={onKeyDown}
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            // Scrolls when what is in it does not fit the screen, rather than running off it.
-            css={{
-              width: 'min(420px, 100%)',
-              maxHeight: '100%',
-              overflowY: 'auto',
-              outline: 'none',
-            }}
           >
-            <Flex direction="column" gap={1.5}>
-              <Typography as="h2" variant="heading" id={heading}>
+            <div className={styles.titles}>
+              <h2 className={styles.title} id={heading}>
                 {title}
-              </Typography>
+              </h2>
               {description ? (
-                <Typography as="p" variant="body" color="textMuted" id={about}>
+                <p className={styles.description} id={about}>
                   {description}
-                </Typography>
+                </p>
               ) : null}
-            </Flex>
-            {children ? <Box>{children}</Box> : null}
-            <Flex justify="flex-end" gap={2}>
+            </div>
+            {children ? <div>{children}</div> : null}
+            <div className={styles.actions}>
               <DialogButton label={cancelLabel} disabled={busy} onClick={onCancel} />
               <DialogButton label={confirmLabel} primary disabled={busy} onClick={onConfirm} />
-            </Flex>
-          </Flex>
-        </Flex>
+            </div>
+          </motion.div>
+        </motion.div>
       ) : null}
     </AnimatePresence>,
     document.body,
@@ -176,24 +153,13 @@ function DialogButton({
   onClick: () => void;
 }) {
   return (
-    <Flex
-      as="button"
+    <button
       type="button"
+      className={cx(styles.button, primary && styles.primary)}
       onClick={onClick}
       disabled={disabled}
-      align="center"
-      justify="center"
-      radius="full"
-      cursor={disabled ? 'default' : 'pointer'}
-      height={40}
-      px={5}
-      background={primary ? 'accent' : 'surface'}
-      color={primary ? 'accentText' : 'text'}
-      css={{ opacity: disabled ? 0.5 : 1 }}
     >
-      <Typography as="span" variant="label">
-        {label}
-      </Typography>
-    </Flex>
+      {label}
+    </button>
   );
 }

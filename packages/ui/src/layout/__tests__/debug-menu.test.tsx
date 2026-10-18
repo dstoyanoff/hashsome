@@ -1,12 +1,12 @@
 import { LocalClient, MockIntegration, mockSensor } from '@hashsome/core';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { Box } from 'e-prim';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { HashsomeProvider, type ThemeMode } from '../../provider.tsx';
 import { Page } from '../page.tsx';
+import { computed } from '../../test-utils.tsx';
 
-const DARK_BG = 'rgb(11, 10, 13)';
-const LIGHT_BG = 'rgb(244, 241, 235)';
+const DARK_BG = '#0B0A0D';
+const LIGHT_BG = '#F4F1EB';
 
 beforeEach(() => localStorage.clear());
 afterEach(() => {
@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 function Probe() {
-  return <Box background="bg" data-testid="probe" />;
+  return <div style={{ background: 'var(--hs-bg)' }} data-testid="probe" />;
 }
 
 const SUN = 'ha:sun.sun';
@@ -46,7 +46,7 @@ function mount(
   );
 }
 
-const bg = () => getComputedStyle(screen.getByTestId('probe')).backgroundColor;
+const bg = () => computed(screen.getByTestId('probe'), 'background');
 const open = () => fireEvent.click(screen.getByRole('button', { name: 'Debug menu' }));
 const choose = (row: string, name: string) =>
   fireEvent.click(
@@ -108,19 +108,23 @@ test('a floating button at the bottom left opens a popover, which Escape or a to
 test('the menu is as big as its button, whatever the page says about divs', () => {
   mount({ debug: true });
   const menu = document.querySelector('[data-debug-menu]') as HTMLElement;
-  const style = getComputedStyle(menu);
   // The document shell makes a `body > div` as tall as the window; the menu must not follow it.
-  expect([style.position, style.height, style.minHeight]).toEqual(['fixed', '40px', '0px']);
+  expect(['position', 'height', 'min-height'].map((property) => computed(menu, property))).toEqual([
+    'fixed',
+    '40px',
+    '0px',
+  ]);
+
   // Centered on the line the navigation rail's icons are centered on (a 64px rail, a 40px button).
-  expect(style.left).toBe('12px');
-  expect(style.bottom).toBe('12px');
+  expect(computed(menu, 'left')).toBe('12px');
+  expect(computed(menu, 'bottom')).toBe('12px');
 });
 
 test('the button is over the page and its navigation but under a drawer and its scrim', () => {
   mount({ debug: true });
   const menu = document.querySelector('[data-debug-menu]') as HTMLElement;
   // The theme's `dropdown` (10): above the navigation rail (5), below the drawer's scrim (20) and the drawer (21).
-  expect(getComputedStyle(menu).zIndex).toBe('10');
+  expect(computed(menu, 'z-index')).toBe('10');
 });
 
 test('Show grid draws the grid over the page, and is kept on the device', async () => {

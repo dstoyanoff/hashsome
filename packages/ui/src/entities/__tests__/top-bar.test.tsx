@@ -10,7 +10,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { MemoryRouter } from 'react-router';
 import { describe, expect, test, vi } from 'vitest';
 import { HashsomeProvider } from '../../provider.tsx';
-import { renderWithMock } from '../../test-utils.tsx';
+import { computed, renderWithMock } from '../../test-utils.tsx';
 import { Clock, DateChip, TopBar, WeatherChip } from '../top-bar.tsx';
 
 const entities = {
@@ -204,7 +204,7 @@ test('a scene without an explicit color still renders (auto-assigned)', () => {
   );
 
   const button = screen.getByRole('button', { name: 'Movie Night' });
-  expect(getComputedStyle(button).backgroundColor).toBe('rgb(18, 52, 86)'); // #123456
+  expect(computed(button, 'background')).toBe('#123456');
   fireEvent.click(button);
   expect(ha.calls).toHaveLength(1);
 });
@@ -248,12 +248,12 @@ test('a scene dot uses the color its app gave it, and the theme accent otherwise
     { ...entities, cooking: mockAction({ name: 'Cooking' }) },
   );
 
-  expect(
-    getComputedStyle(screen.getByRole('button', { name: 'Movie Night' })).backgroundColor,
-  ).toBe('rgb(18, 52, 86)');
+  expect(computed(screen.getByRole('button', { name: 'Movie Night' }), 'background')).toBe(
+    '#123456',
+  );
 
-  expect(getComputedStyle(screen.getByRole('button', { name: 'Cooking' })).backgroundColor).toBe(
-    'rgb(184, 92, 56)', // the dark theme's accent
+  expect(computed(screen.getByRole('button', { name: 'Cooking' }), 'background')).toBe(
+    '#B85C38', // the dark theme's accent
   );
 });
 
@@ -263,8 +263,8 @@ test('presence avatars without a picture take their color from the `presenceColo
     entities,
   );
 
-  expect(getComputedStyle(screen.getByText('D').parentElement as HTMLElement).backgroundColor).toBe(
-    'rgb(18, 52, 86)',
+  expect(computed(screen.getByText('D').parentElement as HTMLElement, 'background')).toBe(
+    '#123456',
   );
 });
 

@@ -1,0 +1,10 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 0;
+  padding: calc(var(--hs-unit) * 5);
+  overflow: auto;
+  border-radius: var(--hs-radius-card);
+  background: var(--hs-surface);
+}

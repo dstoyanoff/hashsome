@@ -514,6 +514,19 @@ usePlayer(ref)            entity + its commands bound         Player (state + me
 - **Rules for `@hashsome/ui`:** no integration names, no backend service or attribute names, no reads
   of `raw`, no `callRaw`. A guard test will enforce the first three for migrated kinds.
 
+### Styling
+
+No runtime styling library: each component has a CSS Module (`kebab-case.module.css`) beside it, and the browser
+does the rest. The theme is CSS custom properties: `HashsomeProvider` writes the palette, radii, shadows, layers,
+type scale and the density's sizes as `--hs-*` on `:root` (`style/variables.ts`, one `<style id="hashsome-theme">`),
+so a light/dark switch, a density or a project's `overrides` is that one block of text being replaced, not
+components drawn again. `style/base.css` (in `@layer hs-base`, so nothing of a component's or a project's loses to
+it) is the page's colors, font, reset and scrollbars; `style/type.module.css` (kept in sync by hand with
+`TYPOGRAPHY_KEYS`) is one class per variant of the type scale, taken with `composes:`. A value only known at
+run time (a measured size, a color an app chose) is an inline custom property the CSS reads. JavaScript that needs a
+number (the grid arithmetic) reads `useDensity()`, and a chart's SVG `useColor()`, from `ThemeContext`. A published
+`dist` carries the `.css` files next to the scripts (`scripts/copy-css.ts`), so a consumer's bundler handles them.
+
 **Status:** built. `useEntity`, `useCommand` and `useEntityHandle` are in `packages/ui/src/hooks.ts`;
 cards take `EntityRef | EntityHandle<K>` (`entity-handle.ts`). Kind hooks such as `usePlayer` were
 replaced by the handle.
@@ -554,7 +567,7 @@ project, not packages, and the repository's tests cover `packages/*` only.
   the dashboard switcher's list). `@hash` does not wire any of it; it is ordinary code.
 - **The dashboard code is ordinary app code**, not a sandbox: it can import any library, the
   project's own files, or its own helpers. `@hashsome/ui` components are the building blocks, and
-  `@hashsome/ui` is styled only through e-prim props and theme tokens, never a `style` prop.
+  `@hashsome/ui` is styled with a CSS Module per component, written in the theme's custom properties.
 - **Integrations are configured in one place.** `hashsome.config.ts` constructs them, usually from
   environment variables. The server reads this file at startup only, so a change needs a restart.
 

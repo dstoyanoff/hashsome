@@ -1,7 +1,7 @@
 import { mockLibrary, mockMediaPlayer } from '@hashsome/core';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
-import { renderWithMock } from '../../test-utils.tsx';
+import { computed, renderWithMock } from '../../test-utils.tsx';
 import { MediaPlayerBar } from '../media-player-bar.tsx';
 
 const player = (playback: 'playing' | 'paused' = 'playing') => ({
@@ -258,7 +258,7 @@ test('rows={2}: every button is the same width, play included', () => {
 test('rows={2} is as tall as two regular tiles and the gap between them', () => {
   renderWithMock(<MediaPlayerBar entity="ha:room" rows={2} />, timed);
   // A tile is its 44px icon circle and a 4px spacing unit; the gap is 12px.
-  expect(getComputedStyle(cardOf()).minHeight).toBe('108px');
+  expect(computed(cardOf(), 'min-height')).toBe('108px');
 });
 
 test('rows={2}: while the volume slider is open it has the row, and only the close button stays', () => {

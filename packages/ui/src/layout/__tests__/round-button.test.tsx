@@ -1,7 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { motion } from 'motion/react';
 import { expect, test, vi } from 'vitest';
-import { renderWithMock } from '../../test-utils.tsx';
+import { computed, renderWithMock } from '../../test-utils.tsx';
 import { RoundButton } from '../round-button.tsx';
 
 const render = (ui: React.ReactElement) => renderWithMock(ui);
@@ -9,33 +9,32 @@ const render = (ui: React.ReactElement) => renderWithMock(ui);
 test('a round button is a button that is round, at the density’s usual size', () => {
   render(<RoundButton aria-label="Go">+</RoundButton>);
   const button = screen.getByRole('button', { name: 'Go' });
-  const style = getComputedStyle(button);
   expect(button.getAttribute('type')).toBe('button');
   expect(button.getAttribute('style')).toBeNull();
-  expect(style.width).toBe('44px');
-  expect(style.height).toBe('44px');
-  expect(style.borderRadius).toBe('999px');
-  expect(style.cursor).toBe('pointer');
+  expect(computed(button, 'width')).toBe('44px');
+  expect(computed(button, 'height')).toBe('44px');
+  expect(computed(button, 'border-radius')).toBe('999px');
+  expect(computed(button, 'cursor')).toBe('pointer');
 });
 
 test('a size sets both sides from props, and the usual size is not forced over it', () => {
   render(<RoundButton aria-label="Small" size={28} />);
-  const style = getComputedStyle(screen.getByRole('button', { name: 'Small' }));
-  expect(style.width).toBe('28px');
-  expect(style.height).toBe('28px');
+  const button = screen.getByRole('button', { name: 'Small' });
+  expect(computed(button, 'width')).toBe('28px');
+  expect(computed(button, 'height')).toBe('28px');
 });
 
 test('it keeps its size in a row of long text instead of being squeezed', () => {
   render(<RoundButton aria-label="Go" />);
-  expect(getComputedStyle(screen.getByRole('button', { name: 'Go' })).flexShrink).toBe('0');
+  expect(computed(screen.getByRole('button', { name: 'Go' }), 'flex-shrink')).toBe('0');
 });
 
-test('its own css is added to the shared look instead of replacing it', () => {
-  render(<RoundButton aria-label="Mine" css={{ opacity: 0.5 }} />);
-  const style = getComputedStyle(screen.getByRole('button', { name: 'Mine' }));
-  expect(style.opacity).toBe('0.5');
-  expect(style.borderRadius).toBe('999px');
-  expect(style.width).toBe('44px');
+test('its own class is added to the shared look instead of replacing it', () => {
+  render(<RoundButton aria-label="Mine" className="mine" />);
+  const button = screen.getByRole('button', { name: 'Mine' });
+  expect(button.classList.contains('mine')).toBe(true);
+  expect(computed(button, 'border-radius')).toBe('999px');
+  expect(computed(button, 'width')).toBe('44px');
 });
 
 test('it takes the button’s own props, and a different element through `as`', () => {
@@ -50,7 +49,7 @@ test('it takes the button’s own props, and a different element through `as`', 
   expect(button.disabled).toBe(true);
   fireEvent.click(button);
   expect(onClick).not.toHaveBeenCalled();
-  expect(getComputedStyle(button).opacity).toBe('0.5');
+  expect(computed(button, 'opacity')).toBe('0.5');
 });
 
 test('state comes from data attributes: primary is the accent, active is warm', () => {
@@ -61,11 +60,7 @@ test('state comes from data attributes: primary is the accent, active is warm', 
     </>,
   );
 
-  expect(getComputedStyle(screen.getByRole('button', { name: 'Primary' })).backgroundColor).toBe(
-    'rgb(184, 92, 56)',
-  );
+  expect(computed(screen.getByRole('button', { name: 'Primary' }), 'background')).toBe('#B85C38');
 
-  expect(getComputedStyle(screen.getByRole('button', { name: 'Active' })).color).toBe(
-    'rgb(227, 179, 65)',
-  );
+  expect(computed(screen.getByRole('button', { name: 'Active' }), 'color')).toBe('#E3B341');
 });

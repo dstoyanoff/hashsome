@@ -1,0 +1,81 @@
+/* What a readout looks like in each state, from its data attributes: red outside its safe range, dimmed while it has no reading. */
+.readout {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hs-unit);
+}
+
+.readout[data-range='low'],
+.readout[data-range='high'] {
+  color: var(--hs-danger);
+}
+
+.readout[data-status]:not([data-status='ready']) {
+  opacity: 0.6;
+}
+
+.value {
+  composes: body from '../style/type.module.css';
+  white-space: nowrap;
+}
+
+.body {
+  composes: stack from '../style/rows.module.css';
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.now {
+  composes: row from '../style/rows.module.css';
+}
+
+.nowLabel {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}
+
+.nowValue {
+  composes: stat from '../style/type.module.css';
+}
+
+.verdict {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 1.5);
+  color: var(--hs-text-muted);
+}
+
+.verdict[data-warning='true'] {
+  color: var(--hs-danger);
+}
+
+.verdictText {
+  composes: secondary from '../style/type.module.css';
+}
+
+.battery {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2);
+  padding: calc(var(--hs-unit) * 2.5) calc(var(--hs-unit) * 4);
+  border-radius: var(--hs-radius-row);
+  background: var(--hs-surface-raised);
+  color: var(--hs-text-muted);
+}
+
+.battery[data-low='true'] {
+  color: var(--hs-danger);
+}
+
+.batteryLabel {
+  composes: secondary from '../style/type.module.css';
+  flex-grow: 1;
+}
+
+.batteryLevel {
+  composes: bodyStrong from '../style/type.module.css';
+  color: var(--hs-text);
+}
+
+.battery[data-low='true'] .batteryLevel {
+  color: var(--hs-danger);
+}

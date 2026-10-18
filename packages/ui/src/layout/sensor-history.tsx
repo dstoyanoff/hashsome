@@ -1,9 +1,8 @@
-/** @jsxImportSource @emotion/react */
-import { Flex, Typography } from 'e-prim';
 import type { EntityRef } from '@hashsome/core';
 import { useState } from 'react';
 import { useEntityHistory } from '../use-entity-history.ts';
 import { DateTimeField } from './date-time-field.tsx';
+import styles from './sensor-history.module.css';
 import { useDetail } from './detail-provider.tsx';
 import {
   aggregate,
@@ -126,47 +125,31 @@ export function SensorHistory({
       ];
 
   return (
-    <Flex direction="column" gap={2} mt={4}>
-      <Flex justify="space-between" align="center">
-        <Typography as="span" variant="eyebrow" uppercase color="textMuted">
-          History
-        </Typography>
+    <div className={styles.section}>
+      <div className={styles.head}>
+        <span className={styles.heading}>History</span>
         {expanded ? <RangeSwitcher range={range} options={RANGES} onChange={setRange} /> : null}
-      </Flex>
+      </div>
       {expanded && range === 'custom' ? (
-        <Flex align="center" gap={4} css={{ flexWrap: 'wrap' }}>
+        <div className={styles.dates}>
           <DateTimeField label="From" value={from} max={to} onChange={setFrom} />
           <DateTimeField label="To" value={to} min={from} align="right" onChange={setTo} />
-        </Flex>
+        </div>
       ) : null}
-      <Flex gap={2}>
+      <div className={styles.tiles}>
         {tiles.map((tile) => (
-          <Flex
-            key={tile.label}
-            direction="column"
-            grow={1}
-            minWidth={0}
-            background="surfaceRaised"
-            radius="row"
-            py={2.5}
-            px={3}
-            css={{ flexBasis: 0 }}
-          >
-            <Typography as="span" variant="secondary" color="textMuted">
-              {tile.label}
-            </Typography>
-            <Typography as="span" variant="bodyStrong" noWrap>
+          <div key={tile.label} className={styles.tile}>
+            <span className={styles.tileLabel}>{tile.label}</span>
+            <span className={styles.tileValue}>
               {tile.value
                 ? `${formatNumber(tile.value.min)} – ${formatNumber(tile.value.max)} ${unit}`
                 : '—'}
-            </Typography>
-          </Flex>
+            </span>
+          </div>
         ))}
-      </Flex>
+      </div>
       {chartSamples.length === 0 ? (
-        <Typography as="span" variant="secondary" color="textMuted">
-          No readings in this range.
-        </Typography>
+        <span className={styles.none}>No readings in this range.</span>
       ) : (
         <SeriesChart
           samples={downsample(chartSamples, 240)}
@@ -176,6 +159,6 @@ export function SensorHistory({
           fitDomain
         />
       )}
-    </Flex>
+    </div>
   );
 }

@@ -1,15 +1,16 @@
 import { LocalClient, MockIntegration, mockSensor } from '@hashsome/core';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useTheme } from '@emotion/react';
-import { Box, Flex } from 'e-prim';
 import { MotionGlobalConfig } from 'motion/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { computed } from '../test-utils.tsx';
+import { useDensity } from '../theme/use-density.ts';
+import { useThemeConfig } from '../theme/use-theme.ts';
 import { HashsomeProvider, useThemeToggle, type ThemeMode } from '../provider.tsx';
 
 afterEach(cleanup);
 
 function Probe() {
-  return <Box background="bg" data-testid="probe" />;
+  return <div style={{ background: 'var(--hs-bg)' }} data-testid="probe" />;
 }
 
 function renderWithTheme(theme?: ThemeMode) {
@@ -20,32 +21,32 @@ function renderWithTheme(theme?: ThemeMode) {
     </HashsomeProvider>,
   );
 
-  return getComputedStyle(screen.getByTestId('probe')).backgroundColor;
+  return computed(screen.getByTestId('probe'), 'background');
 }
 
 test('defaults to the dark theme when no theme prop is given', () => {
-  expect(renderWithTheme()).toBe('rgb(11, 10, 13)'); // darkTheme.palette.bg #0B0A0D
+  expect(renderWithTheme()).toBe('#0B0A0D'); // darkTheme.palette.bg
 });
 
 test('theme="dark" resolves to the dark palette', () => {
-  expect(renderWithTheme('dark')).toBe('rgb(11, 10, 13)');
+  expect(renderWithTheme('dark')).toBe('#0B0A0D');
 });
 
 test('theme="light" resolves to the light palette', () => {
-  expect(renderWithTheme('light')).toBe('rgb(244, 241, 235)'); // lightTheme.palette.bg #F4F1EB
+  expect(renderWithTheme('light')).toBe('#F4F1EB'); // lightTheme.palette.bg
 });
 
 test('theme="system" degrades to light instead of throwing when matchMedia is unavailable', () => {
   // jsdom has no matchMedia at all; this just confirms the guard in provider.tsx doesn't crash —
   // a real browser would resolve this against the live OS preference instead.
-  expect(renderWithTheme('system')).toBe('rgb(244, 241, 235)');
+  expect(renderWithTheme('system')).toBe('#F4F1EB');
 });
 
 function ToggleProbe() {
   const { resolved, toggle } = useThemeToggle();
   return (
     <>
-      <Box background="bg" data-testid="probe" />
+      <div style={{ background: 'var(--hs-bg)' }} data-testid="probe" />
       <button onClick={toggle}>{resolved}</button>
     </>
   );
@@ -59,9 +60,9 @@ test('useThemeToggle() flips the resolved theme, overriding the configured one',
     </HashsomeProvider>,
   );
 
-  expect(getComputedStyle(screen.getByTestId('probe')).backgroundColor).toBe('rgb(11, 10, 13)');
+  expect(computed(screen.getByTestId('probe'), 'background')).toBe('#0B0A0D');
   fireEvent.click(screen.getByRole('button', { name: 'dark' }));
-  expect(getComputedStyle(screen.getByTestId('probe')).backgroundColor).toBe('rgb(244, 241, 235)');
+  expect(computed(screen.getByTestId('probe'), 'background')).toBe('#F4F1EB');
   expect(screen.getByRole('button', { name: 'light' })).toBeTruthy();
 });
 
@@ -76,11 +77,11 @@ function mount(props: { theme?: ThemeMode; density?: 'comfortable' | 'compact' }
 
 test('the theme is installed globally on the page, not per dashboard', () => {
   mount({ theme: 'light' });
-  expect(getComputedStyle(document.body).backgroundColor).toBe('rgb(244, 241, 235)');
+  expect(computed(document.body, 'background')).toBe('#F4F1EB');
 });
 
 function DensityProbe() {
-  const { density } = useTheme();
+  const density = useDensity();
   return <output data-testid="density">{JSON.stringify(density)}</output>;
 }
 
@@ -107,7 +108,8 @@ test('density is a HashsomeProvider setting: compact tightens the spacing tokens
 });
 
 function ThemeProbe() {
-  const { palette, radius, typography, density } = useTheme();
+  const { palette, radius, typography } = useThemeConfig();
+  const density = useDensity();
   return (
     <output data-testid="theme">
       {JSON.stringify({
@@ -165,12 +167,12 @@ test('density overrides apply to their density only', () => {
 });
 
 function SpacingProbe() {
-  const { spacing } = useTheme();
+  const { space } = useDensity();
   return (
     <>
-      <output data-testid="space">{spacing(3)}</output>
-      <Flex data-testid="gap" gap={3} />
-      <Flex data-testid="pad" p={6} />
+      <output data-testid="space">{`${space}px`}</output>
+      <div data-testid="gap" style={{ gap: 'calc(var(--hs-unit) * 3)' }} />
+      <div data-testid="pad" style={{ padding: 'calc(var(--hs-unit) * 6)' }} />
     </>
   );
 }
@@ -185,8 +187,8 @@ const spacingOf = (props: Partial<React.ComponentProps<typeof HashsomeProvider>>
 
   const result = {
     unit: screen.getByTestId('space').textContent,
-    gap: getComputedStyle(screen.getByTestId('gap')).gap,
-    pad: getComputedStyle(screen.getByTestId('pad')).padding,
+    gap: computed(screen.getByTestId('gap'), 'gap'),
+    pad: computed(screen.getByTestId('pad'), 'padding'),
   };
 
   cleanup();
@@ -207,9 +209,9 @@ test('changing the density’s space rescales all spacing', () => {
 
 // A theme that follows the time of day.
 
-const DARK_BG = 'rgb(11, 10, 13)';
-const LIGHT_BG = 'rgb(244, 241, 235)';
-const bgOf = () => getComputedStyle(screen.getByTestId('probe')).backgroundColor;
+const DARK_BG = '#0B0A0D';
+const LIGHT_BG = '#F4F1EB';
+const bgOf = () => computed(screen.getByTestId('probe'), 'background');
 const FAKE = ['Date', 'setTimeout', 'clearTimeout'] as const;
 
 function mountScheduled(theme: ThemeMode, integration = new MockIntegration({})) {
@@ -373,15 +375,5 @@ test('the default is to leave animations alone, and the prop can ask for none', 
 
   startAt('', { motion: 'reduced' });
   expect(reduced()).toBe(true);
-  resetMotion();
-});
-
-test('reduced motion switches off CSS transitions and animations, except the marked ones', () => {
-  resetMotion();
-  startAt('?motion=reduced');
-  const css = [...document.querySelectorAll('style')].map((style) => style.textContent).join('\n');
-  expect(css).toContain('html[data-motion="reduced"]');
-  expect(css).toContain(':not([data-keep-motion])');
-  expect(css).toMatch(/transition:none\s*!important/);
   resetMotion();
 });

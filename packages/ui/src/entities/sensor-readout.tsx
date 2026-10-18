@@ -1,7 +1,4 @@
-/** @jsxImportSource @emotion/react */
-import type { CSSObject, Theme } from '@emotion/react';
 import type { EntityRef } from '@hashsome/core';
-import { Flex, Typography } from 'e-prim';
 import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
@@ -11,6 +8,7 @@ import { SensorHistory, type SensorSample } from '../layout/sensor-history.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { DrawerTrigger } from '../layout/use-drawer.tsx';
 import { capitalize, statusLabels } from '../status.ts';
+import styles from './sensor-readout.module.css';
 
 /** Bounds a reading is considered safe within; either end can be left open. */
 export interface SafeRange {
@@ -40,13 +38,6 @@ export interface SensorReadoutProps {
   /** Tapping a ready numeric reading opens a drawer (current value and safe-range verdict, plus the chart and min/max when `history` is given). Default `true`; `false` keeps it inline text, e.g. for a presence chip. */
   drawer?: boolean;
 }
-
-/** What a readout looks like in each state, from its data attributes (`data-range`, `data-status`):
- * red outside its safe range, dimmed while it has no reading. */
-const readoutStates = ({ palette }: Theme): CSSObject => ({
-  "&[data-range='low'], &[data-range='high']": { color: palette.danger },
-  "&[data-status]:not([data-status='ready'])": { opacity: 0.6 },
-});
 
 const deviceClassIcons: Record<string, IconName> = {
   temperature: 'lu:thermometer',
@@ -134,7 +125,7 @@ export function SensorReadout({
   const content = (
     <>
       <Icon name={resolvedIcon} size={16} />
-      <Typography as="span" variant="body" noWrap>
+      <span className={styles.value}>
         {ready ? (
           moving !== undefined ? (
             <AnimatedNumber value={moving} format={reading} />
@@ -144,7 +135,7 @@ export function SensorReadout({
         ) : (
           statusLabels[status as Exclude<typeof status, 'ready'>]
         )}
-      </Typography>
+      </span>
       {warning ? <Icon name="lu:triangle-alert" size={16} /> : null}
     </>
   );
@@ -171,10 +162,7 @@ export function SensorReadout({
       >
         {(open) => (
           <PlainButton
-            inline
-            align="center"
-            gap={1}
-            css={readoutStates}
+            className={styles.readout}
             data-status={status}
             data-range={level}
             aria-label={`${label}: ${valueText}${hint ? `. ${hint}` : ''}`}
@@ -189,18 +177,9 @@ export function SensorReadout({
   }
 
   return (
-    <Flex
-      as="span"
-      inline
-      align="center"
-      gap={1}
-      css={readoutStates}
-      data-status={status}
-      data-range={level}
-      title={hint}
-    >
+    <span className={styles.readout} data-status={status} data-range={level} title={hint}>
       {content}
-    </Flex>
+    </span>
   );
 }
 
@@ -229,36 +208,30 @@ function SensorDetailBody({
 }) {
   const warning = level === 'low' || level === 'high';
   return (
-    <Flex direction="column" gap={2}>
-      <Flex direction="column" background="surfaceRaised" radius="row" py={3.5} px={4}>
-        <Typography as="span" variant="secondary" color="textMuted">
-          Now
-        </Typography>
-        <Typography as="span" variant="stat">
+    <div className={styles.body}>
+      <div className={styles.now}>
+        <span className={styles.nowLabel}>Now</span>
+        <span className={styles.nowValue}>
           {moving !== undefined && reading ? (
             <AnimatedNumber value={moving} format={reading} />
           ) : (
             valueText
           )}
-        </Typography>
+        </span>
         {range ? (
-          <Flex
-            align="center"
-            gap={1.5}
-            css={({ palette }) => ({ color: warning ? palette.danger : palette.textMuted })}
-          >
+          <div className={styles.verdict} data-warning={warning}>
             {warning ? <Icon name="lu:triangle-alert" size={14} /> : null}
-            <Typography as="span" variant="secondary">
+            <span className={styles.verdictText}>
               {warning
                 ? `Too ${level} · safe range ${describeRange(range, unit)}`
                 : `Within the safe range (${describeRange(range, unit)})`}
-            </Typography>
-          </Flex>
+            </span>
+          </div>
         ) : null}
-      </Flex>
+      </div>
       {battery ? <BatteryLevel entity={battery} /> : null}
       <SensorHistory {...(history ? { samples: history } : entity ? { entity } : {})} unit={unit} />
-    </Flex>
+    </div>
   );
 }
 
@@ -278,22 +251,12 @@ function BatteryLevel({ entity }: { entity: EntityRef }) {
   const level = handle.status === 'ready' ? handle.entity?.numeric : undefined;
   const low = level !== undefined && level <= LOW_BATTERY;
   return (
-    <Flex
-      align="center"
-      gap={2}
-      background="surfaceRaised"
-      radius="row"
-      py={2.5}
-      px={4}
-      color={low ? 'danger' : 'textMuted'}
-    >
+    <div className={styles.battery} data-low={low}>
       <Icon name={level === undefined ? 'lu:battery' : batteryIcon(level)} size={16} />
-      <Typography as="span" variant="secondary" grow={1}>
-        {low ? 'Battery low' : 'Battery'}
-      </Typography>
-      <Typography as="span" variant="bodyStrong" color={low ? 'danger' : 'text'}>
+      <span className={styles.batteryLabel}>{low ? 'Battery low' : 'Battery'}</span>
+      <span className={styles.batteryLevel}>
         {level === undefined ? '—' : `${Math.round(level)}%`}
-      </Typography>
-    </Flex>
+      </span>
+    </div>
   );
 }

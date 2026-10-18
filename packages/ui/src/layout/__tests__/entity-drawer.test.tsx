@@ -3,6 +3,7 @@ import { LocalClient, MockIntegration } from '@hashsome/core';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, test } from 'vitest';
 import { HashsomeProvider } from '../../provider.tsx';
+import { computed } from '../../test-utils.tsx';
 import { useDetail } from '../detail-provider.tsx';
 
 afterEach(() => {
@@ -59,7 +60,7 @@ test('a sheet opened tall is tall, and Escape lets it go', async () => {
   show(true);
   fireEvent.click(screen.getByText('open'));
   const dialog = await screen.findByRole('dialog');
-  expect(getComputedStyle(dialog).height).toBe('92dvh');
+  expect(computed(dialog, 'height')).toBe('92dvh');
   fireEvent.keyDown(window, { key: 'Escape' });
   await new Promise((resolve) => setTimeout(resolve, 600));
   expect(screen.queryByRole('dialog')).toBeNull();

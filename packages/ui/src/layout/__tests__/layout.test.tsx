@@ -4,7 +4,7 @@ import { expect, test } from 'vitest';
 import { NavDock } from '../../entities/nav-dock.tsx';
 import { NavRail } from '../../entities/nav-rail.tsx';
 import { HashsomeProvider } from '../../provider.tsx';
-import { renderWithMock } from '../../test-utils.tsx';
+import { computed, renderWithMock } from '../../test-utils.tsx';
 import { Page } from '../page.tsx';
 import { Grid } from '../grid.tsx';
 import { RoomHeader } from '../room-header.tsx';
@@ -34,8 +34,8 @@ test('Page pads by the density, and further for a NavRail or NavDock while it is
     { router: true },
   );
 
-  expect(getComputedStyle(pageOf()).paddingLeft).toBe('76px'); // 12 + the rail's 64
-  expect(getComputedStyle(pageOf()).paddingBottom).toBe('12px');
+  expect(computed(pageOf(), 'padding-left')).toBe('76px'); // 12 + the rail's 64
+  expect(computed(pageOf(), 'padding-bottom')).toBe('12px');
   view.unmount();
 
   const dock = renderWithMock(
@@ -46,12 +46,12 @@ test('Page pads by the density, and further for a NavRail or NavDock while it is
     { router: true },
   );
 
-  expect(getComputedStyle(pageOf()).paddingBottom).toBe('100px'); // 12 + the dock's 88
-  expect(getComputedStyle(pageOf()).paddingLeft).toBe('12px');
+  expect(computed(pageOf(), 'padding-bottom')).toBe('100px'); // 12 + the dock's 88
+  expect(computed(pageOf(), 'padding-left')).toBe('12px');
   dock.unmount();
 
   renderWithMock(<Page>content</Page>);
-  expect(getComputedStyle(pageOf()).paddingLeft).toBe('12px');
+  expect(computed(pageOf(), 'padding-left')).toBe('12px');
 });
 
 test('Page uses the compact density’s spacing', () => {
@@ -62,5 +62,5 @@ test('Page uses the compact density’s spacing', () => {
     </HashsomeProvider>,
   );
 
-  expect(getComputedStyle(pageOf()).padding).toBe('8px');
+  expect(computed(pageOf(), 'padding-top')).toBe('8px');
 });

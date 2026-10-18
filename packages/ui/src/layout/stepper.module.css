@@ -1,0 +1,22 @@
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 1);
+  height: 32px;
+  padding: 0 calc(var(--hs-unit) * 1);
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+}
+
+.stepper button {
+  width: 28px;
+  height: 28px;
+  background: none;
+}
+
+.value {
+  composes: body from '../style/type.module.css';
+  min-width: 4.2em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}

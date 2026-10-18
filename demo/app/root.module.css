@@ -1,0 +1,15 @@
+.badge {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: var(--hs-z-popover);
+  padding: calc(var(--hs-unit) * 1.5) calc(var(--hs-unit) * 3);
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+  color: var(--hs-text-muted);
+  text-decoration: none;
+  font-family: var(--hs-font-family);
+  font-size: var(--hs-t-secondary-size);
+  font-weight: var(--hs-t-secondary-weight);
+  line-height: var(--hs-t-secondary-line);
+}

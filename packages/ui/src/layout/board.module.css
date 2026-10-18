@@ -1,0 +1,51 @@
+.board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  /* Twice as far between rows as between columns and inside a cell: a row is a group (a room), and groups read as groups. */
+  column-gap: var(--hs-space);
+  row-gap: calc(var(--hs-space) * 2);
+  /* The height of its rows, or the page's if that is more: it grows into what is left, and never shrinks below its content
+     (the page scrolls instead). */
+  flex: 1 0 auto;
+  min-width: 0;
+}
+
+.cell {
+  /* A cell takes the height of what is in it, unless it is meant to reach across rows. */
+  align-self: start;
+  min-width: 0;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hs-space);
+}
+
+/* One that reaches across rows, or fills, takes the height the page and the others give it; its own content does not size
+   them (a player taller than three rooms squeezes, it does not stretch the third, or push the page past its bottom). */
+.stretches {
+  align-self: stretch;
+  contain: size;
+}
+
+/* In a column that is meant to be as tall as the room it is given, the last card takes what is left. */
+.grows > [data-grid-card]:last-child {
+  flex-grow: 1;
+}
+
+.fill {
+  position: relative;
+}
+
+/* The card is drawn from the cell's top to the bottom of the board, outside the rows' sizing: an explicit height on the cell
+   itself would make the row grow to it. */
+.filled {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+}

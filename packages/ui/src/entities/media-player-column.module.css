@@ -1,0 +1,19 @@
+/* Only as tall as it needs, even in a parent that stretches its children, and no taller than the parent: the artwork gives way. */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-self: flex-start;
+  width: 100%;
+  min-height: 0;
+  max-height: 100%;
+  padding: calc(var(--hs-unit) * 4);
+  overflow: hidden;
+  border-radius: var(--hs-radius-card);
+  background: var(--hs-surface);
+}
+
+/* Stretched beside other cards, the artwork takes the room and the controls stay at the bottom. */
+.card > [data-status] {
+  flex: 1 1 auto;
+}

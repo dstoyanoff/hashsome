@@ -1,6 +1,3 @@
-/** @jsxImportSource @emotion/react */
-import { useTheme } from '@emotion/react';
-import { Flex, Grid, Typography } from 'e-prim';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState, type ReactNode } from 'react';
 import type { EntityHandle } from '../entity-handle.ts';
@@ -9,6 +6,8 @@ import { ValueBar } from '../layout/drawer-controls.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { IconButton } from '../layout/tile.tsx';
 import { statusLabels } from '../status.ts';
+import { useDensity } from '../theme/use-density.ts';
+import styles from './now-playing.module.css';
 import { usePressFeedback, useTransportAvailability, useVolumeControl } from './media-controls.ts';
 import { formatDuration, useMediaPosition, useSteadyPlaying } from './media-progress.ts';
 import { useSeekHold } from './media-seek.ts';
@@ -62,7 +61,7 @@ export function NowPlaying({
   volumeControl?: 'bar' | 'icon';
 }) {
   const player = handle.entity;
-  const { iconCircle, space } = useTheme().density;
+  const { iconCircle, space } = useDensity();
   const transportWidth = 5 * iconCircle + 4 * space;
   const { status } = handle;
   const loading = useLoadingLabel(player?.ref);
@@ -88,7 +87,7 @@ export function NowPlaying({
   );
 
   return (
-    <Flex direction="column" gap={4} data-status={status} css={{ minHeight: 0 }}>
+    <div className={styles.panel} data-status={status}>
       <ArtworkRing
         artworkUrl={player?.media?.artworkUrl}
         seek={seek}
@@ -99,22 +98,14 @@ export function NowPlaying({
         // No wider than the row of five buttons under it (268px: five circles and the gaps between them).
         maxSize={transportWidth}
       />
-      <Flex direction="column" align="center" gap={0.5} color={ready ? 'text' : 'textMuted'}>
+      <div className={styles.titles} data-ready={ready}>
         {/* In the drawer, shuffle sits by the title, so the transport below is just previous, play and next. */}
-        <Flex align="center" justify="center" gap={2} maxWidth="100%">
-          <Typography
-            as="h2"
-            variant="title"
-            noWrap
-            textOverflow="ellipsis"
-            overflow="hidden"
-            m={0}
-            minWidth={0}
-          >
+        <div className={styles.titleRow}>
+          <h2 className={styles.title}>
             {ready
               ? (player?.media?.title ?? 'Nothing playing')
               : statusLabels[status as Exclude<typeof status, 'ready'>]}
-          </Typography>
+          </h2>
           {caps?.shuffle && shufflePlacement === 'title' ? (
             <IconButton
               icon="lu:shuffle"
@@ -131,49 +122,23 @@ export function NowPlaying({
               }
             />
           ) : null}
-        </Flex>
+        </div>
         {loading ? (
           <LoadingLine label={loading} variant="body" />
         ) : ready && player?.media?.artist ? (
-          <Typography
-            as="span"
-            variant="body"
-            color="textMuted"
-            noWrap
-            textOverflow="ellipsis"
-            overflow="hidden"
-          >
+          <span className={styles.sub}>
             {[player.media.artist, player.media.album].filter(Boolean).join(' · ')}
-          </Typography>
+          </span>
         ) : (
-          <Typography
-            as="span"
-            variant="body"
-            color="textMuted"
-            noWrap
-            textOverflow="ellipsis"
-            overflow="hidden"
-          >
-            {name ?? player?.name ?? fallback}
-          </Typography>
+          <span className={styles.sub}>{name ?? player?.name ?? fallback}</span>
         )}
-      </Flex>
+      </div>
       {seek.shown !== undefined && duration ? (
-        <Typography
-          as="span"
-          variant="secondary"
-          color="textMuted"
-          align="center"
-          css={{ fontVariantNumeric: 'tabular-nums' }}
-        >
+        <span className={styles.time}>
           {formatDuration(seek.shown)} / {formatDuration(duration)}
-        </Typography>
+        </span>
       ) : null}
-      {speakers ? (
-        <Flex justify="center" css={{ marginTop: -4 }}>
-          {speakers}
-        </Flex>
-      ) : null}
+      {speakers ? <div className={styles.speakers}>{speakers}</div> : null}
       {/* Five equal slots, so play/pause stays in the middle whichever side buttons there are. */}
       <AnimatePresence mode="wait" initial={false}>
         {/* The buttons and the volume take turns in one row: one fades out, then the other in. */}
@@ -185,18 +150,13 @@ export function NowPlaying({
             onClose={() => setVolumeOpen(false)}
           />
         ) : (
-          <Grid
+          <motion.div
             key="transport"
-            as={motion.div}
+            className={styles.transport}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: still ? 0 : ROW_FADE, ease: 'easeOut' }}
-            gap={3}
-            css={({ density }) => ({
-              gridTemplateColumns: `repeat(5, ${density.iconCircle}px)`,
-              justifyContent: 'center',
-            })}
           >
             {caps?.shuffle && shufflePlacement === 'transport' ? (
               <IconButton
@@ -255,20 +215,18 @@ export function NowPlaying({
             ) : (
               (extra ?? <span />)
             )}
-          </Grid>
+          </motion.div>
         )}
       </AnimatePresence>
       {(caps?.volume !== false || caps.mute) && !iconVolume ? (
-        <Flex align="center" gap={2}>
+        <div className={styles.volume}>
           <PlainButton
+            className={styles.mute}
             aria-label={volume.muted ? 'Unmute' : 'Mute'}
             aria-pressed={volume.muted}
             title={volume.muted ? 'Unmute' : 'Mute'}
             disabled={!ready || caps?.mute === false}
             onClick={volume.toggleMute}
-            center
-            color={volume.muted ? 'accent' : 'textMuted'}
-            css={{ flex: 'none' }}
           >
             <Icon name={volume.muted ? 'lu:volume-x' : 'lu:volume-2'} size={16} />
           </PlainButton>
@@ -282,18 +240,9 @@ export function NowPlaying({
             onDrag={volume.drag}
             onCommit={volume.commit}
           />
-          <Typography
-            as="span"
-            variant="secondary"
-            color="textMuted"
-            minWidth={32}
-            align="right"
-            css={{ flex: 'none', fontVariantNumeric: 'tabular-nums' }}
-          >
-            {volume.shown}%
-          </Typography>
-        </Flex>
+          <span className={styles.percent}>{volume.shown}%</span>
+        </div>
       ) : null}
-    </Flex>
+    </div>
   );
 }

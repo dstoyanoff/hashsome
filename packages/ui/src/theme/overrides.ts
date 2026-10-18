@@ -1,4 +1,5 @@
-import type { ThemeConfig, TypographyKey, TypographySpecs } from 'e-prim';
+import type { TypographyName } from '../style/names.ts';
+import type { ThemeConfig, TypographySpecs } from './tokens.ts';
 import { DENSITY, type Density, type DensityTokens } from './density.ts';
 
 /** Changes to the built-in theme. Everything is optional and partial: name only what differs and
@@ -17,7 +18,7 @@ export interface ThemeOverrides {
     zIndex?: Partial<ThemeConfig['zIndex']>;
 
     /** By variant name (`label`, `body`, `stat`, ...); each takes only the fields it changes. */
-    typography?: Partial<Record<TypographyKey, TypographySpecs>>;
+    typography?: Partial<Record<TypographyName, TypographySpecs>>;
   };
 
   /** Sizes per density, e.g. `{ comfortable: { space: 16 } }`. */
@@ -45,7 +46,7 @@ export function applyThemeOverrides(
     radius: { ...base.radius, ...shared.radius },
     shadow: { ...base.shadow, ...shared.shadow },
     zIndex: { ...base.zIndex, ...shared.zIndex },
-    typography: typography as ThemeConfig['typography'],
+    typography: typography as unknown as ThemeConfig['typography'],
     palette: { ...base.palette, ...overrides[mode]?.palette },
   };
 }

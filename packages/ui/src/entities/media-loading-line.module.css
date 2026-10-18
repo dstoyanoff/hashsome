@@ -1,0 +1,23 @@
+.line {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 1.5);
+  min-width: 0;
+  color: var(--hs-accent);
+}
+
+.text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.body {
+  composes: text;
+  composes: body from '../style/type.module.css';
+}
+
+.secondary {
+  composes: text;
+  composes: secondary from '../style/type.module.css';
+}

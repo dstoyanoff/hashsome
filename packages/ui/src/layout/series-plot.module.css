@@ -1,0 +1,24 @@
+.plot {
+  margin-top: calc(var(--hs-unit) * 3);
+  height: var(--chart-height);
+}
+
+.tooltip {
+  composes: body from '../style/type.module.css';
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--hs-unit) * 1.5) calc(var(--hs-unit) * 2.5);
+  border: var(--hs-border-width) solid var(--hs-border);
+  border-radius: var(--hs-radius-small);
+  background: var(--hs-surface-raised);
+  color: var(--hs-text);
+}
+
+.when {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}
+
+.value {
+  composes: bodyStrong from '../style/type.module.css';
+}

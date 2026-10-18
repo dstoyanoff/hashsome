@@ -1,0 +1,12 @@
+.block {
+  flex: none;
+  overflow: hidden;
+  background: var(--hs-surface-raised);
+}
+
+.pulse {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: currentColor;
+}

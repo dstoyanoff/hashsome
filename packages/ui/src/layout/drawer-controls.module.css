@@ -1,0 +1,139 @@
+.step {
+  flex: none;
+}
+
+.plain {
+  background: none;
+}
+
+/* Explicit width: the bar has no in-flow content (its fill is absolutely positioned), so as a flex item in a row it would size to 0 and vanish. */
+.bar {
+  position: relative;
+  width: 100%;
+  height: var(--bar-height, 28px);
+  overflow: hidden;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.bar[data-track='surfaceRaised'] {
+  background: var(--hs-surface-raised);
+}
+
+.bar[data-gradient='false'] {
+  border: var(--hs-border-width) solid var(--hs-border);
+}
+
+.bar[data-gradient='true'] {
+  background-image: var(--gradient);
+}
+
+.fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--hs-accent);
+}
+
+/* A gradient track stays vivid up to the value and dims past it. */
+.dim {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--hs-surface);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.power {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+  color: var(--hs-line);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.power[aria-pressed='true'] {
+  background: var(--hs-accent);
+  color: var(--hs-accent-text);
+}
+
+.chips {
+  display: flex;
+  gap: calc(var(--hs-unit) * 2);
+  isolation: isolate;
+}
+
+.wrapping {
+  flex-wrap: wrap;
+}
+
+.tabs {
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  /* A fixed height, not the text's: an emoji is drawn from another font with a taller line, which would make this one chip taller than the rest. */
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 1.5);
+  height: 28px;
+  padding: 0 calc(var(--hs-unit) * 3);
+  border: 0;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface);
+  color: var(--hs-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 160ms ease;
+}
+
+.chip[data-selected='true'] {
+  color: var(--hs-accent-text);
+}
+
+/* Above every chip's own background, whichever way it is going: a later chip paints over an earlier one's pill otherwise. */
+.pill {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-accent);
+}
+
+/* Above the pill. */
+.content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 1.5);
+  min-width: 0;
+}
+
+.chipLabel {
+  composes: body from '../style/type.module.css';
+  min-width: 0;
+  max-width: 220px;
+}

@@ -1,6 +1,6 @@
 import { act, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { renderWithMock } from '../../test-utils.tsx';
+import { computed, renderWithMock } from '../../test-utils.tsx';
 import { Page } from '../page.tsx';
 import { RoomHeader } from '../room-header.tsx';
 
@@ -62,8 +62,8 @@ test('the page pads its top and bottom with half of what its height has over who
   const main = document.querySelector('main') as HTMLElement;
   // 459 - 2 x 12 = 435 = 108 modules + 3px: 1px more on top, 2px more below.
   expect(main.dataset['centered']).toBe('1 2');
-  expect(getComputedStyle(main).paddingTop).toBe('13px');
-  expect(getComputedStyle(main).paddingBottom).toBe('14px');
+  expect(computed(main, 'padding-top')).toBe('13px');
+  expect(computed(main, 'padding-bottom')).toBe('14px');
 });
 
 test('the overlay is not a box in the page, so the page keeps its gaps and its height with it on', async () => {

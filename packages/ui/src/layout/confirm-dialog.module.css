@@ -1,0 +1,71 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--hs-z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--hs-unit) * 4);
+  /* The page's own color, so the dimming follows the theme. */
+  background: color-mix(in srgb, var(--hs-bg) 72%, transparent);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 4);
+  /* Scrolls when what is in it does not fit the screen, rather than running off it. */
+  width: min(420px, 100%);
+  max-height: 100%;
+  padding: calc(var(--hs-unit) * 5);
+  overflow-y: auto;
+  border-radius: var(--hs-radius-card);
+  background: var(--hs-surface-raised);
+  box-shadow: var(--hs-shadow-drawer);
+  outline: none;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 1.5);
+}
+
+.title {
+  composes: heading from '../style/type.module.css';
+}
+
+.description {
+  composes: body from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.button {
+  composes: label from '../style/type.module.css';
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 calc(var(--hs-unit) * 5);
+  border: 0;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface);
+  color: var(--hs-text);
+  cursor: pointer;
+}
+
+.button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.primary {
+  background: var(--hs-accent);
+  color: var(--hs-accent-text);
+}

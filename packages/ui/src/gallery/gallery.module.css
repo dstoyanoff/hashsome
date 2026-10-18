@@ -1,0 +1,167 @@
+.default {
+  composes: default from '../style/type.module.css';
+}
+
+.label {
+  composes: label from '../style/type.module.css';
+}
+
+.secondary {
+  composes: secondary from '../style/type.module.css';
+}
+
+.heading {
+  composes: heading from '../style/type.module.css';
+}
+
+.body {
+  composes: body from '../style/type.module.css';
+}
+
+.bodyStrong {
+  composes: bodyStrong from '../style/type.module.css';
+}
+
+.eyebrow {
+  composes: eyebrow from '../style/type.module.css';
+}
+
+.stat {
+  composes: stat from '../style/type.module.css';
+}
+
+.title {
+  composes: title from '../style/type.module.css';
+}
+
+.roomTitle {
+  composes: roomTitle from '../style/type.module.css';
+}
+
+.clock {
+  composes: clock from '../style/type.module.css';
+}
+
+.page {
+  min-height: 100%;
+  padding: 32px 20px 64px;
+  background: var(--hs-surface-raised);
+  color: var(--hs-text);
+}
+
+.wrap {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 36px;
+}
+
+.code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  overflow-wrap: anywhere;
+}
+
+.section {
+  margin-bottom: 40px;
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 3);
+  min-height: 72px;
+  padding: calc(var(--hs-unit) * 8);
+  border-radius: var(--hs-radius-card);
+  background: var(--hs-bg);
+  color: var(--hs-text);
+}
+
+.props {
+  margin-top: 12px;
+}
+
+.props summary {
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.props table {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+}
+
+.props th,
+.props td {
+  padding: 8px 12px 8px 0;
+  border-bottom: var(--hs-border-width) solid var(--hs-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.link {
+  color: var(--hs-accent);
+  text-underline-offset: 3px;
+}
+
+.modeToggle {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: 60px;
+  height: 32px;
+  margin: 0;
+  padding: 0 8px;
+  border: var(--hs-border-width) solid var(--hs-border);
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-border);
+  font: inherit;
+  line-height: normal;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.modeToggle:hover {
+  border-color: var(--hs-text-muted);
+}
+
+.modeToggle svg {
+  position: relative;
+  z-index: 1;
+  color: var(--hs-text-muted);
+  transition: color 0.2s;
+}
+
+/* Sun lit while in light mode, moon lit while in dark mode: both icons are always visible at fixed positions; only their color and the thumb underneath change. */
+.modeToggle[aria-pressed='false'] svg:first-of-type,
+.modeToggle[aria-pressed='true'] svg:last-of-type {
+  color: var(--hs-text);
+}
+
+/* `top: 50%` + `translateY(-50%)` centers it despite the border eating into the button's content box; a fixed `top: 3px` sat 2px above true center. */
+.thumb {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transform: translateY(-50%);
+  transition: transform 0.2s ease;
+}
+
+.thumb[data-dark='true'] {
+  transform: translate(28px, -50%);
+}

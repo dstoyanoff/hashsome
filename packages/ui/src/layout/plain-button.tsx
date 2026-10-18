@@ -1,24 +1,17 @@
-/** @jsxImportSource @emotion/react */
-import type { Interpolation, Theme } from '@emotion/react';
-import { Flex, type FlexProps } from 'e-prim';
-import type { ElementType } from 'react';
+import type { ComponentPropsWithRef, ElementType } from 'react';
+import { cx } from '../style/cx.ts';
+import styles from './plain-button.module.css';
 
 /** A button with the browser's look removed: no border, no background, no padding, text on the
- * left, and a pointer. Everything else is the element's own and e-prim's props (it is a `Flex`), so a clickable row,
- * card or chip is `<PlainButton gap={…} …>` with the look it wants. Renders a `button`, or what
- * `as` says (`motion.button`). A `css` of its own is added to the reset, not instead of it. */
+ * left, and a pointer. The look of a clickable row, card or chip is the caller's own `className`
+ * (it wins over the reset). Renders a `button`, or what `as` says (`motion.button`). */
 export function PlainButton<E extends ElementType = 'button'>({
-  css,
+  as,
+  className,
   ...props
-}: FlexProps<E> & { css?: Interpolation<Theme> }) {
-  const own = {
-    as: 'button',
-    type: 'button',
-    p: 0,
-    cursor: 'pointer',
-    css: [{ background: 'none', textAlign: 'left' }, css ?? null],
-    ...props,
-  } as FlexProps<ElementType>;
-
-  return <Flex {...own} />;
+}: { as?: E } & Omit<ComponentPropsWithRef<E>, 'as'>) {
+  const Tag: ElementType = as ?? 'button';
+  return (
+    <Tag type="button" className={cx(styles.plain, className as string | undefined)} {...props} />
+  );
 }

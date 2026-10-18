@@ -1,9 +1,8 @@
-/** @jsxImportSource @emotion/react */
-import { Flex, Typography } from 'e-prim';
 import { useEffect, useId, type ReactNode } from 'react';
 import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { useDetail } from './detail-provider.tsx';
+import styles from './use-drawer.module.css';
 
 export function DrawerHeader({
   icon,
@@ -15,32 +14,17 @@ export function DrawerHeader({
   kind?: string | undefined;
 }) {
   return (
-    <Flex align="center" gap={2.5}>
+    <div className={styles.header}>
       {icon ? (
-        <Flex
-          align="center"
-          justify="center"
-          background="surfaceRaised"
-          color="text"
-          radius="full"
-          width={34}
-          height={34}
-          css={{ flex: 'none' }}
-        >
+        <span className={styles.badge}>
           <Icon name={icon} size={16} />
-        </Flex>
+        </span>
       ) : null}
-      <Flex direction="column">
-        <Typography as="span" variant="heading">
-          {label}
-        </Typography>
-        {kind ? (
-          <Typography as="span" variant="secondary" color="textMuted">
-            {kind}
-          </Typography>
-        ) : null}
-      </Flex>
-    </Flex>
+      <div className={styles.names}>
+        <span className={styles.label}>{label}</span>
+        {kind ? <span className={styles.kind}>{kind}</span> : null}
+      </div>
+    </div>
   );
 }
 

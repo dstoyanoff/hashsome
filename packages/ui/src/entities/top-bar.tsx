@@ -1,9 +1,7 @@
-/** @jsxImportSource @emotion/react */
 import type { ConnectionStatus, EntityRef, LinkStatus } from '@hashsome/core';
-import { Box, Flex, Typography } from 'e-prim';
-import { motion } from 'motion/react';
+import { motion, type MotionStyle } from 'motion/react';
 import { PlainButton } from '../layout/plain-button.tsx';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import type { IconName } from '../icon-data.ts';
 import { fallbackName } from '../entity-handle.ts';
@@ -16,7 +14,6 @@ import {
 import { Icon } from '../icon.tsx';
 import { useDismiss } from '../layout/use-dismiss.ts';
 import { statusLabels } from '../status.ts';
-import { TOP_ROW } from '../theme/grid.ts';
 import { CheckMark } from '../layout/check-mark.tsx';
 import { DrawerTrigger } from '../layout/use-drawer.tsx';
 import { useTimed } from '../layout/use-timed.ts';
@@ -24,6 +21,7 @@ import { useWeatherForecast } from '../use-weather-forecast.ts';
 import { SensorReadout } from './sensor-readout.tsx';
 import { WeatherForecast } from './weather-forecast.tsx';
 import { WeatherIcon } from './weather-icon.tsx';
+import styles from './top-bar.module.css';
 import { CONDITION_LOOK } from './weather-look.ts';
 
 /** One entry in the title's dashboard-switcher dropdown. */
@@ -112,24 +110,15 @@ export function TopBar({
   showStatus = true,
 }: TopBarProps) {
   return (
-    <Flex
-      align="center"
-      justify="space-between"
-      gap={4}
-      // A whole number of grid modules whatever is in it, so what is under it starts on the grid, and
-      // no padding of its own, so its content is as far from the page's edge as the rest.
-      css={{ minHeight: TOP_ROW }}
-    >
-      <Flex align="center" gap={3}>
+    <div className={styles.bar}>
+      <div className={styles.left}>
         {dashboards && dashboards.length > 1 ? (
           <DashboardSwitcher title={title} dashboards={dashboards} />
         ) : (
-          <Typography as="h1" variant="title">
-            {title}
-          </Typography>
+          <h1 className={styles.title}>{title}</h1>
         )}
         {scenes?.length ? (
-          <Flex align="center" gap={2.5}>
+          <div className={styles.scenes}>
             {scenes.map((scene) => {
               const { entity, icon, color } = typeof scene === 'string' ? { entity: scene } : scene;
               return (
@@ -141,10 +130,10 @@ export function TopBar({
                 />
               );
             })}
-          </Flex>
+          </div>
         ) : null}
-      </Flex>
-      <Flex align="center" gap={3}>
+      </div>
+      <div className={styles.right}>
         {showDate ? <DateChip /> : null}
         {weather ? <WeatherChip entity={weather} /> : null}
         {extra}
@@ -161,13 +150,10 @@ export function TopBar({
         ) : null}
         {showClock ? <Clock format={clockFormat} /> : null}
         {showStatus ? <SystemStatus /> : null}
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 }
-
-/** The height of the switcher's button, and of each entry in its list. */
-const SWITCHER_HEIGHT = 40;
 
 function DashboardSwitcher({
   title,
@@ -188,53 +174,27 @@ function DashboardSwitcher({
     dashboards.find((d) => d.title === title);
 
   return (
-    <Flex ref={ref} position="relative">
-      <Flex
-        as="button"
+    <div ref={ref} className={styles.switcher}>
+      <button
         type="button"
+        className={styles.switch}
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        align="center"
-        justify="center"
-        gap={2}
-        cursor="pointer"
-        color="text"
-        background="surface"
-        border
-        height={SWITCHER_HEIGHT}
-        px={4}
-        radius="chrome"
       >
         {current?.icon ? <Icon name={current.icon} size={20} /> : null}
-        <Typography as="h1" variant="title">
-          {title}
-        </Typography>
+        <h1 className={styles.title}>{title}</h1>
         <Icon name="lu:chevron-down" size={20} />
-      </Flex>
+      </button>
       {open ? (
-        <Flex
-          as="ul"
-          role="listbox"
-          direction="column"
-          background="surfaceRaised"
-          radius="row"
-          shadow="drawer"
-          p={1.5}
-          gap={0.5}
-          position="absolute"
-          zIndex="dropdown"
-          mt={2}
-          minWidth="100%"
-          css={{ top: '100%', left: 0, listStyle: 'none', whiteSpace: 'nowrap' }}
-        >
+        <ul className={styles.menu} role="listbox">
           {dashboards.map((d) => {
             const active = d.id === current?.id;
             return (
               <li key={d.id} role="none">
-                <Flex
-                  as="button"
+                <button
                   type="button"
+                  className={styles.option}
                   role="option"
                   aria-selected={active}
                   // Already here: marked, and nothing to switch to.
@@ -243,37 +203,21 @@ function DashboardSwitcher({
                     setOpen(false);
                     navigate(`/${d.id}`);
                   }}
-                  align="center"
-                  gap={2}
-                  width="100%"
-                  // As tall as the button that opened the list, so an entry is as easy to hit on a touch screen.
-                  height={SWITCHER_HEIGHT}
-                  radius="small"
-                  px={3}
-                  color="text"
-                  background={active ? 'surface' : 'transparent'}
-                  cursor={active ? 'default' : 'pointer'}
-                  css={{ textAlign: 'left' }}
                 >
                   {d.icon ? <Icon name={d.icon} size={16} /> : null}
-                  <Typography as="span" variant="body" grow={1}>
-                    {d.title}
-                  </Typography>
+                  <span className={styles.optionTitle}>{d.title}</span>
                   {active ? <Icon name="lu:check" size={16} /> : null}
-                </Flex>
+                </button>
               </li>
             );
           })}
-        </Flex>
+        </ul>
       ) : null}
-    </Flex>
+    </div>
   );
 }
 
 type Health = 'ok' | 'pending' | 'down';
-
-/** The palette color each health reads as. */
-const HEALTH_COLORS = { ok: 'success', pending: 'warm', down: 'danger' } as const;
 
 function linkHealth(link: LinkStatus): Health {
   return link === 'open' ? 'ok' : link === 'connecting' ? 'pending' : 'down';
@@ -342,82 +286,41 @@ export function SystemStatus({
         : `${rows.filter((row) => row.health === 'down').length} system(s) down`;
 
   return (
-    <Flex ref={ref} position="relative">
+    <div ref={ref} className={styles.switcher} data-health={overall}>
       <PlainButton
+        className={`${styles.dot} ${styles.health}`}
+        data-health={overall}
         aria-label={summary}
         aria-expanded={open}
         title={summary}
         onClick={() => setOpen((o) => !o)}
-        align="center"
-        justify="center"
-        width={32}
-        height={32}
-        radius="full"
       >
-        <Flex
-          as="span"
-          width={12}
-          height={12}
-          radius="full"
-          css={({ palette }) => ({
-            background: palette[HEALTH_COLORS[overall]],
-            boxShadow: `0 0 0 4px color-mix(in srgb, ${palette[HEALTH_COLORS[overall]]} 20%, transparent)`,
-          })}
-        />
+        <span className={styles.led} />
       </PlainButton>
       {open ? (
-        <Flex
-          direction="column"
-          gap={2}
-          background="surfaceRaised"
-          radius="row"
-          shadow="drawer"
-          p={3.5}
-          role="status"
-          position="absolute"
-          zIndex="dropdown"
-          mt={2}
-          minWidth={220}
-          css={{ top: '100%', right: 0, whiteSpace: 'nowrap' }}
-        >
-          <Flex align="center" gap={2}>
-            <Flex
-              as="span"
-              width={8}
-              height={8}
-              radius="full"
-              css={({ palette }) => ({ background: palette[HEALTH_COLORS[overall]] })}
-            />
-            <Typography as="span" variant="bodyStrong">
-              {summary}
-            </Typography>
-          </Flex>
+        <div className={`${styles.popover} ${styles.health}`} data-health={overall} role="status">
+          <div className={styles.summary}>
+            <span className={styles.summaryDot} />
+            <span className={styles.summaryText}>{summary}</span>
+          </div>
           {rows.map((row) => (
-            <Flex key={row.name} align="center" justify="space-between" gap={6}>
-              <Typography as="span" variant="body">
-                {row.name}
-              </Typography>
-              <Typography
-                as="span"
-                variant="label"
-                css={({ palette }) => ({ color: palette[HEALTH_COLORS[row.health]] })}
-              >
-                {row.label}
-              </Typography>
-            </Flex>
+            <div
+              key={row.name}
+              className={`${styles.row} ${styles.health}`}
+              data-health={row.health}
+            >
+              <span className={styles.rowName}>{row.name}</span>
+              <span className={styles.rowState}>{row.label}</span>
+            </div>
           ))}
-        </Flex>
+        </div>
       ) : null}
-    </Flex>
+    </div>
   );
 }
 
 function StatusChip({ children }: { children: ReactNode }) {
-  return (
-    <Flex align="center" gap={2} background="surface" border radius="full" px={3.5} py={2.5}>
-      {children}
-    </Flex>
-  );
+  return <div className={styles.chip}>{children}</div>;
 }
 
 export interface WeatherChipProps {
@@ -440,14 +343,6 @@ export function WeatherChip({ entity, drawer = true }: WeatherChipProps) {
     <SensorWeather entity={entity} />
   );
 }
-
-/** Text boxes cut to the height of the digits, so the reading and the range, in different sizes, are
- * both centred on their digits and not on the font's line box (which sits a little low or high).
- * Where the browser does not know `text-box` the text keeps its usual box. */
-/** The height of one line of the 12px label text. */
-const LABEL_LINE = 15;
-
-const TRIM_TO_DIGITS = { textBox: 'trim-both cap alphabetic' } as const;
 
 function WeatherPill({ entity, drawer }: { entity: EntityRef; drawer: boolean }) {
   const handle = useEntityHandle('weather', entity);
@@ -476,21 +371,15 @@ function WeatherPill({ entity, drawer }: { entity: EntityRef; drawer: boolean })
 
   const chip = (
     <StatusChip>
-      {/* As tall as a line of the label, which the trimmed texts no longer are: the pill keeps the
-          height of the bar's other pills. */}
-      <Flex as="span" css={{ minHeight: LABEL_LINE }}>
+      <span className={styles.skyIcon}>
         <WeatherIcon condition={condition} size={14} />
-      </Flex>
-      <Typography as="span" variant="label" css={TRIM_TO_DIGITS}>
+      </span>
+      <span className={styles.reading}>
         {ready
           ? `${Math.round(weather.temperature ?? 0)}°`
           : statusLabels[status as Exclude<typeof status, 'ready'>]}
-      </Typography>
-      {ready && range ? (
-        <Typography as="span" variant="secondary" color="textMuted" css={TRIM_TO_DIGITS}>
-          {range}
-        </Typography>
-      ) : null}
+      </span>
+      {ready && range ? <span className={styles.range}>{range}</span> : null}
     </StatusChip>
   );
 
@@ -521,14 +410,14 @@ function SensorWeather({ entity }: { entity: EntityRef }) {
 
   return (
     <StatusChip>
-      <Flex as="span" css={({ palette }) => ({ color: palette.warm })}>
+      <span className={styles.sun}>
         <Icon name="lu:sun" size={14} />
-      </Flex>
-      <Typography as="span" variant="label">
+      </span>
+      <span className={styles.plain}>
         {status === 'ready' && sensor?.numeric !== undefined
           ? `${Math.round(sensor.numeric)}°`
           : statusLabels[status as Exclude<typeof status, 'ready'>]}
-      </Typography>
+      </span>
     </StatusChip>
   );
 }
@@ -544,9 +433,10 @@ function SceneDot({ entity, icon, color }: { entity: EntityRef; icon?: IconName;
   const { active: done, start } = useTimed(SCENE_DONE_MS);
 
   return (
-    <Flex
-      as={motion.button}
+    <motion.button
       type="button"
+      className={styles.scene}
+      {...(color ? { style: { '--scene': color } as MotionStyle } : {})}
       aria-label={label}
       title={label}
       disabled={done}
@@ -555,35 +445,22 @@ function SceneDot({ entity, icon, color }: { entity: EntityRef; icon?: IconName;
           void handle.command('trigger');
         }
       }}
-      align="center"
-      justify="center"
-      width={40}
-      height={40}
-      radius="full"
-      position="relative"
-      cursor={done ? 'default' : 'pointer'}
       animate={{ scale: done ? [1, 1.18, 1] : 1 }}
       transition={{ duration: 0.4 }}
-      css={({ palette }) => ({
-        background: done ? palette.success : (color ?? palette.accent),
-        color: palette.accentText,
-        transition: 'background-color 0.25s ease',
-      })}
     >
-      <Box
-        as={motion.span}
-        css={{ display: 'grid' }}
+      <motion.span
+        className={styles.sceneIcon}
         animate={{ opacity: done ? 0 : 1, scale: done ? 0.5 : 1 }}
         transition={{ duration: 0.18 }}
       >
         <Icon name={icon ?? 'lu:palette'} size={18} />
-      </Box>
+      </motion.span>
       {done ? (
-        <Flex align="center" justify="center" position="absolute" css={{ inset: 0 }}>
+        <span className={styles.check}>
           <CheckMark />
-        </Flex>
+        </span>
       ) : null}
-    </Flex>
+    </motion.button>
   );
 }
 
@@ -606,52 +483,21 @@ function PresenceAvatar({ entity, colors }: { entity: EntityRef; colors: readonl
   const label = name ? (where ? `${name}, ${where}` : name) : fallbackName(entity);
 
   return (
-    <Flex
+    <div
+      className={styles.avatar}
       role="img"
       aria-label={label}
       title={label}
       data-active={active}
-      align="center"
-      justify="center"
-      color="accentText"
-      radius="full"
-      width={34}
-      height={34}
-      overflow="hidden"
-      ml={-2.5}
-      position="relative"
-      css={({ palette }) => ({
-        background: picture ? undefined : colorForId(entity, colors),
-        ...(active
-          ? {}
-          : {
-              // Faded by a light overlay on top of its own color, not by opacity: a see-through
-              // avatar would show the one it overlaps underneath.
-              '&::after': {
-                content: '""',
-                position: 'absolute',
-                inset: 0,
-                background: palette.surface,
-                opacity: 0.6,
-              },
-            }),
-      })}
+      data-picture={picture !== undefined}
+      style={{ '--hs-avatar': colorForId(entity, colors) } as CSSProperties}
     >
       {picture ? (
-        <Box
-          as="img"
-          src={picture}
-          alt=""
-          width="100%"
-          height="100%"
-          css={{ objectFit: 'cover' }}
-        />
+        <img className={styles.picture} src={picture} alt="" />
       ) : (
-        <Typography as="span" variant="bodyStrong">
-          {initials(name)}
-        </Typography>
+        <span className={styles.initials}>{initials(name)}</span>
       )}
-    </Flex>
+    </div>
   );
 }
 
@@ -666,11 +512,11 @@ export interface PresenceStackProps {
 /** Overlapping avatar circles for a handful of `person.*` entities. */
 export function PresenceStack({ entities, colors = DEFAULT_PRESENCE_COLORS }: PresenceStackProps) {
   return (
-    <Flex align="center" pl={2.5}>
+    <div className={styles.stack}>
       {entities.map((entity) => (
         <PresenceAvatar key={entity} entity={entity} colors={colors} />
       ))}
-    </Flex>
+    </div>
   );
 }
 
@@ -712,9 +558,9 @@ export function DateChip() {
   const day = now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   return (
     <StatusChip>
-      <Typography as="span" variant="label">
+      <span className={styles.plain}>
         {weekday} · {day}
-      </Typography>
+      </span>
     </StatusChip>
   );
 }
@@ -731,15 +577,9 @@ export function Clock({ format = 'auto' }: ClockProps) {
   const { time, dayPeriod } = formatClock(now, format);
 
   return (
-    <Flex align="flex-start" gap={1}>
-      <Typography as="span" variant="clock" css={{ lineHeight: `${TOP_ROW}px` }}>
-        {time}
-      </Typography>
-      {dayPeriod ? (
-        <Typography as="span" variant="label" css={{ textTransform: 'uppercase' }}>
-          {dayPeriod}
-        </Typography>
-      ) : null}
-    </Flex>
+    <div className={styles.clockGroup}>
+      <span className={styles.clock}>{time}</span>
+      {dayPeriod ? <span className={styles.period}>{dayPeriod}</span> : null}
+    </div>
   );
 }

@@ -61,11 +61,11 @@ test('scrolled, it fades on the left too, and only on the left at the far end', 
   expect(fading()).toEqual(['true', 'false']);
 });
 
-test('it scrolls sideways and takes a Flex’s props', () => {
+test('it scrolls sideways and takes the element’s props', () => {
   metrics(200, 200);
   render(
     <HashsomeProvider client={new LocalClient([])}>
-      <FadeScroll as="ul" gap={2} data-testid="row">
+      <FadeScroll as="ul" data-testid="row">
         <li>a</li>
       </FadeScroll>
     </HashsomeProvider>,

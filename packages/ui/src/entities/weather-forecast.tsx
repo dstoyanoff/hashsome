@@ -1,13 +1,12 @@
-/** @jsxImportSource @emotion/react */
 import type { EntityRef, ForecastPoint, ForecastResult, WeatherEntity } from '@hashsome/core';
-import { Box, Flex, Typography } from 'e-prim';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { IconName } from '../icon-data.ts';
 import { useEntityHandle } from '../hooks.ts';
 import { Icon } from '../icon.tsx';
 import { useDetail } from '../layout/detail-provider.tsx';
 import { SeriesChart } from '../layout/series-chart.tsx';
 import { useWeatherForecast } from '../use-weather-forecast.ts';
+import styles from './weather-forecast.module.css';
 import { WeatherIcon } from './weather-icon.tsx';
 import { compass, CONDITION_LABEL, uvLevel } from './weather-look.ts';
 
@@ -98,30 +97,28 @@ function ConditionIcon({
   size: number;
 }) {
   return (
-    <Flex as="span">
+    <span className={styles.glyph}>
       <WeatherIcon condition={condition} size={size} />
-    </Flex>
+    </span>
   );
 }
 
 /** An arrow that points the way the wind blows (it comes from `bearing`, so it points the other way). */
 function WindArrow({ bearing, size }: { bearing: number; size: number }) {
   return (
-    <Flex as="span" css={{ transform: `rotate(${bearing + 180}deg)` }}>
+    <span className={styles.arrow} style={{ '--turn': `${bearing + 180}deg` } as CSSProperties}>
       <Icon name="lu:arrow-up" size={size} />
-    </Flex>
+    </span>
   );
 }
 
 /** One small reading with an icon in front of it. */
 function Metric({ icon, children }: { icon: ReactNode | IconName; children: ReactNode }) {
   return (
-    <Flex align="center" gap={1} color="textMuted">
+    <span className={styles.metric}>
       {typeof icon === 'string' ? <Icon name={icon as IconName} size={12} /> : icon}
-      <Typography as="span" variant="secondary" color="textMuted" noWrap>
-        {children}
-      </Typography>
-    </Flex>
+      <span className={styles.metricText}>{children}</span>
+    </span>
   );
 }
 
@@ -146,14 +143,10 @@ function WindMetric({ point, unit }: { point: ForecastPoint; unit?: string | und
 /** A tile with a label and a value, for the current readings of the expanded drawer. */
 function Stat({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <Flex direction="column" gap={0.5} border radius="row" px={3} py={2.5}>
-      <Typography as="span" variant="secondary" color="textMuted">
-        {label}
-      </Typography>
-      <Typography as="span" variant="bodyStrong">
-        {children}
-      </Typography>
-    </Flex>
+    <div className={styles.stat}>
+      <span className={styles.statLabel}>{label}</span>
+      <span className={styles.statValue}>{children}</span>
+    </div>
   );
 }
 
@@ -210,39 +203,31 @@ export function WeatherForecast({ entity, expanded: layout }: WeatherForecastPro
   const span = warmest - coldest;
 
   return (
-    <Flex direction="column" gap={5}>
-      <Flex align="center" gap={3}>
+    <div className={styles.forecast}>
+      <div className={styles.now}>
         <ConditionIcon condition={weather?.condition ?? 'unknown'} size={expanded ? 56 : 40} />
-        <Flex direction="column">
-          <Typography as="span" variant="heading">
-            {degrees(weather?.temperature)}
-          </Typography>
-          <Typography as="span" variant="secondary" color="textMuted">
+        <div className={styles.nowText}>
+          <span className={styles.temp}>{degrees(weather?.temperature)}</span>
+          <span className={styles.sub}>
             {CONDITION_LABEL[weather?.condition ?? 'unknown']}
             {reading.humidity !== undefined ? ` · ${Math.round(reading.humidity)}% humidity` : ''}
             {reading.uv !== undefined ? ` · UV ${tenths(reading.uv)} (${uvLevel(reading.uv)})` : ''}
-          </Typography>
+          </span>
           {weather?.windSpeed !== undefined ? (
-            <Flex align="center" gap={1} color="textMuted">
+            <span className={styles.windNow}>
               {weather.windBearing !== undefined ? (
                 <WindArrow bearing={weather.windBearing} size={12} />
               ) : null}
-              <Typography as="span" variant="secondary" color="textMuted">
+              <span className={styles.sub}>
                 Wind {windText(weather.windSpeed, weather.windBearing, weather.windUnit)}
-              </Typography>
-            </Flex>
+              </span>
+            </span>
           ) : null}
-        </Flex>
-      </Flex>
+        </div>
+      </div>
 
       {expanded ? (
-        <Box
-          css={{
-            display: 'grid',
-            gap: 12,
-            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-          }}
-        >
+        <div className={styles.stats}>
           {reading.feels !== undefined ? (
             <Stat label="Feels like">{degrees(reading.feels)}</Stat>
           ) : null}
@@ -268,14 +253,12 @@ export function WeatherForecast({ entity, expanded: layout }: WeatherForecastPro
               {weather?.pressureUnit ? ` ${weather.pressureUnit}` : ''}
             </Stat>
           ) : null}
-        </Box>
+        </div>
       ) : null}
 
       {hours.length > 0 ? (
-        <Flex direction="column" gap={1}>
-          <Typography as="h3" variant="label" color="textMuted" m={0}>
-            Next 24 hours
-          </Typography>
+        <div className={styles.block}>
+          <h3 className={styles.heading}>Next 24 hours</h3>
           {/* The temperature as a curve; hover it for everything about that hour. */}
           <SeriesChart
             samples={hours.flatMap((hour) =>
@@ -296,148 +279,91 @@ export function WeatherForecast({ entity, expanded: layout }: WeatherForecastPro
             height={expanded ? 180 : 88}
           />
           {expanded ? (
-            // The 24 hours in one row, each a column with no box of its own: as many as fit show, and
-            // the rest are a swipe or a scroll away.
-            <Box mt={2}>
-              <Flex css={{ overflowX: 'auto', paddingBottom: 4 }}>
-                {hours.map((hour) => {
-                  const rain = rainText(hour, hourly.result?.precipitationUnit);
-                  return (
-                    <Flex
-                      key={hour.timestamp}
-                      direction="column"
-                      align="center"
-                      gap={1.5}
-                      px={2}
-                      py={1}
-                      css={{ flex: '1 0 84px' }}
-                    >
-                      <Typography as="span" variant="secondary" color="textMuted">
-                        {hourName(hour.timestamp)}
-                      </Typography>
-                      <ConditionIcon condition={hour.condition} size={26} />
-                      <Typography as="span" variant="bodyStrong">
-                        {degrees(hour.temperature)}
-                      </Typography>
-                      <Flex direction="column" align="center" gap={0.5}>
-                        {rain ? <Metric icon="lu:umbrella">{rain}</Metric> : null}
-                        <WindMetric point={hour} unit={windUnit} />
-                        {hour.humidity !== undefined ? (
-                          <Metric icon="lu:droplets">{Math.round(hour.humidity)}%</Metric>
-                        ) : null}
-                        {hour.uvIndex !== undefined && hour.uvIndex > 0 ? (
-                          <Metric icon="lu:sun">UV {tenths(hour.uvIndex)}</Metric>
-                        ) : null}
-                      </Flex>
-                    </Flex>
-                  );
-                })}
-              </Flex>
-            </Box>
+            <div className={styles.hours}>
+              {hours.map((hour) => {
+                const rain = rainText(hour, hourly.result?.precipitationUnit);
+                return (
+                  <div key={hour.timestamp} className={styles.hour}>
+                    <span className={styles.hourName}>{hourName(hour.timestamp)}</span>
+                    <ConditionIcon condition={hour.condition} size={26} />
+                    <span className={styles.hourTemp}>{degrees(hour.temperature)}</span>
+                    <div className={styles.metrics}>
+                      {rain ? <Metric icon="lu:umbrella">{rain}</Metric> : null}
+                      <WindMetric point={hour} unit={windUnit} />
+                      {hour.humidity !== undefined ? (
+                        <Metric icon="lu:droplets">{Math.round(hour.humidity)}%</Metric>
+                      ) : null}
+                      {hour.uvIndex !== undefined && hour.uvIndex > 0 ? (
+                        <Metric icon="lu:sun">UV {tenths(hour.uvIndex)}</Metric>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
-            // A few hours along the curve, with their sky and temperature.
-            <Flex justify="space-between" mt={1}>
+            <div className={styles.along}>
               {along.map((hour) => (
-                <Flex
-                  key={hour.timestamp}
-                  direction="column"
-                  align="center"
-                  gap={1}
-                  grow={1}
-                  css={{ flexBasis: 0 }}
-                >
-                  <Typography as="span" variant="secondary" color="textMuted">
-                    {hourName(hour.timestamp)}
-                  </Typography>
+                <div key={hour.timestamp} className={styles.alongHour}>
+                  <span className={styles.hourName}>{hourName(hour.timestamp)}</span>
                   <ConditionIcon condition={hour.condition} size={18} />
-                  <Typography as="span" variant="label">
-                    {degrees(hour.temperature)}
-                  </Typography>
-                </Flex>
+                  <span className={styles.alongTemp}>{degrees(hour.temperature)}</span>
+                </div>
               ))}
-            </Flex>
+            </div>
           )}
-        </Flex>
+        </div>
       ) : null}
 
       {days.length > 0 ? (
-        <Flex direction="column" gap={2}>
-          <Typography as="h3" variant="label" color="textMuted" m={0}>
-            {days.length} days
-          </Typography>
-          <Flex as="ul" direction="column" gap={1} m={0} p={0} css={{ listStyle: 'none' }}>
+        <div className={styles.days} data-expanded={expanded}>
+          <h3 className={styles.heading}>{days.length} days</h3>
+          <ul className={styles.dayList}>
             {days.map((day) => {
               const rain = rainText(day, daily.result?.precipitationUnit);
               return (
-                <Flex as="li" key={day.timestamp} align="center" gap={3} py={1.5}>
-                  <Typography as="span" variant="body" width={104} noWrap>
-                    {dayName(day.timestamp, now)}
-                  </Typography>
+                <li key={day.timestamp} className={styles.day}>
+                  <span className={styles.dayName}>{dayName(day.timestamp, now)}</span>
                   <ConditionIcon condition={day.condition} size={20} />
-                  <Typography
-                    as="span"
-                    variant="secondary"
-                    color="textMuted"
-                    width={expanded ? 90 : 40}
-                    noWrap
-                  >
-                    {rain ?? ''}
-                  </Typography>
-                  <Typography
-                    as="span"
-                    variant="label"
-                    color="textMuted"
-                    width={36}
-                    css={{ textAlign: 'right' }}
-                  >
-                    {degrees(day.low)}
-                  </Typography>
-                  <Box
-                    grow={1}
-                    height={6}
-                    radius="full"
-                    background="surfaceRaised"
-                    position="relative"
-                  >
+                  <span className={styles.dayRain}>{rain ?? ''}</span>
+                  <span className={styles.low}>{degrees(day.low)}</span>
+                  <div className={styles.range}>
                     {span > 0 && day.low !== undefined && day.temperature !== undefined ? (
-                      <Box
-                        position="absolute"
-                        height={6}
-                        radius="full"
-                        background="accent"
-                        css={{
-                          left: `${((day.low - coldest) / span) * 100}%`,
-                          width: `${((day.temperature - day.low) / span) * 100}%`,
-                        }}
+                      <div
+                        className={styles.rangeBar}
+                        style={
+                          {
+                            '--from': `${((day.low - coldest) / span) * 100}%`,
+                            '--width': `${((day.temperature - day.low) / span) * 100}%`,
+                          } as CSSProperties
+                        }
                       />
                     ) : null}
-                  </Box>
-                  <Typography as="span" variant="label" width={36}>
-                    {degrees(day.temperature)}
-                  </Typography>
+                  </div>
+                  <span className={styles.high}>{degrees(day.temperature)}</span>
                   {expanded ? (
-                    <Flex gap={4} css={{ flex: 'none' }}>
-                      <Box width={84}>
+                    <div className={styles.extras}>
+                      <div className={styles.wind}>
                         <WindMetric point={day} unit={daily.result?.windUnit} />
-                      </Box>
-                      <Box width={64}>
+                      </div>
+                      <div className={styles.humidity}>
                         {day.humidity !== undefined ? (
                           <Metric icon="lu:droplets">{Math.round(day.humidity)}%</Metric>
                         ) : null}
-                      </Box>
-                      <Box width={72}>
+                      </div>
+                      <div className={styles.uv}>
                         {day.uvIndex !== undefined ? (
                           <Metric icon="lu:sun">UV {tenths(day.uvIndex)}</Metric>
                         ) : null}
-                      </Box>
-                    </Flex>
+                      </div>
+                    </div>
                   ) : null}
-                </Flex>
+                </li>
               );
             })}
-          </Flex>
-        </Flex>
+          </ul>
+        </div>
       ) : null}
-    </Flex>
+    </div>
   );
 }

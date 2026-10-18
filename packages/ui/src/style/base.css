@@ -1,0 +1,79 @@
+/* What every page of a dashboard starts from: the page's colors and font from the theme, border-box sizing, a reset of
+   buttons and inputs that any rule of a component's own beats, and thin scrollbars in the theme's colors. */
+
+/* Below any rule a component or a project writes: a layer, so it never wins by specificity. */
+@layer hs-shell, hs-base;
+
+@layer hs-base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  /* The page scrolls inside itself, never the document, so an overscroll has nothing to show: it is not left to pull the
+     page about, or to browsers that take a sideways one for "back". */
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+
+  body {
+    background: var(--hs-bg);
+    color: var(--hs-text);
+    font-family: var(--hs-font-family);
+  }
+
+  /* `?motion=reduced` (see `HashsomeProvider`): no CSS transitions or animations, except the ones that are a cue the user
+     waits for (a hold's progress line, marked `data-keep-motion`). */
+  html[data-motion='reduced'] *:not([data-keep-motion]),
+  html[data-motion='reduced'] *:not([data-keep-motion])::before,
+  html[data-motion='reduced'] *:not([data-keep-motion])::after {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Buttons and inputs start borderless; one that wants a border says so. */
+  button,
+  input {
+    border: 0;
+  }
+
+  /* Scrollbars: thin, no track, in the theme's colors. The track is wider than the thumb and the thumb has a transparent
+     border around it, so there is air between the bar and the content. (Chrome and Safari take the `::-webkit-scrollbar`
+     rules; Firefox, which has no equivalent for the gap, gets a thin bar from the standard properties. Setting those in
+     Chrome would turn the webkit rules off, hence the `@supports`.) */
+  ::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--hs-border);
+    background-clip: padding-box;
+    border: 5px solid transparent;
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--hs-line);
+    background-clip: padding-box;
+  }
+
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--hs-border) transparent;
+    }
+  }
+}

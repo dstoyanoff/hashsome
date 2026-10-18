@@ -1,13 +1,12 @@
-/** @jsxImportSource @emotion/react */
 import type { EntityRef } from '@hashsome/core';
-import { Flex, Typography } from 'e-prim';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { THEME_CHOICES, useDebug, type ThemeChoice } from '../debug.ts';
 import { Icon } from '../icon.tsx';
 import type { ThemeMode } from '../provider.tsx';
 import { ChipRow } from './drawer-controls.tsx';
 import { PlainButton } from './plain-button.tsx';
 import { NAV_RAIL } from '../theme/grid.ts';
+import styles from './debug-menu.module.css';
 
 /** The button's size, in px. */
 const BUTTON = 40;
@@ -43,12 +42,10 @@ function configuredChoice(configured: ThemeMode | undefined): ThemeChoice | unde
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <Flex direction="column" gap={2}>
-      <Typography as="span" variant="label" color="textMuted">
-        {label}
-      </Typography>
+    <div className={styles.row}>
+      <span className={styles.rowLabel}>{label}</span>
       {children}
-    </Flex>
+    </div>
   );
 }
 
@@ -120,42 +117,14 @@ export function DebugMenu({
   const theme = debug.themeChoice ?? configuredChoice(configured);
 
   return (
-    <Flex
+    <div
       ref={root}
+      className={styles.menu}
       data-debug-menu
-      // Over the page and its navigation but under a drawer and its scrim, so opening a drawer covers it
-      // instead of leaving it floating over the drawer.
-      zIndex="dropdown"
-      // As big as the button, whatever the page's own rules say: the document shell makes every `div`
-      // that is a child of `body` at least as tall as the window (`body > div { min-height: 100% }`),
-      // which this is, and the button would sit at the top of it.
-      css={{
-        position: 'fixed',
-        left: INSET,
-        bottom: INSET,
-        width: BUTTON,
-        height: BUTTON,
-        minHeight: 0,
-        // Clear of a phone's home indicator and rounded corners (a wall display has none).
-        '@supports (padding-bottom: env(safe-area-inset-bottom))': {
-          left: `calc(${INSET}px + env(safe-area-inset-left, 0px))`,
-          bottom: `calc(${INSET}px + env(safe-area-inset-bottom, 0px))`,
-        },
-      }}
+      style={{ '--button': `${BUTTON}px`, '--inset': `${INSET}px` } as CSSProperties}
     >
       {open ? (
-        <Flex
-          role="dialog"
-          aria-label="Debug"
-          direction="column"
-          gap={4}
-          background="surface"
-          radius="row"
-          shadow="drawer"
-          p={4}
-          width={288}
-          css={{ position: 'absolute', left: 0, bottom: 52, boxSizing: 'border-box' }}
-        >
+        <div className={styles.popover} role="dialog" aria-label="Debug">
           <Row label="Show grid">
             <ChipRow
               options={ON_OFF}
@@ -171,9 +140,7 @@ export function DebugMenu({
                 onChange={(value) => toggleFullscreen(value === 'on')}
               />
             ) : (
-              <Typography as="span" variant="secondary" color="textMuted">
-                Not available in this browser.
-              </Typography>
+              <span className={styles.note}>Not available in this browser.</span>
             )}
           </Row>
           <Row label="Theme">
@@ -186,24 +153,17 @@ export function DebugMenu({
               onChange={(value) => debug.setThemeChoice(value as ThemeChoice)}
             />
           </Row>
-        </Flex>
+        </div>
       ) : null}
       <PlainButton
+        className={styles.button}
         aria-label="Debug menu"
         title="Debug menu"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        center
-        radius="full"
-        background="surface"
-        color="textMuted"
-        shadow="dock"
-        width={BUTTON}
-        height={BUTTON}
-        css={{ flex: 'none' }}
       >
         <Icon name="lu:bug" size={18} />
       </PlainButton>
-    </Flex>
+    </div>
   );
 }

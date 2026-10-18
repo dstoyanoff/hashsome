@@ -1,11 +1,10 @@
+/// <reference types="vite/client" />
 import {
   RemoteClient,
   type Client,
   type EntityRef,
   type RemoteClientOptions,
 } from '@hashsome/core';
-import { Global, ThemeProvider as EmotionThemeProvider, type Theme } from '@emotion/react';
-import { ThemeProvider } from 'e-prim';
 import { MotionGlobalConfig } from 'motion/react';
 import {
   createContext,
@@ -28,8 +27,12 @@ import { DebugMenu } from './layout/debug-menu.tsx';
 import { DetailProvider } from './layout/detail-provider.tsx';
 import { EntityDrawer } from './layout/entity-drawer.tsx';
 import { IdleReturnContext } from './layout/use-idle-return.ts';
-import { UNITS_PER_SPACE, type Density } from './theme/density.ts';
-import { globalStyles } from './theme/global-styles.ts';
+import { themeCss } from './style/variables.ts';
+import { useThemeStyle } from './style/use-theme-style.ts';
+import { type Density } from './theme/density.ts';
+import { DensityContext } from './theme/use-density.ts';
+import { ThemeContext } from './theme/use-theme.ts';
+import './style/base.css';
 import { applyThemeOverrides, densityTokens, type ThemeOverrides } from './theme/overrides.ts';
 import { isDarkAt, msUntilSwitch, sunIsDown, type ThemeSchedule } from './theme/schedule.ts';
 import {
@@ -347,17 +350,10 @@ export function HashsomeProvider({
     instance,
   );
 
-  // Memoized: Emotion recomputes the merged theme (and every `css` prop) when the function changes.
-  const withDensity = useMemo(
-    () =>
-      (outer: Theme): Theme => ({ ...outer, density: densityTokens(density, overrides) }),
-    [density, overrides],
-  );
-
   useGoogleFont(font);
   const resolvedTheme = useMemo(
-    () => ({
-      ...withFontFamily(
+    () =>
+      withFontFamily(
         applyThemeOverrides(
           themeMode.resolved === 'dark' ? darkTheme : lightTheme,
           themeMode.resolved,
@@ -365,10 +361,12 @@ export function HashsomeProvider({
         ),
         font,
       ),
-      // The spacing unit follows density, so `gap={3}` is always one space and the rest scale.
-      spacing: densityTokens(density, overrides).space / UNITS_PER_SPACE,
-    }),
-    [themeMode.resolved, font, overrides, density],
+    [themeMode.resolved, font, overrides],
+  );
+
+  const densityValue = useMemo(() => densityTokens(density, overrides), [density, overrides]);
+  useThemeStyle(
+    useMemo(() => themeCss(resolvedTheme, densityValue), [resolvedTheme, densityValue]),
   );
 
   useEffect(() => {
@@ -379,9 +377,8 @@ export function HashsomeProvider({
   return (
     <HashsomeContext.Provider value={instance}>
       <ThemeModeContext.Provider value={themeMode}>
-        <ThemeProvider theme={resolvedTheme}>
-          <EmotionThemeProvider theme={withDensity}>
-            <Global styles={globalStyles} />
+        <DensityContext.Provider value={densityValue}>
+          <ThemeContext.Provider value={resolvedTheme}>
             <DebugContext.Provider value={debugState}>
               <IdleReturnContext.Provider value={idleReturn}>
                 <DetailProvider>
@@ -391,8 +388,8 @@ export function HashsomeProvider({
                 </DetailProvider>
               </IdleReturnContext.Provider>
             </DebugContext.Provider>
-          </EmotionThemeProvider>
-        </ThemeProvider>
+          </ThemeContext.Provider>
+        </DensityContext.Provider>
       </ThemeModeContext.Provider>
     </HashsomeContext.Provider>
   );

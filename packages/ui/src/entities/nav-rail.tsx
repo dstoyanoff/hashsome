@@ -1,12 +1,8 @@
-/** @jsxImportSource @emotion/react */
-import { Flex } from 'e-prim';
-import { NavLink } from 'react-router';
 import type { IconName } from '../icon-data.ts';
-import { Icon } from '../icon.tsx';
-import { isInstalledApp } from '../layout/installed-app.ts';
 import { usePageInset } from '../layout/page.tsx';
 import { NAV_RAIL } from '../theme/grid.ts';
-import { AttentionDot } from './attention-dot.tsx';
+import { NavItemLink } from './nav-item.tsx';
+import styles from './nav-rail.module.css';
 import { useIdleReturn, useIdleReturnDefault } from '../layout/use-idle-return.ts';
 
 export interface NavItem {
@@ -45,49 +41,10 @@ export function NavRail({ items, base, idleReturn }: NavRailProps) {
   usePageInset('left', NAV_RAIL);
 
   return (
-    <Flex
-      as="nav"
-      aria-label="Pages"
-      direction="column"
-      align="center"
-      gap={2.5}
-      background="rail"
-      width={NAV_RAIL}
-      py={6}
-      position="fixed"
-      zIndex="nav"
-      css={{ top: 0, bottom: 0, left: 0 }}
-    >
+    <nav aria-label="Pages" className={styles.rail}>
       {items.map((item) => (
-        <NavLink
-          // In an installed app, switching pages replaces the one before it: there is no browser to go back with, and
-          // the system's swipe from the edge of the screen would otherwise walk back through every page visited.
-          replace={isInstalledApp()}
-          key={item.to}
-          to={item.to ? `${base}/${item.to}` : base}
-          end
-          aria-label={item.attention ? `${item.label}, needs attention` : item.label}
-          title={item.label}
-        >
-          {({ isActive }) => (
-            <Flex
-              as="span"
-              align="center"
-              justify="center"
-              width={44}
-              height={44}
-              radius="chrome"
-              cursor="pointer"
-              position="relative"
-              color={isActive ? 'accentText' : 'line'}
-              {...(isActive ? { background: 'accent' } : {})}
-            >
-              <Icon name={item.icon} size={22} />
-              {item.attention ? <AttentionDot level={item.attention} /> : null}
-            </Flex>
-          )}
-        </NavLink>
+        <NavItemLink key={item.to} item={item} base={base} />
       ))}
-    </Flex>
+    </nav>
   );
 }

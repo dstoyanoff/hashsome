@@ -1,4 +1,3 @@
-/** @jsxImportSource @emotion/react */
 import type { WeatherCondition } from '@hashsome/core';
 import { ICON_NODES } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';

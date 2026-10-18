@@ -1,0 +1,90 @@
+/* One class per variant of the type scale (`TYPOGRAPHY_KEYS` in `names.ts`: keep the two in sync), written in terms of the theme's
+   custom properties, which a component's own stylesheet takes with `composes: label from '../style/type.module.css'`. */
+
+.default {
+  font-family: var(--hs-font-family);
+  font-size: var(--hs-t-default-size);
+  font-weight: var(--hs-t-default-weight);
+  line-height: var(--hs-t-default-line);
+  letter-spacing: var(--hs-t-default-spacing);
+}
+
+.label {
+  font-family: var(--hs-font-family);
+  font-size: var(--hs-t-label-size);
+  font-weight: var(--hs-t-label-weight);
+  line-height: var(--hs-t-label-line);
+  letter-spacing: var(--hs-t-label-spacing);
+}
+
+.secondary {
+  font-family: var(--hs-font-family);
+  font-size: var(--hs-t-secondary-size);
+  font-weight: var(--hs-t-secondary-weight);
+  line-height: var(--hs-t-secondary-line);
+  letter-spacing: var(--hs-t-secondary-spacing);
+}
+
+.heading {
+  font-family: var(--hs-font-family);
+  font-size: var(--hs-t-heading-size);
+  font-weight: var(--hs-t-heading-weight);
+  line-height: var(--hs-t-heading-line);
+  letter-spacing: var(--hs-t-heading-spacing);
+}
+
+.body {
+  font-family: var(--hs-font-family);
+  font-size: var(--hs-t-body-size);
+  font-weight: var(--hs-t-body-weight);
+  line-height: var(--hs-t-body-line);
+  letter-spacing: var(--hs-t-body-spacing);
+}
+
+.bodyStrong {
+  font-family: var(--hs-font-family);
+  font-size: var(--hs-t-body-strong-size);
+  font-weight: var(--hs-t-body-strong-weight);
+  line-height: var(--hs-t-body-strong-line);
+  letter-spacing: var(--hs-t-body-strong-spacing);
+}
+
+.eyebrow {
+  font-family: var(--hs-font-family);
+  font-size: var(--hs-t-eyebrow-size);
+  font-weight: var(--hs-t-eyebrow-weight);
+  line-height: var(--hs-t-eyebrow-line);
+  letter-spacing: var(--hs-t-eyebrow-spacing);
+}
+
+.stat {
+  font-family: var(--hs-font-family);
+  font-size: var(--hs-t-stat-size);
+  font-weight: var(--hs-t-stat-weight);
+  line-height: var(--hs-t-stat-line);
+  letter-spacing: var(--hs-t-stat-spacing);
+}
+
+.title {
+  font-family: var(--hs-font-family);
+  font-size: var(--hs-t-title-size);
+  font-weight: var(--hs-t-title-weight);
+  line-height: var(--hs-t-title-line);
+  letter-spacing: var(--hs-t-title-spacing);
+}
+
+.roomTitle {
+  font-family: var(--hs-font-family);
+  font-size: var(--hs-t-room-title-size);
+  font-weight: var(--hs-t-room-title-weight);
+  line-height: var(--hs-t-room-title-line);
+  letter-spacing: var(--hs-t-room-title-spacing);
+}
+
+.clock {
+  font-family: var(--hs-font-family);
+  font-size: var(--hs-t-clock-size);
+  font-weight: var(--hs-t-clock-weight);
+  line-height: var(--hs-t-clock-line);
+  letter-spacing: var(--hs-t-clock-spacing);
+}

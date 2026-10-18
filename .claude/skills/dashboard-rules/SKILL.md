@@ -168,9 +168,9 @@ tabler.io/icons.
 - To change how everything looks (a color, a radius, a type size, the spacing), set `OVERRIDES` in
   `example/app/root.tsx` (`HashsomeProvider`'s `overrides`, partial, per light/dark for colors) —
   never edit `packages/ui` for that.
-- `e-prim` (`Box`, `Flex`, `Typography`) is part of the project's own install, like `@hashsome/ui`: use
-  it for structural layout the `@hashsome/ui` primitives don't cover, with its typed props or the `css`
-  prop (add `/** @jsxImportSource @emotion/react */` to the file), never a raw `style` object.
+- For structural layout the `@hashsome/ui` primitives don't cover, a dashboard writes a small CSS Module
+  of its own (`page.module.css` beside the page) in the theme's custom properties (`var(--hs-surface)`,
+  `var(--hs-radius-card)`, `calc(var(--hs-unit) * 3)` for spacing): see `example/dashboards/home/pages/media.module.css`.
 - A dashboard folder has no `package.json` of its own — it never adds or changes a dependency.
   `example/package.json` (exact versions, no `^`/`~`, per the root `.npmrc`) covers the whole
   project; if a dashboard genuinely needs a new dependency, that's itself a sign the work belongs

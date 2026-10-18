@@ -1,0 +1,90 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 4);
+  min-height: 0;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 0.5);
+  color: var(--hs-text);
+}
+
+.titles[data-ready='false'] {
+  color: var(--hs-text-muted);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--hs-unit) * 2);
+  max-width: 100%;
+}
+
+.title {
+  composes: title from '../style/type.module.css';
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sub {
+  composes: body from '../style/type.module.css';
+  overflow: hidden;
+  color: var(--hs-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.speakers {
+  display: flex;
+  justify-content: center;
+  margin-top: -4px;
+}
+
+/* Five equal slots, so play/pause stays in the middle whichever side buttons there are. */
+.transport {
+  display: grid;
+  grid-template-columns: repeat(5, var(--hs-icon-circle));
+  gap: var(--hs-space);
+  justify-content: center;
+}
+
+.volume {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.mute {
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: var(--hs-text-muted);
+}
+
+.mute[aria-pressed='true'] {
+  color: var(--hs-accent);
+}
+
+.percent {
+  composes: secondary from '../style/type.module.css';
+  flex: none;
+  min-width: 32px;
+  color: var(--hs-text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

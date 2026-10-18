@@ -1,0 +1,406 @@
+.browser {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 3);
+  min-height: 0;
+}
+
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.trigger {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.rule {
+  width: 1px;
+  height: 20px;
+  background: var(--hs-border);
+}
+
+/* No circle behind it: it is a mark at the end of the row, the size of a touch target. */
+.searchButton {
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--search-height);
+  height: var(--search-height);
+  color: var(--hs-text-muted);
+}
+
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.heading {
+  composes: heading from '../style/type.module.css';
+  flex-grow: 1;
+  margin: 0;
+}
+
+/* Fixed height: when the list takes all the room, the search keeps its size and the list scrolls. */
+.search {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2);
+  height: var(--search-height);
+  padding: 0 calc(var(--hs-unit) * 3);
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+  color: var(--hs-text-muted);
+}
+
+.input {
+  composes: body from '../style/type.module.css';
+  flex-grow: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--hs-text);
+  outline: none;
+}
+
+/* A search field gets a clear button of the browser's own in some browsers, and this one has its own (and a button to close it), so
+   the browser's is not drawn. */
+.input::-webkit-search-cancel-button,
+.input::-webkit-search-decoration {
+  display: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.clear {
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 3);
+}
+
+/* With the search icon in it, as tall as the field that replaces it, so the list below stays put. */
+.tabs[data-on-demand='true'] {
+  min-height: var(--search-height);
+}
+
+.tabsMain {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 3);
+}
+
+.error {
+  composes: body from '../style/type.module.css';
+  margin: 0;
+  color: var(--hs-danger);
+}
+
+.message {
+  composes: body from '../style/type.module.css';
+  margin: 0;
+  color: var(--hs-text-muted);
+}
+
+/* The room the theater row takes, whatever it holds: it asks for full-size cards and gives way when there is less, and is a size
+   container so the cards can shrink to fit. What stands in for the row while it loads, or when it is empty, takes the same room, so the
+   library does not change height. */
+.stage {
+  flex: 0 1 272px;
+  min-height: 192px;
+  container-type: size;
+}
+
+.messageStage {
+  composes: stage;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* One row of large cards that scrolls sideways, with a thin quiet scrollbar. It is a size container that asks for room for full-size
+   cards and gives way when there is less, and the cards then shrink to fit instead of being cut off. */
+.theater {
+  composes: stage;
+  gap: calc(var(--hs-unit) * 4);
+  margin: 0;
+  padding: 0 0 calc(var(--hs-unit) * 2);
+  list-style: none;
+  scroll-snap-type: x proximity;
+}
+
+.card {
+  flex: none;
+  scroll-snap-align: start;
+}
+
+.loading {
+  composes: stage;
+  display: flex;
+  gap: calc(var(--hs-unit) * 4);
+  margin: 0;
+  padding: 0 0 calc(var(--hs-unit) * 2);
+  overflow: hidden;
+  list-style: none;
+}
+
+.loadingCard {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 2);
+  width: var(--card-size);
+}
+
+.loadingText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hs-unit);
+  padding: 0 var(--hs-unit);
+}
+
+.loadingRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hs-unit);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.loadingRow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 3);
+  padding: calc(var(--hs-unit) * 1.5) calc(var(--hs-unit) * 2);
+}
+
+.loadingRowText {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: calc(var(--hs-unit) * 1.5);
+}
+
+/* Rows scroll within the library, so what is above them (search, tabs) stays in view when the room is short; with room to spare it is
+   just as tall as its rows. */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hs-unit);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  list-style: none;
+  touch-action: pan-y;
+}
+
+.rows > li {
+  flex: none;
+}
+
+.summary {
+  composes: secondary from '../style/type.module.css';
+  margin: 0;
+  padding: calc(var(--hs-unit) * 2);
+  color: var(--hs-text-muted);
+}
+
+.pill {
+  composes: body from '../style/type.module.css';
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--hs-unit) * 1.5);
+  height: var(--chip-height);
+  padding: 0 calc(var(--hs-unit) * 3);
+  border: 0;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+  color: var(--hs-text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pill[data-primary='true'] {
+  background: var(--hs-accent);
+  color: var(--hs-accent-text);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.main {
+  align-items: center;
+  flex-grow: 1;
+  gap: calc(var(--hs-unit) * 3);
+  min-width: 0;
+  padding: calc(var(--hs-unit) * 1.5) calc(var(--hs-unit) * 2);
+  border-radius: var(--hs-radius-row);
+}
+
+.main:disabled {
+  cursor: default;
+}
+
+.main:hover:not(:disabled) {
+  background: var(--hs-surface-raised);
+}
+
+.art {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: var(--hs-radius-small);
+  background: var(--hs-surface-raised);
+  color: var(--hs-text-muted);
+}
+
+.names {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.title {
+  composes: bodyStrong from '../style/type.module.css';
+}
+
+.title[data-active='true'] {
+  color: var(--hs-accent);
+}
+
+.subtitle {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}
+
+/* The room the other buttons take is kept, empty, so the text and the chevron line up with the rows around it. */
+.hidden {
+  visibility: hidden;
+}
+
+.opens {
+  display: grid;
+  flex: none;
+  color: var(--hs-text-muted);
+}
+
+/* An item as a large card for the theater layout: big artwork (round for an artist), then the title and subtitle. */
+.big {
+  position: relative;
+  width: var(--card-size);
+}
+
+.bigMain {
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 2);
+  width: 100%;
+}
+
+.bigMain:disabled {
+  cursor: default;
+}
+
+.bigArt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--card-size);
+  height: var(--card-size);
+  overflow: hidden;
+  border-radius: var(--hs-radius-card);
+  background: var(--hs-surface-raised);
+  color: var(--hs-text-muted);
+}
+
+.bigArt[data-kind='artist'] {
+  border-radius: var(--hs-radius-full);
+}
+
+.bigNames {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0 var(--hs-unit);
+}
+
+.bigTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--hs-unit);
+  min-width: 0;
+}
+
+.bigTitle > .title {
+  min-width: 0;
+}
+
+/* Over the artwork's lower right corner: add to the queue, and play all of an album or playlist. */
+.over {
+  position: absolute;
+  top: calc(var(--card-size) - 54px);
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: var(--hs-unit);
+}
+
+/* Over an item's artwork while the player has not answered a request to play it. The artwork is dimmed by a layer of the page's own
+   color, under the spinner. */
+.waiting {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hs-text);
+}
+
+.waiting::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--hs-bg);
+  opacity: 0.6;
+}
+
+.spin {
+  position: relative;
+  display: grid;
+}

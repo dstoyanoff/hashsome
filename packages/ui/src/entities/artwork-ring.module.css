@@ -1,0 +1,67 @@
+/* The room the ring has: `--size` tall when the column has no more to give, taller when it has (a card stretched beside other cards),
+   and shorter when it has less (never below the minimum). The ring in it is a square as big as that room allows, its width or its
+   height, whichever is less. */
+.room {
+  display: flex;
+  flex: 1 1 var(--size);
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  container-type: size;
+}
+
+.ring {
+  position: relative;
+  flex: none;
+  aspect-ratio: 1;
+  width: var(--size);
+}
+
+/* A browser that does not know container units keeps the first, fixed size. */
+@supports (width: 1cqw) {
+  .ring {
+    width: min(100cqw, 100cqh, var(--max-size));
+  }
+}
+
+.track {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+
+.track[role='slider'] {
+  cursor: pointer;
+}
+
+.base {
+  stroke: var(--hs-border);
+}
+
+.progress {
+  stroke: var(--hs-accent);
+}
+
+.outline {
+  position: absolute;
+  inset: 9%;
+  border: var(--hs-border-width) solid var(--hs-border);
+  border-radius: var(--hs-radius-full);
+}
+
+.art {
+  position: absolute;
+  inset: 14%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+  color: var(--hs-text-muted);
+  cursor: inherit;
+}
+
+.art[role='button'] {
+  cursor: pointer;
+}

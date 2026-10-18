@@ -1,0 +1,355 @@
+/* The bar is a pill in one row; in two rows (a narrow space) the artwork, "title · artist" and the time are on top, and under them the
+   buttons share the whole width, all of one size, and while the volume slider is open it has the row to itself, with only the button
+   that closes it. It is as tall as two regular tiles and the gap between them, so it sits in a grid of tiles. A line break between
+   the rows comes from an empty item that fills a line of its own. */
+.wrap {
+  display: flex;
+  width: 100%;
+  container-type: inline-size;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 3);
+  min-width: 0;
+  min-height: var(--hs-tile-height);
+  padding-right: calc(var(--hs-unit) * 3);
+  padding-left: calc(var(--hs-unit) * 2.25);
+  overflow: hidden;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface);
+}
+
+/* In one row the volume slider takes the track's place; in two it has its own row. */
+.card[data-volume-open='true'] > [data-part='track'],
+.card[data-volume-open='true'] > [data-part='time'] {
+  display: none;
+}
+
+.ring {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--hs-icon-circle);
+  height: var(--hs-icon-circle);
+  padding: 0;
+  border: 0;
+  border-radius: var(--hs-radius-full);
+  background: none;
+}
+
+button.ring {
+  cursor: pointer;
+}
+
+.ringSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.ringTrack {
+  stroke: var(--hs-border);
+}
+
+.ringProgress {
+  stroke: var(--hs-accent);
+}
+
+.artwork {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  overflow: hidden;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+  color: var(--hs-text-muted);
+}
+
+.volume {
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 2);
+  min-width: 0;
+}
+
+.mute {
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--hs-text-muted);
+}
+
+.mute[aria-pressed='true'] {
+  color: var(--hs-accent);
+}
+
+.slider {
+  display: flex;
+  flex-grow: 1;
+  min-width: 0;
+  transform-origin: left center;
+}
+
+.percent {
+  composes: secondary from '../style/type.module.css';
+  flex: none;
+  min-width: 32px;
+  color: var(--hs-text-muted);
+  text-align: right;
+}
+
+.track {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.track[data-ready='false'] {
+  color: var(--hs-text-muted);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 1.5);
+  min-width: 0;
+}
+
+.title {
+  composes: label from '../style/type.module.css';
+  min-width: 0;
+}
+
+.artist {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}
+
+.shuffle {
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--hs-text-muted);
+}
+
+.shuffle[aria-pressed='true'] {
+  color: var(--hs-accent);
+}
+
+.time {
+  composes: secondary from '../style/type.module.css';
+  flex: none;
+  color: var(--hs-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tools,
+.transport {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 3);
+}
+
+.card[data-rows='2'] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  column-gap: calc(var(--hs-unit) * 2.5);
+  row-gap: 0;
+  min-height: calc(2 * (var(--hs-icon-circle) + var(--hs-unit)) + var(--hs-space));
+  padding-top: calc(var(--hs-unit) * 2.5);
+  padding-bottom: calc(var(--hs-unit) * 2.5);
+  border-radius: var(--hs-radius-card);
+}
+
+.card[data-rows='2']::before {
+  content: '';
+  order: 1;
+  flex-basis: 100%;
+  height: 0;
+}
+
+.card[data-rows='2'] > [data-part='track'] {
+  flex: 1 1 0;
+  flex-direction: row;
+  align-items: baseline;
+  gap: calc(var(--hs-unit) * 1.5);
+  min-width: 0;
+}
+
+/* The title and the artist share the line and shorten, with an ellipsis, before they run into the time; the artist follows the title after a dot. */
+.card[data-rows='2'] > [data-part='track'] > :nth-child(1) {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* The title is what gives way, not the shuffle button beside it. */
+.card[data-rows='2'] > [data-part='track'] > :nth-child(1) > :first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card[data-rows='2'] > [data-part='track'] > :nth-child(2) {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.card[data-rows='2'] > [data-part='track'] > :nth-child(2)::before {
+  content: '·';
+  margin-right: calc(var(--hs-unit) * 1.5);
+}
+
+.card[data-rows='2'] [data-part='tools'],
+.card[data-rows='2'] [data-part='transport'] {
+  display: contents;
+}
+
+.card[data-rows='2'] [data-part='tools'] > button,
+.card[data-rows='2'] [data-part='transport'] > button {
+  order: 2;
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  height: 34px;
+  margin-top: calc(var(--hs-unit) * 2.5);
+}
+
+.card[data-rows='2'] [data-part='transport'] > button {
+  order: 4;
+}
+
+.card[data-rows='2'] > [data-part='volume'] {
+  order: 3;
+  flex: 1 1 0;
+  min-width: 0;
+  margin-top: calc(var(--hs-unit) * 2.5);
+}
+
+.card[data-rows='2'][data-volume-open='true'] > [data-part='track'],
+.card[data-rows='2'][data-volume-open='true'] > [data-part='time'] {
+  display: flex;
+}
+
+/* The slider has the row: only the button that closes it stays, a circle beside it. */
+.card[data-rows='2'][data-volume-open='true'] [data-part='tools'] > button:nth-of-type(n + 2),
+.card[data-rows='2'][data-volume-open='true'] [data-part='transport'] > button {
+  display: none;
+}
+
+.card[data-rows='2'][data-volume-open='true'] [data-part='tools'] > button:first-of-type {
+  flex: none;
+  width: 34px;
+}
+
+@container (max-width: 559px) {
+  .card[data-rows='auto'] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    align-content: center;
+    column-gap: calc(var(--hs-unit) * 2.5);
+    row-gap: 0;
+    min-height: calc(2 * (var(--hs-icon-circle) + var(--hs-unit)) + var(--hs-space));
+    padding-top: calc(var(--hs-unit) * 2.5);
+    padding-bottom: calc(var(--hs-unit) * 2.5);
+    border-radius: var(--hs-radius-card);
+  }
+
+  .card[data-rows='auto']::before {
+    content: '';
+    order: 1;
+    flex-basis: 100%;
+    height: 0;
+  }
+
+  .card[data-rows='auto'] > [data-part='track'] {
+    flex: 1 1 0;
+    flex-direction: row;
+    align-items: baseline;
+    gap: calc(var(--hs-unit) * 1.5);
+    min-width: 0;
+  }
+
+  /* The title and the artist share the line and shorten, with an ellipsis, before they run into the time; the artist follows the title after a dot. */
+  .card[data-rows='auto'] > [data-part='track'] > :nth-child(1) {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  /* The title is what gives way, not the shuffle button beside it. */
+  .card[data-rows='auto'] > [data-part='track'] > :nth-child(1) > :first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card[data-rows='auto'] > [data-part='track'] > :nth-child(2) {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .card[data-rows='auto'] > [data-part='track'] > :nth-child(2)::before {
+    content: '·';
+    margin-right: calc(var(--hs-unit) * 1.5);
+  }
+
+  .card[data-rows='auto'] [data-part='tools'],
+  .card[data-rows='auto'] [data-part='transport'] {
+    display: contents;
+  }
+
+  .card[data-rows='auto'] [data-part='tools'] > button,
+  .card[data-rows='auto'] [data-part='transport'] > button {
+    order: 2;
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    height: 34px;
+    margin-top: calc(var(--hs-unit) * 2.5);
+  }
+
+  .card[data-rows='auto'] [data-part='transport'] > button {
+    order: 4;
+  }
+
+  .card[data-rows='auto'] > [data-part='volume'] {
+    order: 3;
+    flex: 1 1 0;
+    min-width: 0;
+    margin-top: calc(var(--hs-unit) * 2.5);
+  }
+
+  .card[data-rows='auto'][data-volume-open='true'] > [data-part='track'],
+  .card[data-rows='auto'][data-volume-open='true'] > [data-part='time'] {
+    display: flex;
+  }
+
+  /* The slider has the row: only the button that closes it stays, a circle beside it. */
+  .card[data-rows='auto'][data-volume-open='true'] [data-part='tools'] > button:nth-of-type(n + 2),
+  .card[data-rows='auto'][data-volume-open='true'] [data-part='transport'] > button {
+    display: none;
+  }
+
+  .card[data-rows='auto'][data-volume-open='true'] [data-part='tools'] > button:first-of-type {
+    flex: none;
+    width: 34px;
+  }
+}

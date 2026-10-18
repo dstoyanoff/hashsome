@@ -1,7 +1,7 @@
-/** @jsxImportSource @emotion/react */
-import { Box } from 'e-prim';
-import { useRef, type KeyboardEvent, type PointerEvent } from 'react';
+import { useRef, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
+import { cx } from '../style/cx.ts';
 import type { SeekHold } from './media-seek.ts';
+import styles from './seek-line.module.css';
 
 /** The thin progress line along the bottom of the media bar. A tall invisible strip around it is
  * the touch target; with `seekable` a press or drag on it seeks, and the arrow keys nudge it. */
@@ -37,10 +37,9 @@ export function SeekLine({
   };
 
   return (
-    <Box
-      position="absolute"
-      height={16}
-      cursor={seekable ? 'pointer' : 'default'}
+    <div
+      className={cx(styles.line, seekable && styles.seekable)}
+      style={{ '--fraction': `${fraction * 100}%` } as CSSProperties}
       {...(seekable
         ? {
             role: 'slider',
@@ -80,31 +79,6 @@ export function SeekLine({
       aria-valuemin={0}
       aria-valuemax={Math.round(duration)}
       aria-valuenow={Math.round(shown)}
-      css={({ palette }) => ({
-        left: 0,
-        right: 0,
-        bottom: 0,
-        touchAction: 'none',
-        '&::before, &::after': {
-          content: '""',
-          position: 'absolute',
-          left: 0,
-          bottom: 0,
-          height: 3,
-          transition: 'height 0.12s ease',
-        },
-        // The track only shows when there is something to grab.
-        '&::before': { right: 0, background: seekable ? palette.border : 'transparent' },
-        '&::after': { width: `${fraction * 100}%`, background: palette.accent },
-        ...(seekable
-          ? {
-              '&:hover::before, &:hover::after, &:focus-visible::before, &:focus-visible::after': {
-                height: 6,
-              },
-              outline: 'none',
-            }
-          : {}),
-      })}
     />
   );
 }

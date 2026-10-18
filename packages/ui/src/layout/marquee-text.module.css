@@ -1,0 +1,19 @@
+.frame {
+  display: block;
+  /* A line height of its own, not the font's: an emoji comes from another font with a taller line, and would make a row
+     with one in its title taller than the rest. */
+  line-height: 1.3;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rolling {
+  text-overflow: clip;
+}
+
+.text {
+  display: inline-block;
+}

@@ -64,11 +64,19 @@ export function createLayout(
     ? `@media (prefers-color-scheme: light) { html, body { background: ${SHELL.light.bg}; color: ${SHELL.light.fg}; } }`
     : '';
 
+  // The page's own styles, inlined in the document's head so they apply before any script or stylesheet has loaded: the background
+  // and text color (no white flash), no margin, and the kiosk behavior of a wall display (no overscroll, tap highlight or text
+  // selection). The colors and the font are in a layer below the app's own (`@layer hs-shell, hs-base`, see `@hashsome/ui`'s
+  // base styles), so once the app is running its theme's background is what shows, not the one the shell guessed.
   const kioskCss = `
-    html, body { margin: 0; height: 100%; background: ${initial.bg}; color: ${initial.fg}; font-family: ${fontStack(font)}; }
+    @layer hs-shell, hs-base;
+    html, body { margin: 0; height: 100%; }
+    @layer hs-shell {
+      html, body { background: ${initial.bg}; color: ${initial.fg}; font-family: ${fontStack(font)}; }
+      ${systemOverride}
+    }
     body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; user-select: none; }
     #root, body > div { min-height: 100%; }
-    ${systemOverride}
   `;
 
   return function Layout({ children }: { children: React.ReactNode }) {

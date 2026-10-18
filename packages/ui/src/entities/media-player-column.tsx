@@ -1,6 +1,4 @@
-/** @jsxImportSource @emotion/react */
 import type { EntityRef } from '@hashsome/core';
-import { Flex } from 'e-prim';
 import type { ReactNode } from 'react';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
 import { useEntityHandle } from '../hooks.ts';
@@ -9,6 +7,7 @@ import { IconButton } from '../layout/tile.tsx';
 import { DrawerTrigger } from '../layout/use-drawer.tsx';
 import { useHold } from '../layout/use-hold.ts';
 import { MediaBrowser } from './media-browser.tsx';
+import styles from './media-player-column.module.css';
 import { MediaPlayerFull } from './media-player-full.tsx';
 import { MediaQueue } from './media-queue.tsx';
 import { SpeakersOverlay } from './media-speakers-pill.tsx';
@@ -200,28 +199,9 @@ export function MediaPlayerColumn({
 function Card({ open, children }: { open?: () => void; children: ReactNode }) {
   const hold = useHold(() => open?.(), open !== undefined);
   return (
-    <Flex
-      data-grid-card
-      direction="column"
-      background="surface"
-      radius="card"
-      p={4}
-      width="100%"
-      // Only as tall as it needs, even in a parent that stretches its children, and no taller than
-      // the parent: the artwork gives way.
-      css={{
-        alignSelf: 'flex-start',
-        position: 'relative',
-        overflow: 'hidden',
-        maxHeight: '100%',
-        minHeight: 0,
-        // Stretched beside other cards, the artwork takes the room and the controls stay at the bottom.
-        '& > [data-status]': { flex: '1 1 auto' },
-      }}
-      {...hold.handlers}
-    >
+    <div data-grid-card className={styles.card} {...hold.handlers}>
       {children}
       {hold.holding ? <HoldProgress /> : null}
-    </Flex>
+    </div>
   );
 }

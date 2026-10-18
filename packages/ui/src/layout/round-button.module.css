@@ -1,0 +1,53 @@
+/* The round button every tile, drawer, stepper and calendar uses: a circle in the surface color. */
+:where(.round) {
+  display: grid;
+  place-items: center;
+  /* A circle stays a circle: in a row with long text it keeps its size instead of being squeezed. */
+  flex-shrink: 0;
+  width: var(--round-size, var(--hs-icon-circle));
+  height: var(--round-size, var(--hs-icon-circle));
+  padding: 0;
+  border: 0;
+  border-radius: var(--hs-radius-full);
+  background: var(--hs-surface-raised);
+  color: inherit;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.round:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.round[data-active='true'] {
+  color: var(--hs-warm);
+}
+
+/* Waiting: the ring turning around the edge says so, so the button stays as clear as it was. */
+.round[data-feedback='pending'] {
+  position: relative;
+  cursor: progress;
+}
+
+.round:disabled[data-feedback='pending'] {
+  cursor: progress;
+  opacity: 1;
+}
+
+.round[data-feedback='done'] {
+  background: var(--hs-accent);
+  color: var(--hs-accent-text);
+}
+
+.round[data-feedback='error'] {
+  color: var(--hs-danger);
+}
+
+.round[data-primary='true'] {
+  background: var(--hs-accent);
+  color: var(--hs-accent-text);
+}

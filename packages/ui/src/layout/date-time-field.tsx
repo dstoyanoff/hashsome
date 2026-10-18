@@ -1,7 +1,6 @@
-/** @jsxImportSource @emotion/react */
-import { Box, Flex, Grid, Typography } from 'e-prim';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../icon.tsx';
+import styles from './date-time-field.module.css';
 import { RoundButton } from './round-button.tsx';
 import { fromDateTimeInput, toDateTimeInput } from './sensor-stats.ts';
 
@@ -109,31 +108,20 @@ export function DateTimeField({
   const selectedKey = dayKey(current);
 
   return (
-    <Flex ref={root} align="center" gap={2} position="relative">
-      <Typography as="span" variant="secondary" color="textMuted">
-        {label}
-      </Typography>
-      <Flex position="relative">
-        <Flex
-          as="button"
+    <div ref={root} className={styles.field}>
+      <span className={styles.label}>{label}</span>
+      <div className={styles.anchor}>
+        <button
           type="button"
+          className={styles.trigger}
           aria-label={label}
           aria-expanded={open}
           onClick={() => {
             setMonth(new Date(current.getFullYear(), current.getMonth(), 1));
             setOpen((o) => !o);
           }}
-          align="center"
-          gap={2}
-          radius="small"
-          cursor="pointer"
-          color="text"
-          background="surface"
-          border
-          py={1.5}
-          px={3}
         >
-          <Typography as="span" variant="label">
+          <span>
             {current.toLocaleDateString(undefined, {
               day: 'numeric',
               month: 'short',
@@ -145,68 +133,41 @@ export function DateTimeField({
               minute: '2-digit',
               hour12: false,
             })}
-          </Typography>
+          </span>
           <Icon name="lu:calendar" size={14} />
-        </Flex>
-      </Flex>
+        </button>
+      </div>
       {open ? (
-        <Flex
-          direction="column"
-          gap={2}
-          background="surfaceRaised"
-          border
-          radius="row"
-          shadow="drawer"
-          p={3}
-          position="absolute"
-          width={288}
-          zIndex="popover"
+        <div
+          className={styles.popover}
+          data-align={align}
           role="group"
           aria-label={`${label} picker`}
-          css={({ spacing }) => ({ top: `calc(100% + ${spacing(2)})`, [align]: 0 })}
         >
-          <Flex align="center" justify="space-between">
+          <div className={styles.head}>
             <NavButton
               icon="lu:chevron-left"
               label="Previous month"
               onClick={() => shiftMonth(-1)}
             />
-            <Typography as="span" variant="bodyStrong">
+            <span className={styles.month}>
               {month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-            </Typography>
+            </span>
             <NavButton icon="lu:chevron-right" label="Next month" onClick={() => shiftMonth(1)} />
-          </Flex>
-          <Grid columns={[7]} gap={0.5} css={{ textAlign: 'center' }}>
+          </div>
+          <div className={styles.days}>
             {WEEKDAYS.map((d) => (
-              <Typography key={d} as="span" variant="secondary" color="textMuted" py={1}>
+              <span key={d} className={styles.weekday}>
                 {d}
-              </Typography>
+              </span>
             ))}
             {gridDays(month).map((day) => {
               const selected = dayKey(day) === selectedKey;
               return (
-                <Box
-                  as="button"
-                  key={day.toISOString()}
+                <button
                   type="button"
-                  width={32}
-                  height={32}
-                  radius="full"
-                  p={0}
-                  background="transparent"
-                  cursor="pointer"
-                  css={({ palette }) => ({
-                    justifySelf: 'center',
-                    '&:hover:not(:disabled)': { background: palette.surfaceRaised },
-                    "&[data-outside='true']": { color: palette.textMuted, opacity: 0.55 },
-                    "&[data-today='true']": { boxShadow: `inset 0 0 0 1px ${palette.line}` },
-                    "&[aria-pressed='true']": {
-                      background: palette.accent,
-                      color: palette.accentText,
-                      opacity: 1,
-                    },
-                    '&:disabled': { opacity: 0.25, cursor: 'default' },
-                  })}
+                  key={day.toISOString()}
+                  className={styles.day}
                   aria-label={day.toLocaleDateString(undefined, {
                     month: 'long',
                     day: 'numeric',
@@ -218,18 +179,14 @@ export function DateTimeField({
                   disabled={dayDisabled(day)}
                   onClick={() => pickDay(day)}
                 >
-                  <Typography as="span" variant="body">
-                    {day.getDate()}
-                  </Typography>
-                </Box>
+                  {day.getDate()}
+                </button>
               );
             })}
-          </Grid>
-          <Flex align="center" justify="space-between">
-            <Typography as="span" variant="secondary" color="textMuted">
-              Time
-            </Typography>
-            <Flex align="center" gap={1.5}>
+          </div>
+          <div className={styles.time}>
+            <span className={styles.label}>Time</span>
+            <div className={styles.timeInputs}>
               <TimeInput
                 label={`${label} hour`}
                 value={current.getHours()}
@@ -243,11 +200,11 @@ export function DateTimeField({
                 max={59}
                 onChange={(m) => setTime(current.getHours(), m)}
               />
-            </Flex>
-          </Flex>
-        </Flex>
+            </div>
+          </div>
+        </div>
       ) : null}
-    </Flex>
+    </div>
   );
 }
 
@@ -279,21 +236,8 @@ function TimeInput({
   onChange: (value: number) => void;
 }) {
   return (
-    <Box
-      as="input"
-      typography="body"
-      width={44}
-      py={1}
-      px={1.5}
-      border
-      radius="small"
-      background="surfaceRaised"
-      color="text"
-      css={({ palette }) => ({
-        textAlign: 'center',
-        fontVariantNumeric: 'tabular-nums',
-        '&:focus-visible': { outline: `2px solid ${palette.accent}`, outlineOffset: 1 },
-      })}
+    <input
+      className={styles.input}
       type="number"
       inputMode="numeric"
       aria-label={label}

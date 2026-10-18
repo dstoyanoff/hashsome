@@ -1,5 +1,5 @@
-/** @jsxImportSource @emotion/react */
 import { createElement } from 'react';
+import styles from './icon.module.css';
 import { ICON_NODES, type IconName, type IconNode } from './icon-data.ts';
 
 export interface IconProps {
@@ -49,11 +49,8 @@ export function Icon({ name, size, colors }: IconProps) {
   return (
     <svg
       viewBox="0 0 24 24"
-      css={({ density }) => ({
-        width: size ?? density.iconSize,
-        height: size ?? density.iconSize,
-        flex: 'none',
-      })}
+      className={styles.icon}
+      {...(size === undefined ? {} : { style: { width: size, height: size } })}
       fill={stroke ? 'none' : 'currentColor'}
       {...(stroke
         ? {

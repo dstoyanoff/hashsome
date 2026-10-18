@@ -1,6 +1,5 @@
-/** @jsxImportSource @emotion/react */
 import { sizedAssetUrl, type AssetSize } from '@hashsome/core';
-import { Box } from 'e-prim';
+import styles from './cover.module.css';
 
 /** A picture (artwork, an avatar) that fills the box it is in, cropped to fit. Decorative: the
  * name of what it shows is always written beside it. A picture the runtime serves is asked for at the `size` given, which
@@ -8,15 +7,12 @@ import { Box } from 'e-prim';
  * cover (a card, the player's), `large` for a picture that fills a screen. One from anywhere else is used as it is. */
 export function Cover({ src, size }: { src: string; size: AssetSize }) {
   return (
-    <Box
-      as="img"
+    <img
+      className={styles.cover}
       src={sizedAssetUrl(src, size)}
       alt=""
       loading="lazy"
       decoding="async"
-      width="100%"
-      height="100%"
-      css={{ objectFit: 'cover' }}
     />
   );
 }

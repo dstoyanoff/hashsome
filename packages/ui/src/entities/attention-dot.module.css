@@ -1,0 +1,18 @@
+.dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--hs-radius-full);
+  /* The ring is the rail's own color, so the dot reads as cut out of the button. */
+  box-shadow: 0 0 0 2px var(--hs-rail);
+}
+
+.notice {
+  background: var(--hs-warm);
+}
+
+.urgent {
+  background: var(--hs-danger);
+}

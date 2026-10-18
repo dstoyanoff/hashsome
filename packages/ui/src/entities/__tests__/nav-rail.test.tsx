@@ -1,28 +1,24 @@
 import { LocalClient, MockIntegration } from '@hashsome/core';
 import { act, cleanup, render, screen } from '@testing-library/react';
-import { ThemeProvider } from 'e-prim';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 afterEach(cleanup);
 import { HashsomeProvider } from '../../provider.tsx';
-import { darkTheme } from '../../theme/index.ts';
 import { NavDock } from '../nav-dock.tsx';
 import { mainPath, NavRail } from '../nav-rail.tsx';
 
 test('nav rail resolves items against base and marks the current page', () => {
   render(
-    <ThemeProvider theme={darkTheme}>
-      <MemoryRouter initialEntries={['/home/upstairs']}>
-        <NavRail
-          base="/home"
-          items={[
-            { to: '', label: 'Downstairs', icon: 'lu:house' },
-            { to: 'upstairs', label: 'Upstairs', icon: 'tb:stairs-up' },
-          ]}
-        />
-      </MemoryRouter>
-    </ThemeProvider>,
+    <MemoryRouter initialEntries={['/home/upstairs']}>
+      <NavRail
+        base="/home"
+        items={[
+          { to: '', label: 'Downstairs', icon: 'lu:house' },
+          { to: 'upstairs', label: 'Upstairs', icon: 'tb:stairs-up' },
+        ]}
+      />
+    </MemoryRouter>,
   );
 
   expect(screen.getByRole('link', { name: 'Upstairs' }).getAttribute('aria-current')).toBe('page');
@@ -32,17 +28,15 @@ test('nav rail resolves items against base and marks the current page', () => {
 
 test('an item with attention says so to a screen reader, and the others do not', () => {
   render(
-    <ThemeProvider theme={darkTheme}>
-      <MemoryRouter>
-        <NavRail
-          base="/home"
-          items={[
-            { to: '', label: 'Home', icon: 'lu:house' },
-            { to: 'maintenance', label: 'Maintenance', icon: 'lu:wrench', attention: 'urgent' },
-          ]}
-        />
-      </MemoryRouter>
-    </ThemeProvider>,
+    <MemoryRouter>
+      <NavRail
+        base="/home"
+        items={[
+          { to: '', label: 'Home', icon: 'lu:house' },
+          { to: 'maintenance', label: 'Maintenance', icon: 'lu:wrench', attention: 'urgent' },
+        ]}
+      />
+    </MemoryRouter>,
   );
 
   expect(screen.getByRole('link', { name: 'Maintenance, needs attention' })).toBeTruthy();

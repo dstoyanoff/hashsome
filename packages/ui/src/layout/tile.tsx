@@ -1,12 +1,11 @@
-/** @jsxImportSource @emotion/react */
 import type { EntityRef } from '@hashsome/core';
-import { Box, Flex, Typography, useColorByKey } from 'e-prim';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, type MotionStyle } from 'motion/react';
 import {
   useEffect,
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
@@ -17,12 +16,12 @@ import { RoundButton } from './round-button.tsx';
 import { useStill } from './use-still.ts';
 import { SpinnerRing } from './spinner.tsx';
 import { statusLabels, type EntityStatus } from '../status.ts';
-import { BADGE } from '../theme/grid.ts';
 import { useDrawer } from './use-drawer.tsx';
 import { EnergyChart, type EnergyChartProps } from './energy-chart.tsx';
 import { HistorySection, type LogbookEntry } from './history-section.tsx';
 import { HoldProgress } from './hold-progress.tsx';
 import { LogbookHistory } from './logbook-history.tsx';
+import styles from './tile.module.css';
 
 export interface TileProps {
   /** The tile's name. */
@@ -93,7 +92,6 @@ export interface TileProps {
 const DRAG_THRESHOLD = 8;
 const KEY_STEP = 0.05;
 const HOLD_MS = 500;
-const COLOR_TRANSITION = { duration: 0.28 };
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
 const valueAt = (event: PointerEvent<HTMLButtonElement>) => {
@@ -122,7 +120,6 @@ export function Tile({
   history,
   logbook,
 }: TileProps) {
-  const still = useStill();
   const ready = status === 'ready';
   const adjustable = fill !== undefined && onFillChange !== undefined && ready;
   const holdable =
@@ -277,160 +274,72 @@ export function Tile({
   // — the entity's own state, and thus `secondary`, only catches up once `onFillChange` commits.
   const liveSecondary = drag !== null ? `${Math.round(drag * 100)}%` : secondary;
 
-  const surface = useColorByKey('surface') ?? '';
-  const surfaceRaised = useColorByKey('surfaceRaised') ?? '';
-  const accent = useColorByKey('accent') ?? '';
-  const text = useColorByKey('text') ?? '';
-  const textMuted = useColorByKey('textMuted') ?? '';
-  const accentText = useColorByKey('accentText') ?? '';
-  const line = useColorByKey('line') ?? '';
-
   const accented = active && ready;
   const isDimmable = fill !== undefined;
-  // A dimmable tile never gets a solid accent-colored CARD — its own `fill` bar is the "how on"
-  // indicator instead, growing from neutral `surface`/`text` — unlike a solid on/off tile, whose
-  // whole card turns `accent`. `solidAccent` still gates `cardBg` (and the hold-progress wash
-  // below, which genuinely needs to pick a dark-on-orange vs light-on-neutral highlight) for that
-  // reason, but text/icon colors below do NOT follow it — seeing both a solid-accent tile and a
-  // dimmable one at 100% fill side by side (same visible solid-orange card either way) with two
-  // different text colors reads as a bug even though each one is "correct" for its own case.
-  // `text`/`line` read fine against `accent` in both themes (dark-on-orange and near-white-on-orange
-  // are each decent contrast) as well as against `surface`, where `accentText` (white) is only
-  // readable in dark mode and invisible in light — so every accented state just uses the normal
-  // ready-state color, never a separate white-on-accent one.
+  // A dimmable tile never gets a solid accent-colored CARD — its own `fill` bar is the "how on" indicator instead, growing from
+  // neutral `surface` — unlike a solid on/off tile, whose whole card turns `accent`. Text and icon colors do NOT follow it: seeing a
+  // solid-accent tile and a dimmable one at 100% fill side by side (the same solid orange either way) with two different text colors
+  // reads as a bug even though each is "correct" for its own case. `text` and `line` read fine against `accent` in both themes, as
+  // well as against `surface`, where `accentText` (white) is only readable in dark mode.
   const solidAccent = accented && !isDimmable;
-  let cardBg = surface;
-  // The label keeps the neutral light `text` everywhere; only the status line (e.g. "100%"), which
-  // sits at the far right, goes near-black (`onAccent`) once the card behind it is orange — the
-  // muted `line` grey it normally uses is ~1.6:1 on orange. `fill`'s opacity scales with
-  // brightness, so it only flips once the fill is nearly solid (or the whole card is accent).
   const wholeCardAccent = (solidAccent && !overlaid) || feedback === 'done';
   const fillLevel = showFill ? (shownFill ?? 0) : 0;
   const statusOnAccent = ready && (wholeCardAccent || fillLevel > 0.85);
-  const cardColor = ready ? text : textMuted;
-  if ((solidAccent && !overlaid) || feedback === 'done') {
-    cardBg = accent;
-  }
 
   // An app's own color for the icon (a scene's) fills the badge while the tile is ready, with the light glyph.
   const tinted = tint !== undefined && ready;
-  const iconBg = tinted ? tint : accented && !overlaid ? 'rgba(0, 0, 0, 0.25)' : surfaceRaised;
-  // The icon glyph sits inside that translucent badge, which self-adapts to whatever's behind it
-  // (the orange fill at a high `fill`, plain `surface` at a low one) — so it still needs the
-  // lighter `accentText` glyph once accented, unlike the flat label/secondary text above.
-  const iconColor = tinted || (accented && !overlaid) ? accentText : ready ? line : textMuted;
-  // The label always stays full brightness; only the icon glyph and this line dim when the tile is
-  // off (matches the converged mockup — `#726C6A`/`line`, not `textMuted`, which is reserved for
-  // the unavailable/unknown/missing/loading statuses below).
-  const dimColorKey: 'line' | 'textMuted' = ready ? 'line' : 'textMuted';
-  const cardOpacity = !ready || feedback === 'pending' ? 0.7 : 1;
+  const badgeTone = tinted ? 'tint' : accented && !overlaid ? 'accent' : ready ? 'ready' : 'muted';
+  const statusTone = !ready ? 'muted' : statusOnAccent ? 'on-accent' : 'dim';
 
   const iconBadge = icon ? (
-    <Flex
-      as={still ? 'span' : motion.span}
-      align="center"
-      justify="center"
-      position="relative"
-      radius="full"
-      width={32}
-      height={32}
-      {...(still
-        ? { style: { backgroundColor: iconBg, color: iconColor } }
-        : {
-            initial: false,
-            animate: { backgroundColor: iconBg, color: iconColor },
-            transition: COLOR_TRANSITION,
-          })}
-      css={{ flex: 'none' }}
+    <span
+      className={styles.badge}
+      data-tone={badgeTone}
+      style={tinted ? ({ '--tint': tint } as CSSProperties) : undefined}
     >
       <Icon name={icon} size={16} />
-    </Flex>
+    </span>
   ) : null;
 
   return (
-    <Flex
-      as={still ? 'div' : motion.div}
-      radius="card"
-      position="relative"
-      align="center"
-      overflow="hidden"
-      minWidth={0}
+    <div
+      className={styles.card}
       data-grid-card
       data-status={status}
+      data-ready={ready}
       data-active={accented}
       data-solid-accent={solidAccent}
+      data-whole-accent={wholeCardAccent}
       data-fill={fill !== undefined}
       data-fill-visible={showFill}
       data-overlay={overlay !== undefined}
       data-pending={feedback === 'pending'}
       data-feedback={feedback === 'pending' ? undefined : feedback}
-      // A card that mounts (a page opened) is drawn as it is, not animated from nothing. Where nothing moves it is
-      // just drawn: a color that is animated is a motion element on every tile, and the main thread repainting it.
-      {...(still
-        ? { style: { backgroundColor: cardBg, color: cardColor, opacity: cardOpacity } }
-        : {
-            initial: false,
-            animate: { backgroundColor: cardBg, color: cardColor, opacity: cardOpacity },
-            transition: COLOR_TRANSITION,
-          })}
-      css={({ palette, spacing }) => ({
-        // The badge between its padding, written down rather than left to the content, so a tile is a
-        // whole number of grid modules (12, in the comfortable density) whatever is in it.
-        minHeight: `calc(${spacing(4)} + ${BADGE}px)`,
-        ...(feedback === 'error'
-          ? { outline: `2px solid ${palette.danger}`, outlineOffset: -2 }
-          : {}),
-      })}
     >
       {hasFill ? (
-        <Box
-          as={still ? 'span' : motion.span}
-          position="absolute"
-          background="accent"
-          // Spans the whole card, including behind `trailing` (e.g. a color-capable light's
-          // picker button) — it's a sibling of the button and `trailing`, not nested inside the
-          // button, specifically so its width isn't capped at the button's own narrower bounds.
-          {...(still
-            ? { style: { width: `${(shownFill ?? 0) * 100}%`, opacity: overlaid ? 0 : shownFill } }
-            : {
-                initial: false,
-                animate: { width: `${(shownFill ?? 0) * 100}%`, opacity: overlaid ? 0 : shownFill },
-                transition: drag !== null ? { duration: 0 } : COLOR_TRANSITION,
-              })}
-          css={{ inset: '0 auto 0 0', pointerEvents: 'none' }}
+        <span
+          className={styles.fill}
+          data-dragging={drag !== null}
+          style={{ width: `${(shownFill ?? 0) * 100}%`, opacity: overlaid ? 0 : shownFill }}
         />
       ) : null}
       {holdable && holding ? (
-        // Visible against either background: a light wash normally, a dark wash on an
-        // accent-colored (non-dimmable-active) card, where a light or accent bar would
-        // disappear or clash.
+        // Visible against either background: a light wash normally, a dark wash on an accent-colored
+        // (non-dimmable-active) card, where a light or accent bar would disappear or clash.
         <HoldProgress
           edge="bottom"
           color={solidAccent ? 'rgba(0, 0, 0, 0.35)' : 'rgba(255, 255, 255, 0.55)'}
         />
       ) : null}
       {overlay ? (
-        <Flex
-          align="center"
-          gap={2.5}
-          minWidth={0}
-          grow={1}
-          position="relative"
-          pt={2}
-          pr={2}
-          pb={2}
-          pl={2}
-          css={{ alignSelf: 'stretch' }}
-        >
+        <div className={styles.overlay}>
           {iconBadge}
-          <Flex grow={1} minWidth={0} justify="center" align="center">
-            {overlay({ openDetail: openDrawer })}
-          </Flex>
-        </Flex>
+          <div className={styles.overlayBody}>{overlay({ openDetail: openDrawer })}</div>
+        </div>
       ) : (
-        <Flex
-          as="button"
+        <button
           type="button"
+          className={styles.button}
           disabled={!ready || (!onPress && !adjustable && !holdable)}
           onClick={onClick}
           onPointerDown={onPointerDown}
@@ -440,78 +349,22 @@ export function Tile({
           onKeyDown={onKeyDown}
           title={title}
           aria-label={label}
-          align="center"
-          gap={2.5}
-          minWidth={0}
-          grow={1}
-          position="relative"
-          cursor={ready ? 'pointer' : 'default'}
-          pt={2}
-          pr={3.5}
-          pb={2}
-          pl={2}
-          css={{
-            alignSelf: 'stretch',
-            background: 'none',
-            textAlign: 'left',
-            touchAction: 'pan-y',
-            WebkitTapHighlightColor: 'transparent',
-            '&:focus-visible': {
-              outline: `2px solid ${accent}`,
-              outlineOffset: -2,
-              borderRadius: 'inherit',
-            },
-          }}
         >
           {iconBadge}
-          <Typography
-            variant="label"
-            as="span"
-            noWrap
-            textOverflow="ellipsis"
-            position="relative"
-            grow={1}
-            minWidth={0}
-          >
-            {label}
-          </Typography>
+          <span className={styles.label}>{label}</span>
           {!ready ? (
-            <Typography
-              variant="secondary"
-              as="span"
-              noWrap
-              textOverflow="ellipsis"
-              color="textMuted"
-              position="relative"
-              css={{ flex: 'none' }}
-            >
+            <span className={styles.status} data-tone="muted">
               {statusLabels[status]}
-            </Typography>
+            </span>
           ) : liveSecondary ? (
-            <Typography
-              variant="secondary"
-              as="span"
-              noWrap
-              textOverflow="ellipsis"
-              color={statusOnAccent ? 'onAccent' : dimColorKey}
-              position="relative"
-              css={{ flex: 'none' }}
-            >
+            <span className={styles.status} data-tone={statusTone}>
               {liveSecondary}
-            </Typography>
+            </span>
           ) : null}
-        </Flex>
+        </button>
       )}
-      {trailing ? (
-        // `position: relative` (any value but `static`) is required here, not optional: an
-        // absolutely-positioned element always paints above a `position: static` one in the same
-        // stacking context regardless of DOM order, so once the fill bar above started reaching
-        // into this area, it painted over `trailing` despite coming first in the markup.
-        <Flex align="center" gap={2} pr={2.5} position="relative">
-          {trailing}
-        </Flex>
-      ) : null}
-    </Flex>
+      {trailing ? <div className={styles.trailing}>{trailing}</div> : null}
+    </div>
   );
 }
 
@@ -568,22 +421,21 @@ export function IconButton({
     <>
       {morphs && !still ? (
         <AnimatePresence mode="popLayout">
-          <Box
-            as={motion.span}
+          <motion.span
             key={icon}
-            css={{ display: 'grid' }}
+            className={styles.glyph}
             initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
             animate={{ rotate: 0, opacity: 1, scale: 1 }}
             exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
             transition={{ duration: 0.18 }}
           >
             <Icon name={icon} {...glyphSize} />
-          </Box>
+          </motion.span>
         </AnimatePresence>
       ) : (
-        <Box as="span" css={{ display: 'grid' }}>
+        <span className={styles.glyph}>
           <Icon name={icon} {...glyphSize} />
-        </Box>
+        </span>
       )}
       {ring ? <SpinnerRing /> : null}
     </>
@@ -592,9 +444,8 @@ export function IconButton({
   const common = {
     // A circle twice the glyph, or the density's usual one.
     ...(size !== undefined ? { size: size * 2 } : {}),
-    // A literal color (a light's own) has to outrank the state colors the shared styles give
-    // `data-active`, hence the doubled selector for the extra specificity.
-    ...(color ? { css: { '&&&': { color } } } : {}),
+    // A literal color (a light's own) has to outrank the state colors the shared styles give `data-active`, hence `!important`.
+    ...(color ? { className: styles.colored } : {}),
     'data-feedback': feedback,
     'aria-label': label,
     title: label,
@@ -607,13 +458,16 @@ export function IconButton({
 
   // A plain button where nothing moves; the squeeze on a press is a motion element's.
   return still ? (
-    <RoundButton {...common}>{content}</RoundButton>
+    <RoundButton {...common} {...(color ? { style: { '--glyph': color } as CSSProperties } : {})}>
+      {content}
+    </RoundButton>
   ) : (
     <RoundButton
       as={motion.button}
       whileTap={disabled || feedback === 'pending' ? {} : { scale: 0.88 }}
       transition={{ duration: 0.12 }}
       {...common}
+      {...(color ? { style: { '--glyph': color } as MotionStyle } : {})}
     >
       {content}
     </RoundButton>

@@ -1,0 +1,55 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hs-unit) * 2);
+  margin-top: calc(var(--hs-unit) * 4);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.heading {
+  composes: eyebrow from '../style/type.module.css';
+  color: var(--hs-text-muted);
+  text-transform: uppercase;
+}
+
+.dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--hs-unit) * 4);
+}
+
+.tiles {
+  display: flex;
+  gap: calc(var(--hs-unit) * 2);
+}
+
+.tile {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  padding: calc(var(--hs-unit) * 2.5) calc(var(--hs-unit) * 3);
+  border-radius: var(--hs-radius-row);
+  background: var(--hs-surface-raised);
+}
+
+.tileLabel {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}
+
+.tileValue {
+  composes: bodyStrong from '../style/type.module.css';
+  white-space: nowrap;
+}
+
+.none {
+  composes: secondary from '../style/type.module.css';
+  color: var(--hs-text-muted);
+}

@@ -13,13 +13,11 @@
     "hashsome:upgrade": "hashsome upgrade"
   },
   "dependencies": {
-    "@emotion/react": "11.14.0",
     "@hashsome/core": "workspace:*",
     "@hashsome/integration.home-assistant": "workspace:*",
     "@hashsome/integration.music-assistant": "workspace:*",
     "@hashsome/runtime": "workspace:*",
     "@hashsome/ui": "workspace:*",
-    "e-prim": "2.0.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-router": "8.4.0"

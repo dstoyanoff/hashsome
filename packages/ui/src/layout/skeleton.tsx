@@ -1,6 +1,6 @@
-/** @jsxImportSource @emotion/react */
-import { Box, type BoxProps } from 'e-prim';
 import { motion } from 'motion/react';
+import type { RadiusName } from '../style/names.ts';
+import styles from './skeleton.module.css';
 import { useStill } from './use-still.ts';
 
 /** A placeholder block for something that is on its way, in the size it will have, so what is around
@@ -14,18 +14,17 @@ export function Skeleton({
   /** px, or any CSS length. */
   width: number | string;
   height: number | string;
-  radius?: BoxProps['radius'];
+  radius?: RadiusName;
 }) {
   const still = useStill();
   return (
-    <Box
+    <div
       aria-hidden="true"
-      background="surfaceRaised"
-      radius={radius}
-      css={{ width, height, flex: 'none', overflow: 'hidden' }}
+      className={styles.block}
+      style={{ width, height, borderRadius: `var(--hs-radius-${radius})` }}
     >
       <motion.span
-        css={{ display: 'block', width: '100%', height: '100%', background: 'currentColor' }}
+        className={styles.pulse}
         initial={{ opacity: 0.1 }}
         {...(still
           ? {}
@@ -34,6 +33,6 @@ export function Skeleton({
               transition: { duration: 1.4, repeat: Infinity, ease: 'easeInOut' },
             })}
       />
-    </Box>
+    </div>
   );
 }
