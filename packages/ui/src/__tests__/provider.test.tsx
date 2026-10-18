@@ -1,5 +1,5 @@
 import { LocalClient, MockIntegration, mockSensor } from '@hashsome/core';
-import { setMotionLevel, motionLevel } from '../motion/mode.ts';
+import { forgetMotionAddress, setMotionLevel, motionLevel } from '../motion/mode.ts';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { computed } from '../test-utils.tsx';
@@ -318,9 +318,11 @@ const resetMotion = () => {
   localStorage.clear();
   delete document.documentElement.dataset.motion;
   setMotionLevel('full');
+  forgetMotionAddress();
 };
 
 const startAt = (search: string, props: { motion?: 'auto' | 'full' | 'reduced' } = {}) => {
+  forgetMotionAddress();
   window.history.replaceState({}, '', `/bathroom${search}`);
   const client = new LocalClient([new MockIntegration({})]);
   render(

@@ -12,15 +12,29 @@ export function setMotionLevel(next: MotionLevel): void {
 
 export const motionLevel = (): MotionLevel => level;
 
+/** What the address asked for when the page opened: kept, because moving between a dashboard's pages (a rail's links have no query)
+ * or between dashboards leaves it out of the address, and the display must not go back to what its layout says. */
+let fromAddress: MotionLevel | undefined | 'unread' = 'unread';
+
 /** What the address asks for motion: `?motion=reduced`, `?motion=light` or `?motion=full`, which wins over what the app or a dashboard
- * says, for trying one out. Nothing is kept: a reload without it goes back. */
+ * says, for trying one out. Read once, the first time it is asked for, and held until the page is reloaded without it. */
 export function motionFromAddress(): MotionLevel | undefined {
-  try {
-    const asked = new URLSearchParams(window.location.search).get('motion');
-    return asked === 'reduced' || asked === 'light' || asked === 'full' ? asked : undefined;
-  } catch {
-    return undefined;
+  if (fromAddress === 'unread') {
+    try {
+      const value = new URLSearchParams(window.location.search).get('motion');
+      fromAddress =
+        value === 'reduced' || value === 'light' || value === 'full' ? value : undefined;
+    } catch {
+      return undefined;
+    }
   }
+
+  return fromAddress;
+}
+
+/** For tests: read the address again the next time it is asked for. */
+export function forgetMotionAddress(): void {
+  fromAddress = 'unread';
 }
 
 const QUERY = '(prefers-reduced-motion: reduce)';
