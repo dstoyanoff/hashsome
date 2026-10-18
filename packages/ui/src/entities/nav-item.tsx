@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router';
 import { Icon } from '../icon.tsx';
 import { isInstalledApp } from '../layout/installed-app.ts';
+import { useKeepSearch } from '../layout/keep-search.ts';
 import { cx } from '../style/cx.ts';
 import { AttentionDot } from './attention-dot.tsx';
 import type { NavItem } from './nav-rail.tsx';
@@ -18,12 +19,13 @@ export function NavItemLink({
   /** A circle, for the floating dock; else a rounded square. */
   round?: boolean;
 }) {
+  const keep = useKeepSearch();
   return (
     <NavLink
       // In an installed app, switching pages replaces the one before it: there is no browser to go back with, and
       // the system's swipe from the edge of the screen would otherwise walk back through every page visited.
       replace={isInstalledApp()}
-      to={item.to ? `${base}/${item.to}` : base}
+      to={keep(item.to ? `${base}/${item.to}` : base)}
       end
       aria-label={item.attention ? `${item.label}, needs attention` : item.label}
       title={item.label}

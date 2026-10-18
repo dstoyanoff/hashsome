@@ -3,6 +3,7 @@ import type { ConnectionStatus, EntityRef, LinkStatus } from '@hashsome/core';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { useKeepSearch } from '../layout/keep-search.ts';
 import { fallbackName } from '../entity-handle.ts';
 import {
   useConnectionStatus,
@@ -168,6 +169,7 @@ function DashboardSwitcher({
 }) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const keep = useKeepSearch();
   const { pathname } = useLocation();
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(open, () => setOpen(false), ref);
@@ -207,7 +209,7 @@ function DashboardSwitcher({
                   disabled={active}
                   onClick={() => {
                     setOpen(false);
-                    navigate(`/${d.id}`);
+                    navigate(keep(`/${d.id}`));
                   }}
                 >
                   {d.icon ? <Icon size={16}>{d.icon}</Icon> : null}
