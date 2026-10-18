@@ -1,10 +1,4 @@
-import {
-  DEFAULT_FONT,
-  fontStack,
-  googleFontHref,
-  isBundledFont,
-  type ThemeMode,
-} from '@hashsome/ui';
+import { DEFAULT_FONT, fontStack, type ThemeMode } from '@hashsome/ui';
 import { Links, Meta, Scripts, ScrollRestoration } from 'react-router';
 
 const SHELL = {
@@ -55,16 +49,14 @@ export function appHead(app: AppOptions | undefined, theme: ThemeMode = 'dark') 
  * colors and lets a plain CSS media query (not JS) pick the right one with no flash either way. A
  * schedule (by the clock or the sun) is not known yet either, so it starts as `'system'` does and
  * the app takes over once it is running.
- * The default font (Inter) is bundled, so the head has no other host to wait for; another one's Google Fonts `<link>` is
- * rendered here (not left to `HashsomeProvider`'s own client-side fallback), so the chosen font is already loading before
- * hydration, not swapped in after.
+ * The font is only named here (the page's text and its fallback stack): its files come with the app (`@hashsome/ui` bundles Inter; a
+ * project's own font is imported in its `app/root.tsx`), so the head has no other host to wait for.
  * With `app`, the document is also a web app a phone can add to its home screen (see `AppOptions`). */
 export function createLayout(
   theme: ThemeMode = 'dark',
   font: string = DEFAULT_FONT,
   app?: AppOptions,
 ) {
-  const bundledFont = isBundledFont(font);
   const followsSystem = typeof theme === 'object' || theme === 'system';
   const colorScheme = followsSystem ? 'light dark' : theme;
   const initial = theme === 'light' ? SHELL.light : SHELL.dark;
@@ -98,13 +90,6 @@ export function createLayout(
           />
           <meta name="color-scheme" content={colorScheme} />
           {appHead(app, theme)}
-          {bundledFont ? null : (
-            <>
-              <link rel="preconnect" href="https://fonts.googleapis.com" />
-              <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-              <link rel="stylesheet" href={googleFontHref(font)} data-hashsome-font="" />
-            </>
-          )}
           <style dangerouslySetInnerHTML={{ __html: kioskCss }} />
           <Meta />
           <Links />

@@ -1,9 +1,7 @@
 import { expect, test } from 'vitest';
-import { DEFAULT_FONT, googleFontHref, isBundledFont } from '../index.ts';
+import { DEFAULT_FONT, fontStack } from '../index.ts';
 
-test('the default font comes with the app, any other is a Google Fonts family', () => {
-  expect(isBundledFont(DEFAULT_FONT)).toBe(true);
-  expect(isBundledFont(' Inter ')).toBe(true);
-  expect(isBundledFont('Roboto')).toBe(false);
-  expect(googleFontHref('Open Sans')).toContain('family=Open+Sans');
+test('the font is named first, with the system fonts behind it until its files have loaded', () => {
+  expect(DEFAULT_FONT).toBe('Inter');
+  expect(fontStack('Roboto')).toMatch(/^'Roboto', system-ui/);
 });

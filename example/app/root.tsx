@@ -3,7 +3,8 @@ import { HashsomeProvider, Page, type ThemeOverrides } from '@hashsome/ui';
 import { Outlet } from 'react-router';
 
 // App-wide look. `THEME` is `'light' | 'dark' | 'system'` (follows the OS and updates live);
-// `FONT` is `'Inter'` (bundled with the app) or any Google Fonts family name (`'Roboto'`, `'Poppins'`, ...), loaded for you.
+// `FONT` is the font family: `'Inter'` is bundled with the app; another one is added to this project (`pnpm add @fontsource/roboto`,
+// then `import '@fontsource/roboto/400.css'` here for each weight, 400/500/600/700) and named here (`'Roboto'`): see the README's "Fonts".
 const THEME = 'system';
 const FONT = 'Inter';
 

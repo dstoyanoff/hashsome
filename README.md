@@ -128,6 +128,26 @@ building: a production build has the menu only if it was built with the flag). A
 left then opens a menu that shows the module grid over the page, makes the page fullscreen and switches
 the theme (light, dark, system, and sun if the project names a sun entity: `theme={{ sun: … }}` or the provider's `sun`). What it sets is kept on that device.
 
+### Fonts
+
+The app's font is Inter, bundled: a page never waits on another host for its text, so a display with no internet draws the same. To use another font, add it to your project from npm, so it is served with the app too:
+
+```sh
+pnpm add @fontsource/roboto   # any family on https://fontsource.org
+```
+
+```tsx
+// app/root.tsx
+import '@fontsource/roboto/400.css'; // the weights the UI uses: 400, 500, 600 and 700
+import '@fontsource/roboto/500.css';
+import '@fontsource/roboto/600.css';
+import '@fontsource/roboto/700.css';
+
+const FONT = 'Roboto'; // the family name, as the package's CSS declares it
+```
+
+Only the files for characters on the page are downloaded. A font that is not on npm works the same way with your own `@font-face` rules and files in `public/`.
+
 ### Or ask your agent
 
 If you use Claude Code or another coding agent, the repo ships the skills it needs. Once it is
