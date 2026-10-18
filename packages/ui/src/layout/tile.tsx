@@ -38,7 +38,7 @@ export interface TileProps {
   /** The tile's name. */
   label: string;
 
-  /** Icon id, e.g. `lu:lightbulb`. */
+  /** The icon: an element such as `<Lightbulb />` from `lucide-react`. */
   icon?: ReactNode;
 
   /** A literal CSS color (e.g. `#8B5CF6`) that fills the icon's badge, with a light glyph, so tiles of one kind (scenes, say) can be told apart at a glance. The palette has too few colors for that, so each app picks its own. Only while the tile is ready; otherwise the badge is the usual one. */

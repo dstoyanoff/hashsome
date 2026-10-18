@@ -6,7 +6,7 @@ export interface RoomHeaderProps {
   /** The room's name. */
   title: string;
 
-  /** Icon id, e.g. `lu:sofa`. */
+  /** The icon: an element such as `<Sofa />` from `lucide-react`. */
   icon?: ReactNode;
 
   /** Header readouts, typically `<SensorReadout />`s. */

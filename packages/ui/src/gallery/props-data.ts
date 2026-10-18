@@ -144,7 +144,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'string',
       },
       {
-        doc: 'Icon id, e.g. `lu:sofa`.',
+        doc: 'The icon: an element such as `<Sofa />` from `lucide-react`.',
         name: 'icon',
         optional: true,
         type: 'ReactNode',
@@ -167,7 +167,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'string',
       },
       {
-        doc: 'Icon id, e.g. `lu:lightbulb`.',
+        doc: 'The icon: an element such as `<Lightbulb />` from `lucide-react`.',
         name: 'icon',
         optional: true,
         type: 'ReactNode',
@@ -284,7 +284,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'string',
       },
       {
-        doc: 'Icon id, e.g. `lu:wrench`.',
+        doc: 'The icon: an element such as `<Wrench />` from `lucide-react`.',
         name: 'icon',
         optional: true,
         type: 'ReactNode',
@@ -477,7 +477,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'string',
       },
       {
-        doc: 'Icon id. Defaults to a bulb.',
+        doc: 'The icon, an element such as `<Thermometer />`. Defaults to a bulb.',
         name: 'icon',
         optional: true,
         type: 'ReactNode',
@@ -524,7 +524,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'string',
       },
       {
-        doc: 'Icon id. Defaults to a thermometer.',
+        doc: 'The icon, an element such as `<Thermometer />`. Defaults to a thermometer.',
         name: 'icon',
         optional: true,
         type: 'ReactNode',
@@ -553,7 +553,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: "EntityRef | EntityHandle<'sensor'>",
       },
       {
-        doc: 'Icon id. Defaults by device class (temperature, humidity).',
+        doc: 'The icon, an element such as `<Droplets />`. Defaults by device class (temperature, humidity).',
         name: 'icon',
         optional: true,
         type: 'ReactNode',
@@ -600,7 +600,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'string',
       },
       {
-        doc: 'Icon id, e.g. `lu:coffee`.',
+        doc: 'The icon: an element such as `<Coffee />` from `lucide-react`.',
         name: 'icon',
         optional: true,
         type: 'ReactNode',
@@ -647,7 +647,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'string',
       },
       {
-        doc: 'Icon id. Defaults to a palette.',
+        doc: 'The icon, an element such as `<Thermometer />`. Defaults to a palette.',
         name: 'icon',
         optional: true,
         type: 'ReactNode',
