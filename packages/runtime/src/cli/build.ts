@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { createBuilder } from 'vite';
+import { precompress } from '../server/precompress.ts';
 import { loadConfig } from '../config.ts';
 import { createViteConfig } from '../vite.ts';
 
@@ -12,6 +13,8 @@ export async function build({ exit = true }: { exit?: boolean } = {}) {
   process.chdir(inline.root ?? config.root);
   const builder = await createBuilder(inline);
   await builder.buildApp();
+  // Written beside the files, for the server to send as they are (see `precompress`).
+  precompress(resolve(inline.root ?? config.root, 'build', 'client'));
   // Vite/React Router leave handles open after the SPA prerender; nothing else to wait for.
   if (exit) {
     process.exit(0);
