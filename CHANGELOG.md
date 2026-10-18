@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.19.0 (2026-10-18)
+
+### ⚠ Breaking changes
+
+- **ui:** no font is loaded from Google Fonts: Inter is bundled, another is the project's own (#132) ([bad3f48](https://github.com/dstoyanoff/hashsome/commit/bad3f48c6e2fc00dfa166cd74aa08c182b6092c0))
+- **ui:** an icon is an element from the project's own icon library, and drawer bodies load when first opened (#127) ([cde7823](https://github.com/dstoyanoff/hashsome/commit/cde7823fe9465a76ec644deb0ddc35995ca5a4ea))
+- **ui:** styles are CSS Modules and CSS variables, Emotion and e-prim are gone (#126) ([a38a35d](https://github.com/dstoyanoff/hashsome/commit/a38a35d2ddd7fdf964be2b2ff36985587d3aed4a))
+
+### Features
+
+- **ui:** a light motion setting keeps the cheap animations as CSS, plus display fixes found on the wall displays (#128) ([6d614cf](https://github.com/dstoyanoff/hashsome/commit/6d614cfb1d739c2e1530929f6a2cc92e99f00c1f))
+
+### Fixes
+
+- **ui:** going back to the page a visit opened on has its transition too (#136) ([46a898e](https://github.com/dstoyanoff/hashsome/commit/46a898e73f26316d70c58b51b3164a193204a0d3))
+- **ui:** a tile's accessible name is what it shows, its name and its state (#134) ([a1dcd6f](https://github.com/dstoyanoff/hashsome/commit/a1dcd6f7e9fe16a11ad66d6f9f652c18cf0d515d))
+- **ui:** the light theme's muted text is dark enough to read (#133) ([d10e4d8](https://github.com/dstoyanoff/hashsome/commit/d10e4d894fe46e67b43745ccc449caf2630bb3d9))
+- **ui:** a filling board cell watches its board once, not after every render (#131) ([b74e8d2](https://github.com/dstoyanoff/hashsome/commit/b74e8d22d3b9505a040085d1bcadc758ffea92c7))
+
+### Performance
+
+- **ui:** the player's artwork is fetched at once, not when it nears the screen (#135) ([87e8688](https://github.com/dstoyanoff/hashsome/commit/87e8688e4cec68c2e3a67e2eeaa904a95f39b0d2))
+- **ui:** every animation is CSS, the animation library is gone; Motion sets a dashboard's motion level (#130) ([d1e9763](https://github.com/dstoyanoff/hashsome/commit/d1e9763c9df01c9efef3a370bb607a7241b30867))
+- **ui:** the animation library is fetched only in full motion, and the drawer sheet is pulled without it (#129) ([eabc014](https://github.com/dstoyanoff/hashsome/commit/eabc014763b2c3e58ad865cdfc8a84a92a62456d))
+
 ## 0.18.0 (2026-10-16)
 
 ### Features
