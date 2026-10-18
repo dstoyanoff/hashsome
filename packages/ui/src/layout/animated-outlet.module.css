@@ -15,5 +15,5 @@
 }
 
 html:not([data-motion='reduced']) .page[data-enter='true'] {
-  animation: page-in 0.14s ease-out;
+  animation: page-in 0.09s ease-out;
 }
