@@ -184,3 +184,49 @@ test('closing the client gives up the reads that are waiting', async () => {
   client.close();
   expect(await outcome).toMatchObject({ message: 'Connection closed' });
 });
+
+test('asks the runtime whether it is there every few seconds while the connection is open', () => {
+  const { socket } = make();
+  expect(socket().sent).toEqual([]);
+  socket().open();
+  vi.advanceTimersByTime(5_000);
+  vi.advanceTimersByTime(5_000);
+  expect(socket().sent.filter((m) => (m as { type: string }).type === 'ping')).toHaveLength(2);
+});
+
+test('a connection that has gone silent after the runtime answered is taken to be dead and opened again', () => {
+  const { client, socket } = make();
+  const first = socket();
+  first.open();
+  const links: string[] = [];
+  client.onLinkChange((status) => links.push(status));
+  first.receive({ type: 'pong' });
+  // The other end goes away without a word: no close, no answer.
+  vi.advanceTimersByTime(20_000);
+
+  expect(links).toContain('closed');
+  expect(client.link).not.toBe('open');
+  // It opens another, after the pause every reconnect has.
+  vi.advanceTimersByTime(1_000);
+  expect(socket()).not.toBe(first);
+});
+
+test('a connection that keeps answering is left open however long it goes', () => {
+  const { client, socket } = make();
+  socket().open();
+  for (let i = 0; i < 24; i++) {
+    socket().receive({ type: 'pong' });
+    vi.advanceTimersByTime(5_000);
+  }
+
+  expect(client.link).toBe('open');
+  expect(FakeSocket.instances).toHaveLength(1);
+});
+
+test('a runtime that never answers a beat (an older one) is not taken for dead when it is quiet', () => {
+  const { client, socket } = make();
+  socket().open();
+  vi.advanceTimersByTime(120_000);
+  expect(client.link).toBe('open');
+  expect(FakeSocket.instances).toHaveLength(1);
+});

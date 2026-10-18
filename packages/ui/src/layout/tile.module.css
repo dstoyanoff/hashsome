@@ -73,14 +73,16 @@
 }
 
 /* Spans the whole card, including behind the trailing controls: a sibling of the button and them, so its width is not capped by the
-   button's own bounds. */
+   button's own bounds. It is always as wide as the card and scaled to how full it is, so a drag moves it by the compositor and never makes
+   the page lay out again, as changing a width would on every move. */
 .fill {
   position: absolute;
-  inset: 0 auto 0 0;
+  inset: 0;
   background: var(--hs-accent);
   pointer-events: none;
+  transform-origin: 0 50%;
   transition:
-    width 0.28s,
+    transform 0.28s,
     opacity 0.28s;
 }
 

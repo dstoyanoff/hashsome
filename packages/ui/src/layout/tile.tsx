@@ -104,9 +104,14 @@ const KEY_STEP = 0.05;
 const HOLD_MS = 500;
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
-const valueAt = (event: PointerEvent<HTMLButtonElement>) => {
-  const rect = event.currentTarget.getBoundingClientRect();
-  return rect.width > 0 ? clamp01((event.clientX - rect.left) / rect.width) : 0;
+/** Where the finger is along the tile, from 0 to 1. The tile's edges are measured once, when the press starts (`geometry`), not on every
+ * move: reading them after the fill has changed makes the browser lay the page out again for each move of a drag. */
+const valueAt = (
+  event: PointerEvent<HTMLButtonElement>,
+  geometry?: { left: number; width: number },
+) => {
+  const { left, width } = geometry ?? event.currentTarget.getBoundingClientRect();
+  return width > 0 ? clamp01((event.clientX - left) / width) : 0;
 };
 
 /** Base pill used by all entity tiles. Tap to press; hold (with `detail` set) to open the drawer. */
@@ -156,7 +161,12 @@ export function Tile({
 
   const [drag, setDrag] = useState<number | null>(null);
   const [holding, setHolding] = useState(false);
-  const start = useRef<{ x: number; dragging: boolean } | null>(null);
+  const start = useRef<{
+    x: number;
+    dragging: boolean;
+    geometry: { left: number; width: number };
+  } | null>(null);
+
   // Where the finger last was during a drag, for a touch the browser takes away (see `onPointerCancel`).
   const lastDrag = useRef<number | null>(null);
   const justDragged = useRef(false);
@@ -193,7 +203,8 @@ export function Tile({
 
   const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
     if (adjustable) {
-      start.current = { x: event.clientX, dragging: false };
+      const { left, width } = event.currentTarget.getBoundingClientRect();
+      start.current = { x: event.clientX, dragging: false, geometry: { left, width } };
       event.currentTarget.setPointerCapture?.(event.pointerId);
     }
 
@@ -221,7 +232,7 @@ export function Tile({
     }
 
     if (s.dragging) {
-      lastDrag.current = valueAt(event);
+      lastDrag.current = valueAt(event, s.geometry);
       setDrag(lastDrag.current);
     }
   };
@@ -235,7 +246,7 @@ export function Tile({
     }
 
     justDragged.current = true;
-    const next = valueAt(event);
+    const next = valueAt(event, s.geometry);
     setDrag(next);
     onFillChange?.(next);
   };
@@ -356,7 +367,7 @@ export function Tile({
         <span
           className={styles.fill}
           data-dragging={drag !== null}
-          style={{ width: `${(shownFill ?? 0) * 100}%`, opacity: overlaid ? 0 : shownFill }}
+          style={{ transform: `scaleX(${shownFill ?? 0})`, opacity: overlaid ? 0 : shownFill }}
         />
       ) : null}
       {holdable && holding ? (
