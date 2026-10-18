@@ -50,6 +50,13 @@ async function setup(connected = true) {
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('Proxy', () => {
+  test('answers a beat, so the browser can tell the connection is alive', async () => {
+    const { socket } = await setup();
+    socket.receive({ type: 'ping' });
+    await settle();
+    expect(socket.sent).toContainEqual({ type: 'pong' });
+  });
+
   test('reports integration status on connect', async () => {
     const { socket } = await setup();
     expect(socket.sent).toContainEqual({ type: 'status', integration: 'ha', status: 'connected' });

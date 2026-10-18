@@ -22,8 +22,10 @@ export function sizedAssetUrl(url: string, size: AssetSize): string {
   return url.startsWith(`${ASSET_PATH}/`) ? `${url.replace(/&size=[a-z]+/, '')}&size=${size}` : url;
 }
 
-/** Messages sent by the browser to the runtime's `/ws` endpoint. */
+/** Messages sent by the browser to the runtime's `/ws` endpoint. A `ping` asks for a `pong`: how the browser tells a connection that works
+ * from one that died without a word (a sleeping machine, a dropped network), which a socket itself reports only after minutes. */
 export type ClientMessage =
+  | { type: 'ping' }
   | { type: 'subscribe'; ref: EntityRef }
   | { type: 'unsubscribe'; ref: EntityRef }
   | {
@@ -53,6 +55,7 @@ export type ClientMessage =
 /** Messages sent by the runtime to the browser. `entity: null` means the entity does not exist (or
  * was removed). */
 export type ServerMessage =
+  | { type: 'pong' }
   | { type: 'entity'; ref: EntityRef; entity: Entity | null }
   | { type: 'status'; integration: string; status: ConnectionStatus }
   | { type: 'result'; id: number; ok: true; data?: unknown }
@@ -78,6 +81,8 @@ export function parseClientMessage(raw: string): ClientMessage | undefined {
   }
 
   switch (value.type) {
+    case 'ping':
+      return { type: 'ping' };
     case 'subscribe':
     case 'unsubscribe':
       return isRef(value.ref) ? { type: value.type, ref: value.ref } : undefined;
@@ -157,6 +162,8 @@ export function parseServerMessage(raw: string): ServerMessage | undefined {
   }
 
   switch (value.type) {
+    case 'pong':
+      return { type: 'pong' };
     case 'entity':
       return isRef(value.ref) && (value.entity === null || isRecord(value.entity))
         ? (value as ServerMessage)
