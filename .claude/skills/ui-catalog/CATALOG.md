@@ -86,6 +86,15 @@ A dashboard layout's `<Outlet />` with a transition between its pages: the page 
 | `items` | `NavItem[]` | no       | The dashboard's pages in the order its nav lists them (the same `items` as `NavRail`, `NavDock` or `NavBar`). A page then slides in from the side it sits on: a later page from the right, an earlier one from the left. Left out, pages only fade. |
 | `base`  | `string`    | no       | The path `items` are relative to, e.g. `/bathroom`. Needed with `items`.                                                                                                                                                                            |
 
+### `Motion`
+
+Says how much a dashboard moves, for the display it is made for: wrap the dashboard's layout in it (a wall display's takes `light`, a tablet's or a phone's can have all of it). It lasts while the dashboard is shown, and what the app was set to (`HashsomeProvider`'s `motion`) comes back when another one is. Draws only its children.
+
+| Prop       | Type          | Required |                                                                                                                                                                                                                                         |
+| ---------- | ------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `level`    | `MotionLevel` | yes      | How much this dashboard moves: `'reduced'` none, `'light'` the cheap animations that play as something appears (for a slow wall display), `'full'` all of them. The address can still ask for another (`?motion=`), for trying one out. |
+| `children` | `ReactNode`   | no       | The dashboard it is for.                                                                                                                                                                                                                |
+
 ### `RoomHeader`
 
 The header that starts a room: muted icon and title, a hairline, and readouts on the right. Put it above a `Grid` (or any tiles); it adds its own space above, so consecutive rooms read as groups.

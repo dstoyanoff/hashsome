@@ -5,7 +5,7 @@ import {
   type EntityRef,
   type RemoteClientOptions,
 } from '@hashsome/core';
-import { setMotionLevel, type MotionLevel } from './motion/mode.ts';
+import { motionFromAddress, setMotionLevel, type MotionLevel } from './motion/mode.ts';
 import {
   createContext,
   useCallback,
@@ -148,18 +148,6 @@ export function useThemeToggle(): ThemeModeState {
   }
 
   return value;
-}
-
-/** What the address asks for motion: `?motion=reduced`, `?motion=light` or `?motion=full`. Nothing is kept, and the
- * app reads it once, when it starts, so moving between pages inside the app keeps it and a reload
- * without it does not. `?motion=auto` (or anything else) leaves it to the prop. */
-function motionFromAddress(): 'full' | 'light' | 'reduced' | undefined {
-  try {
-    const asked = new URLSearchParams(window.location.search).get('motion');
-    return asked === 'reduced' || asked === 'light' || asked === 'full' ? asked : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 /** Settles motion once, when the app starts, before anything renders: a flag on the page says how much the stylesheets animate,
