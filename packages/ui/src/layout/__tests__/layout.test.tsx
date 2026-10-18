@@ -1,3 +1,4 @@
+import { House } from 'lucide-react';
 import { LocalClient } from '@hashsome/core';
 import { render, screen } from '@testing-library/react';
 import { expect, test } from 'vitest';
@@ -17,7 +18,7 @@ test('grid sets column count', () => {
 });
 
 test('room header renders its title, icon and readouts', () => {
-  renderWithMock(<RoomHeader title="Porch" icon="lu:house" readouts={<span>74 %</span>} />);
+  renderWithMock(<RoomHeader title="Porch" icon={<House />} readouts={<span>74 %</span>} />);
 
   expect(screen.getByRole('heading', { name: 'Porch' })).toBeTruthy();
   expect(screen.getByText('74 %')).toBeTruthy();
@@ -28,7 +29,7 @@ const pageOf = () => screen.getByRole('main');
 test('Page pads by the density, and further for a NavRail or NavDock while it is mounted', () => {
   const view = renderWithMock(
     <Page>
-      <NavRail base="/x" items={[{ to: '', label: 'Home', icon: 'lu:house' }]} />
+      <NavRail base="/x" items={[{ to: '', label: 'Home', icon: <House /> }]} />
     </Page>,
     {},
     { router: true },
@@ -40,7 +41,7 @@ test('Page pads by the density, and further for a NavRail or NavDock while it is
 
   const dock = renderWithMock(
     <Page>
-      <NavDock base="/x" items={[{ to: '', label: 'Home', icon: 'lu:house' }]} />
+      <NavDock base="/x" items={[{ to: '', label: 'Home', icon: <House /> }]} />
     </Page>,
     {},
     { router: true },

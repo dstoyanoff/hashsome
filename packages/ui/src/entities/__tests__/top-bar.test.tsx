@@ -1,3 +1,4 @@
+import { Bed, Sofa, Tv } from 'lucide-react';
 import {
   LocalClient,
   mockAction,
@@ -63,7 +64,7 @@ test('a press is answered at once for a fixed time, whether or not the scene has
 
 test('a scene can override its default icon', () => {
   const { ha } = renderWithMock(
-    <TopBar title="Downstairs" scenes={[{ entity: 'ha:movie_night', icon: 'lu:tv' }]} />,
+    <TopBar title="Downstairs" scenes={[{ entity: 'ha:movie_night', icon: <Tv /> }]} />,
     entities,
   );
 
@@ -72,8 +73,8 @@ test('a scene can override its default icon', () => {
 });
 
 const twoDashboards = [
-  { id: 'living-room', title: 'Living Room', icon: 'lu:sofa' },
-  { id: 'bedroom', title: 'Bedroom', icon: 'lu:bed' },
+  { id: 'living-room', title: 'Living Room', icon: <Sofa /> },
+  { id: 'bedroom', title: 'Bedroom', icon: <Bed /> },
 ] as const;
 
 describe('the header pieces on their own', () => {

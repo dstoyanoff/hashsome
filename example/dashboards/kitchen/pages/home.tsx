@@ -1,3 +1,5 @@
+import { Coffee, UtensilsCrossed } from 'lucide-react';
+import { IconCarFan } from '@tabler/icons-react';
 import {
   ActionButton,
   Grid,
@@ -21,7 +23,7 @@ export default function Home() {
         <div className={styles.rooms}>
           <RoomHeader
             title="Kitchen"
-            icon="lu:utensils-crossed"
+            icon={<UtensilsCrossed />}
             readouts={
               <>
                 <SensorReadout entity="ha:sensor.kitchen_temperature" />
@@ -60,10 +62,14 @@ export default function Home() {
           <Grid columns={3}>
             <ActionButton
               label="Coffee Maker"
-              icon="lu:coffee"
+              icon={<Coffee />}
               entity="ha:switch.kitchen_coffee_maker"
             />
-            <ActionButton label="Exhaust Fan" icon="tb:car-fan" entity="ha:fan.kitchen_exhaust" />
+            <ActionButton
+              label="Exhaust Fan"
+              icon={<IconCarFan />}
+              entity="ha:fan.kitchen_exhaust"
+            />
             <SceneButton entity="ha:scene.cooking_time" name="Cooking Time" />
           </Grid>
         </div>

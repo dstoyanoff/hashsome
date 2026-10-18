@@ -1,0 +1,32 @@
+.colored {
+  display: contents;
+}
+
+/* The parts of an icon are its shapes, in the order its library draws them; each takes its own color, else the whole icon's, else the text color. */
+.colored svg {
+  stroke: var(--weather-color, currentColor);
+}
+.colored svg > :nth-child(1) {
+  stroke: var(--weather-part-0, var(--weather-color, currentColor));
+}
+.colored svg > :nth-child(2) {
+  stroke: var(--weather-part-1, var(--weather-color, currentColor));
+}
+.colored svg > :nth-child(3) {
+  stroke: var(--weather-part-2, var(--weather-color, currentColor));
+}
+.colored svg > :nth-child(4) {
+  stroke: var(--weather-part-3, var(--weather-color, currentColor));
+}
+.colored svg > :nth-child(5) {
+  stroke: var(--weather-part-4, var(--weather-color, currentColor));
+}
+.colored svg > :nth-child(6) {
+  stroke: var(--weather-part-5, var(--weather-color, currentColor));
+}
+.colored svg > :nth-child(7) {
+  stroke: var(--weather-part-6, var(--weather-color, currentColor));
+}
+.colored svg > :nth-child(8) {
+  stroke: var(--weather-part-7, var(--weather-color, currentColor));
+}

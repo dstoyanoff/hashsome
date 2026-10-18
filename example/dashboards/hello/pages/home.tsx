@@ -1,3 +1,4 @@
+import { Sofa } from 'lucide-react';
 import { ClimateTile, Grid, LightTile, RoomHeader, SensorReadout } from '@hashsome/ui';
 
 // A small kiosk panel: deliberately no top bar and no navigation — just the room itself.
@@ -9,7 +10,7 @@ export default function Home() {
     <>
       <RoomHeader
         title="Living Room"
-        icon="lu:sofa"
+        icon={<Sofa />}
         readouts={<SensorReadout entity="ha:sensor.temperature" />}
       />
       <Grid columns={2}>

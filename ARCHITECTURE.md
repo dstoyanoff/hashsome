@@ -524,7 +524,7 @@ components drawn again. `style/base.css` (in `@layer hs-base`, so nothing of a c
 it) is the page's colors, font, reset and scrollbars; `style/type.module.css` (kept in sync by hand with
 `TYPOGRAPHY_KEYS`) is one class per variant of the type scale, taken with `composes:`. A value only known at
 run time (a measured size, a color an app chose) is an inline custom property the CSS reads. JavaScript that needs a
-number (the grid arithmetic) reads `useDensity()`, and a chart's SVG `useColor()`, from `ThemeContext`. A published
+number (the grid arithmetic) reads `useDensity()`, and a chart's SVG `useColor()`, from `ThemeContext`. Icons are not the UI's: an `icon` prop takes any element (`icon={<Lightbulb />}` from `lucide-react`, `<IconBath />` from `@tabler/icons-react`, or a project's own SVG), so the bundler tree-shakes the library and a project is free to pick another. `Icon` sizes and draws the element the way the app does (the density's icon size, a thin outline); an icon with parts to color (the weather's) styles them by shape order. The bodies of drawers and overlays (library, queue, forecast, history) are `lazyExport`s, fetched when first opened. A published
 `dist` carries the `.css` files next to the scripts (`scripts/copy-css.ts`), so a consumer's bundler handles them.
 
 **Status:** built. `useEntity`, `useCommand` and `useEntityHandle` are in `packages/ui/src/hooks.ts`;

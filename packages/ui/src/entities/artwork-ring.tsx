@@ -1,3 +1,4 @@
+import { Music } from 'lucide-react';
 import { useRef, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { Icon } from '../icon.tsx';
 import { Cover } from '../layout/cover.tsx';
@@ -204,7 +205,9 @@ export function ArtworkRing({
           {artworkUrl ? (
             <Cover src={artworkUrl} size="medium" />
           ) : (
-            <Icon name="lu:music" size={40} />
+            <Icon size={40}>
+              <Music />
+            </Icon>
           )}
         </div>
       </div>

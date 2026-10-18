@@ -1,3 +1,4 @@
+import { Footprints, House } from 'lucide-react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, expect, test } from 'vitest';
@@ -9,8 +10,8 @@ test('nav dock resolves items against base and marks the current page', () => {
       <NavDock
         base="/home"
         items={[
-          { to: '', label: 'Downstairs', icon: 'lu:house' },
-          { to: 'upstairs', label: 'Upstairs', icon: 'tb:stairs-up' },
+          { to: '', label: 'Downstairs', icon: <House /> },
+          { to: 'upstairs', label: 'Upstairs', icon: <Footprints /> },
         ]}
       />
     </MemoryRouter>,
@@ -41,8 +42,8 @@ const openUpstairs = (installed: boolean) => {
           <NavDock
             base="/home"
             items={[
-              { to: '', label: 'Downstairs', icon: 'lu:house' },
-              { to: 'upstairs', label: 'Upstairs', icon: 'tb:stairs-up' },
+              { to: '', label: 'Downstairs', icon: <House /> },
+              { to: 'upstairs', label: 'Upstairs', icon: <Footprints /> },
             ]}
           />
         ),

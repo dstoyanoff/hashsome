@@ -1,6 +1,18 @@
+import {
+  Droplets,
+  Flame,
+  Minus,
+  Plus,
+  Power,
+  RefreshCw,
+  Snowflake,
+  Thermometer,
+  ThermometerSun,
+  Wind,
+  X,
+} from 'lucide-react';
 import type { ClimateEntity, ClimateMode, EntityRef } from '@hashsome/core';
-import { useEffect, useRef, useState } from 'react';
-import type { IconName } from '../icon-data.ts';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
 import { useEntityHandle } from '../hooks.ts';
 import { AnimatedNumber, decimalsOf } from '../layout/animated-number.tsx';
@@ -20,7 +32,7 @@ export interface ClimateTileProps {
   name?: string;
 
   /** Icon id. Defaults to a thermometer. */
-  icon?: IconName;
+  icon?: ReactNode;
 
   /** Power-draw chart for the drawer, above `history`. No default source yet — pass explicitly. */
   energy?: EnergyChartProps;
@@ -30,19 +42,19 @@ export interface ClimateTileProps {
 }
 
 interface ModeMeta {
-  icon: IconName;
+  icon: ReactNode;
   color: string;
   label: string;
 }
 
 const MODE_META: Record<ClimateMode, ModeMeta> = {
-  off: { icon: 'lu:power', color: '#6b6b73', label: 'Off' },
-  heat: { icon: 'lu:flame', color: '#ff7a45', label: 'Heat' },
-  cool: { icon: 'lu:snowflake', color: '#4dc9ff', label: 'Cool' },
-  auto: { icon: 'lu:refresh-cw', color: '#5fd17a', label: 'Auto' },
-  heatCool: { icon: 'lu:thermometer-sun', color: '#b36bff', label: 'Heat/Cool' },
-  dry: { icon: 'lu:droplets', color: '#fbbf24', label: 'Dry' },
-  fanOnly: { icon: 'lu:wind', color: '#2dd4bf', label: 'Fan' },
+  off: { icon: <Power />, color: '#6b6b73', label: 'Off' },
+  heat: { icon: <Flame />, color: '#ff7a45', label: 'Heat' },
+  cool: { icon: <Snowflake />, color: '#4dc9ff', label: 'Cool' },
+  auto: { icon: <RefreshCw />, color: '#5fd17a', label: 'Auto' },
+  heatCool: { icon: <ThermometerSun />, color: '#b36bff', label: 'Heat/Cool' },
+  dry: { icon: <Droplets />, color: '#fbbf24', label: 'Dry' },
+  fanOnly: { icon: <Wind />, color: '#2dd4bf', label: 'Fan' },
 };
 
 const FALLBACK_MODES: ClimateMode[] = ['off', 'heat'];
@@ -84,7 +96,7 @@ export function ClimateTile({ entity, name, icon, energy, history }: ClimateTile
   return (
     <Tile
       label={name ?? climate?.name ?? fallbackName(entity)}
-      icon={icon ?? 'lu:thermometer'}
+      icon={icon ?? <Thermometer />}
       kind="Climate"
       status={status}
       secondary={
@@ -139,7 +151,7 @@ export function ClimateTile({ entity, name, icon, energy, history }: ClimateTile
         ready ? (
           <>
             <IconButton
-              icon={picking ? 'lu:x' : modeMeta(mode).icon}
+              icon={picking ? <X /> : modeMeta(mode).icon}
               label={picking ? 'Close modes' : 'Mode'}
               active={!picking && mode !== 'off'}
               onClick={() => setPicking((open) => !open)}
@@ -148,7 +160,7 @@ export function ClimateTile({ entity, name, icon, energy, history }: ClimateTile
             {target !== undefined ? (
               <Stepper>
                 <IconButton
-                  icon="lu:minus"
+                  icon={<Minus />}
                   label="Decrease"
                   disabled={target <= min}
                   onClick={() => setTarget(target - step)}
@@ -157,7 +169,7 @@ export function ClimateTile({ entity, name, icon, energy, history }: ClimateTile
                   {target} {unit}
                 </StepperValue>
                 <IconButton
-                  icon="lu:plus"
+                  icon={<Plus />}
                   label="Increase"
                   disabled={target >= max}
                   onClick={() => setTarget(target + step)}
@@ -255,7 +267,7 @@ function ClimateDetailBody({
           </div>
           <Stepper>
             <StepButton
-              icon="lu:minus"
+              icon={<Minus />}
               label="Decrease target"
               delta={-step}
               holdDelta={-step * 4}
@@ -267,7 +279,7 @@ function ClimateDetailBody({
               {shown} {unit}
             </StepperValue>
             <StepButton
-              icon="lu:plus"
+              icon={<Plus />}
               label="Increase target"
               delta={step}
               holdDelta={step * 4}

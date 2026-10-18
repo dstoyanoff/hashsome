@@ -1,3 +1,5 @@
+import { Bed, FlaskConical, Sparkles } from 'lucide-react';
+import { IconBath, IconDesk } from '@tabler/icons-react';
 import {
   ActionButton,
   ClimateTile,
@@ -17,7 +19,7 @@ export default function Home() {
       <HomeTopBar title="2nd Floor" scenes={['ha:scene.focus_mode']} />
       <RoomHeader
         title="Master Bedroom"
-        icon="lu:bed"
+        icon={<Bed />}
         readouts={
           <>
             <SensorReadout entity="ha:sensor.master_bedroom_temperature" />
@@ -46,7 +48,7 @@ export default function Home() {
 
       <RoomHeader
         title="Bathroom"
-        icon="tb:bath"
+        icon={<IconBath />}
         readouts={
           <>
             <SensorReadout entity="ha:sensor.bathroom_temperature" />
@@ -58,23 +60,23 @@ export default function Home() {
         <LightTile
           entity="ha:light.bathroom_led"
           name="LED"
-          icon="lu:sparkles"
+          icon={<Sparkles />}
           energy={{
             power: 'ha:sensor.bathroom_led_power',
             energy: 'ha:sensor.bathroom_led_energy',
           }}
         />
-        <ActionButton label="Shower" icon="tb:bath" entity="ha:script.shower" />
+        <ActionButton label="Shower" icon={<IconBath />} entity="ha:script.shower" />
         <ActionButton
           label="Septic Additive"
-          icon="lu:flask-conical"
+          icon={<FlaskConical />}
           entity="ha:script.septic_additive"
         />
       </Grid>
 
       <RoomHeader
         title="Office"
-        icon="tb:desk"
+        icon={<IconDesk />}
         readouts={
           <>
             <SensorReadout entity="ha:sensor.office_temperature" />

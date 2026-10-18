@@ -109,7 +109,7 @@ every component live, documented with its supported states. Concretely:
   needs real width — cramming it into the same 3-column grid as light tiles truncates its label.
   Found the hard way while building `example/dashboards/home`:
   ```tsx
-  <RoomHeader title="living room" icon="lu:sofa" />
+  <RoomHeader title="living room" icon={<Sofa />} />
   <Grid columns={3}>
     <LightTile entity="ha:light.lamp" name="lamp" />
     {/* ...other lights */}
@@ -155,9 +155,10 @@ home, `'lights'` for `/<id>/lights`), and highlight the current page themselves.
 
 ## Icons
 
-Icon props take a plain prefixed string, no import needed: `'lu:lightbulb'` (Lucide) or
-`'tb:vacuum-cleaner'` (Tabler outline), `prefix:name`. Browse names at lucide.dev/icons and
-tabler.io/icons.
+Icon props (`icon`) take an element from an icon library the project depends on: `icon={<Lightbulb />}`
+(`import { Lightbulb } from 'lucide-react'`) or `icon={<IconVacuumCleaner />}` (from
+`@tabler/icons-react`). Browse names at lucide.dev/icons and tabler.io/icons; a typo'd name fails
+`pnpm typecheck`.
 
 ## Style
 

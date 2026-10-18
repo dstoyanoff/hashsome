@@ -1,6 +1,7 @@
 import type { EntityRef } from '@hashsome/core';
 import { AnimatePresence, motion, type MotionStyle } from 'motion/react';
 import {
+  isValidElement,
   useEffect,
   useMemo,
   useRef,
@@ -10,25 +11,35 @@ import {
   type PointerEvent,
   type ReactNode,
 } from 'react';
-import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { RoundButton } from './round-button.tsx';
 import { useStill } from './use-still.ts';
 import { SpinnerRing } from './spinner.tsx';
 import { statusLabels, type EntityStatus } from '../status.ts';
 import { useDrawer } from './use-drawer.tsx';
-import { EnergyChart, type EnergyChartProps } from './energy-chart.tsx';
-import { HistorySection, type LogbookEntry } from './history-section.tsx';
+import type { EnergyChartProps } from './energy-chart.tsx';
+import type { LogbookEntry } from './history-section.tsx';
 import { HoldProgress } from './hold-progress.tsx';
-import { LogbookHistory } from './logbook-history.tsx';
+import { lazyExport } from './lazy.tsx';
 import styles from './tile.module.css';
+
+const EnergyChart = lazyExport<EnergyChartProps>(() => import('./energy-chart.tsx'), 'EnergyChart');
+const HistorySection = lazyExport<{ entries: LogbookEntry[] }>(
+  () => import('./history-section.tsx'),
+  'HistorySection',
+);
+
+const LogbookHistory = lazyExport<{ entity: EntityRef }>(
+  () => import('./logbook-history.tsx'),
+  'LogbookHistory',
+);
 
 export interface TileProps {
   /** The tile's name. */
   label: string;
 
   /** Icon id, e.g. `lu:lightbulb`. */
-  icon?: IconName;
+  icon?: ReactNode;
 
   /** A literal CSS color (e.g. `#8B5CF6`) that fills the icon's badge, with a light glyph, so tiles of one kind (scenes, say) can be told apart at a glance. The palette has too few colors for that, so each app picks its own. Only while the tile is ready; otherwise the badge is the usual one. */
   iconColor?: string;
@@ -297,7 +308,7 @@ export function Tile({
       data-tone={badgeTone}
       style={tinted ? ({ '--tint': tint } as CSSProperties) : undefined}
     >
-      <Icon name={icon} size={16} />
+      <Icon size={16}>{icon}</Icon>
     </span>
   ) : null;
 
@@ -381,7 +392,7 @@ export function IconButton({
   color,
   feedback,
 }: {
-  icon: IconName;
+  icon: ReactNode;
   label: string;
   onClick?: () => void;
   disabled?: boolean;
@@ -408,9 +419,14 @@ export function IconButton({
   // The icon morphs (turns out, the next turns in) only once it has changed: a list of rows has a few of these in each,
   // and almost none of them ever change, so the animation machinery is not there until it has something to do.
   const [morphs, setMorphs] = useState(false);
-  const [drawn, setDrawn] = useState(icon);
-  if (icon !== drawn) {
-    setDrawn(icon);
+  // Another icon, not the same one drawn again: an element made anew in every render is the same icon while it is the same component.
+  const kind: unknown = isValidElement(icon) ? icon.type : icon;
+  const [drawn, setDrawn] = useState<unknown>(() => kind);
+  const [turn, setTurn] = useState(0);
+  if (kind !== drawn) {
+    // In a function: a component is itself one, which state would call as an update.
+    setDrawn(() => kind);
+    setTurn((current) => current + 1);
     if (!still && !morphs) {
       setMorphs(true);
     }
@@ -422,19 +438,19 @@ export function IconButton({
       {morphs && !still ? (
         <AnimatePresence mode="popLayout">
           <motion.span
-            key={icon}
+            key={turn}
             className={styles.glyph}
             initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
             animate={{ rotate: 0, opacity: 1, scale: 1 }}
             exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
             transition={{ duration: 0.18 }}
           >
-            <Icon name={icon} {...glyphSize} />
+            <Icon {...glyphSize}>{icon}</Icon>
           </motion.span>
         </AnimatePresence>
       ) : (
         <span className={styles.glyph}>
-          <Icon name={icon} {...glyphSize} />
+          <Icon {...glyphSize}>{icon}</Icon>
         </span>
       )}
       {ring ? <SpinnerRing /> : null}

@@ -1,3 +1,4 @@
+import { House, Music, Wrench } from 'lucide-react';
 import { LocalClient, MockIntegration } from '@hashsome/core';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router';
@@ -8,8 +9,8 @@ import { NavBar } from '../nav-bar.tsx';
 afterEach(cleanup);
 
 const items = [
-  { to: '', label: 'Home', icon: 'lu:house' as const },
-  { to: 'music', label: 'Music', icon: 'lu:music' as const },
+  { to: '', label: 'Home', icon: <House /> },
+  { to: 'music', label: 'Music', icon: <Music /> },
 ];
 
 const inProvider = (children: React.ReactNode, props: { idleReturn?: number } = {}) => (
@@ -41,7 +42,7 @@ test('an item with attention says so to a screen reader', () => {
           base="/home"
           items={[
             items[0]!,
-            { to: 'maintenance', label: 'Maintenance', icon: 'lu:wrench', attention: 'urgent' },
+            { to: 'maintenance', label: 'Maintenance', icon: <Wrench />, attention: 'urgent' },
           ]}
         />
       </MemoryRouter>,

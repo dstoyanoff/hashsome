@@ -1,14 +1,30 @@
+import type { ReactNode } from 'react';
+import {
+  Battery,
+  BatteryFull,
+  BatteryLow,
+  BatteryMedium,
+  Droplet,
+  Gauge,
+  Thermometer,
+  TriangleAlert,
+} from 'lucide-react';
 import type { EntityRef } from '@hashsome/core';
-import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
 import { useEntityHandle } from '../hooks.ts';
 import { AnimatedNumber } from '../layout/animated-number.tsx';
-import { SensorHistory, type SensorSample } from '../layout/sensor-history.tsx';
+import type { SensorSample } from '../layout/sensor-history.tsx';
+import { lazyExport } from '../layout/lazy.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { DrawerTrigger } from '../layout/use-drawer.tsx';
 import { capitalize, statusLabels } from '../status.ts';
 import styles from './sensor-readout.module.css';
+
+const SensorHistory = lazyExport<{ samples?: SensorSample[]; entity?: EntityRef; unit: string }>(
+  () => import('../layout/sensor-history.tsx'),
+  'SensorHistory',
+);
 
 /** Bounds a reading is considered safe within; either end can be left open. */
 export interface SafeRange {
@@ -21,7 +37,7 @@ export interface SensorReadoutProps {
   entity: EntityRef | EntityHandle<'sensor'>;
 
   /** Icon id. Defaults by device class (temperature, humidity). */
-  icon?: IconName;
+  icon?: ReactNode;
 
   /** Drawer title. Defaults to the sensor's name. */
   name?: string;
@@ -39,9 +55,9 @@ export interface SensorReadoutProps {
   drawer?: boolean;
 }
 
-const deviceClassIcons: Record<string, IconName> = {
-  temperature: 'lu:thermometer',
-  humidity: 'lu:droplet',
+const deviceClassIcons: Record<string, ReactNode> = {
+  temperature: <Thermometer />,
+  humidity: <Droplet />,
 };
 
 const DEFAULT_SAFE_RANGES: Record<string, SafeRange> = {
@@ -100,8 +116,8 @@ export function SensorReadout({
   const ready = status === 'ready' && sensor !== undefined;
   const deviceClass = sensor?.measurement;
   const unit = sensor?.unit ?? '';
-  const resolvedIcon: IconName =
-    icon ?? (deviceClass ? deviceClassIcons[deviceClass] : undefined) ?? 'lu:gauge';
+  const resolvedIcon: ReactNode = icon ??
+    (deviceClass ? deviceClassIcons[deviceClass] : undefined) ?? <Gauge />;
 
   const range =
     safeRange === false
@@ -124,7 +140,7 @@ export function SensorReadout({
 
   const content = (
     <>
-      <Icon name={resolvedIcon} size={16} />
+      <Icon size={16}>{resolvedIcon}</Icon>
       <span className={styles.value}>
         {ready ? (
           moving !== undefined ? (
@@ -136,7 +152,11 @@ export function SensorReadout({
           statusLabels[status as Exclude<typeof status, 'ready'>]
         )}
       </span>
-      {warning ? <Icon name="lu:triangle-alert" size={16} /> : null}
+      {warning ? (
+        <Icon size={16}>
+          <TriangleAlert />
+        </Icon>
+      ) : null}
     </>
   );
 
@@ -220,7 +240,11 @@ function SensorDetailBody({
         </span>
         {range ? (
           <div className={styles.verdict} data-warning={warning}>
-            {warning ? <Icon name="lu:triangle-alert" size={14} /> : null}
+            {warning ? (
+              <Icon size={14}>
+                <TriangleAlert />
+              </Icon>
+            ) : null}
             <span className={styles.verdictText}>
               {warning
                 ? `Too ${level} · safe range ${describeRange(range, unit)}`
@@ -238,12 +262,8 @@ function SensorDetailBody({
 /** Below this a battery is shown as low. */
 const LOW_BATTERY = 20;
 
-const batteryIcon = (percent: number): IconName =>
-  percent <= LOW_BATTERY
-    ? 'lu:battery-low'
-    : percent <= 60
-      ? 'lu:battery-medium'
-      : 'lu:battery-full';
+const batteryIcon = (percent: number): ReactNode =>
+  percent <= LOW_BATTERY ? <BatteryLow /> : percent <= 60 ? <BatteryMedium /> : <BatteryFull />;
 
 /** A sensor's battery, in its drawer: the level, red and with a warning once it is low. */
 function BatteryLevel({ entity }: { entity: EntityRef }) {
@@ -252,7 +272,7 @@ function BatteryLevel({ entity }: { entity: EntityRef }) {
   const low = level !== undefined && level <= LOW_BATTERY;
   return (
     <div className={styles.battery} data-low={low}>
-      <Icon name={level === undefined ? 'lu:battery' : batteryIcon(level)} size={16} />
+      <Icon size={16}>{level === undefined ? <Battery /> : batteryIcon(level)}</Icon>
       <span className={styles.batteryLabel}>{low ? 'Battery low' : 'Battery'}</span>
       <span className={styles.batteryLevel}>
         {level === undefined ? '—' : `${Math.round(level)}%`}

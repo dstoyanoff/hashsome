@@ -1,3 +1,16 @@
+import {
+  Library,
+  ListMusic,
+  Music,
+  Pause,
+  Play,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  VolumeX,
+  X,
+} from 'lucide-react';
 import type { EntityRef } from '@hashsome/core';
 import { motion } from 'motion/react';
 import { useState, type ReactNode } from 'react';
@@ -15,13 +28,11 @@ import { Cover } from '../layout/cover.tsx';
 import { Spinner } from '../layout/spinner.tsx';
 import { MarqueeText } from '../layout/marquee-text.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
-import { MediaBrowser } from './media-browser.tsx';
 import { LoadingLine, useLoadingLabel } from './media-loading-line.tsx';
-import { MediaPlayerFull } from './media-player-full.tsx';
-import { MediaQueue } from './media-queue.tsx';
 import { SpeakersOverlay } from './media-speakers-pill.tsx';
 import { formatDuration, useMediaPosition, useSteadyPlaying } from './media-progress.ts';
 import { useSeekHold } from './media-seek.ts';
+import { MediaBrowser, MediaPlayerFull, MediaQueue } from './media-lazy.ts';
 import styles from './media-player-bar.module.css';
 import { SeekLine } from './seek-line.tsx';
 
@@ -185,7 +196,9 @@ export function MediaPlayerBar({
       {player?.media?.artworkUrl ? (
         <Cover src={player.media.artworkUrl} size="small" />
       ) : (
-        <Icon name="lu:music" size={14} />
+        <Icon size={14}>
+          <Music />
+        </Icon>
       )}
     </span>
   );
@@ -241,7 +254,7 @@ export function MediaPlayerBar({
         title={muted ? 'Unmute' : 'Mute'}
         onClick={volume.toggleMute}
       >
-        <Icon name={muted ? 'lu:volume-x' : 'lu:volume-2'} size={16} />
+        <Icon size={16}>{muted ? <VolumeX /> : <Volume2 />}</Icon>
       </PlainButton>
       <motion.div
         className={styles.slider}
@@ -296,7 +309,9 @@ export function MediaPlayerBar({
             {feedbackFor('setShuffle') === 'pending' ? (
               <Spinner size={14} />
             ) : (
-              <Icon name="lu:shuffle" size={14} />
+              <Icon size={14}>
+                <Shuffle />
+              </Icon>
             )}
           </PlainButton>
         ) : null}
@@ -329,7 +344,7 @@ export function MediaPlayerBar({
       {volumeOpen && ready ? volumeSlider : null}
       <div className={styles.tools} data-part="tools">
         <IconButton
-          icon={volumeOpen ? 'lu:x' : muted ? 'lu:volume-x' : 'lu:volume-2'}
+          icon={volumeOpen ? <X /> : muted ? <VolumeX /> : <Volume2 />}
           label={volumeOpen ? 'Close volume' : 'Volume'}
           glyph={MEDIA_GLYPH}
           disabled={!ready || (caps?.volume === false && caps.mute === false)}
@@ -341,14 +356,14 @@ export function MediaPlayerBar({
             : open && (onOpen ? browse !== false : browser !== undefined)
         ) ? (
           <IconButton
-            icon="lu:library"
+            icon={<Library />}
             label="Browse media"
             glyph={MEDIA_GLYPH}
             onClick={() => (openExpanded ?? open)?.()}
           />
         ) : null}
         {openQueue ? (
-          <IconButton icon="lu:list-music" label="Queue" glyph={MEDIA_GLYPH} onClick={openQueue} />
+          <IconButton icon={<ListMusic />} label="Queue" glyph={MEDIA_GLYPH} onClick={openQueue} />
         ) : null}
         {grouped && ref && ready ? (
           <SpeakersOverlay
@@ -363,7 +378,7 @@ export function MediaPlayerBar({
       </div>
       <div className={styles.transport} data-part="transport">
         <IconButton
-          icon="lu:skip-back"
+          icon={<SkipBack />}
           label="Previous"
           glyph={MEDIA_GLYPH}
           disabled={!ready || caps?.previous === false || !can.previous}
@@ -371,7 +386,7 @@ export function MediaPlayerBar({
           onClick={() => press('previous', () => handle.command('previous'))}
         />
         <IconButton
-          icon={playing ? 'lu:pause' : 'lu:play'}
+          icon={playing ? <Pause /> : <Play />}
           label={playing ? 'Pause' : 'Play'}
           glyph={MEDIA_GLYPH}
           disabled={!ready || !can.play}
@@ -380,7 +395,7 @@ export function MediaPlayerBar({
           onClick={() => press('togglePlay', () => handle.command('togglePlay'))}
         />
         <IconButton
-          icon="lu:skip-forward"
+          icon={<SkipForward />}
           label="Next"
           glyph={MEDIA_GLYPH}
           disabled={!ready || caps?.next === false || !can.next}
@@ -404,9 +419,9 @@ export function MediaPlayerBar({
   if (overlays) {
     const title = name ?? player?.name ?? fallbackName(entity);
     return (
-      <DrawerTrigger icon="lu:library" label="Library" kind={title} body={libraryBody ?? null}>
+      <DrawerTrigger icon={<Library />} label="Library" kind={title} body={libraryBody ?? null}>
         {(_open, _expanded, openLibrary) => (
-          <DrawerTrigger icon="lu:list-music" label="Queue" kind={title} body={queueBody ?? null}>
+          <DrawerTrigger icon={<ListMusic />} label="Queue" kind={title} body={queueBody ?? null}>
             {(_openToo, _expandedToo, openQueue) =>
               bar(onOpen, libraryBody ? openLibrary : undefined, queueBody ? openQueue : undefined)
             }
@@ -427,7 +442,7 @@ export function MediaPlayerBar({
 
   return (
     <DrawerTrigger
-      icon="lu:music"
+      icon={<Music />}
       label={name ?? player?.name ?? fallbackName(entity)}
       kind="Media"
       body={

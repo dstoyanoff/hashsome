@@ -38,5 +38,11 @@ function withoutLayers(): Plugin {
 
 export default defineConfig({
   plugins: [withoutLayers()],
-  test: { name: 'ui', environment: 'jsdom', include: ['src/**/*.test.{ts,tsx}'], css: true },
+  test: {
+    name: 'ui',
+    environment: 'jsdom',
+    include: ['src/**/*.test.{ts,tsx}'],
+    setupFiles: ['src/test-setup.ts'],
+    css: true,
+  },
 });

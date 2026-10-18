@@ -1,8 +1,7 @@
 import type { EntityRef } from '@hashsome/core';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
 import { useCommand, useEntity } from '../hooks.ts';
-import type { IconName } from '../icon-data.ts';
 import { Tile } from '../layout/tile.tsx';
 import { entityStatus, type EntityStatus } from '../status.ts';
 
@@ -11,7 +10,7 @@ export interface ActionButtonProps {
   label?: string;
 
   /** Icon id, e.g. `lu:coffee`. */
-  icon?: IconName;
+  icon?: ReactNode;
 
   /** A literal CSS color that fills the icon's badge, e.g. `#8B5CF6`, to tell buttons apart at a glance. Default: the usual neutral badge. */
   color?: string;

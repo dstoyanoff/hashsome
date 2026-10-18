@@ -96,7 +96,11 @@ test('transport icons are smaller than their circles', () => {
 
   const button = screen.getByRole('button', { name: 'Pause' });
   expect(button.style.width).toBe('');
-  expect(getComputedStyle(button.querySelector('svg') as SVGElement).width).toBe('18px');
+  expect(
+    (button.querySelector('svg')!.parentElement as HTMLElement).style.getPropertyValue(
+      '--hs-icon-size',
+    ),
+  ).toBe('18px');
 });
 
 test('Next waits until the new track plays, not only until it is announced, and never colours the whole button', async () => {
@@ -169,7 +173,7 @@ test('moving the slider to 0 mutes; unmuting from zero lands at 15%, from any ot
   expect(ha.getEntity('room')).toMatchObject({ volume: 0.2 });
 });
 
-test('a browse button appears only with `browse` content, after the track info, and opens it in the drawer', () => {
+test('a browse button appears only with `browse` content, after the track info, and opens it in the drawer', async () => {
   const { unmount } = renderWithMock(<MediaPlayerBar entity="ha:room" />, player());
   expect(screen.queryByRole('button', { name: 'Browse media' })).toBeNull();
   unmount();
@@ -184,14 +188,14 @@ test('a browse button appears only with `browse` content, after the track info, 
 
   expect(screen.queryByText('BROWSER CONTENT')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Browse media' }));
-  expect(screen.getByText('BROWSER CONTENT')).toBeTruthy();
+  expect(await screen.findByText('BROWSER CONTENT')).toBeTruthy();
 });
 
-test('clicking the artwork opens the drawer: the player, and the browser below it when there is one', () => {
+test('clicking the artwork opens the drawer: the player, and the browser below it when there is one', async () => {
   const { unmount } = renderWithMock(<MediaPlayerBar entity="ha:room" />, player());
   fireEvent.click(screen.getByRole('button', { name: 'Open player' }));
   // The drawer shows the player laid out like the vertical one, with no browser to add.
-  expect(screen.getAllByRole('heading', { name: 'Blank Space' })).toHaveLength(1);
+  expect(await screen.findAllByRole('heading', { name: 'Blank Space' })).toHaveLength(1);
   unmount();
 
   renderWithMock(

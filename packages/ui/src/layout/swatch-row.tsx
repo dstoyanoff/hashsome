@@ -1,5 +1,5 @@
+import type { ReactNode } from 'react';
 import { motion } from 'motion/react';
-import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { cx } from '../style/cx.ts';
 import styles from './swatch-row.module.css';
@@ -16,7 +16,7 @@ export interface SwatchItem {
   color: string;
 
   /** Optional glyph drawn on the dot (the dot grows slightly to fit it). */
-  icon?: IconName;
+  icon?: ReactNode;
 }
 
 /** The row of circular choices a tile shows in place of its label (light colors, climate modes):
@@ -54,12 +54,12 @@ export function SwatchRow({
           <span
             className={cx(
               styles.dot,
-              item.icon && styles.withIcon,
+              item.icon ? styles.withIcon : false,
               item.selected && styles.selected,
             )}
             style={{ background: item.color }}
           >
-            {item.icon ? <Icon name={item.icon} size={14} /> : null}
+            {item.icon ? <Icon size={14}>{item.icon}</Icon> : null}
           </span>
         </motion.button>
       ))}

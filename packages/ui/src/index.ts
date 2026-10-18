@@ -5,7 +5,6 @@ export type { ThemeOverrides } from './theme/overrides.ts';
 export * from './hooks.ts';
 export type { EntityHandle } from './entity-handle.ts';
 export * from './status.ts';
-export type { IconName } from './icon-data.ts';
 export * from './icon.tsx';
 export * from './layout/grid.tsx';
 export * from './layout/animated-number.tsx';

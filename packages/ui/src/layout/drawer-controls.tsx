@@ -1,3 +1,4 @@
+import { Power } from 'lucide-react';
 import { animate, motion } from 'motion/react';
 import { MarqueeText } from './marquee-text.tsx';
 import {
@@ -7,8 +8,8 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
+  type ReactNode,
 } from 'react';
-import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { FADE, FadeScroll } from './fade-scroll.tsx';
 import { RoundButton } from './round-button.tsx';
@@ -27,7 +28,7 @@ export function StepButton({
   size = 36,
   plain = false,
 }: {
-  icon: IconName;
+  icon: ReactNode;
   label: string;
   delta: number;
 
@@ -83,7 +84,7 @@ export function StepButton({
         held.current = false;
       }}
     >
-      <Icon name={icon} size={16} />
+      <Icon size={16}>{icon}</Icon>
     </RoundButton>
   );
 }
@@ -219,7 +220,9 @@ export function PowerButton({ on, onToggle }: { on: boolean; onToggle: () => voi
       title={on ? 'Turn off' : 'Turn on'}
       onClick={onToggle}
     >
-      <Icon name="lu:power" size={16} />
+      <Icon size={16}>
+        <Power />
+      </Icon>
     </button>
   );
 }
@@ -235,7 +238,7 @@ export function ChipRow({
   onChange,
   tabs = false,
 }: {
-  options: { value: string; label: string; icon?: IconName; ariaLabel?: string }[];
+  options: { value: string; label: string; icon?: ReactNode; ariaLabel?: string }[];
   value: string | undefined;
   onChange: (value: string) => void;
   tabs?: boolean;
@@ -323,7 +326,7 @@ export function ChipRow({
               )
             ) : null}
             <span className={styles.content}>
-              {option.icon ? <Icon name={option.icon} size={14} /> : null}
+              {option.icon ? <Icon size={14}>{option.icon}</Icon> : null}
               <span className={styles.chipLabel}>
                 <MarqueeText>{option.label}</MarqueeText>
               </span>

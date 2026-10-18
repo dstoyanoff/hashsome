@@ -1,3 +1,4 @@
+import { Library, ListMusic, Speaker } from 'lucide-react';
 import type { EntityRef } from '@hashsome/core';
 import { motion } from 'motion/react';
 import { useId, useState, type ReactNode } from 'react';
@@ -80,9 +81,9 @@ function ListTabs({
   // One line that slides between the tabs; its own id, so two players on a page do not share it.
   const line = useId();
   const still = useStill();
-  const all: { id: ListTab; label: string; icon: 'lu:library' | 'lu:list-music' }[] = [
-    { id: 'library', label: 'Library', icon: 'lu:library' },
-    { id: 'queue', label: 'Queue', icon: 'lu:list-music' },
+  const all: { id: ListTab; label: string; icon: ReactNode }[] = [
+    { id: 'library', label: 'Library', icon: <Library /> },
+    { id: 'queue', label: 'Queue', icon: <ListMusic /> },
   ];
 
   const tabs = all.filter((tab) => lists.includes(tab.id));
@@ -111,7 +112,7 @@ function ListTabs({
                 />
               )
             ) : null}
-            <Icon name={tab.icon} size={16} />
+            <Icon size={16}>{tab.icon}</Icon>
             <span className={styles.tabLabel}>{tab.label}</span>
           </button>
         );
@@ -193,7 +194,7 @@ export function MediaPlayerFull({
     compact && speakersBody && ref ? (
       speakersView === 'inline' ? (
         <IconButton
-          icon="lu:speaker"
+          icon={<Speaker />}
           label="Speakers"
           glyph={18}
           pressed={speakersOpen}

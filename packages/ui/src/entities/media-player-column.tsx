@@ -1,3 +1,4 @@
+import { Library, ListMusic, Music } from 'lucide-react';
 import type { EntityRef } from '@hashsome/core';
 import type { ReactNode } from 'react';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
@@ -6,10 +7,8 @@ import { HoldProgress } from '../layout/hold-progress.tsx';
 import { IconButton } from '../layout/tile.tsx';
 import { DrawerTrigger } from '../layout/use-drawer.tsx';
 import { useHold } from '../layout/use-hold.ts';
-import { MediaBrowser } from './media-browser.tsx';
+import { MediaBrowser, MediaPlayerFull, MediaQueue } from './media-lazy.ts';
 import styles from './media-player-column.module.css';
-import { MediaPlayerFull } from './media-player-full.tsx';
-import { MediaQueue } from './media-queue.tsx';
 import { SpeakersOverlay } from './media-speakers-pill.tsx';
 import { NowPlaying } from './now-playing.tsx';
 
@@ -93,9 +92,9 @@ export function MediaPlayerColumn({
       ref && player?.capabilities.queue === true ? <MediaQueue entity={ref} /> : undefined;
 
     return handle.status === 'ready' ? (
-      <DrawerTrigger icon="lu:library" label="Library" kind={title} body={libraryBody ?? null}>
+      <DrawerTrigger icon={<Library />} label="Library" kind={title} body={libraryBody ?? null}>
         {(_open, _expanded, openLibrary) => (
-          <DrawerTrigger icon="lu:list-music" label="Queue" kind={title} body={queueBody ?? null}>
+          <DrawerTrigger icon={<ListMusic />} label="Queue" kind={title} body={queueBody ?? null}>
             {(_openToo, _expandedToo, openQueue) => (
               <Card>
                 <NowPlaying
@@ -107,7 +106,7 @@ export function MediaPlayerColumn({
                     ? {
                         leading: (
                           <IconButton
-                            icon="lu:library"
+                            icon={<Library />}
                             label="Browse media"
                             glyph={18}
                             onClick={openLibrary}
@@ -119,7 +118,7 @@ export function MediaPlayerColumn({
                     ? {
                         extra: (
                           <IconButton
-                            icon="lu:list-music"
+                            icon={<ListMusic />}
                             label="Queue"
                             glyph={18}
                             onClick={openQueue}
@@ -148,7 +147,7 @@ export function MediaPlayerColumn({
 
   return browser !== undefined && handle.status === 'ready' ? (
     <DrawerTrigger
-      icon="lu:music"
+      icon={<Music />}
       label={name ?? player?.name ?? fallback}
       kind="Media"
       body={
@@ -173,7 +172,7 @@ export function MediaPlayerColumn({
             {...pill}
             extra={
               <IconButton
-                icon="lu:library"
+                icon={<Library />}
                 label="Browse media"
                 glyph={18}
                 onClick={openExpanded}

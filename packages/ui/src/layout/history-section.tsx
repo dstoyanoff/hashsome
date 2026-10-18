@@ -1,3 +1,4 @@
+import { ChevronDown, Cpu, ToggleLeft, ToggleRight, Workflow } from 'lucide-react';
 import type { LogbookEntry } from '@hashsome/core';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
@@ -42,10 +43,10 @@ function initials(name: string): string {
 /** The chip for a row nobody caused: a switch thrown the way it went for on and off, and a chip for
  * the device coming or going or another mode. */
 const QUIET_ICON = {
-  on: 'lu:toggle-right',
-  off: 'lu:toggle-left',
-  state: 'lu:cpu',
-  availability: 'lu:cpu',
+  on: <ToggleRight />,
+  off: <ToggleLeft />,
+  state: <Cpu />,
+  availability: <Cpu />,
 } as const;
 
 /** The round picture at the start of a row: initials for a person, a workflow icon for an automation, and
@@ -71,10 +72,9 @@ function Avatar({
       {person ? (
         <span className={styles.initials}>{initials(actor)}</span>
       ) : (
-        <Icon
-          name={actor !== undefined ? 'lu:workflow' : QUIET_ICON[change ?? 'availability']}
-          size={16}
-        />
+        <Icon size={16}>
+          {actor !== undefined ? <Workflow /> : QUIET_ICON[change ?? 'availability']}
+        </Icon>
       )}
     </span>
   );
@@ -137,7 +137,9 @@ export function HistorySection({ entries, loading = false, onOpen }: HistorySect
           animate={{ rotate: open ? 180 : 0 }}
           transition={{ duration: still ? 0 : 0.2, ease: 'easeOut' }}
         >
-          <Icon name="lu:chevron-down" size={16} />
+          <Icon size={16}>
+            <ChevronDown />
+          </Icon>
         </motion.span>
       </PlainButton>
       <AnimatePresence initial={false}>

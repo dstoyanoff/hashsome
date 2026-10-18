@@ -1,6 +1,6 @@
+import { Maximize2, Minimize2, X } from 'lucide-react';
 import { AnimatePresence, motion, useDragControls, type MotionStyle } from 'motion/react';
-import { useEffect, useState, type CSSProperties } from 'react';
-import type { IconName } from '../icon-data.ts';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { Icon } from '../icon.tsx';
 import { useDetail } from './detail-provider.tsx';
 import styles from './entity-drawer.module.css';
@@ -114,7 +114,7 @@ export function EntityDrawer() {
                   </div>
                   <div className={styles.sheetTitle}>
                     {detail.header}
-                    <DrawerActionButton icon="lu:x" label="Close" onClick={closeDetail} />
+                    <DrawerActionButton icon={<X />} label="Close" onClick={closeDetail} />
                   </div>
                 </div>
                 <div className={styles.sheetBody}>{detail.body}</div>
@@ -143,12 +143,12 @@ export function EntityDrawer() {
                   <div className={styles.actions}>
                     {detail.locked ? null : (
                       <DrawerActionButton
-                        icon={expanded ? 'lu:minimize-2' : 'lu:maximize-2'}
+                        icon={expanded ? <Minimize2 /> : <Maximize2 />}
                         label={expanded ? 'Collapse' : 'Expand'}
                         onClick={toggleExpanded}
                       />
                     )}
-                    <DrawerActionButton icon="lu:x" label="Close" onClick={closeDetail} />
+                    <DrawerActionButton icon={<X />} label="Close" onClick={closeDetail} />
                   </div>
                 </div>
                 {detail.body}
@@ -166,7 +166,7 @@ function DrawerActionButton({
   label,
   onClick,
 }: {
-  icon: IconName;
+  icon: ReactNode;
   label: string;
   onClick: () => void;
 }) {
@@ -178,7 +178,7 @@ function DrawerActionButton({
       title={label}
       onClick={onClick}
     >
-      <Icon name={icon} size={14} />
+      <Icon size={14}>{icon}</Icon>
     </button>
   );
 }

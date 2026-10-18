@@ -1,3 +1,4 @@
+import { Bug } from 'lucide-react';
 import type { EntityRef } from '@hashsome/core';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { THEME_CHOICES, useDebug, type ThemeChoice } from '../debug.ts';
@@ -162,7 +163,9 @@ export function DebugMenu({
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        <Icon name="lu:bug" size={18} />
+        <Icon size={18}>
+          <Bug />
+        </Icon>
       </PlainButton>
     </div>
   );

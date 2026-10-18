@@ -1,4 +1,4 @@
-import type { IconName } from '../icon-data.ts';
+import type { ReactNode } from 'react';
 import { usePageInset } from '../layout/page.tsx';
 import { NAV_RAIL } from '../theme/grid.ts';
 import { NavItemLink } from './nav-item.tsx';
@@ -9,7 +9,7 @@ export interface NavItem {
   /** Route path relative to `base`, e.g. `''` (the dashboard's home) or `'lights'`. */
   to: string;
   label: string;
-  icon: IconName;
+  icon: ReactNode;
 
   /** A dot on the item for something on that page that needs a look: `notice` (warm) or `urgent` (red). Nothing by default. */
   attention?: 'notice' | 'urgent';

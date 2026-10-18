@@ -30,7 +30,7 @@ export function NavItemLink({
     >
       {({ isActive }) => (
         <span className={cx(styles.item, round && styles.round, isActive && styles.active)}>
-          <Icon name={item.icon} size={22} />
+          <Icon size={22}>{item.icon}</Icon>
           {item.attention ? <AttentionDot level={item.attention} /> : null}
         </span>
       )}

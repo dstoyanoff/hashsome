@@ -1,3 +1,20 @@
+import {
+  ArrowLeft,
+  ChevronRight,
+  Disc3,
+  Folder,
+  ListMusic,
+  ListPlus,
+  ListStart,
+  MicVocal,
+  Music,
+  Pause,
+  Play,
+  Radio,
+  Search,
+  Shuffle,
+  X,
+} from 'lucide-react';
 import type { BrowseItem, BrowseKind, EntityRef, MediaPlayerCommands } from '@hashsome/core';
 import { AnimatePresence, motion } from 'motion/react';
 import {
@@ -10,7 +27,6 @@ import {
   type PointerEvent,
   type ReactNode,
 } from 'react';
-import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { useEntityHandle } from '../hooks.ts';
 import { useDetail } from '../layout/detail-provider.tsx';
@@ -81,14 +97,14 @@ const KIND_LABELS: Record<BrowseKind, string> = {
 /** How far, in px, a swipe across the list goes before it means "back". */
 const SWIPE_BACK = 72;
 
-const KIND_ICONS: Record<BrowseKind, IconName> = {
-  folder: 'lu:folder',
-  artist: 'lu:mic-vocal',
-  album: 'lu:disc-3',
-  playlist: 'lu:list-music',
-  track: 'lu:music',
-  radio: 'lu:radio',
-  other: 'lu:music',
+const KIND_ICONS: Record<BrowseKind, ReactNode> = {
+  folder: <Folder />,
+  artist: <MicVocal />,
+  album: <Disc3 />,
+  playlist: <ListMusic />,
+  track: <Music />,
+  radio: <Radio />,
+  other: <Music />,
 };
 
 /** The library of a media player, in the app's own style: shelves, albums, playlists and the rest
@@ -241,7 +257,7 @@ export function MediaBrowser({
     opened?.playable === true ? (
       <div className={styles.actions}>
         <PillButton
-          icon="lu:play"
+          icon={<Play />}
           label="Play"
           compact={!theater}
           onClick={() => play(opened)}
@@ -250,13 +266,13 @@ export function MediaBrowser({
         {queueable ? (
           <>
             <PillButton
-              icon="lu:shuffle"
+              icon={<Shuffle />}
               label="Shuffle"
               compact={!theater}
               onClick={() => shuffleAll(opened)}
             />
             <PillButton
-              icon="lu:list-plus"
+              icon={<ListPlus />}
               label="Add to queue"
               compact={!theater}
               onClick={() => addToQueue(opened)}
@@ -285,7 +301,9 @@ export function MediaBrowser({
         title="Search"
         onClick={() => setSearchOpen(true)}
       >
-        <Icon name="lu:search" size={18} />
+        <Icon size={18}>
+          <Search />
+        </Icon>
       </PlainButton>
     </div>
   ) : null;
@@ -293,7 +311,7 @@ export function MediaBrowser({
   const header = (
     <div className={styles.header}>
       {browser.canGoBack ? (
-        <IconButton icon="lu:arrow-left" label="Back" glyph={16} onClick={browser.back} />
+        <IconButton icon={<ArrowLeft />} label="Back" glyph={16} onClick={browser.back} />
       ) : null}
       <h2 className={styles.heading}>{browser.title ?? 'Library'}</h2>
       {actionsHere}
@@ -303,7 +321,9 @@ export function MediaBrowser({
 
   const search = canSearch ? (
     <div className={styles.search}>
-      <Icon name="lu:search" size={16} />
+      <Icon size={16}>
+        <Search />
+      </Icon>
       <input
         className={styles.input}
         type="search"
@@ -331,7 +351,9 @@ export function MediaBrowser({
           title="Close search"
           onClick={closeSearch}
         >
-          <Icon name="lu:x" size={16} />
+          <Icon size={16}>
+            <X />
+          </Icon>
         </PlainButton>
       ) : browser.query !== '' ? (
         <PlainButton
@@ -340,7 +362,9 @@ export function MediaBrowser({
           title="Clear search"
           onClick={() => browser.search('')}
         >
-          <Icon name="lu:x" size={16} />
+          <Icon size={16}>
+            <X />
+          </Icon>
         </PlainButton>
       ) : null}
     </div>
@@ -370,7 +394,7 @@ export function MediaBrowser({
                   ? {
                       value: item.id,
                       label: browser.title ?? item.title,
-                      icon: 'lu:arrow-left' as const,
+                      icon: <ArrowLeft />,
                       ariaLabel: 'Back',
                     }
                   : { value: item.id, label: item.title },
@@ -555,7 +579,7 @@ function PillButton({
   primary,
   compact,
 }: {
-  icon: IconName;
+  icon: ReactNode;
   label: string;
   onClick: () => void;
   primary?: boolean;
@@ -574,7 +598,7 @@ function PillButton({
       aria-label={label}
       title={label}
     >
-      <Icon name={icon} size={14} />
+      <Icon size={14}>{icon}</Icon>
       {compact ? null : label}
     </button>
   );
@@ -647,7 +671,7 @@ function BrowseRowView({
           {item.artworkUrl ? (
             <Cover src={item.artworkUrl} size="small" />
           ) : (
-            <Icon name={KIND_ICONS[item.kind]} size={20} />
+            <Icon size={20}>{KIND_ICONS[item.kind]}</Icon>
           )}
           {asked.includes('playItem') ? <Waiting size={20} /> : null}
         </span>
@@ -669,11 +693,11 @@ function BrowseRowView({
               the rows around it. */}
           {Array.from({ length: spare }, (_, slot) => (
             <span key={slot} aria-hidden="true" className={styles.hidden}>
-              <IconButton icon="lu:play" label="" glyph={16} disabled />
+              <IconButton icon={<Play />} label="" glyph={16} disabled />
             </span>
           ))}
           <IconButton
-            icon={playing ? 'lu:pause' : 'lu:play'}
+            icon={playing ? <Pause /> : <Play />}
             label={playing ? `Pause ${item.title}` : `Resume ${item.title}`}
             glyph={16}
             primary
@@ -684,7 +708,7 @@ function BrowseRowView({
       {!active && queueable && item.playable ? (
         <>
           <IconButton
-            icon="lu:list-start"
+            icon={<ListStart />}
             label={`Play ${item.title} next`}
             glyph={16}
             disabled={asked.includes('queueNext')}
@@ -692,7 +716,7 @@ function BrowseRowView({
             onClick={onNext}
           />
           <IconButton
-            icon="lu:list-plus"
+            icon={<ListPlus />}
             label={`Add ${item.title} to the queue`}
             glyph={16}
             disabled={asked.includes('queueAdd')}
@@ -703,7 +727,7 @@ function BrowseRowView({
       ) : null}
       {!active && item.expandable && item.playable ? (
         <IconButton
-          icon="lu:play"
+          icon={<Play />}
           label={`Play ${item.title}`}
           glyph={16}
           disabled={asked.includes('playItem')}
@@ -773,7 +797,7 @@ function BrowseCard({
           {item.artworkUrl ? (
             <Cover src={item.artworkUrl} size="medium" />
           ) : (
-            <Icon name={KIND_ICONS[item.kind]} size={56} />
+            <Icon size={56}>{KIND_ICONS[item.kind]}</Icon>
           )}
           {asked.includes('playItem') ? <Waiting size={32} /> : null}
         </span>
@@ -794,7 +818,7 @@ function BrowseCard({
       {active ? (
         <div className={styles.over}>
           <IconButton
-            icon={playing ? 'lu:pause' : 'lu:play'}
+            icon={playing ? <Pause /> : <Play />}
             label={playing ? `Pause ${item.title}` : `Resume ${item.title}`}
             glyph={16}
             primary
@@ -805,7 +829,7 @@ function BrowseCard({
         <div className={styles.over}>
           {queueable ? (
             <IconButton
-              icon="lu:list-plus"
+              icon={<ListPlus />}
               label={`Add ${item.title} to the queue`}
               glyph={16}
               disabled={asked.includes('queueAdd')}
@@ -815,7 +839,7 @@ function BrowseCard({
           ) : null}
           {item.expandable ? (
             <IconButton
-              icon="lu:play"
+              icon={<Play />}
               label={`Play ${item.title}`}
               glyph={16}
               disabled={asked.includes('playItem')}
@@ -844,7 +868,9 @@ function Waiting({ size }: { size: number }) {
 function Opens() {
   return (
     <span className={styles.opens} aria-hidden="true">
-      <Icon name="lu:chevron-right" size={16} />
+      <Icon size={16}>
+        <ChevronRight />
+      </Icon>
     </span>
   );
 }

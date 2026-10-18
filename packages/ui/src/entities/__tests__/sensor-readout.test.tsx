@@ -1,7 +1,7 @@
 import { mockSensor } from '@hashsome/core';
 import { fireEvent, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { renderWithMock } from '../../test-utils.tsx';
+import { renderWithMock, settle } from '../../test-utils.tsx';
 import { SensorReadout } from '../sensor-readout.tsx';
 
 test('formats numeric values with unit', () => {
@@ -130,19 +130,21 @@ describe('with history', () => {
 
   const tile = (label: string) => screen.getByText(label).parentElement?.textContent;
 
-  test('tapping opens a drawer with min–max for today, this week and this month', () => {
+  test('tapping opens a drawer with min–max for today, this week and this month', async () => {
     renderWithMock(<SensorReadout entity="ha:t" history={history} />, temp);
     fireEvent.click(screen.getByRole('button', { name: /Study: 21 °C/ }));
+    await settle();
     expect(tile('Today')).toContain('20 – 22 °C');
     expect(tile('This week')).toContain('8 – 22 °C');
     expect(tile('This month')).toContain('6 – 22 °C');
     expect(screen.queryByText('Last 7 days')).toBeNull();
   });
 
-  test('expanded, it aggregates the rolling windows and a custom date range', () => {
+  test('expanded, it aggregates the rolling windows and a custom date range', async () => {
     renderWithMock(<SensorReadout entity="ha:t" history={history} />, temp);
     fireEvent.click(screen.getByRole('button', { name: /Study: 21 °C/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Expand' }));
+    await settle();
     expect(tile('Last 7 days')).toContain('8 – 22 °C');
     expect(tile('Last 30 days')).toContain('4 – 22 °C');
     expect(screen.queryByText('Custom range')).toBeNull();

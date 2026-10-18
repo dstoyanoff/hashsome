@@ -1,3 +1,4 @@
+import { Speaker } from 'lucide-react';
 import type { EntityRef, MediaPlayerEntity } from '@hashsome/core';
 import { memo } from 'react';
 import { useEntities } from '../hooks.ts';
@@ -5,7 +6,14 @@ import { Icon } from '../icon.tsx';
 import { IconButton } from '../layout/tile.tsx';
 import { DrawerTrigger } from '../layout/use-drawer.tsx';
 import styles from './media-speakers-pill.module.css';
-import { MediaSpeakers, offeredSpeakers } from './media-speakers.tsx';
+import { lazyExport } from '../layout/lazy.tsx';
+import type { MediaSpeakersProps } from './media-speakers.tsx';
+import { offeredSpeakers } from './offered-speakers.ts';
+
+const MediaSpeakers = lazyExport<MediaSpeakersProps>(
+  () => import('./media-speakers.tsx'),
+  'MediaSpeakers',
+);
 
 /** What the pill says: how many speakers play together, or which stream is playing in another room, or nothing. */
 export interface SpeakersSummary {
@@ -118,7 +126,9 @@ export function SpeakersPill({
       onClick={onClick}
     >
       <span className={styles.icon}>
-        <Icon name="lu:speaker" size={14} />
+        <Icon size={14}>
+          <Speaker />
+        </Icon>
       </span>
       {offering ? <span className={styles.dot} aria-hidden="true" /> : null}
       {words !== undefined ? <span className={styles.words}>{words}</span> : null}
@@ -160,7 +170,7 @@ export const SpeakersOverlay = memo(function SpeakersOverlay({
   );
 
   return (
-    <DrawerTrigger icon="lu:speaker" label="Speakers" kind={title} body={body}>
+    <DrawerTrigger icon={<Speaker />} label="Speakers" kind={title} body={body}>
       {(open) => (
         <SpeakersPill
           player={player}
@@ -205,10 +215,10 @@ export const SpeakersButton = memo(function SpeakersButton({
   );
 
   return (
-    <DrawerTrigger icon="lu:speaker" label="Speakers" kind={title} body={body}>
+    <DrawerTrigger icon={<Speaker />} label="Speakers" kind={title} body={body}>
       {(open) => (
         <IconButton
-          icon="lu:speaker"
+          icon={<Speaker />}
           label={`Speakers: ${summaryLabel(summary)}`}
           glyph={18}
           active={summary.together > 1}

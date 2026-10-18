@@ -1,3 +1,4 @@
+import { Pause, Play, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState, type ReactNode } from 'react';
 import type { EntityHandle } from '../entity-handle.ts';
@@ -108,7 +109,7 @@ export function NowPlaying({
           </h2>
           {caps?.shuffle && shufflePlacement === 'title' ? (
             <IconButton
-              icon="lu:shuffle"
+              icon={<Shuffle />}
               label="Shuffle"
               size={14}
               active={player?.shuffle === true}
@@ -160,7 +161,7 @@ export function NowPlaying({
           >
             {caps?.shuffle && shufflePlacement === 'transport' ? (
               <IconButton
-                icon="lu:shuffle"
+                icon={<Shuffle />}
                 label="Shuffle"
                 glyph={18}
                 active={player?.shuffle === true}
@@ -179,7 +180,7 @@ export function NowPlaying({
               <span />
             )}
             <IconButton
-              icon="lu:skip-back"
+              icon={<SkipBack />}
               label="Previous"
               glyph={18}
               disabled={!ready || caps?.previous === false || !can.previous}
@@ -187,7 +188,7 @@ export function NowPlaying({
               onClick={() => press('previous', () => handle.command('previous'))}
             />
             <IconButton
-              icon={playing ? 'lu:pause' : 'lu:play'}
+              icon={playing ? <Pause /> : <Play />}
               label={playing ? 'Pause' : 'Play'}
               glyph={18}
               disabled={!ready || !can.play}
@@ -196,7 +197,7 @@ export function NowPlaying({
               onClick={() => press('togglePlay', () => handle.command('togglePlay'))}
             />
             <IconButton
-              icon="lu:skip-forward"
+              icon={<SkipForward />}
               label="Next"
               glyph={18}
               disabled={!ready || caps?.next === false || !can.next}
@@ -205,7 +206,7 @@ export function NowPlaying({
             />
             {iconVolume ? (
               <IconButton
-                icon={volume.muted ? 'lu:volume-x' : 'lu:volume-2'}
+                icon={volume.muted ? <VolumeX /> : <Volume2 />}
                 label="Volume"
                 glyph={18}
                 active={volume.muted}
@@ -228,7 +229,7 @@ export function NowPlaying({
             disabled={!ready || caps?.mute === false}
             onClick={volume.toggleMute}
           >
-            <Icon name={volume.muted ? 'lu:volume-x' : 'lu:volume-2'} size={16} />
+            <Icon size={16}>{volume.muted ? <VolumeX /> : <Volume2 />}</Icon>
           </PlainButton>
           <ValueBar
             label="Volume level"
