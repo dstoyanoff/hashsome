@@ -1,3 +1,4 @@
+import { Sun } from 'lucide-react';
 import { LocalClient, mockLight, MockIntegration } from '@hashsome/core';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -342,10 +343,10 @@ test('a drag the browser cancels (a touch it took for a scroll) is ended where t
 test('the icon badge of a dimmable tile that is on is the accent, at any brightness, and a solid on/off tile’s is the darker circle', () => {
   renderWithMock(
     <>
-      <Tile label="dim" icon="lu:sun" active fill={0.27} onFillChange={() => {}} />
-      <Tile label="bright" icon="lu:sun" active fill={0.9} onFillChange={() => {}} />
-      <Tile label="switch" icon="lu:sun" active onPress={() => {}} />
-      <Tile label="off" icon="lu:sun" fill={0} onFillChange={() => {}} />
+      <Tile label="dim" icon={<Sun />} active fill={0.27} onFillChange={() => {}} />
+      <Tile label="bright" icon={<Sun />} active fill={0.9} onFillChange={() => {}} />
+      <Tile label="switch" icon={<Sun />} active onPress={() => {}} />
+      <Tile label="off" icon={<Sun />} fill={0} onFillChange={() => {}} />
     </>,
     {},
   );
