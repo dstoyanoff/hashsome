@@ -203,7 +203,7 @@ export function ArtworkRing({
             : {})}
         >
           {artworkUrl ? (
-            <Cover src={artworkUrl} size="medium" />
+            <Cover src={artworkUrl} size="medium" priority />
           ) : (
             <Icon size={40}>
               <Music />
