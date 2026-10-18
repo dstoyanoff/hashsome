@@ -16,6 +16,7 @@ export * from './layout/animated-outlet.tsx';
 export * from './layout/room-header.tsx';
 export { Tile, type TileProps } from './layout/tile.tsx';
 export { useIdleReturn } from './layout/use-idle-return.ts';
+export { useKeepSearch } from './layout/keep-search.ts';
 export { TaskTile, taskLine, type TaskState, type TaskTileProps } from './layout/task-tile.tsx';
 export { ConfirmDialog, type ConfirmDialogProps } from './layout/confirm-dialog.tsx';
 export * from './layout/energy-chart.tsx';

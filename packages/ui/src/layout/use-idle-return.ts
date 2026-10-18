@@ -41,7 +41,9 @@ export function useIdleReturnDefault(): number | false {
  */
 export function useIdleReturn({ to, after }: { to: string; after: number | false | undefined }) {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  // The page it goes back to is opened with the query the display was, a flag (`?motion=reduced`) it was set up with.
+  const destination = search === '' || to.includes('?') ? to : `${to}${search}`;
   // Set when the time starts, in the effect below.
   const lastTouched = useRef(0);
   const enabled = typeof after === 'number' && after > 0;
@@ -64,7 +66,7 @@ export function useIdleReturn({ to, after }: { to: string; after: number | false
     const check = setInterval(
       () => {
         if (shouldLeave(Date.now(), lastTouched.current, after)) {
-          navigate(to, { replace: true });
+          navigate(destination, { replace: true });
         }
       },
       Math.min(CHECK_MS, after / 2),
@@ -77,5 +79,5 @@ export function useIdleReturn({ to, after }: { to: string; after: number | false
 
       clearInterval(check);
     };
-  }, [enabled, away, after, to, navigate]);
+  }, [enabled, away, after, destination, navigate]);
 }
