@@ -362,3 +362,36 @@ test('the icon badge of a dimmable tile that is on is the accent, at any brightn
   expect(tone('switch')).toBe('accent');
   expect(tone('off')).toBe('ready');
 });
+
+test('a drag measures the tile once, when the press starts, not on every move (each would lay the page out again)', () => {
+  const onFillChange = vi.fn<(fill: number) => void>();
+  renderWithMock(
+    <Tile label="led" active fill={0.3} secondary="30%" onFillChange={onFillChange} />,
+  );
+
+  const tile = screen.getByRole('button', { name: /^led/ });
+  const measure = vi.fn<() => DOMRect>(() => ({ left: 0, width: 200 }) as DOMRect);
+  tile.getBoundingClientRect = measure;
+  fireEvent.pointerDown(tile, { clientX: 100, pointerId: 1 });
+  for (const x of [110, 120, 130, 140, 150]) {
+    fireEvent.pointerMove(tile, { clientX: x, pointerId: 1 });
+  }
+
+  fireEvent.pointerUp(tile, { clientX: 150, pointerId: 1 });
+  expect(measure).toHaveBeenCalledTimes(1);
+  expect(onFillChange).toHaveBeenCalledWith(0.75);
+});
+
+test('the fill follows a drag by a transform, not by a width', () => {
+  const { container } = renderWithMock(
+    <Tile label="led" active fill={0.3} secondary="30%" onFillChange={() => {}} />,
+  );
+
+  const tile = screen.getByRole('button', { name: /^led/ });
+  tile.getBoundingClientRect = () => ({ left: 0, width: 200 }) as DOMRect;
+  fireEvent.pointerDown(tile, { clientX: 100, pointerId: 1 });
+  fireEvent.pointerMove(tile, { clientX: 150, pointerId: 1 });
+  const fill = [...container.querySelectorAll('span')].find((span) => span.style.transform !== '')!;
+  expect(fill.style.transform).toBe('scaleX(0.75)');
+  expect(fill.style.width).toBe('');
+});

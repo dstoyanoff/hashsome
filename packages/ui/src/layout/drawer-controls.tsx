@@ -121,16 +121,19 @@ export function ValueBar({
 }) {
   const dragging = useRef(false);
   const lastDrag = useRef<number | null>(null);
+  // The bar's edges, measured when the press starts: reading them on every move, after the fill has changed, makes the browser lay the
+  // page out again for each one.
+  const geometry = useRef<{ left: number; width: number } | null>(null);
   const fraction = max === min ? 0 : (value - min) / (max - min);
   const pct = Math.min(1, Math.max(0, fraction)) * 100;
   const clampValue = (v: number) => Math.min(max, Math.max(min, v));
   const valueAt = (event: PointerEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    if (rect.width === 0) {
+    const { left, width } = geometry.current ?? event.currentTarget.getBoundingClientRect();
+    if (width === 0) {
       return value;
     }
 
-    const f = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    const f = Math.min(1, Math.max(0, (event.clientX - left) / width));
     return clampValue(Math.round((min + f * (max - min)) / round) * round);
   };
 
@@ -168,6 +171,8 @@ export function ValueBar({
       onPointerDown={(event: PointerEvent<HTMLDivElement>) => {
         dragging.current = true;
         event.currentTarget.setPointerCapture?.(event.pointerId);
+        const { left, width } = event.currentTarget.getBoundingClientRect();
+        geometry.current = { left, width };
         lastDrag.current = valueAt(event);
         onDrag(lastDrag.current);
       }}
@@ -181,6 +186,7 @@ export function ValueBar({
         if (dragging.current) {
           dragging.current = false;
           onCommit(valueAt(event));
+          geometry.current = null;
         }
       }}
       // A touch the browser took or lost never ends with a release. Ending the drag with the last
@@ -188,21 +194,23 @@ export function ValueBar({
       onPointerCancel={() => {
         if (dragging.current) {
           dragging.current = false;
+          geometry.current = null;
           onCommit(lastDrag.current ?? value);
         }
       }}
       onLostPointerCapture={() => {
         if (dragging.current) {
           dragging.current = false;
+          geometry.current = null;
           onCommit(lastDrag.current ?? value);
         }
       }}
       onKeyDown={onKeyDown}
     >
       {gradient ? (
-        <span className={styles.dim} style={{ left: `${Math.max(pct, 4)}%` }} />
+        <span className={styles.dim} style={{ transform: `translateX(${Math.max(pct, 4)}%)` }} />
       ) : (
-        <span className={styles.fill} style={{ width: `${pct}%` }} />
+        <span className={styles.fill} style={{ transform: `scaleX(${pct / 100})` }} />
       )}
     </div>
   );
