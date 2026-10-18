@@ -25,6 +25,13 @@ export interface RemoteClientOptions {
   createSocket?: (url: string) => WebSocket;
   reconnectMinMs?: number;
   reconnectMaxMs?: number;
+
+  /** How often an open connection is asked whether it is alive, in ms. Default 5000. */
+  heartbeatMs?: number;
+
+  /** How long an open connection may be silent before it is taken to be dead and opened again, in ms. Default 15000, three missed
+   * beats. Only once the runtime has answered a beat: an older runtime does not, and a quiet connection to it is not a dead one. */
+  deadAfterMs?: number;
 }
 
 export type EntityListener = (entity: Entity | null | undefined) => void;
@@ -106,6 +113,11 @@ export class RemoteClient implements Client {
   }>();
   #retry = 0;
   #timer: ReturnType<typeof setTimeout> | undefined;
+
+  /** The beat of an open connection, when something was last heard on it, and whether the runtime answers beats at all. */
+  #beat: ReturnType<typeof setInterval> | undefined;
+  #heard = 0;
+  #answers = false;
   #stopped = true;
 
   constructor(options: RemoteClientOptions) {
@@ -128,6 +140,7 @@ export class RemoteClient implements Client {
   close(): void {
     this.#stopped = true;
     clearTimeout(this.#timer);
+    clearInterval(this.#beat);
     this.#giveUpWaiting(new Error('Connection closed'));
     this.#socket?.close();
     this.#socket = undefined;
@@ -353,40 +366,79 @@ export class RemoteClient implements Client {
       for (const ref of this.#listeners.keys()) {
         this.#send({ type: 'subscribe', ref });
       }
+
+      this.#startBeat(socket);
     });
 
     socket.addEventListener('message', (event) => {
       const message = parseServerMessage(String(event.data));
       if (message) {
+        this.#heard = Date.now();
         this.#handle(message);
       }
     });
 
-    socket.addEventListener('close', () => {
+    socket.addEventListener('close', () => this.#lost(socket));
+  }
+
+  /** Asks the runtime now and then whether it is there, and gives the connection up when it has gone quiet: a socket whose other end
+   * went away without closing (a laptop asleep, a network that dropped) says nothing for minutes, all of which the page would show
+   * as connected. */
+  #startBeat(socket: WebSocket) {
+    clearInterval(this.#beat);
+    this.#heard = Date.now();
+    this.#answers = false;
+    const every = this.#options.heartbeatMs ?? 5_000;
+    const deadAfter = this.#options.deadAfterMs ?? 15_000;
+    this.#beat = setInterval(() => {
       if (this.#socket !== socket) {
         return;
       }
 
-      this.#socket = undefined;
-      for (const { reject } of this.#pending.values()) {
-        reject(new Error('Connection lost'));
-      }
-
-      this.#pending.clear();
-      this.#setLink('closed');
-      if (this.#stopped) {
+      if (this.#answers && Date.now() - this.#heard > deadAfter) {
+        this.#lost(socket);
         return;
       }
 
-      const min = this.#options.reconnectMinMs ?? 500;
-      const max = this.#options.reconnectMaxMs ?? 10_000;
-      const delay = Math.min(max, min * 2 ** this.#retry++);
-      this.#timer = setTimeout(() => this.#open(), delay);
-    });
+      this.#send({ type: 'ping' });
+    }, every);
+  }
+
+  /** The connection is gone, closed or found dead: its requests fail and it is opened again after a pause. */
+  #lost(socket: WebSocket) {
+    if (this.#socket !== socket) {
+      return;
+    }
+
+    clearInterval(this.#beat);
+    this.#socket = undefined;
+    try {
+      socket.close();
+    } catch {
+      // Already closed, or never open: nothing to give up.
+    }
+
+    for (const { reject } of this.#pending.values()) {
+      reject(new Error('Connection lost'));
+    }
+
+    this.#pending.clear();
+    this.#setLink('closed');
+    if (this.#stopped) {
+      return;
+    }
+
+    const min = this.#options.reconnectMinMs ?? 500;
+    const max = this.#options.reconnectMaxMs ?? 10_000;
+    const delay = Math.min(max, min * 2 ** this.#retry++);
+    this.#timer = setTimeout(() => this.#open(), delay);
   }
 
   #handle(message: ReturnType<typeof parseServerMessage> & object) {
     switch (message.type) {
+      case 'pong':
+        this.#answers = true;
+        break;
       case 'entity':
         this.#entities.set(message.ref, message.entity);
         for (const listener of Array.from(this.#listeners.get(message.ref) ?? [])) {
