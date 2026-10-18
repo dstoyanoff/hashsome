@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.1 (2026-10-18)
+
+### Fixes
+
+- **ui:** the published packages build: the stylesheets are in dist, and the build-time render bundles the ui (#137) ([9d3af8e](https://github.com/dstoyanoff/hashsome/commit/9d3af8ecc3a685fa060fbf89624419a323c46726))
+
 ## 0.19.0 (2026-10-18)
 
 ### ⚠ Breaking changes
