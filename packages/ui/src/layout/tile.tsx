@@ -1,5 +1,4 @@
 import type { EntityRef } from '@hashsome/core';
-import { m, Presence } from '../motion/index.tsx';
 import {
   isValidElement,
   useEffect,
@@ -13,7 +12,6 @@ import {
 } from 'react';
 import { Icon } from '../icon.tsx';
 import { RoundButton } from './round-button.tsx';
-import { useStill } from './use-still.ts';
 import { SpinnerRing } from './spinner.tsx';
 import { statusLabels, type EntityStatus } from '../status.ts';
 import { useDrawer } from './use-drawer.tsx';
@@ -21,6 +19,7 @@ import type { EnergyChartProps } from './energy-chart.tsx';
 import type { LogbookEntry } from './history-section.tsx';
 import { HoldProgress } from './hold-progress.tsx';
 import { lazyExport } from './lazy.tsx';
+import { cx } from '../style/cx.ts';
 import styles from './tile.module.css';
 
 const EnergyChart = lazyExport<EnergyChartProps>(() => import('./energy-chart.tsx'), 'EnergyChart');
@@ -441,9 +440,8 @@ export function IconButton({
   feedback?: 'pending' | 'done' | 'error' | undefined;
 }) {
   const ring = feedback === 'pending';
-  const still = useStill();
-  // The icon morphs (turns out, the next turns in) only once it has changed: a list of rows has a few of these in each,
-  // and almost none of them ever change, so the animation machinery is not there until it has something to do.
+  // The icon turns in (by CSS) once it has changed: a list of rows has a few of these in each, and almost none of them ever
+  // change, so nothing is set up for one until it has something to do.
   const [morphs, setMorphs] = useState(false);
   // Another icon, not the same one drawn again: an element made anew in every render is the same icon while it is the same component.
   const kind: unknown = isValidElement(icon) ? icon.type : icon;
@@ -453,7 +451,7 @@ export function IconButton({
     // In a function: a component is itself one, which state would call as an update.
     setDrawn(() => kind);
     setTurn((current) => current + 1);
-    if (!still && !morphs) {
+    if (!morphs) {
       setMorphs(true);
     }
   }
@@ -461,24 +459,9 @@ export function IconButton({
   const glyphSize = glyph !== undefined ? { size: glyph } : size !== undefined ? { size } : {};
   const content = (
     <>
-      {morphs && !still ? (
-        <Presence mode="popLayout">
-          <m.span
-            key={turn}
-            className={styles.glyph}
-            initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
-            animate={{ rotate: 0, opacity: 1, scale: 1 }}
-            exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
-            transition={{ duration: 0.18 }}
-          >
-            <Icon {...glyphSize}>{icon}</Icon>
-          </m.span>
-        </Presence>
-      ) : (
-        <span className={styles.glyph}>
-          <Icon {...glyphSize}>{icon}</Icon>
-        </span>
-      )}
+      <span key={turn} className={cx(styles.glyph, morphs && styles.turnIn)}>
+        <Icon {...glyphSize}>{icon}</Icon>
+      </span>
       {ring ? <SpinnerRing /> : null}
     </>
   );
@@ -498,19 +481,8 @@ export function IconButton({
     onClick,
   };
 
-  // A plain button where nothing moves; the squeeze on a press is a motion element's.
-  return still ? (
+  return (
     <RoundButton {...common} {...(color ? { style: { '--glyph': color } as CSSProperties } : {})}>
-      {content}
-    </RoundButton>
-  ) : (
-    <RoundButton
-      as={m.button}
-      whileTap={disabled || feedback === 'pending' ? {} : { scale: 0.88 }}
-      transition={{ duration: 0.12 }}
-      {...common}
-      {...(color ? { style: { '--glyph': color } as CSSProperties } : {})}
-    >
       {content}
     </RoundButton>
   );

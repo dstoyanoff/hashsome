@@ -85,13 +85,31 @@
   flex: none;
   align-items: center;
   gap: 4px;
+  height: var(--row);
   overflow: hidden;
   border-radius: 8px;
   background: transparent;
+  /* A row another is dragged past gives way by one row and its gap. */
+  transform: translateY(calc(var(--shift, 0) * (var(--row) + var(--hs-space) / 6)));
+}
+
+.row[data-dim='true'] {
+  opacity: 0.5;
+}
+
+/* In full motion the rows give way smoothly. */
+html[data-motion='full'] .row {
+  transition: transform 0.15s ease-out;
+}
+
+html[data-motion='full'] .row[data-dragging='true'] {
+  transition: none;
 }
 
 .row[data-dragging='true'] {
   z-index: 1;
+  transform: translateY(var(--drag));
+  transition: none;
   background: var(--hs-surface-raised);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
 }

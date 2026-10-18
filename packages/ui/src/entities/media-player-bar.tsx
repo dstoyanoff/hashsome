@@ -12,7 +12,6 @@ import {
   X,
 } from 'lucide-react';
 import type { EntityRef } from '@hashsome/core';
-import { m } from '../motion/index.tsx';
 import { useState, type ReactNode } from 'react';
 import { Icon } from '../icon.tsx';
 import { ValueBar } from '../layout/drawer-controls.tsx';
@@ -128,9 +127,6 @@ function Ring({
   );
 }
 
-/** The same spring the swatch rows pop in with, so the volume overlay opens like they do. */
-const VOLUME_SPRING = { type: 'spring', stiffness: 520, damping: 26 } as const;
-
 /** The bar itself. Holding it (anywhere but on a button or slider) opens the drawer, with a thin
  * line along the top that fills while the press is timed, like a tile's. */
 function HoldCard({
@@ -236,19 +232,9 @@ export function MediaPlayerBar({
   const grouped = grouping && ref !== undefined && caps?.group === true;
 
   const volumeSlider = (
-    <m.div
-      className={styles.volume}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.15 }}
-      data-part="volume"
-    >
+    <div className={styles.volume} data-part="volume">
       <PlainButton
-        as={m.button}
         className={styles.mute}
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={VOLUME_SPRING}
         aria-label={muted ? 'Unmute' : 'Mute'}
         aria-pressed={muted}
         title={muted ? 'Unmute' : 'Mute'}
@@ -256,12 +242,7 @@ export function MediaPlayerBar({
       >
         <Icon size={16}>{muted ? <VolumeX /> : <Volume2 />}</Icon>
       </PlainButton>
-      <m.div
-        className={styles.slider}
-        initial={{ scaleX: 0.4, opacity: 0 }}
-        animate={{ scaleX: 1, opacity: 1 }}
-        transition={{ ...VOLUME_SPRING, delay: 0.04 }}
-      >
+      <div className={styles.slider}>
         <ValueBar
           label="Volume level"
           value={volume.shown}
@@ -272,16 +253,9 @@ export function MediaPlayerBar({
           onDrag={volume.drag}
           onCommit={volume.commit}
         />
-      </m.div>
-      <m.span
-        className={styles.percent}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.2, delay: 0.1 }}
-      >
-        {volume.shown}%
-      </m.span>
-    </m.div>
+      </div>
+      <span className={styles.percent}>{volume.shown}%</span>
+    </div>
   );
 
   const trackInfo = (

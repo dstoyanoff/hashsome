@@ -1,10 +1,13 @@
 import { Maximize2, Minimize2, X } from 'lucide-react';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { m, Presence } from '../motion/index.tsx';
+import { usePresence } from '../motion/presence.ts';
 import { Icon } from '../icon.tsx';
 import { useDetail } from './detail-provider.tsx';
 import { useSheetPull } from './use-sheet-pull.ts';
 import styles from './entity-drawer.module.css';
+
+/** How long the drawer takes to leave, in ms, in full motion. */
+const EXIT_MS = 260;
 
 const COLLAPSED_WIDTH = 380;
 const EDGE_INSET = 20;
@@ -30,7 +33,15 @@ const SHEET_HEIGHT = '92dvh';
  * to "fill the available height" than any `top`/`bottom`/`height` arithmetic.
  */
 export function EntityDrawer() {
-  const { detail, closeDetail, toggleExpanded } = useDetail();
+  const { detail: current, closeDetail, toggleExpanded } = useDetail();
+  // What was open stays drawn while it leaves (see `usePresence`), so it is kept for that.
+  const [last, setLast] = useState(current);
+  if (current && current !== last) {
+    setLast(current);
+  }
+
+  const { mounted, leaving } = usePresence(current !== null, EXIT_MS);
+  const detail = current ?? (mounted ? last : null);
   const sheetNode = useRef<HTMLDivElement>(null);
   const pull = useSheetPull(sheetNode, closeDetail);
   const [viewportWidth, setViewportWidth] = useState(() =>
@@ -69,84 +80,66 @@ export function EntityDrawer() {
     ? Math.max(0, viewportWidth - EDGE_INSET * 2)
     : Math.min(COLLAPSED_WIDTH, Math.max(0, viewportWidth - EDGE_INSET * 2));
 
+  if (!detail) {
+    return null;
+  }
+
   return (
-    <Presence>
-      {detail ? (
-        <>
-          <m.div
-            key="hash-drawer-scrim"
-            className={styles.scrim}
-            onClick={closeDetail}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          />
-          {sheet ? (
-            <div className={styles.sheetHost}>
-              <m.div
-                key="hash-drawer"
-                ref={sheetNode}
-                className={styles.sheet}
-                data-tall={expanded || detail.locked === true}
-                style={{ '--sheet-height': SHEET_HEIGHT } as CSSProperties}
-                role="dialog"
-                aria-modal="true"
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 34, stiffness: 340, mass: 0.9 }}
-              >
-                <div className={styles.handle} {...pull}>
-                  <div className={styles.grip}>
-                    <div className={styles.gripBar} aria-hidden="true" />
-                  </div>
-                  <div className={styles.sheetTitle}>
-                    {detail.header}
-                    <DrawerActionButton icon={<X />} label="Close" onClick={closeDetail} />
-                  </div>
-                </div>
-                <div className={styles.sheetBody}>{detail.body}</div>
-              </m.div>
+    <>
+      <div className={styles.scrim} data-leaving={leaving} onClick={closeDetail} />
+      {sheet ? (
+        <div className={styles.sheetHost}>
+          <div
+            ref={sheetNode}
+            className={styles.sheet}
+            data-tall={expanded || detail.locked === true}
+            data-leaving={leaving}
+            style={{ '--sheet-height': SHEET_HEIGHT } as CSSProperties}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className={styles.handle} {...pull}>
+              <div className={styles.grip}>
+                <div className={styles.gripBar} aria-hidden="true" />
+              </div>
+              <div className={styles.sheetTitle}>
+                {detail.header}
+                <DrawerActionButton icon={<X />} label="Close" onClick={closeDetail} />
+              </div>
             </div>
-          ) : (
-            <div
-              className={styles.panelHost}
-              style={{ '--edge-inset': `${EDGE_INSET}px` } as CSSProperties}
-            >
-              <m.div
-                key="hash-drawer"
-                className={styles.panel}
-                role="dialog"
-                aria-modal="true"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1, width }}
-                exit={{ opacity: 0 }}
-                transition={{
-                  width: { duration: 0.32, ease: [0.2, 0.8, 0.2, 1] },
-                  opacity: { duration: 0.28 },
-                }}
-              >
-                <div className={styles.panelTitle}>
-                  {detail.header}
-                  <div className={styles.actions}>
-                    {detail.locked ? null : (
-                      <DrawerActionButton
-                        icon={expanded ? <Minimize2 /> : <Maximize2 />}
-                        label={expanded ? 'Collapse' : 'Expand'}
-                        onClick={toggleExpanded}
-                      />
-                    )}
-                    <DrawerActionButton icon={<X />} label="Close" onClick={closeDetail} />
-                  </div>
-                </div>
-                {detail.body}
-              </m.div>
+            <div className={styles.sheetBody}>{detail.body}</div>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={styles.panelHost}
+          style={{ '--edge-inset': `${EDGE_INSET}px` } as CSSProperties}
+        >
+          <div
+            className={styles.panel}
+            data-leaving={leaving}
+            style={{ width }}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className={styles.panelTitle}>
+              {detail.header}
+              <div className={styles.actions}>
+                {detail.locked ? null : (
+                  <DrawerActionButton
+                    icon={expanded ? <Minimize2 /> : <Maximize2 />}
+                    label={expanded ? 'Collapse' : 'Expand'}
+                    onClick={toggleExpanded}
+                  />
+                )}
+                <DrawerActionButton icon={<X />} label="Close" onClick={closeDetail} />
+              </div>
             </div>
-          )}
-        </>
-      ) : null}
-    </Presence>
+            {detail.body}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

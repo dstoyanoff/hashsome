@@ -36,3 +36,8 @@ export function useStill(): boolean {
   const prefers = useSyncExternalStore(subscribe, asked, () => false);
   return prefers || level !== 'full';
 }
+
+/** Whether the animations that cost something run: the app is in full motion and the device has not asked for less. */
+export function useFullMotion(): boolean {
+  return !useStill();
+}

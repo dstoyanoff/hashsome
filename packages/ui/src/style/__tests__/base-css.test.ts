@@ -39,3 +39,9 @@ test('a touch screen has no scrollbars', () => {
   expect(css).toMatch(/@media \(pointer: coarse\) \{\s*\* \{\s*scrollbar-width: none;/);
   expect(css).toMatch(/::-webkit-scrollbar \{\s*display: none;/);
 });
+
+test('a device that asks for less motion gets none', () => {
+  expect(css).toMatch(
+    /@media \(prefers-reduced-motion: reduce\)[^}]*\{[^}]*animation: none !important;/s,
+  );
+});

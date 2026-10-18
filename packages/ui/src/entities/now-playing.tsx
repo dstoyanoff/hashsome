@@ -1,5 +1,4 @@
 import { Pause, Play, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
-import { m, Presence } from '../motion/index.tsx';
 import { useState, type ReactNode } from 'react';
 import type { EntityHandle } from '../entity-handle.ts';
 import { Icon } from '../icon.tsx';
@@ -14,8 +13,7 @@ import { formatDuration, useMediaPosition, useSteadyPlaying } from './media-prog
 import { useSeekHold } from './media-seek.ts';
 import { ArtworkRing } from './artwork-ring.tsx';
 import { LoadingLine, useLoadingLabel } from './media-loading-line.tsx';
-import { ROW_FADE, VolumeRow } from './volume-row.tsx';
-import { useStill } from '../layout/use-still.ts';
+import { VolumeRow } from './volume-row.tsx';
 
 /** The upright "now playing" panel the media column and page share: the artwork on a record, what is playing, how
  * far along it is, the transport buttons and a volume bar that is always there. Not exported from
@@ -72,7 +70,6 @@ export function NowPlaying({
   const { feedbackFor, press } = usePressFeedback(player?.ref);
   const volume = useVolumeControl(handle);
   const [volumeOpen, setVolumeOpen] = useState(false);
-  const still = useStill();
   const iconVolume =
     volumeControl === 'icon' &&
     shufflePlacement === 'title' &&
@@ -141,84 +138,75 @@ export function NowPlaying({
       ) : null}
       {speakers ? <div className={styles.speakers}>{speakers}</div> : null}
       {/* Five equal slots, so play/pause stays in the middle whichever side buttons there are. */}
-      <Presence mode="wait" initial={false}>
-        {/* The buttons and the volume take turns in one row: one fades out, then the other in. */}
-        {iconVolume && volumeOpen ? (
-          <VolumeRow
-            key="volume"
-            volume={volume}
-            canMute={caps?.mute !== false}
-            onClose={() => setVolumeOpen(false)}
+      {/* The buttons and the volume take turns in one row: one fades out, then the other in. */}
+      {iconVolume && volumeOpen ? (
+        <VolumeRow
+          key="volume"
+          volume={volume}
+          canMute={caps?.mute !== false}
+          onClose={() => setVolumeOpen(false)}
+        />
+      ) : (
+        <div key="transport" className={styles.transport}>
+          {caps?.shuffle && shufflePlacement === 'transport' ? (
+            <IconButton
+              icon={<Shuffle />}
+              label="Shuffle"
+              glyph={18}
+              active={player?.shuffle === true}
+              pressed={player?.shuffle === true}
+              disabled={!ready}
+              feedback={feedbackFor('setShuffle')}
+              onClick={() =>
+                press('setShuffle', () =>
+                  handle.command('setShuffle', { shuffle: player?.shuffle !== true }),
+                )
+              }
+            />
+          ) : shufflePlacement === 'title' ? (
+            (leading ?? <span />)
+          ) : (
+            <span />
+          )}
+          <IconButton
+            icon={<SkipBack />}
+            label="Previous"
+            glyph={18}
+            disabled={!ready || caps?.previous === false || !can.previous}
+            feedback={feedbackFor('previous')}
+            onClick={() => press('previous', () => handle.command('previous'))}
           />
-        ) : (
-          <m.div
-            key="transport"
-            className={styles.transport}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: still ? 0 : ROW_FADE, ease: 'easeOut' }}
-          >
-            {caps?.shuffle && shufflePlacement === 'transport' ? (
-              <IconButton
-                icon={<Shuffle />}
-                label="Shuffle"
-                glyph={18}
-                active={player?.shuffle === true}
-                pressed={player?.shuffle === true}
-                disabled={!ready}
-                feedback={feedbackFor('setShuffle')}
-                onClick={() =>
-                  press('setShuffle', () =>
-                    handle.command('setShuffle', { shuffle: player?.shuffle !== true }),
-                  )
-                }
-              />
-            ) : shufflePlacement === 'title' ? (
-              (leading ?? <span />)
-            ) : (
-              <span />
-            )}
+          <IconButton
+            icon={playing ? <Pause /> : <Play />}
+            label={playing ? 'Pause' : 'Play'}
+            glyph={18}
+            disabled={!ready || !can.play}
+            primary
+            feedback={feedbackFor('togglePlay')}
+            onClick={() => press('togglePlay', () => handle.command('togglePlay'))}
+          />
+          <IconButton
+            icon={<SkipForward />}
+            label="Next"
+            glyph={18}
+            disabled={!ready || caps?.next === false || !can.next}
+            feedback={feedbackFor('next')}
+            onClick={() => press('next', () => handle.command('next'))}
+          />
+          {iconVolume ? (
             <IconButton
-              icon={<SkipBack />}
-              label="Previous"
+              icon={volume.muted ? <VolumeX /> : <Volume2 />}
+              label="Volume"
               glyph={18}
-              disabled={!ready || caps?.previous === false || !can.previous}
-              feedback={feedbackFor('previous')}
-              onClick={() => press('previous', () => handle.command('previous'))}
+              active={volume.muted}
+              disabled={!ready}
+              onClick={() => setVolumeOpen(true)}
             />
-            <IconButton
-              icon={playing ? <Pause /> : <Play />}
-              label={playing ? 'Pause' : 'Play'}
-              glyph={18}
-              disabled={!ready || !can.play}
-              primary
-              feedback={feedbackFor('togglePlay')}
-              onClick={() => press('togglePlay', () => handle.command('togglePlay'))}
-            />
-            <IconButton
-              icon={<SkipForward />}
-              label="Next"
-              glyph={18}
-              disabled={!ready || caps?.next === false || !can.next}
-              feedback={feedbackFor('next')}
-              onClick={() => press('next', () => handle.command('next'))}
-            />
-            {iconVolume ? (
-              <IconButton
-                icon={volume.muted ? <VolumeX /> : <Volume2 />}
-                label="Volume"
-                glyph={18}
-                active={volume.muted}
-                disabled={!ready}
-                onClick={() => setVolumeOpen(true)}
-              />
-            ) : (
-              (extra ?? <span />)
-            )}
-          </m.div>
-        )}
-      </Presence>
+          ) : (
+            (extra ?? <span />)
+          )}
+        </div>
+      )}
       {(caps?.volume !== false || caps.mute) && !iconVolume ? (
         <div className={styles.volume}>
           <PlainButton

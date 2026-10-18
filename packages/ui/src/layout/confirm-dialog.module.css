@@ -83,11 +83,21 @@
   }
 }
 
-/* `?motion=light`: the scrim fades in and the card settles. */
-html[data-motion='light'] .scrim {
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Where there is motion: the scrim fades in and the card settles; in full motion they also leave. */
+html:not([data-motion='reduced']) .scrim {
   animation: fade 0.16s ease-out;
 }
 
-html[data-motion='light'] .card {
+html:not([data-motion='reduced']) .card {
   animation: settle 0.18s ease-out;
+}
+
+html[data-motion='full'] .scrim[data-leaving='true'] {
+  animation: fade-out 0.17s ease-in forwards;
 }

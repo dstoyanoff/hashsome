@@ -1,16 +1,11 @@
 import { Volume2, VolumeX, X } from 'lucide-react';
-import { m } from '../motion/index.tsx';
 import { Icon } from '../icon.tsx';
 import { ValueBar } from '../layout/drawer-controls.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { IconButton } from '../layout/tile.tsx';
 import type { useVolumeControl } from './media-controls.ts';
 import { cx } from '../style/cx.ts';
-import { useStill } from '../layout/use-still.ts';
 import styles from './volume-row.module.css';
-
-/** How long the button row and the volume take to fade, one out and the other in. */
-export const ROW_FADE = 0.12;
 
 /** The volume in the place of a player's button row, as the player card shows it: the mute button, the slider and the
  * level across the first four slots, and a cross in the last, where the volume button was, to give the buttons back.
@@ -27,15 +22,8 @@ export function VolumeRow({
   canMute?: boolean;
   onClose: () => void;
 }) {
-  const still = useStill();
   return (
-    <m.div
-      className={styles.row}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: still ? 0 : ROW_FADE, ease: 'easeOut' }}
-    >
+    <div className={styles.row}>
       <div className={styles.main}>
         {canMute ? (
           <PlainButton
@@ -61,6 +49,6 @@ export function VolumeRow({
         <span className={styles.level}>{volume.shown}%</span>
       </div>
       <IconButton icon={<X />} label="Close volume" glyph={18} onClick={onClose} />
-    </m.div>
+    </div>
   );
 }

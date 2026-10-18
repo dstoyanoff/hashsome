@@ -34,3 +34,14 @@
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The row takes the buttons' place, fading in. */
+html:not([data-motion='reduced']) .row {
+  animation: fade 0.12s ease-out;
+}

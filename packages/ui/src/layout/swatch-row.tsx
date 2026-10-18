@@ -1,10 +1,7 @@
-import type { ReactNode } from 'react';
-import { m } from '../motion/index.tsx';
+import type { CSSProperties, ReactNode } from 'react';
 import { Icon } from '../icon.tsx';
 import { cx } from '../style/cx.ts';
 import styles from './swatch-row.module.css';
-
-const SWATCH_SPRING = { type: 'spring', stiffness: 520, damping: 26 } as const;
 
 export interface SwatchItem {
   key: string;
@@ -32,19 +29,12 @@ export function SwatchRow({
   onCustom?: () => void;
 }) {
   return (
-    <m.div
-      className={styles.row}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.15 }}
-    >
+    <div className={styles.row}>
       {items.map((item, index) => (
-        <m.button
+        <button
           type="button"
           key={item.key}
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ ...SWATCH_SPRING, delay: index * 0.04 }}
+          style={{ '--i': index } as CSSProperties}
           aria-label={item.label}
           aria-pressed={item.selected}
           title={item.label}
@@ -61,15 +51,13 @@ export function SwatchRow({
           >
             {item.icon ? <Icon size={14}>{item.icon}</Icon> : null}
           </span>
-        </m.button>
+        </button>
       ))}
       {onCustom ? (
         <>
           {items.length > 0 ? <span aria-hidden="true" className={styles.divider} /> : null}
-          <m.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ ...SWATCH_SPRING, delay: items.length * 0.04 }}
+          <button
+            style={{ '--i': items.length } as CSSProperties}
             type="button"
             aria-label={customLabel ?? 'Custom'}
             title={customLabel ?? 'Custom'}
@@ -79,9 +67,9 @@ export function SwatchRow({
             <span className={cx(styles.dot, styles.custom)}>
               <span className={styles.hub} />
             </span>
-          </m.button>
+          </button>
         </>
       ) : null}
-    </m.div>
+    </div>
   );
 }

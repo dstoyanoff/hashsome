@@ -2,3 +2,21 @@
   display: grid;
   color: inherit;
 }
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.path {
+  stroke-dashoffset: 0;
+}
+
+html:not([data-motion='reduced']) .path {
+  animation: draw 0.3s 0.05s ease-out both;
+}

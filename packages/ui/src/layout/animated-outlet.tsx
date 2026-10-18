@@ -1,9 +1,7 @@
-import { m, Presence } from '../motion/index.tsx';
 import { useState, type CSSProperties } from 'react';
 import { useLocation, useOutlet } from 'react-router';
 import type { NavItem } from '../entities/nav-rail.tsx';
 import styles from './animated-outlet.module.css';
-import { useStill } from './use-still.ts';
 
 export interface AnimatedOutletProps {
   /** The dashboard's pages in the order its nav lists them (the same `items` as `NavRail`, `NavDock` or `NavBar`). A page then slides in from the side it sits on: a later page from the right, an earlier one from the left. Left out, pages only fade. */
@@ -39,8 +37,8 @@ function indexAt(pathname: string, items: NavItem[] | undefined, base: string | 
 export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
   const outlet = useOutlet();
   const { pathname } = useLocation();
-  const still = useStill();
   const index = indexAt(pathname, items, base);
+  const [first] = useState(pathname);
   // Moving to a later page is +1, to an earlier one -1; with no order to go by, 0 is just a fade.
   const [seen, setSeen] = useState({ index, direction: 0 });
   if (seen.index !== index) {
@@ -50,44 +48,16 @@ export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
     });
   }
 
-  // Nothing to animate: the page is there at once, rendered once. The exit-then-enter of the transition is two
-  // renders of a page, which is the last thing a slow display needs for a transition that takes no time.
-  // In `light` motion the page that comes still slides in from its side, by CSS (`animated-outlet.module.css`): once, with
-  // no exit, so it is one render of the page.
-  const [first] = useState(pathname);
-  if (still) {
-    return (
-      <div
-        key={pathname}
-        className={styles.page}
-        data-enter={pathname !== first}
-        style={{ '--side': seen.direction * SLIDE + 'px' } as CSSProperties}
-      >
-        {outlet}
-      </div>
-    );
-  }
-
-  const seconds = 0.14;
-  const slide = SLIDE;
+  // The page is there at once, rendered once: where there is motion it slides in from its side by CSS (`animated-outlet.module.css`),
+  // with no page leaving first, which is two renders of a page.
   return (
-    <Presence mode="wait" initial={false} custom={seen.direction}>
-      <m.div
-        key={pathname}
-        custom={seen.direction}
-        variants={{
-          enter: (side: number) => ({ opacity: 0, x: side * slide }),
-          show: { opacity: 1, x: 0 },
-          exit: (side: number) => ({ opacity: 0, x: -side * slide }),
-        }}
-        initial="enter"
-        animate="show"
-        exit="exit"
-        transition={{ duration: seconds, ease: 'easeOut' }}
-        className={styles.page}
-      >
-        {outlet}
-      </m.div>
-    </Presence>
+    <div
+      key={pathname}
+      className={styles.page}
+      data-enter={pathname !== first}
+      style={{ '--side': `${seen.direction * SLIDE}px` } as CSSProperties}
+    >
+      {outlet}
+    </div>
   );
 }

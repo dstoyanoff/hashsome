@@ -1,14 +1,16 @@
-import { m } from '../motion/index.tsx';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { cx } from '../style/cx.ts';
 import styles from './marquee-text.module.css';
-import { useStill } from './use-still.ts';
+import { useFullMotion } from '../motion/mode.ts';
 
 /** How fast the text rolls, in px a second. */
 const SPEED = 36;
 
-/** How long it waits at each end, in seconds. */
-const PAUSE = 1.4;
+/** The shortest a roll takes (there and back, resting at each end), in seconds: a text that is only a little too long does not dart about. */
+const MIN_SECONDS = 3;
+
+/** The share of a roll in which the text moves: it rests for the rest, at each end. */
+const MOVING = 0.76;
 
 /**
  * One line of text that fits the width it is given: when it is too long it rolls sideways, resting at
@@ -21,8 +23,8 @@ export function MarqueeText({ children }: { children: ReactNode }) {
   const outer = useRef<HTMLSpanElement>(null);
   const inner = useRef<HTMLSpanElement>(null);
   const [overflow, setOverflow] = useState(0);
-  const still = useStill();
-  const rolling = overflow > 0 && !still;
+  const full = useFullMotion();
+  const rolling = overflow > 0 && full;
 
   useEffect(() => {
     const frame = outer.current;
@@ -46,36 +48,22 @@ export function MarqueeText({ children }: { children: ReactNode }) {
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [rolling]);
 
-  const seconds = overflow / SPEED;
+  // The time to move the whole way, at SPEED, and the roll that rests a little at each end around it (see `marquee-text.module.css`).
+  const seconds = Math.max(MIN_SECONDS, overflow / SPEED / MOVING);
   return (
     <span ref={outer} className={cx(styles.frame, rolling && styles.rolling)}>
-      {/* A motion element only for text that rolls: a list has a title and a line under it in every row, and
-          nearly all of them fit. */}
-      {rolling ? (
-        <m.span
-          ref={inner}
-          className={styles.text}
-          animate={{ x: [0, 0, -overflow, -overflow, 0] }}
-          transition={{
-            duration: 2 * seconds + 2 * PAUSE,
-            times: [
-              0,
-              PAUSE / (2 * seconds + 2 * PAUSE),
-              (PAUSE + seconds) / (2 * seconds + 2 * PAUSE),
-              (2 * PAUSE + seconds) / (2 * seconds + 2 * PAUSE),
-              1,
-            ],
-            ease: 'linear',
-            repeat: Infinity,
-          }}
-        >
-          {children}
-        </m.span>
-      ) : (
-        <span ref={inner} className={styles.text}>
-          {children}
-        </span>
-      )}
+      {/* The roll is only on text that rolls: a list has a title and a line under it in every row, and nearly all of them fit. */}
+      <span
+        ref={inner}
+        className={cx(styles.text, rolling && styles.roll)}
+        style={
+          rolling
+            ? ({ '--x': `${-overflow}px`, '--seconds': `${seconds}s` } as CSSProperties)
+            : undefined
+        }
+      >
+        {children}
+      </span>
     </span>
   );
 }

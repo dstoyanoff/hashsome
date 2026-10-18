@@ -184,3 +184,15 @@
 .colored.colored.colored {
   color: var(--glyph);
 }
+
+/* An icon that has changed turns in, as the old one is gone. */
+@keyframes turn-in {
+  from {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.6);
+  }
+}
+
+html:not([data-motion='reduced']) .turnIn {
+  animation: turn-in 0.18s ease-out;
+}

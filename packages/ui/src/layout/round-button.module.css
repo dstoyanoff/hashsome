@@ -52,12 +52,12 @@
   color: var(--hs-accent-text);
 }
 
-/* `?motion=light`: a press squeezes the button, which the tile's own animation does in full motion. */
-html[data-motion='light'] .round:active:not(:disabled) {
+/* Where there is motion: a press squeezes the button. */
+html:not([data-motion='reduced']) .round:active:not(:disabled) {
   transform: scale(0.88);
 }
 
-html[data-motion='light'] .round {
+html:not([data-motion='reduced']) .round {
   transition:
     background-color 0.2s ease,
     color 0.2s ease,

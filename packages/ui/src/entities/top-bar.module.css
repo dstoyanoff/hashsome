@@ -233,6 +233,25 @@
 
 .sceneIcon {
   display: grid;
+  transition:
+    opacity 0.18s,
+    transform 0.18s;
+}
+
+.sceneIcon[data-done='true'] {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+@keyframes bump {
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+/* Pressed: the dot bumps while it turns green and draws its check. */
+html:not([data-motion='reduced']) .scene[data-done='true'] {
+  animation: bump 0.4s;
 }
 
 .check {

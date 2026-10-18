@@ -91,3 +91,13 @@
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+html:not([data-motion='reduced']) .transport {
+  animation: fade 0.12s ease-out;
+}

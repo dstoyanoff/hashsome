@@ -147,18 +147,44 @@
   }
 }
 
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes rise {
   from {
     transform: translateY(100%);
   }
 }
 
-/* `?motion=light`: the scrim fades in and the sheet rises (there is no exit: it is gone at once). */
-html[data-motion='light'] .scrim,
-html[data-motion='light'] .panel {
+@keyframes sink {
+  to {
+    transform: translateY(100%);
+  }
+}
+
+/* Where there is motion: the scrim fades in and the sheet rises. */
+html:not([data-motion='reduced']) .scrim,
+html:not([data-motion='reduced']) .panel {
   animation: fade 0.2s ease-out;
 }
 
-html[data-motion='light'] .sheet {
+html:not([data-motion='reduced']) .sheet {
   animation: rise 0.25s ease-out;
+}
+
+/* In full motion the drawer also grows to its expanded width, and leaves the way it came (`usePresence` keeps it drawn for that). */
+html[data-motion='full'] .panel {
+  transition: width 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+html[data-motion='full'] .scrim[data-leaving='true'],
+html[data-motion='full'] .panel[data-leaving='true'] {
+  animation: fade-out 0.25s ease-in forwards;
+}
+
+html[data-motion='full'] .sheet[data-leaving='true'] {
+  animation: sink 0.25s ease-in forwards;
 }

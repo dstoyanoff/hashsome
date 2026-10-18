@@ -1,5 +1,4 @@
 import { fireEvent, screen } from '@testing-library/react';
-import { motion } from 'motion/react';
 import { expect, test, vi } from 'vitest';
 import { computed, renderWithMock } from '../../test-utils.tsx';
 import { RoundButton } from '../round-button.tsx';
@@ -40,7 +39,7 @@ test('its own class is added to the shared look instead of replacing it', () => 
 test('it takes the button’s own props, and a different element through `as`', () => {
   const onClick = vi.fn<() => void>();
   render(
-    <RoundButton as={motion.button} aria-label="Animated" disabled onClick={onClick}>
+    <RoundButton aria-label="Animated" disabled onClick={onClick}>
       x
     </RoundButton>,
   );

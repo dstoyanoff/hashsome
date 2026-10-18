@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
-import { motionAnimate } from '../motion/index.tsx';
-import { useStill } from '../motion/mode.ts';
+import { useFullMotion } from '../motion/mode.ts';
 import styles from './animated-number.module.css';
 
 export interface AnimatedNumberProps {
@@ -28,7 +27,7 @@ export function AnimatedNumber({ value, format, duration = 0.6 }: AnimatedNumber
   const shown = useRef(value);
   // What was asked for last, kept for the move, which must not start over because a caller's function is new.
   const write = useRef((n: number) => String(n));
-  const still = useStill();
+  const full = useFullMotion();
   const decimals = decimalsOf(value);
   const written = (n: number) => (format ? format(n) : n.toFixed(decimals));
   useLayoutEffect(() => {
@@ -44,30 +43,30 @@ export function AnimatedNumber({ value, format, duration = 0.6 }: AnimatedNumber
       return;
     }
 
-    // Where nothing moves (or the animation library is not here): it is simply the new value.
-    const animate = motionAnimate();
-    if (still || !animate) {
+    // Where nothing moves: it is simply the new value.
+    if (!full) {
       shown.current = value;
       node.textContent = write.current(value);
       return;
     }
 
     node.textContent = write.current(from);
-    const move = animate(from, value, {
-      duration,
-      ease: 'easeOut',
-      onUpdate: (n) => {
-        shown.current = n;
-        node.textContent = write.current(n);
-      },
-      onComplete: () => {
-        shown.current = value;
-        node.textContent = write.current(value);
-      },
-    });
+    const started = performance.now();
+    let frame = 0;
+    const step = () => {
+      const t = Math.min(1, (performance.now() - started) / (duration * 1000));
+      // Easing out, as a curve with no library: fast at first, settling into the value.
+      const eased = 1 - (1 - t) ** 3;
+      shown.current = t === 1 ? value : from + (value - from) * eased;
+      node.textContent = write.current(shown.current);
+      if (t < 1) {
+        frame = requestAnimationFrame(step);
+      }
+    };
 
-    return () => move.stop();
-  }, [value, duration, still]);
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [value, duration, full]);
 
   return (
     <span ref={text} className={styles.number}>

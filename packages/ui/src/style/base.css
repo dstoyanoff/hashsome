@@ -33,6 +33,16 @@
     animation: none !important;
   }
 
+  /* A device that asks for less motion (its own setting, whatever the app is set to) gets none, apart from a cue the user waits for. */
+  @media (prefers-reduced-motion: reduce) {
+    *:not([data-keep-motion]),
+    *:not([data-keep-motion])::before,
+    *:not([data-keep-motion])::after {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+
   button {
     font: inherit;
     color: inherit;

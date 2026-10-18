@@ -16,7 +16,6 @@ import {
   X,
 } from 'lucide-react';
 import type { BrowseItem, BrowseKind, EntityRef, MediaPlayerCommands } from '@hashsome/core';
-import { m, Presence } from '../motion/index.tsx';
 import {
   memo,
   useLayoutEffect,
@@ -37,7 +36,6 @@ import { MarqueeText } from '../layout/marquee-text.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { Spinner } from '../layout/spinner.tsx';
 import { Reveal } from '../layout/reveal.tsx';
-import { useStill } from '../layout/use-still.ts';
 import { Skeleton } from '../layout/skeleton.tsx';
 import { IconButton } from '../layout/tile.tsx';
 import { useMediaBrowser } from '../use-media-browser.ts';
@@ -127,7 +125,6 @@ export function MediaBrowser({
     onScroll: scrollRows,
   } = useRows(browser.items, browser.listKey);
 
-  const still = useStill();
   // `icon`: the field is open (or has something in it); otherwise only the icon is there.
   const [searchOpen, setSearchOpen] = useState(false);
   const player = handle.entity;
@@ -438,23 +435,15 @@ export function MediaBrowser({
       {/* With shelves, search and tabs are a fixed frame and only what is below them changes; a
           list has no frame, so its heading row, always there, comes first. */}
       {onDemand ? (
-        // The field comes in from the icon's side as the row fades out under it; the row is as tall as
-        // the field, so neither moves what is below. Nothing to wait for: they cross.
-        still ? (
-          fieldOrRow
-        ) : (
-          <Presence initial={false} mode="popLayout">
-            <m.div
-              key={fieldShown ? 'field' : 'row'}
-              initial={{ opacity: 0, x: fieldShown ? 28 : 0 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: fieldShown ? 0 : 28 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
-            >
-              {fieldOrRow}
-            </m.div>
-          </Presence>
-        )
+        // The field comes in from the icon's side, and the row back in its place (by CSS); the row is as tall as the field, so
+        // neither moves what is below.
+        <div
+          key={fieldShown ? 'field' : 'row'}
+          className={styles.crossfade}
+          data-field={fieldShown}
+        >
+          {fieldOrRow}
+        </div>
       ) : (
         <>
           {browser.tabs === undefined ? header : null}

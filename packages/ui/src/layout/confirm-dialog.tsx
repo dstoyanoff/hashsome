@@ -1,4 +1,4 @@
-import { m, Presence } from '../motion/index.tsx';
+import { usePresence } from '../motion/presence.ts';
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cx } from '../style/cx.ts';
@@ -56,6 +56,8 @@ export function ConfirmDialog({
   const heading = useId();
   const about = useId();
   const card = useRef<HTMLDivElement>(null);
+  // Drawn a moment after it is closed, in full motion, so it can leave (see `usePresence`).
+  const { mounted, leaving } = usePresence(open, 180);
 
   useEffect(() => {
     if (!open) {
@@ -92,18 +94,10 @@ export function ConfirmDialog({
   };
 
   return createPortal(
-    <Presence>
-      {open ? (
-        <m.div
-          key="scrim"
-          className={styles.scrim}
-          onClick={onCancel}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.16 }}
-        >
-          <m.div
+    <>
+      {mounted ? (
+        <div className={styles.scrim} data-leaving={leaving} onClick={onCancel}>
+          <div
             ref={card}
             className={styles.card}
             role="dialog"
@@ -113,10 +107,6 @@ export function ConfirmDialog({
             tabIndex={-1}
             onClick={(event) => event.stopPropagation()}
             onKeyDown={onKeyDown}
-            initial={{ opacity: 0, scale: 0.96, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
           >
             <div className={styles.titles}>
               <h2 className={styles.title} id={heading}>
@@ -133,10 +123,10 @@ export function ConfirmDialog({
               <DialogButton label={cancelLabel} disabled={busy} onClick={onCancel} />
               <DialogButton label={confirmLabel} primary disabled={busy} onClick={onConfirm} />
             </div>
-          </m.div>
-        </m.div>
+          </div>
+        </div>
       ) : null}
-    </Presence>,
+    </>,
     document.body,
   );
 }

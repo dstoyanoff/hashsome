@@ -1,14 +1,6 @@
 import { AudioLines, GripVertical, Music, Trash, X } from 'lucide-react';
 import type { EntityRef, QueueItem } from '@hashsome/core';
-import {
-  AnimatePresence,
-  motion,
-  MotionGlobalConfig,
-  Reorder,
-  useDragControls,
-} from 'motion/react';
-import { motionLevel } from '../motion/mode.ts';
-import { useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { useEntityHandle } from '../hooks.ts';
 import { Icon } from '../icon.tsx';
 import { Cover } from '../layout/cover.tsx';
@@ -19,11 +11,6 @@ import { useRows } from '../use-rows.ts';
 import { formatDuration, formatLength } from './media-progress.ts';
 import styles from './media-queue.module.css';
 import { sourceLine } from './media-source.ts';
-import { useStill } from '../layout/use-still.ts';
-
-// The queue reorders by dragging, which the animation library does: it is fetched with the queue, where it is needed, and told to
-// jump where the app does not animate.
-MotionGlobalConfig.skipAnimations = motionLevel() !== 'full';
 
 export interface MediaQueueProps {
   /** The media player, as a ref like `ma:living_room`. Shows nothing for a player with no queue. */
@@ -48,7 +35,14 @@ export function MediaQueue({ entity }: MediaQueueProps) {
   // The order of what comes next while it is being changed, until the queue read afterwards replaces it.
   // It belongs to the queue it was made from: a queue read afterwards leaves it behind.
   const [draft, setDraft] = useState<{ of: unknown; ids: string[] } | null>(null);
-  const still = useStill();
+  // A track being dragged by its handle (see `startDrag`).
+  const [drag, setDrag] = useState<{
+    id: string;
+    from: number;
+    target: number;
+    offset: number;
+  } | null>(null);
+
   // What comes next, in the order it is being put in, as far as it is drawn: a queue can be hundreds of tracks long,
   // and the rest come as the end of the list is scrolled to.
   const items = queue?.items ?? [];
@@ -110,16 +104,58 @@ export function MediaQueue({ entity }: MediaQueueProps) {
     at === queue.items.length - 1 &&
     queue.offset + queue.items.length === queue.total;
 
-  // Dropping a track puts it where the draft has it: the command says by how many places it moved.
-  const drop = (item: QueueItem) => {
-    const to = shown.findIndex((x) => x.id === item.id);
-    const from = upcoming.findIndex((x) => x.id === item.id);
+  // Dropping a track puts it where it was dragged to: the command says by how many places it moved.
+  const moveTo = (item: QueueItem, from: number, to: number) => {
     if (to === from) {
       setDraft(null);
       return;
     }
 
+    const ids = visible.map((x) => x.id);
+    ids.splice(to, 0, ids.splice(from, 1)[0]!);
+    setDraft({ of: queue, ids: [...ids, ...shown.slice(visible.length).map((x) => x.id)] });
     run('moveQueueItem', item, to - from);
+  };
+
+  // Dragging a row by its handle: it follows the finger, the rows it passes over move aside, and where it is let go is where it
+  // goes. Every row is one height, so the place it is over is arithmetic, with nothing measured but the distance between two rows.
+  const startDrag = (item: QueueItem, from: number, event: PointerEvent<HTMLElement>) => {
+    const list = event.currentTarget.closest('ul');
+    const rows = list?.querySelectorAll<HTMLElement>('[data-reorderable="true"]');
+    const measured = rows && rows[1] && rows[0] ? rows[1].offsetTop - rows[0].offsetTop : 0;
+    const pitch = measured > 0 ? measured : ROW;
+    const startY = event.clientY;
+    const last = visible.length - 1;
+    const place = (y: number) => {
+      const offset = y - startY;
+      const target = Math.min(last, Math.max(0, Math.round(from + offset / pitch)));
+      setDrag({ id: item.id, from, target, offset });
+      return target;
+    };
+
+    const move = (e: globalThis.PointerEvent) => place(e.clientY);
+    const stop = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', cancel);
+    };
+
+    const up = (e: globalThis.PointerEvent) => {
+      stop();
+      const target = place(e.clientY);
+      setDrag(null);
+      moveTo(item, from, target);
+    };
+
+    const cancel = () => {
+      stop();
+      setDrag(null);
+    };
+
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', cancel);
+    setDrag({ id: item.id, from, target: from, offset: 0 });
   };
 
   // The same from the keyboard: one place up or down, straight away.
@@ -180,52 +216,42 @@ export function MediaQueue({ entity }: MediaQueueProps) {
       {queue.items.length === 0 ? (
         <p className={styles.empty}>Nothing is queued. Play or add something from the library.</p>
       ) : (
-        <Reorder.Group
-          as="ul"
-          axis="y"
-          ref={attach}
-          onScroll={onScroll}
-          values={visible.map((item) => item.id)}
-          // What is drawn is put in its new order; what is not drawn yet stays after it.
-          onReorder={(ids) =>
-            setDraft({
-              of: queue,
-              ids: [...ids, ...shown.slice(visible.length).map((x) => x.id)],
-            })
-          }
-          className={styles.list}
-        >
-          {/* A track that arrives grows in, one that leaves closes up, and the rest slide to fill the
-              space, so removing one, jumping to one or clearing the queue is something to watch rather
-              than a list that changes in one frame. The ones there from the start do not animate. */}
-          <AnimatePresence initial={false}>
-            {leading.map((item, index) => (
-              <QueueRow
-                key={item.id}
-                item={item}
-                still={still === true}
-                dim={index < at || (finished && item.current === true)}
-                played={finished && item.current === true}
-                onPlay={() => run('playQueueItem', item)}
-              />
-            ))}
-            {visible.map((item) => (
-              <QueueRow
-                key={item.id}
-                item={item}
-                still={still === true}
-                // While Clear works only what is on its way out is dimmed.
-                dim={clearing}
-                reorderable
-                onPlay={() => run('playQueueItem', item)}
-                onRemove={() => run('removeQueueItem', item)}
-                onDrop={() => drop(item)}
-                onStep={(by) => step(item, by)}
-              />
-            ))}
-          </AnimatePresence>
+        <ul className={styles.list} ref={attach} onScroll={onScroll}>
+          {leading.map((item, index) => (
+            <QueueRow
+              key={item.id}
+              item={item}
+              dim={index < at || (finished && item.current === true)}
+              played={finished && item.current === true}
+              onPlay={() => run('playQueueItem', item)}
+            />
+          ))}
+          {visible.map((item, index) => (
+            <QueueRow
+              key={item.id}
+              item={item}
+              // While Clear works only what is on its way out is dimmed.
+              dim={clearing}
+              reorderable
+              dragging={drag?.id === item.id ? drag.offset : undefined}
+              // The rows the dragged one passes over move one place aside.
+              shift={
+                drag && drag.id !== item.id
+                  ? drag.from < drag.target && index > drag.from && index <= drag.target
+                    ? -1
+                    : drag.target < drag.from && index >= drag.target && index < drag.from
+                      ? 1
+                      : 0
+                  : 0
+              }
+              onPlay={() => run('playQueueItem', item)}
+              onRemove={() => run('removeQueueItem', item)}
+              onGrab={(event) => startDrag(item, index, event)}
+              onStep={(by) => step(item, by)}
+            />
+          ))}
           {hidden > 0 ? <li className={styles.more}>and {hidden.toLocaleString()} more</li> : null}
-        </Reorder.Group>
+        </ul>
       )}
     </div>
   );
@@ -233,7 +259,6 @@ export function MediaQueue({ entity }: MediaQueueProps) {
 
 interface QueueRowProps {
   item: QueueItem;
-  still: boolean;
 
   /** Shown faded: already played, or on its way out. */
   dim: boolean;
@@ -241,9 +266,15 @@ interface QueueRowProps {
   /** The track that was playing, now over: it is not shown as playing. */
   played?: boolean;
   reorderable?: boolean;
+
+  /** Set while this row is being dragged: how far, in px, it is from where it was. */
+  dragging?: number | undefined;
+
+  /** A row another one is being dragged past gives way: one place up (-1) or down (1). */
+  shift?: -1 | 0 | 1;
   onPlay: () => void;
   onRemove?: () => void;
-  onDrop?: () => void;
+  onGrab?: (event: PointerEvent<HTMLElement>) => void;
   onStep?: (by: -1 | 1) => void;
 }
 
@@ -252,33 +283,36 @@ const GRIP = 20;
 
 function QueueRow({
   item,
-  still,
   dim,
   played = false,
   reorderable = false,
+  dragging,
+  shift = 0,
   onPlay,
   onRemove,
-  onDrop,
+  onGrab,
   onStep,
 }: QueueRowProps) {
-  const controls = useDragControls();
-  const [dragging, setDragging] = useState(false);
   const playing = item.current === true && !played;
-  const shared = {
-    initial: { opacity: 0, height: 0 },
-    animate: { opacity: dim ? 0.5 : 1, height: ROW },
-    exit: { opacity: 0, height: 0 },
-    transition: { duration: still ? 0 : 0.2, ease: 'easeOut' as const },
-  };
-
-  const content = (
-    <>
+  return (
+    <li
+      className={styles.row}
+      data-reorderable={reorderable}
+      data-dragging={dragging !== undefined}
+      data-dim={dim}
+      style={
+        {
+          '--shift': shift,
+          ...(dragging === undefined ? {} : { '--drag': `${dragging}px` }),
+        } as CSSProperties
+      }
+    >
       {reorderable ? (
         <PlainButton
           className={styles.grip}
           aria-label={`Move ${item.title}`}
           title="Drag to move, or use the arrow keys"
-          onPointerDown={(event: React.PointerEvent) => controls.start(event)}
+          onPointerDown={onGrab}
           onKeyDown={(event: KeyboardEvent) => {
             if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
               event.preventDefault();
@@ -334,30 +368,6 @@ function QueueRow({
       ) : (
         <span className={styles.spacerEnd} />
       )}
-    </>
-  );
-
-  return reorderable ? (
-    <Reorder.Item
-      value={item.id}
-      dragListener={false}
-      dragControls={controls}
-      onDragStart={() => setDragging(true)}
-      onDragEnd={() => {
-        setDragging(false);
-        onDrop?.();
-      }}
-      {...shared}
-      className={styles.row}
-      data-dragging={dragging}
-    >
-      {content}
-    </Reorder.Item>
-  ) : still ? (
-    <li className={styles.row}>{content}</li>
-  ) : (
-    <motion.li {...shared} className={styles.row}>
-      {content}
-    </motion.li>
+    </li>
   );
 }

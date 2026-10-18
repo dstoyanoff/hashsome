@@ -1,13 +1,11 @@
 import { ChevronDown, Cpu, ToggleLeft, ToggleRight, Workflow } from 'lucide-react';
 import type { LogbookEntry } from '@hashsome/core';
-import { m, Presence } from '../motion/index.tsx';
 import { useState } from 'react';
 import { Icon } from '../icon.tsx';
 import { capitalize } from '../status.ts';
 import styles from './history-section.module.css';
 import { PlainButton } from './plain-button.tsx';
 import { Skeleton } from './skeleton.tsx';
-import { useStill } from './use-still.ts';
 
 export type { LogbookEntry };
 
@@ -114,7 +112,6 @@ function SkeletonRows() {
  * entity type can supply it. */
 export function HistorySection({ entries, loading = false, onOpen }: HistorySectionProps) {
   const [open, setOpen] = useState(false);
-  const still = useStill();
   if (entries?.length === 0 && !onOpen) {
     return null;
   }
@@ -131,54 +128,40 @@ export function HistorySection({ entries, loading = false, onOpen }: HistorySect
     <div className={styles.section}>
       <PlainButton className={styles.toggle} aria-expanded={open} onClick={toggle}>
         <span className={styles.heading}>History</span>
-        <m.span
-          className={styles.chevron}
-          initial={false}
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={{ duration: still ? 0 : 0.2, ease: 'easeOut' }}
-        >
+        <span className={styles.chevron} data-open={open}>
           <Icon size={16}>
             <ChevronDown />
           </Icon>
-        </m.span>
+        </span>
       </PlainButton>
-      <Presence initial={false}>
-        {open ? (
-          <m.div
-            key="body"
-            className={styles.body}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: still ? 0 : 0.22, ease: 'easeOut' }}
-          >
-            {loading ? (
-              <SkeletonRows />
-            ) : !entries?.length ? (
-              <span className={styles.empty}>No recent activity</span>
-            ) : (
-              <div className={styles.list}>
-                {entries.map((entry) => (
-                  <div key={entry.id} className={styles.entry}>
-                    <Avatar
-                      actor={entry.actor}
-                      kind={entry.actorKind ?? 'person'}
-                      change={entry.change}
-                    />
-                    <div className={styles.entryText}>
-                      <span className={styles.message}>
-                        {entry.actor ? <span className={styles.actor}>{entry.actor} </span> : null}
-                        {entry.actor ? entry.message : capitalize(entry.message)}
-                      </span>
-                      <span className={styles.when}>{relativeTime(entry.timestamp)}</span>
-                    </div>
+      {open ? (
+        <div className={styles.body}>
+          {loading ? (
+            <SkeletonRows />
+          ) : !entries?.length ? (
+            <span className={styles.empty}>No recent activity</span>
+          ) : (
+            <div className={styles.list}>
+              {entries.map((entry) => (
+                <div key={entry.id} className={styles.entry}>
+                  <Avatar
+                    actor={entry.actor}
+                    kind={entry.actorKind ?? 'person'}
+                    change={entry.change}
+                  />
+                  <div className={styles.entryText}>
+                    <span className={styles.message}>
+                      {entry.actor ? <span className={styles.actor}>{entry.actor} </span> : null}
+                      {entry.actor ? entry.message : capitalize(entry.message)}
+                    </span>
+                    <span className={styles.when}>{relativeTime(entry.timestamp)}</span>
                   </div>
-                ))}
-              </div>
-            )}
-          </m.div>
-        ) : null}
-      </Presence>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
