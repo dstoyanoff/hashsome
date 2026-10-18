@@ -78,8 +78,8 @@ test('an entity of the wrong kind or a missing one is disabled and says why', ()
     },
   );
 
-  expect(screen.getByRole('button', { name: 'gone' }).textContent).toContain('Not found');
-  expect(screen.getByRole('button', { name: 'lamp' }).textContent).toContain('Unsupported');
+  expect(screen.getByRole('button', { name: /^gone/ }).textContent).toContain('Not found');
+  expect(screen.getByRole('button', { name: /^lamp/ }).textContent).toContain('Unsupported');
 });
 
 test('a handle drives the button with no backend at all', () => {
