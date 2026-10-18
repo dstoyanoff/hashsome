@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.2 (2026-10-18)
+
+### Fixes
+
+- **runtime:** the build-time render bundles the runtime too, when it is a package in node_modules (#138) ([ecdd2cd](https://github.com/dstoyanoff/hashsome/commit/ecdd2cdd458649be7270752d6bb95005b87a92cd))
+
 ## 0.19.1 (2026-10-18)
 
 ### Fixes

@@ -1,6 +1,6 @@
 {
   "name": "@hashsome/integration.music-assistant",
-  "version": "0.19.1",
+  "version": "0.19.2",
   "description": "Music Assistant integration: direct WebSocket client, not via Home Assistant",
   "type": "module",
   "scripts": {

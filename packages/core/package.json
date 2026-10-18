@@ -1,6 +1,6 @@
 {
   "name": "@hashsome/core",
-  "version": "0.19.1",
+  "version": "0.19.2",
   "description": "Framework-agnostic integration interface, entity types and wire protocol (no vendor-specific code)",
   "type": "module",
   "scripts": {
