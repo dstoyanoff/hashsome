@@ -1216,7 +1216,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'ThemeMode',
       },
       {
-        doc: "Any Google Fonts family name (e.g. `'Inter'`, `'Roboto'`, `'Poppins'`), loaded dynamically. Default `'Inter'`.",
+        doc: "The font: `'Inter'` (the default) is bundled with the app; any other Google Fonts family name (e.g. `'Roboto'`, `'Poppins'`) is loaded from Google Fonts.",
         name: 'font',
         optional: true,
         type: 'string',

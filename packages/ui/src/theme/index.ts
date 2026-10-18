@@ -10,8 +10,13 @@ export type {
   ZIndex,
 } from './tokens.ts';
 
-/** The Google Fonts family loaded and applied by default — see `HashsomeProviderProps.font` . Any other Google Fonts family name works the same way. */
+/** The font applied by default, bundled with the app — see `HashsomeProviderProps.font`. Any Google Fonts family name works too, loaded from Google. */
 export const DEFAULT_FONT = 'Inter';
+
+/** Whether the app carries the font itself (the default), so nothing is fetched from Google Fonts for it. */
+export function isBundledFont(family: string): boolean {
+  return family.trim() === DEFAULT_FONT;
+}
 
 const FALLBACK_FONTS = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
