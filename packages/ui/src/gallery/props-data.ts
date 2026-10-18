@@ -795,6 +795,10 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
       },
     ],
   },
+  ListTabs: {
+    doc: "Library and Queue, as text with an underline that slides between them (not the pills the library's own categories are, so the two rows read as different things). For a page that lays the player, the queue and the library out itself: `lists` are the tabs and their order, `value` the open one, and `onChange` is asked for another.",
+    props: [],
+  },
   MediaPlayerFull: {
     doc: "The big player: the player centered at the top, and the library (or whatever `browser` is) below it. It is what the media cards' drawers show, at every width, and it is the widget a dashboard puts in a page of its own, around it whatever it likes (a surface that fills the space and scrolls, a heading, other cards beside it). It fills the height it is given, so the page that holds it decides how tall that is.",
     props: [

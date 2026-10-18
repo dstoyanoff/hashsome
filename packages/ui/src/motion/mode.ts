@@ -66,3 +66,10 @@ export function useStill(): boolean {
 export function useFullMotion(): boolean {
   return !useStill();
 }
+
+/** Whether anything plays as something appears: the light animations too, not only the full ones. Not when the device asked for
+ * less motion or the app is in `reduced`, where what appears is just there. */
+export function useAnimates(): boolean {
+  const prefers = useSyncExternalStore(subscribe, asked, () => false);
+  return !prefers && level !== 'reduced';
+}

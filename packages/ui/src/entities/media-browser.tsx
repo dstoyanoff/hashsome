@@ -123,6 +123,7 @@ export function MediaBrowser({
     shown: rows,
     attach: attachRows,
     onScroll: scrollRows,
+    reserve: reserveRows,
   } = useRows(browser.items, browser.listKey);
 
   // `icon`: the field is open (or has something in it); otherwise only the icon is there.
@@ -469,7 +470,7 @@ export function MediaBrowser({
             // Keyed by the list too, so another list arriving is new items fading in, not the same
             // ones left as they were; typing in the search does not stagger them.
             <li key={`${browser.listKey}:${item.id}`} className={styles.card}>
-              <Reveal index={browser.searching ? 0 : index}>
+              <Reveal light index={browser.searching ? 0 : index}>
                 <BrowseCard
                   item={item}
                   active={activeOf(item)}
@@ -489,7 +490,7 @@ export function MediaBrowser({
         <ul className={styles.rows} {...swipeProps} ref={attachRows} onScroll={scrollRows}>
           {rows.map((item, index) => (
             <li key={`${browser.listKey}:${item.id}`}>
-              <Reveal index={browser.searching ? 0 : index}>
+              <Reveal light index={browser.searching ? 0 : index}>
                 <BrowseRow
                   item={item}
                   active={activeOf(item)}
@@ -505,6 +506,7 @@ export function MediaBrowser({
               </Reveal>
             </li>
           ))}
+          <li {...reserveRows} />
           {/* What is in what is open, at the end of its list: a line above the rows would push them down on opening, and
               opening something moves nothing. */}
           {inside ? (

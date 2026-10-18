@@ -33,7 +33,7 @@ import { MediaBrowser } from '../entities/media-browser.tsx';
 import { MediaPlayerBar } from '../entities/media-player-bar.tsx';
 import { AnimatedOutlet } from '../layout/animated-outlet.tsx';
 import { MediaPlayerColumn } from '../entities/media-player-column.tsx';
-import { MediaPlayerFull } from '../entities/media-player-full.tsx';
+import { ListTabs, MediaPlayerFull, type ListTab } from '../entities/media-player-full.tsx';
 import { MediaQueue } from '../entities/media-queue.tsx';
 import { MediaSpeakers } from '../entities/media-speakers.tsx';
 import { WeatherForecast } from '../entities/weather-forecast.tsx';
@@ -196,6 +196,15 @@ const inDays = (n: number) => {
 
 /** What marking something done takes in a demo: a moment, and nothing else. */
 const pause = () => new Promise<void>((resolve) => setTimeout(resolve, 600));
+
+function ListTabsDemo() {
+  const [tab, setTab] = useState<ListTab>('queue');
+  return (
+    <Flex direction="column" width={380}>
+      <ListTabs value={tab} lists={['queue', 'library']} onChange={setTab} />
+    </Flex>
+  );
+}
 
 function ConfirmDialogDemo() {
   const [open, setOpen] = useState(false);
@@ -1029,6 +1038,14 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
                 browser={<MediaBrowser entity="ha:media_player.living_room" layout="theater" />}
               />
             </Flex>
+          </ComponentDoc>
+
+          <ComponentDoc
+            title="List Tabs"
+            components={['ListTabs']}
+            description="Library and Queue as two tabs with a line under the open one that slides to the next, for a page that lays the player, the queue and the library out itself (`MediaPlayerFull` has them built in). `lists` are the tabs and their order; the page shows the open one's list below. Try them."
+          >
+            <ListTabsDemo />
           </ComponentDoc>
 
           <ComponentDoc
