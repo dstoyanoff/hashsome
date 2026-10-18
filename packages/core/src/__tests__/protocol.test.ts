@@ -9,6 +9,11 @@ import {
 } from '../protocol.ts';
 
 describe('protocol', () => {
+  test('a beat and its answer are messages of their own', () => {
+    expect(parseClientMessage(encodeMessage({ type: 'ping' }))).toEqual({ type: 'ping' });
+    expect(parseServerMessage(encodeMessage({ type: 'pong' }))).toEqual({ type: 'pong' });
+  });
+
   test('round-trips valid client messages', () => {
     const command: ClientMessage = {
       type: 'command',

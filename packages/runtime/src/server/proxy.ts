@@ -244,6 +244,9 @@ export class Proxy {
       }
 
       switch (message.type) {
+        case 'ping':
+          send({ type: 'pong' });
+          return;
         case 'subscribe':
           if (!subscriptions.has(message.ref)) {
             subscriptions.set(message.ref, subscribe(message.ref));
