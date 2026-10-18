@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, test } from 'vitest';
 import { VERSION_FILE, VERSION_PATH } from '../../build-id.ts';
+import { precompress } from '../precompress.ts';
 import { createApp } from '../production.ts';
 
 let server: Server | undefined;
@@ -83,4 +84,65 @@ test('a favicon is served when the project has one, and is a 404 (not an empty s
   // An empty 204 reads as "the icon is empty" to a browser that is picking an icon for the page.
   const missing = await get(clientDir(), '/favicon.ico');
   expect(missing.status).toBe(404);
+});
+
+test('the build’s own files are kept for good, the page and the other files are asked for again', async () => {
+  const dir = clientDir();
+  mkdirSync(join(dir, 'assets'));
+  writeFileSync(join(dir, 'assets', 'app-abc123.js'), 'console.log(1)');
+  const asset = await get(dir, '/assets/app-abc123.js');
+  expect(asset.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+  await new Promise((done) => server!.close(done));
+
+  const page = await get(dir, '/index.html');
+  expect(page.headers.get('cache-control')).toBe('no-cache');
+  await new Promise((done) => server!.close(done));
+  expect((await get(dir, '/icon.png')).headers.get('cache-control')).toBe('public, max-age=3600');
+});
+
+test('a file with compressed copies is sent as the best one the browser accepts, with the right type', async () => {
+  const dir = clientDir();
+  mkdirSync(join(dir, 'assets'));
+  const body = 'console.log("hello");'.repeat(200);
+  writeFileSync(join(dir, 'assets', 'app-abc123.js'), body);
+  expect(precompress(dir)).toBe(1);
+
+  const ask = async (encoding: string) => {
+    const response = await fetch(
+      `http://127.0.0.1:${(server!.address() as AddressInfo).port}/assets/app-abc123.js`,
+      {
+        headers: { 'accept-encoding': encoding },
+      },
+    );
+
+    return { response, text: await response.text() };
+  };
+
+  server = createServer(createApp(dir));
+  await new Promise<void>((ready) => server!.listen(0, '127.0.0.1', ready));
+  for (const [accepted, sent] of [
+    ['gzip, deflate, br', 'br'],
+    ['gzip', 'gzip'],
+    ['identity', null],
+  ] as const) {
+    const { response, text } = await ask(accepted);
+    expect(response.headers.get('content-encoding')).toBe(sent);
+    expect(response.headers.get('content-type')).toMatch(/javascript/);
+    expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+    expect(response.headers.get('vary')).toBe('Accept-Encoding');
+    expect(text).toBe(body);
+  }
+});
+
+test('only text over a kilobyte is worth compressing', () => {
+  const dir = clientDir();
+  mkdirSync(join(dir, 'assets'));
+  writeFileSync(join(dir, 'assets', 'small.js'), 'x');
+  writeFileSync(join(dir, 'assets', 'font.woff2'), 'x'.repeat(5000));
+  writeFileSync(join(dir, 'assets', 'big.css'), 'a{}'.repeat(1000));
+  expect(precompress(dir)).toBe(1);
+  expect(existsSync(join(dir, 'assets', 'big.css.br'))).toBe(true);
+  expect(existsSync(join(dir, 'assets', 'big.css.gz'))).toBe(true);
+  expect(existsSync(join(dir, 'assets', 'small.js.br'))).toBe(false);
+  expect(existsSync(join(dir, 'assets', 'font.woff2.br'))).toBe(false);
 });

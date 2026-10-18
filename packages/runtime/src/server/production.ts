@@ -1,7 +1,7 @@
 import type { Integration } from '@hashsome/core';
 import express, { type Express } from 'express';
 import { createServer } from 'node:http';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { VERSION_FILE, VERSION_PATH } from '../build-id.ts';
 import type { ResolvedConfig } from '../config.ts';
@@ -9,6 +9,7 @@ import { serveAsset } from './assets.ts';
 import { homeAssistantCompat } from './ha-compat.ts';
 import { Proxy } from './proxy.ts';
 import { startIntegrations } from './integrations.ts';
+import { VARIANTS } from './precompress.ts';
 import { attachWebSocket } from './websocket.ts';
 
 /** The id the build left in the client directory; none for a client built without one. */
@@ -55,7 +56,43 @@ export function createApp(
     serveAsset(integrations, req, res).then((served) => (served ? undefined : next()), next);
   });
 
-  app.use(express.static(clientDir, { index: false, maxAge: '1h' }));
+  // The build's own files (`/assets`, named by what is in them) never change under a name: a browser keeps them for good, and a
+  // reload of a display that has them downloads nothing and reuses the code it has already compiled. They are sent compressed from the
+  // copies `hashsome build` made.
+  app.use('/assets', (req, res, next) => {
+    res.setHeader('cache-control', 'public, max-age=31536000, immutable');
+    res.setHeader('vary', 'Accept-Encoding');
+    const accepted = String(req.headers['accept-encoding'] ?? '')
+      .split(',')
+      .map((token) => token.trim().split(';')[0]);
+
+    for (const { encoding, extension } of VARIANTS) {
+      const copy = join(clientDir, 'assets', `${req.path}${extension}`);
+      if (accepted.includes(encoding) && existsSync(copy)) {
+        res.setHeader('content-encoding', encoding);
+        res.type(extname(req.path));
+        res.sendFile(copy, { cacheControl: false }, (error) => (error ? next(error) : undefined));
+        return;
+      }
+    }
+
+    next();
+  });
+
+  // Everything else may change under its name (the page, the version, the icons): the page is asked for again each time, which
+  // costs a "not modified" when it has not.
+  app.use(
+    express.static(clientDir, {
+      index: false,
+      maxAge: '1h',
+      setHeaders: (res, path) => {
+        if (path.endsWith('index.html')) {
+          res.setHeader('cache-control', 'no-cache');
+        }
+      },
+    }),
+  );
+
   // SPA fallback: client-side routing handles /{id}/...
   app.use((req, res) => {
     // A path that names a file (it has an extension) and was not found is not a page. Answering it with the app's HTML
