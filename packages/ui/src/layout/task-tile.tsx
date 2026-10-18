@@ -12,7 +12,7 @@ export interface TaskTileProps {
   /** What is to be done, e.g. `Septic additive`. */
   label: string;
 
-  /** Icon id, e.g. `lu:wrench`. */
+  /** The icon: an element such as `<Wrench />` from `lucide-react`. */
   icon?: ReactNode;
 
   /** Where the task stands. Whoever has the task decides it: how soon is "soon" is different for a weekly task and a yearly one. */

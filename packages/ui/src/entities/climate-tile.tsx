@@ -31,7 +31,7 @@ export interface ClimateTileProps {
   /** Defaults to the device's name. */
   name?: string;
 
-  /** Icon id. Defaults to a thermometer. */
+  /** The icon, an element such as `<Thermometer />`. Defaults to a thermometer. */
   icon?: ReactNode;
 
   /** Power-draw chart for the drawer, above `history`. No default source yet — pass explicitly. */

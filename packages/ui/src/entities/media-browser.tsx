@@ -16,7 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import type { BrowseItem, BrowseKind, EntityRef, MediaPlayerCommands } from '@hashsome/core';
-import { AnimatePresence, motion } from 'motion/react';
+import { m, Presence } from '../motion/index.tsx';
 import {
   memo,
   useLayoutEffect,
@@ -443,8 +443,8 @@ export function MediaBrowser({
         still ? (
           fieldOrRow
         ) : (
-          <AnimatePresence initial={false} mode="popLayout">
-            <motion.div
+          <Presence initial={false} mode="popLayout">
+            <m.div
               key={fieldShown ? 'field' : 'row'}
               initial={{ opacity: 0, x: fieldShown ? 28 : 0 }}
               animate={{ opacity: 1, x: 0 }}
@@ -452,8 +452,8 @@ export function MediaBrowser({
               transition={{ duration: 0.18, ease: 'easeOut' }}
             >
               {fieldOrRow}
-            </motion.div>
-          </AnimatePresence>
+            </m.div>
+          </Presence>
         )
       ) : (
         <>

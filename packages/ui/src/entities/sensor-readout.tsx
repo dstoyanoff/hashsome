@@ -36,7 +36,7 @@ export interface SensorReadoutProps {
   /** A sensor, as a ref like `ha:sensor.living_room_humidity` or a handle (a custom source). */
   entity: EntityRef | EntityHandle<'sensor'>;
 
-  /** Icon id. Defaults by device class (temperature, humidity). */
+  /** The icon, an element such as `<Droplets />`. Defaults by device class (temperature, humidity). */
   icon?: ReactNode;
 
   /** Drawer title. Defaults to the sensor's name. */

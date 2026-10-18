@@ -1,4 +1,4 @@
-import { motion } from 'motion/react';
+import { m } from '../motion/index.tsx';
 import type { ReactNode } from 'react';
 import { useStill } from './use-still.ts';
 
@@ -21,12 +21,12 @@ export function Reveal({ index = 0, children }: { index?: number; children: Reac
   }
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: 'easeOut', delay: Math.min(index, STAGGERED) * STAGGER }}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }

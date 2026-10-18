@@ -9,7 +9,7 @@ export interface ActionButtonProps {
   /** Button text. Defaults to the entity's name. */
   label?: string;
 
-  /** Icon id, e.g. `lu:coffee`. */
+  /** The icon: an element such as `<Coffee />` from `lucide-react`. */
   icon?: ReactNode;
 
   /** A literal CSS color that fills the icon's badge, e.g. `#8B5CF6`, to tell buttons apart at a glance. Default: the usual neutral badge. */

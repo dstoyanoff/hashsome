@@ -1,5 +1,6 @@
-import { animate, MotionGlobalConfig } from 'motion/react';
 import { useLayoutEffect, useRef } from 'react';
+import { motionAnimate } from '../motion/index.tsx';
+import { useStill } from '../motion/mode.ts';
 import styles from './animated-number.module.css';
 
 export interface AnimatedNumberProps {
@@ -27,6 +28,7 @@ export function AnimatedNumber({ value, format, duration = 0.6 }: AnimatedNumber
   const shown = useRef(value);
   // What was asked for last, kept for the move, which must not start over because a caller's function is new.
   const write = useRef((n: number) => String(n));
+  const still = useStill();
   const decimals = decimalsOf(value);
   const written = (n: number) => (format ? format(n) : n.toFixed(decimals));
   useLayoutEffect(() => {
@@ -42,8 +44,9 @@ export function AnimatedNumber({ value, format, duration = 0.6 }: AnimatedNumber
       return;
     }
 
-    // Reduced motion: it is simply the new value.
-    if (MotionGlobalConfig.skipAnimations) {
+    // Where nothing moves (or the animation library is not here): it is simply the new value.
+    const animate = motionAnimate();
+    if (still || !animate) {
       shown.current = value;
       node.textContent = write.current(value);
       return;
@@ -64,7 +67,7 @@ export function AnimatedNumber({ value, format, duration = 0.6 }: AnimatedNumber
     });
 
     return () => move.stop();
-  }, [value, duration]);
+  }, [value, duration, still]);
 
   return (
     <span ref={text} className={styles.number}>

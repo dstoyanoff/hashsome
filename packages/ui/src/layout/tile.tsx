@@ -1,5 +1,5 @@
 import type { EntityRef } from '@hashsome/core';
-import { AnimatePresence, motion, type MotionStyle } from 'motion/react';
+import { m, Presence } from '../motion/index.tsx';
 import {
   isValidElement,
   useEffect,
@@ -38,7 +38,7 @@ export interface TileProps {
   /** The tile's name. */
   label: string;
 
-  /** Icon id, e.g. `lu:lightbulb`. */
+  /** The icon: an element such as `<Lightbulb />` from `lucide-react`. */
   icon?: ReactNode;
 
   /** A literal CSS color (e.g. `#8B5CF6`) that fills the icon's badge, with a light glyph, so tiles of one kind (scenes, say) can be told apart at a glance. The palette has too few colors for that, so each app picks its own. Only while the tile is ready; otherwise the badge is the usual one. */
@@ -462,8 +462,8 @@ export function IconButton({
   const content = (
     <>
       {morphs && !still ? (
-        <AnimatePresence mode="popLayout">
-          <motion.span
+        <Presence mode="popLayout">
+          <m.span
             key={turn}
             className={styles.glyph}
             initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
@@ -472,8 +472,8 @@ export function IconButton({
             transition={{ duration: 0.18 }}
           >
             <Icon {...glyphSize}>{icon}</Icon>
-          </motion.span>
-        </AnimatePresence>
+          </m.span>
+        </Presence>
       ) : (
         <span className={styles.glyph}>
           <Icon {...glyphSize}>{icon}</Icon>
@@ -505,11 +505,11 @@ export function IconButton({
     </RoundButton>
   ) : (
     <RoundButton
-      as={motion.button}
+      as={m.button}
       whileTap={disabled || feedback === 'pending' ? {} : { scale: 0.88 }}
       transition={{ duration: 0.12 }}
       {...common}
-      {...(color ? { style: { '--glyph': color } as MotionStyle } : {})}
+      {...(color ? { style: { '--glyph': color } as CSSProperties } : {})}
     >
       {content}
     </RoundButton>

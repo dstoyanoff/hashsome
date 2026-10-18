@@ -11,7 +11,7 @@ export interface SceneButtonProps {
   /** Defaults to the scene's name. */
   name?: string;
 
-  /** Icon id. Defaults to a palette. */
+  /** The icon, an element such as `<Thermometer />`. Defaults to a palette. */
   icon?: ReactNode;
 
   /** A literal CSS color that fills the icon's badge, e.g. `#8B5CF6`, so scenes read as distinct at a glance (the top bar's scene dots take one too). Default: the usual neutral badge. */

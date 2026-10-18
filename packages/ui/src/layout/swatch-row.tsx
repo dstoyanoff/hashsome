@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { motion } from 'motion/react';
+import { m } from '../motion/index.tsx';
 import { Icon } from '../icon.tsx';
 import { cx } from '../style/cx.ts';
 import styles from './swatch-row.module.css';
@@ -32,14 +32,14 @@ export function SwatchRow({
   onCustom?: () => void;
 }) {
   return (
-    <motion.div
+    <m.div
       className={styles.row}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.15 }}
     >
       {items.map((item, index) => (
-        <motion.button
+        <m.button
           type="button"
           key={item.key}
           initial={{ scale: 0, opacity: 0 }}
@@ -61,12 +61,12 @@ export function SwatchRow({
           >
             {item.icon ? <Icon size={14}>{item.icon}</Icon> : null}
           </span>
-        </motion.button>
+        </m.button>
       ))}
       {onCustom ? (
         <>
           {items.length > 0 ? <span aria-hidden="true" className={styles.divider} /> : null}
-          <motion.button
+          <m.button
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ ...SWATCH_SPRING, delay: items.length * 0.04 }}
@@ -79,9 +79,9 @@ export function SwatchRow({
             <span className={cx(styles.dot, styles.custom)}>
               <span className={styles.hub} />
             </span>
-          </motion.button>
+          </m.button>
         </>
       ) : null}
-    </motion.div>
+    </m.div>
   );
 }

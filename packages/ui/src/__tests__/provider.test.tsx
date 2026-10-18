@@ -1,6 +1,6 @@
 import { LocalClient, MockIntegration, mockSensor } from '@hashsome/core';
+import { setMotionLevel, motionLevel } from '../motion/mode.ts';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MotionGlobalConfig } from 'motion/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { computed } from '../test-utils.tsx';
 import { useDensity } from '../theme/use-density.ts';
@@ -317,7 +317,7 @@ const resetMotion = () => {
   window.history.replaceState({}, '', '/');
   localStorage.clear();
   delete document.documentElement.dataset.motion;
-  MotionGlobalConfig.skipAnimations = false;
+  setMotionLevel('full');
 };
 
 const startAt = (search: string, props: { motion?: 'auto' | 'full' | 'reduced' } = {}) => {
@@ -336,16 +336,16 @@ test('?motion=reduced skips animations for that visit only, and nothing is kept'
   resetMotion();
   startAt('?motion=reduced');
   expect(reduced()).toBe(true);
-  expect(MotionGlobalConfig.skipAnimations).toBe(true);
+  expect(motionLevel()).toBe('reduced');
   expect(localStorage.length).toBe(0);
 
   // A later visit with no query starts from the prop again.
   cleanup();
   delete document.documentElement.dataset.motion;
-  MotionGlobalConfig.skipAnimations = false;
+  setMotionLevel('full');
   startAt('');
   expect(reduced()).toBe(false);
-  expect(MotionGlobalConfig.skipAnimations).toBe(false);
+  expect(motionLevel()).toBe('full');
   resetMotion();
 });
 
@@ -357,7 +357,7 @@ test('?motion=full overrides a reduced prop, and ?motion=auto leaves it to the p
 
   startAt('?motion=full', { motion: 'reduced' });
   expect(reduced()).toBe(false);
-  expect(MotionGlobalConfig.skipAnimations).toBe(false);
+  expect(motionLevel()).toBe('full');
   expect(localStorage.length).toBe(0);
   cleanup();
 
@@ -370,7 +370,7 @@ test('the default is to leave animations alone, and the prop can ask for none', 
   resetMotion();
   startAt('');
   expect(reduced()).toBe(false);
-  expect(MotionGlobalConfig.skipAnimations).toBe(false);
+  expect(motionLevel()).toBe('full');
   cleanup();
 
   startAt('', { motion: 'reduced' });

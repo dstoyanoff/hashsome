@@ -45,7 +45,7 @@ export interface LightTileProps {
   /** Defaults to the light's name. */
   name?: string;
 
-  /** Icon id. Defaults to a bulb. */
+  /** The icon, an element such as `<Thermometer />`. Defaults to a bulb. */
   icon?: ReactNode;
 
   /** Power-draw chart (e.g. a Shelly's energy monitoring), shown in the drawer above `history`.

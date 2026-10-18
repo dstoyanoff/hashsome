@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import type { EntityRef } from '@hashsome/core';
-import { motion } from 'motion/react';
+import { m } from '../motion/index.tsx';
 import { useState, type ReactNode } from 'react';
 import { Icon } from '../icon.tsx';
 import { ValueBar } from '../layout/drawer-controls.tsx';
@@ -236,7 +236,7 @@ export function MediaPlayerBar({
   const grouped = grouping && ref !== undefined && caps?.group === true;
 
   const volumeSlider = (
-    <motion.div
+    <m.div
       className={styles.volume}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -244,7 +244,7 @@ export function MediaPlayerBar({
       data-part="volume"
     >
       <PlainButton
-        as={motion.button}
+        as={m.button}
         className={styles.mute}
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -256,7 +256,7 @@ export function MediaPlayerBar({
       >
         <Icon size={16}>{muted ? <VolumeX /> : <Volume2 />}</Icon>
       </PlainButton>
-      <motion.div
+      <m.div
         className={styles.slider}
         initial={{ scaleX: 0.4, opacity: 0 }}
         animate={{ scaleX: 1, opacity: 1 }}
@@ -272,16 +272,16 @@ export function MediaPlayerBar({
           onDrag={volume.drag}
           onCommit={volume.commit}
         />
-      </motion.div>
-      <motion.span
+      </m.div>
+      <m.span
         className={styles.percent}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2, delay: 0.1 }}
       >
         {volume.shown}%
-      </motion.span>
-    </motion.div>
+      </m.span>
+    </m.div>
   );
 
   const trackInfo = (
