@@ -25,6 +25,7 @@ test('an address a dashboard goes to keeps the query string the page is under', 
       </Routes>
     </MemoryRouter>,
   );
+
   const [first, second] = screen.getAllByTestId('kept');
   expect(first?.textContent).toBe('/room/music?motion=reduced&grid');
   // One that has a query of its own is left as it is.

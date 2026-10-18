@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { useKeepSearch } from './keep-search.ts';
 
 /** The app-wide time a display is left alone before it goes back to a dashboard's main page, set by
  * `HashsomeProvider`'s `idleReturn`. `false`: it does not. */
@@ -42,11 +41,9 @@ export function useIdleReturnDefault(): number | false {
  */
 export function useIdleReturn({ to, after }: { to: string; after: number | false | undefined }) {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
-  const keep = useKeepSearch();
-  // What `navigate` goes to, kept in a ref: the check below is made by an interval that is not remade when the address changes.
-  const destination = useRef(to);
-  destination.current = keep(to);
+  const { pathname, search } = useLocation();
+  // The page it goes back to is opened with the query the display was, a flag (`?motion=reduced`) it was set up with.
+  const destination = search === '' || to.includes('?') ? to : `${to}${search}`;
   // Set when the time starts, in the effect below.
   const lastTouched = useRef(0);
   const enabled = typeof after === 'number' && after > 0;
@@ -69,7 +66,7 @@ export function useIdleReturn({ to, after }: { to: string; after: number | false
     const check = setInterval(
       () => {
         if (shouldLeave(Date.now(), lastTouched.current, after)) {
-          navigate(destination.current, { replace: true });
+          navigate(destination, { replace: true });
         }
       },
       Math.min(CHECK_MS, after / 2),
@@ -82,5 +79,5 @@ export function useIdleReturn({ to, after }: { to: string; after: number | false
 
       clearInterval(check);
     };
-  }, [enabled, away, after, to, navigate]);
+  }, [enabled, away, after, destination, navigate]);
 }
