@@ -11,7 +11,11 @@ const FONT = 'Inter';
 //   light: { palette: { accent: '#2d6cdf' } },       // colors, per theme
 //   shared: { radius: { card: '16px' } },            // radii, typography, shadows, spacing
 //   density: { comfortable: { space: 16 } },         // sizes that follow the display (spacing too)
-const OVERRIDES: ThemeOverrides = {};
+const OVERRIDES: ThemeOverrides = {
+  light: { palette: { accent: '#2d6cdf' } },
+  dark: { palette: { accent: '#5b8def' } },
+  shared: { radius: { card: '16px' } },
+};
 
 export const Layout = createLayout(THEME, FONT);
 export { HydrateFallback };

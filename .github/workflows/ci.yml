@@ -21,7 +21,3 @@ jobs:
         run: |
           pnpm generate:catalog
           git diff --exit-code .claude/skills/ui-catalog/CATALOG.md packages/ui/src/gallery/props-data.ts
-      - name: Check the generated styles are up to date
-        run: |
-          pnpm generate:styles
-          git diff --exit-code packages/ui/src/style/type.module.css

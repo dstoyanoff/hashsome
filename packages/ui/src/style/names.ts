@@ -25,7 +25,7 @@ export const RADIUS_KEYS = ['full', 'card', 'drawer', 'chrome', 'row', 'small'] 
 export const SHADOW_KEYS = ['drawer', 'dock'] as const;
 export const Z_INDEX_KEYS = ['nav', 'dropdown', 'scrim', 'drawer', 'popover', 'modal'] as const;
 
-/** The type scale, `default` being what every other variant starts from. */
+/** The type scale, `default` being what every other variant starts from. Keep `type.module.css` in sync: it has one class per name here. */
 export const TYPOGRAPHY_KEYS = [
   'default',
   'label',
