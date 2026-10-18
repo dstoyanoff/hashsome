@@ -19,7 +19,7 @@ const heater = (mode: 'off' | 'heat' = 'heat', target = 17): Record<string, Enti
 
 test('shows current and target temperature', () => {
   renderWithMock(<ClimateTile entity="ha:heater" />, heater());
-  expect(screen.getByRole('button', { name: 'heater' }).textContent).toContain('16.4 °C');
+  expect(screen.getByRole('button', { name: /^heater/ }).textContent).toContain('16.4 °C');
   expect(screen.getByText('17 °C')).toBeTruthy();
 });
 
@@ -96,11 +96,11 @@ test('unavailable climate shows no controls', () => {
   });
 
   expect(screen.queryByRole('button', { name: 'Increase' })).toBeNull();
-  expect(screen.getByRole('button', { name: 'heater' }).textContent).toContain('Unavailable');
+  expect(screen.getByRole('button', { name: /^heater/ }).textContent).toContain('Unavailable');
 });
 
 function openDrawer(name: string) {
-  const tile = screen.getByRole('button', { name });
+  const tile = screen.getByRole('button', { name: new RegExp('^' + name) });
   fireEvent.pointerDown(tile, { clientX: 0, pointerId: 1 });
   act(() => vi.advanceTimersByTime(500));
   fireEvent.pointerUp(tile, { clientX: 0, pointerId: 1 });

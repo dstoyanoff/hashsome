@@ -384,7 +384,6 @@ export function Tile({
           onPointerCancel={onPointerCancel}
           onKeyDown={onKeyDown}
           title={title}
-          aria-label={label}
         >
           {iconBadge}
           <span className={styles.label}>{label}</span>
