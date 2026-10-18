@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pause, Play } from 'lucide-react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { MotionGlobalConfig } from 'motion/react';
+import { setMotionLevel } from '../../motion/mode.ts';
 import { MemoryRouter, Link, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { AnimatedOutlet } from '../animated-outlet.tsx';
@@ -13,12 +13,12 @@ import { LocalClient, MockIntegration } from '@hashsome/core';
 // `?motion=reduced` is not the device's own setting: the app turns the animations off for itself, and a component
 // must then draw no motion element at all, not one with its animation skipped.
 beforeEach(() => {
-  MotionGlobalConfig.skipAnimations = true;
+  setMotionLevel('reduced');
 });
 
 afterEach(() => {
   cleanup();
-  MotionGlobalConfig.skipAnimations = false;
+  setMotionLevel('full');
 });
 
 test('a revealed card is just there, with nothing around it', () => {
@@ -32,7 +32,7 @@ test('a revealed card is just there, with nothing around it', () => {
 });
 
 test('past the first handful, a card is not revealed even where motion is on', () => {
-  MotionGlobalConfig.skipAnimations = false;
+  setMotionLevel('full');
   const { container } = render(
     <>
       <Reveal index={0}>

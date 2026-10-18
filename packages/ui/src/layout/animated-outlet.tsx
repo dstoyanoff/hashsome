@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { m, Presence } from '../motion/index.tsx';
 import { useState, type CSSProperties } from 'react';
 import { useLocation, useOutlet } from 'react-router';
 import type { NavItem } from '../entities/nav-rail.tsx';
@@ -71,8 +71,8 @@ export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
   const seconds = 0.14;
   const slide = SLIDE;
   return (
-    <AnimatePresence mode="wait" initial={false} custom={seen.direction}>
-      <motion.div
+    <Presence mode="wait" initial={false} custom={seen.direction}>
+      <m.div
         key={pathname}
         custom={seen.direction}
         variants={{
@@ -87,7 +87,7 @@ export function AnimatedOutlet({ items, base }: AnimatedOutletProps) {
         className={styles.page}
       >
         {outlet}
-      </motion.div>
-    </AnimatePresence>
+      </m.div>
+    </Presence>
   );
 }

@@ -1,4 +1,4 @@
-import { motion } from 'motion/react';
+import { m } from '../motion/index.tsx';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from '../style/cx.ts';
 import styles from './marquee-text.module.css';
@@ -52,7 +52,7 @@ export function MarqueeText({ children }: { children: ReactNode }) {
       {/* A motion element only for text that rolls: a list has a title and a line under it in every row, and
           nearly all of them fit. */}
       {rolling ? (
-        <motion.span
+        <m.span
           ref={inner}
           className={styles.text}
           animate={{ x: [0, 0, -overflow, -overflow, 0] }}
@@ -70,7 +70,7 @@ export function MarqueeText({ children }: { children: ReactNode }) {
           }}
         >
           {children}
-        </motion.span>
+        </m.span>
       ) : (
         <span ref={inner} className={styles.text}>
           {children}

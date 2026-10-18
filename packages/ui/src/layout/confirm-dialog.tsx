@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { m, Presence } from '../motion/index.tsx';
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cx } from '../style/cx.ts';
@@ -92,9 +92,9 @@ export function ConfirmDialog({
   };
 
   return createPortal(
-    <AnimatePresence>
+    <Presence>
       {open ? (
-        <motion.div
+        <m.div
           key="scrim"
           className={styles.scrim}
           onClick={onCancel}
@@ -103,7 +103,7 @@ export function ConfirmDialog({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.16 }}
         >
-          <motion.div
+          <m.div
             ref={card}
             className={styles.card}
             role="dialog"
@@ -133,10 +133,10 @@ export function ConfirmDialog({
               <DialogButton label={cancelLabel} disabled={busy} onClick={onCancel} />
               <DialogButton label={confirmLabel} primary disabled={busy} onClick={onConfirm} />
             </div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       ) : null}
-    </AnimatePresence>,
+    </Presence>,
     document.body,
   );
 }

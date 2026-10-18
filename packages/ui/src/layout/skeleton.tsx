@@ -1,4 +1,4 @@
-import { motion } from 'motion/react';
+import { m } from '../motion/index.tsx';
 import type { RadiusName } from '../style/names.ts';
 import styles from './skeleton.module.css';
 import { useStill } from './use-still.ts';
@@ -23,7 +23,7 @@ export function Skeleton({
       className={styles.block}
       style={{ width, height, borderRadius: `var(--hs-radius-${radius})` }}
     >
-      <motion.span
+      <m.span
         className={styles.pulse}
         initial={{ opacity: 0.1 }}
         {...(still

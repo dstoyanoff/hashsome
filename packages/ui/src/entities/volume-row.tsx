@@ -1,5 +1,5 @@
 import { Volume2, VolumeX, X } from 'lucide-react';
-import { motion } from 'motion/react';
+import { m } from '../motion/index.tsx';
 import { Icon } from '../icon.tsx';
 import { ValueBar } from '../layout/drawer-controls.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
@@ -29,7 +29,7 @@ export function VolumeRow({
 }) {
   const still = useStill();
   return (
-    <motion.div
+    <m.div
       className={styles.row}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -61,6 +61,6 @@ export function VolumeRow({
         <span className={styles.level}>{volume.shown}%</span>
       </div>
       <IconButton icon={<X />} label="Close volume" glyph={18} onClick={onClose} />
-    </motion.div>
+    </m.div>
   );
 }

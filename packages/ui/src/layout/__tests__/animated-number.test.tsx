@@ -1,14 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { setMotionLevel } from '../../motion/mode.ts';
 import { useState } from 'react';
 import { renderWithMock } from '../../test-utils.tsx';
-import { MotionGlobalConfig } from 'motion/react';
 import { afterEach, expect, test } from 'vitest';
 import { AnimatedNumber, decimalsOf } from '../animated-number.tsx';
 import { Tile } from '../tile.tsx';
 
 afterEach(() => {
   cleanup();
-  MotionGlobalConfig.skipAnimations = false;
+  setMotionLevel('full');
 });
 
 const shown = () => screen.getByTestId('n').textContent ?? '';
@@ -56,7 +56,7 @@ test('a value that arrives while it is moving is moved to from where it is, and 
 });
 
 test('reduced motion: it jumps', () => {
-  MotionGlobalConfig.skipAnimations = true;
+  setMotionLevel('reduced');
   const view = render(<Reading value={10} />);
   view.rerender(<Reading value={20} />);
   expect(shown()).toBe('20.0 W');

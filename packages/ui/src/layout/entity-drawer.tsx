@@ -1,8 +1,9 @@
 import { Maximize2, Minimize2, X } from 'lucide-react';
-import { AnimatePresence, motion, useDragControls, type MotionStyle } from 'motion/react';
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { m, Presence } from '../motion/index.tsx';
 import { Icon } from '../icon.tsx';
 import { useDetail } from './detail-provider.tsx';
+import { useSheetPull } from './use-sheet-pull.ts';
 import styles from './entity-drawer.module.css';
 
 const COLLAPSED_WIDTH = 380;
@@ -13,10 +14,6 @@ const SHEET_BELOW = 500;
 
 /** How much of the screen's height a sheet may take; one opened tall (`expanded`) takes all of it. */
 const SHEET_HEIGHT = '92dvh';
-
-/** How far a sheet has to be pulled down, or how fast, to be let go. */
-const DISMISS_DISTANCE = 100;
-const DISMISS_VELOCITY = 500;
 
 /**
  * The single shared detail drawer, rendered once by `HashsomeProvider`. Floats `EDGE_INSET`px in
@@ -34,7 +31,8 @@ const DISMISS_VELOCITY = 500;
  */
 export function EntityDrawer() {
   const { detail, closeDetail, toggleExpanded } = useDetail();
-  const drag = useDragControls();
+  const sheetNode = useRef<HTMLDivElement>(null);
+  const pull = useSheetPull(sheetNode, closeDetail);
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 0 : window.innerWidth,
   );
@@ -72,10 +70,10 @@ export function EntityDrawer() {
     : Math.min(COLLAPSED_WIDTH, Math.max(0, viewportWidth - EDGE_INSET * 2));
 
   return (
-    <AnimatePresence>
+    <Presence>
       {detail ? (
         <>
-          <motion.div
+          <m.div
             key="hash-drawer-scrim"
             className={styles.scrim}
             onClick={closeDetail}
@@ -86,29 +84,20 @@ export function EntityDrawer() {
           />
           {sheet ? (
             <div className={styles.sheetHost}>
-              <motion.div
+              <m.div
                 key="hash-drawer"
+                ref={sheetNode}
                 className={styles.sheet}
                 data-tall={expanded || detail.locked === true}
-                style={{ '--sheet-height': SHEET_HEIGHT } as MotionStyle}
+                style={{ '--sheet-height': SHEET_HEIGHT } as CSSProperties}
                 role="dialog"
                 aria-modal="true"
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 34, stiffness: 340, mass: 0.9 }}
-                drag="y"
-                dragControls={drag}
-                dragListener={false}
-                dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={{ top: 0, bottom: 0.5 }}
-                onDragEnd={(_event, info) => {
-                  if (info.offset.y > DISMISS_DISTANCE || info.velocity.y > DISMISS_VELOCITY) {
-                    closeDetail();
-                  }
-                }}
               >
-                <div className={styles.handle} onPointerDown={(event) => drag.start(event)}>
+                <div className={styles.handle} {...pull}>
                   <div className={styles.grip}>
                     <div className={styles.gripBar} aria-hidden="true" />
                   </div>
@@ -118,14 +107,14 @@ export function EntityDrawer() {
                   </div>
                 </div>
                 <div className={styles.sheetBody}>{detail.body}</div>
-              </motion.div>
+              </m.div>
             </div>
           ) : (
             <div
               className={styles.panelHost}
               style={{ '--edge-inset': `${EDGE_INSET}px` } as CSSProperties}
             >
-              <motion.div
+              <m.div
                 key="hash-drawer"
                 className={styles.panel}
                 role="dialog"
@@ -152,12 +141,12 @@ export function EntityDrawer() {
                   </div>
                 </div>
                 {detail.body}
-              </motion.div>
+              </m.div>
             </div>
           )}
         </>
       ) : null}
-    </AnimatePresence>
+    </Presence>
   );
 }
 

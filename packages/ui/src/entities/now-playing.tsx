@@ -1,5 +1,5 @@
 import { Pause, Play, Shuffle, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { m, Presence } from '../motion/index.tsx';
 import { useState, type ReactNode } from 'react';
 import type { EntityHandle } from '../entity-handle.ts';
 import { Icon } from '../icon.tsx';
@@ -141,7 +141,7 @@ export function NowPlaying({
       ) : null}
       {speakers ? <div className={styles.speakers}>{speakers}</div> : null}
       {/* Five equal slots, so play/pause stays in the middle whichever side buttons there are. */}
-      <AnimatePresence mode="wait" initial={false}>
+      <Presence mode="wait" initial={false}>
         {/* The buttons and the volume take turns in one row: one fades out, then the other in. */}
         {iconVolume && volumeOpen ? (
           <VolumeRow
@@ -151,7 +151,7 @@ export function NowPlaying({
             onClose={() => setVolumeOpen(false)}
           />
         ) : (
-          <motion.div
+          <m.div
             key="transport"
             className={styles.transport}
             initial={{ opacity: 0 }}
@@ -216,9 +216,9 @@ export function NowPlaying({
             ) : (
               (extra ?? <span />)
             )}
-          </motion.div>
+          </m.div>
         )}
-      </AnimatePresence>
+      </Presence>
       {(caps?.volume !== false || caps.mute) && !iconVolume ? (
         <div className={styles.volume}>
           <PlainButton

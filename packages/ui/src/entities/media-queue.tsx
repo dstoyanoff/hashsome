@@ -1,6 +1,13 @@
 import { AudioLines, GripVertical, Music, Trash, X } from 'lucide-react';
 import type { EntityRef, QueueItem } from '@hashsome/core';
-import { AnimatePresence, motion, Reorder, useDragControls } from 'motion/react';
+import {
+  AnimatePresence,
+  motion,
+  MotionGlobalConfig,
+  Reorder,
+  useDragControls,
+} from 'motion/react';
+import { motionLevel } from '../motion/mode.ts';
 import { useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { useEntityHandle } from '../hooks.ts';
 import { Icon } from '../icon.tsx';
@@ -13,6 +20,10 @@ import { formatDuration, formatLength } from './media-progress.ts';
 import styles from './media-queue.module.css';
 import { sourceLine } from './media-source.ts';
 import { useStill } from '../layout/use-still.ts';
+
+// The queue reorders by dragging, which the animation library does: it is fetched with the queue, where it is needed, and told to
+// jump where the app does not animate.
+MotionGlobalConfig.skipAnimations = motionLevel() !== 'full';
 
 export interface MediaQueueProps {
   /** The media player, as a ref like `ma:living_room`. Shows nothing for a player with no queue. */

@@ -1,6 +1,6 @@
 import { ChevronDown, Cpu, ToggleLeft, ToggleRight, Workflow } from 'lucide-react';
 import type { LogbookEntry } from '@hashsome/core';
-import { AnimatePresence, motion } from 'motion/react';
+import { m, Presence } from '../motion/index.tsx';
 import { useState } from 'react';
 import { Icon } from '../icon.tsx';
 import { capitalize } from '../status.ts';
@@ -131,7 +131,7 @@ export function HistorySection({ entries, loading = false, onOpen }: HistorySect
     <div className={styles.section}>
       <PlainButton className={styles.toggle} aria-expanded={open} onClick={toggle}>
         <span className={styles.heading}>History</span>
-        <motion.span
+        <m.span
           className={styles.chevron}
           initial={false}
           animate={{ rotate: open ? 180 : 0 }}
@@ -140,11 +140,11 @@ export function HistorySection({ entries, loading = false, onOpen }: HistorySect
           <Icon size={16}>
             <ChevronDown />
           </Icon>
-        </motion.span>
+        </m.span>
       </PlainButton>
-      <AnimatePresence initial={false}>
+      <Presence initial={false}>
         {open ? (
-          <motion.div
+          <m.div
             key="body"
             className={styles.body}
             initial={{ height: 0, opacity: 0 }}
@@ -176,9 +176,9 @@ export function HistorySection({ entries, loading = false, onOpen }: HistorySect
                 ))}
               </div>
             )}
-          </motion.div>
+          </m.div>
         ) : null}
-      </AnimatePresence>
+      </Presence>
     </div>
   );
 }

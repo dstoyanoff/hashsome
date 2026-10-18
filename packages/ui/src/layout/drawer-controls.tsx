@@ -1,5 +1,4 @@
 import { Power } from 'lucide-react';
-import { animate } from 'motion/react';
 import { MarqueeText } from './marquee-text.tsx';
 import {
   useEffect,
@@ -258,7 +257,6 @@ export function ChipRow({
       return;
     }
 
-    let scroll: { stop: () => void } | undefined;
     const reveal = () => {
       const at = chip.getBoundingClientRect();
       const row = scroller.getBoundingClientRect();
@@ -270,31 +268,22 @@ export function ChipRow({
         return;
       }
 
-      scroll?.stop();
-      const from = scroller.scrollLeft;
-      if (still) {
-        scroller.scrollLeft = from + (at.left - row.left) - FADE;
+      // To the start of the row, clear of the fade there (a position before the start is the start): glided by the browser where
+      // it can, at once where nothing moves.
+      const to = scroller.scrollLeft + (at.left - row.left) - FADE;
+      if (still || typeof scroller.scrollTo !== 'function') {
+        scroller.scrollLeft = to;
         return;
       }
 
-      // To the start of the row, clear of the fade there (a position before the start is the start).
-      scroll = animate(from, from + (at.left - row.left) - FADE, {
-        duration: 0.35,
-        ease: 'easeOut',
-        onUpdate: (to) => {
-          scroller.scrollLeft = to;
-        },
-      });
+      scroller.scrollTo({ left: to, behavior: 'smooth' });
     };
 
     reveal();
     // The row can get narrower after the tab is selected (the actions of what opened come in beside it).
     const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(reveal);
     resize?.observe(scroller);
-    return () => {
-      scroll?.stop();
-      resize?.disconnect();
-    };
+    return () => resize?.disconnect();
     // `selectedLabel` is not read inside: a new name for the selected tab is its length changing, which is a reason to look again.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [tabs, value, selectedLabel, still]);

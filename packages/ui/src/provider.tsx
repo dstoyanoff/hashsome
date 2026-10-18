@@ -5,7 +5,8 @@ import {
   type EntityRef,
   type RemoteClientOptions,
 } from '@hashsome/core';
-import { MotionGlobalConfig } from 'motion/react';
+import { loadMotion, motionLoaded } from './motion/index.tsx';
+import { setMotionLevel, type MotionLevel } from './motion/mode.ts';
 import {
   createContext,
   useCallback,
@@ -165,11 +166,12 @@ function motionFromAddress(): 'full' | 'light' | 'reduced' | undefined {
 /** Settles motion once, when the app starts, before anything renders: in `reduced` every animation
  * motion would run is skipped, and a flag on the page lets the global styles switch off CSS
  * transitions and animations too. */
-function useMotionMode(preference: MotionPreference): MotionPreference {
-  const [mode] = useState<MotionPreference>(() => {
+function useMotionMode(preference: MotionPreference): MotionLevel {
+  const [mode] = useState<MotionLevel>(() => {
     const chosen = motionFromAddress() ?? preference;
     // `light` draws what would animate as plain elements, as `reduced` does: the few motions it keeps are CSS (`html[data-motion='light']`).
-    MotionGlobalConfig.skipAnimations = chosen === 'reduced' || chosen === 'light';
+    const level: MotionLevel = chosen === 'reduced' || chosen === 'light' ? chosen : 'full';
+    setMotionLevel(level);
     if (typeof document !== 'undefined') {
       if (chosen === 'reduced' || chosen === 'light') {
         document.documentElement.dataset.motion = chosen;
@@ -178,7 +180,7 @@ function useMotionMode(preference: MotionPreference): MotionPreference {
       }
     }
 
-    return chosen;
+    return level;
   });
 
   return mode;
@@ -341,7 +343,15 @@ export function HashsomeProvider({
     [client, url, clientOptions],
   );
 
-  useMotionMode(motion);
+  const motionLevel = useMotionMode(motion);
+  // The animation library is fetched only to animate: in `light` and `reduced` motion it never is, and in full motion the app waits for it.
+  const [motionReady, setMotionReady] = useState(() => motionLevel !== 'full' || motionLoaded());
+  useEffect(() => {
+    if (!motionReady) {
+      void loadMotion().then(() => setMotionReady(true));
+    }
+  }, [motionReady]);
+
   const debugState = useDebugState();
   useFullscreenKept(debugState.fullscreen, debugState.setFullscreen);
   // The debug menu can choose a theme over the configured one; the sun is the project's own entity.
@@ -374,6 +384,10 @@ export function HashsomeProvider({
     instance.connect();
     return () => instance.close();
   }, [instance]);
+
+  if (!motionReady) {
+    return null;
+  }
 
   return (
     <HashsomeContext.Provider value={instance}>
