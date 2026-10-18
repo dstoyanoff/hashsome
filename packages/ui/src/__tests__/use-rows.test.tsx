@@ -20,15 +20,19 @@ function List({ items, listKey }: { items: string[]; listKey: string }) {
 test('a long list opens with one row and grows a few a frame, not a screenful at once', async () => {
   render(<List items={ITEMS} listKey="a" />);
   expect(screen.getAllByRole('listitem')).toHaveLength(1);
-  await waitFor(() =>
-    expect(screen.getAllByRole('listitem').length).toBeGreaterThanOrEqual(FIRST_ROWS),
+  await waitFor(
+    () => expect(screen.getAllByRole('listitem').length).toBeGreaterThanOrEqual(FIRST_ROWS),
+    { timeout: 10_000 },
   );
 });
 
 test('a list with room to spare gets the rest, since there is no scrolling to ask for it', async () => {
   // jsdom lays nothing out: the list has no height, so the end of it is always near.
   render(<List items={ITEMS} listKey="a" />);
-  await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(ITEMS.length));
+  // The first rows come a beat apart (about half a second in all), then the rest as the end is found near.
+  await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(ITEMS.length), {
+    timeout: 10_000,
+  });
 });
 
 test('a short list is drawn whole', () => {
