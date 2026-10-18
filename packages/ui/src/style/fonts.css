@@ -1,0 +1,7 @@
+/* The default font, Inter, shipped with the app (`@fontsource/inter`), so a page needs no other host to draw its text: a wall display on a
+   network without internet, or a slow one, is never waiting on a font. The weights `@hashsome/ui` uses, each in subsets (Latin, Cyrillic, ...)
+   the browser fetches only when a character of one is on the page. Another font is the project's to load (see the README's "Fonts"). */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';

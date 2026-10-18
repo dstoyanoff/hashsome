@@ -160,6 +160,10 @@ Icon props (`icon`) take an element from an icon library the project depends on:
 `@tabler/icons-react`). Browse names at lucide.dev/icons and tabler.io/icons; a typo'd name fails
 `pnpm typecheck`.
 
+## Fonts
+
+Inter is bundled. Another font is added to the project (`pnpm add @fontsource/<name>`, import its 400/500/600/700 CSS in `app/root.tsx`, name the family in `FONT`), never loaded from a CDN: the displays may have no internet. See the README's "Fonts".
+
 ## Style
 
 - No custom CSS beyond what `@hashsome/ui` components already provide. If a layout genuinely can't be

@@ -10,7 +10,7 @@ export type {
   ZIndex,
 } from './tokens.ts';
 
-/** The Google Fonts family loaded and applied by default — see `HashsomeProviderProps.font` . Any other Google Fonts family name works the same way. */
+/** The font applied by default, bundled with the app — see `HashsomeProviderProps.font`. Another family has to be loaded by the project itself. */
 export const DEFAULT_FONT = 'Inter';
 
 const FALLBACK_FONTS = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
@@ -19,12 +19,6 @@ const FALLBACK_FONTS = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif
  * hasn't loaded yet (or fails to). */
 export function fontStack(family: string): string {
   return `'${family}', ${FALLBACK_FONTS}`;
-}
-
-/** The Google Fonts CSS endpoint for a family name, covering the weights `@hashsome/ui` actually uses
- * (400/500/600/700). Spaces become `+` per Google Fonts' own URL convention. */
-export function googleFontHref(family: string): string {
-  return `https://fonts.googleapis.com/css2?family=${family.trim().replace(/\s+/g, '+')}:wght@400;500;600;700&display=swap`;
 }
 
 /** Returns `theme` with every `Typography` variant's font swapped to `family` (falling back to

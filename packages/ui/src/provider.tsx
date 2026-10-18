@@ -33,15 +33,10 @@ import { type Density } from './theme/density.ts';
 import { DensityContext } from './theme/use-density.ts';
 import { ThemeContext } from './theme/use-theme.ts';
 import './style/base.css';
+import './style/fonts.css';
 import { applyThemeOverrides, densityTokens, type ThemeOverrides } from './theme/overrides.ts';
 import { isDarkAt, msUntilSwitch, sunIsDown, type ThemeSchedule } from './theme/schedule.ts';
-import {
-  DEFAULT_FONT,
-  darkTheme,
-  googleFontHref,
-  lightTheme,
-  withFontFamily,
-} from './theme/index.ts';
+import { DEFAULT_FONT, darkTheme, lightTheme, withFontFamily } from './theme/index.ts';
 
 const HashsomeContext = createContext<Client | null>(null);
 
@@ -66,7 +61,7 @@ export interface HashsomeProviderProps {
   /** `'light'`, `'dark'`, `'system'` (follows the browser/OS preference and updates live), or a schedule: `{ dark: { from: '19:00', to: '07:00' } }` is dark between those times on the display's clock, `{ sun: 'ha:sun.sun' }` is dark while that entity, a `daylight` sensor (`on` while the sun is up; the Home Assistant integration makes one of `sun.sun`), is `off`. Default `'dark'`. A schedule and the document shell's first paint use `'system'` until the time or the entity is known. A `useThemeToggle()` caller (a toggle of the project's own) can still override this at runtime. Pass a constant defined outside the component. */
   theme?: ThemeMode;
 
-  /** Any Google Fonts family name (e.g. `'Inter'`, `'Roboto'`, `'Poppins'`), loaded dynamically. Default `'Inter'`. */
+  /** The font family applied everywhere. `'Inter'` (the default) is bundled with the app; any other family has to be loaded by the project itself, from its own files (see the README's "Fonts"): nothing is fetched from another host. */
   font?: string;
 
   /** `'compact'` for small square displays: tighter spacing, shorter tiles, smaller icon circles. Default `'comfortable'`. */
@@ -89,27 +84,6 @@ export interface HashsomeProviderProps {
 
   /** The app. */
   children: ReactNode;
-}
-
-/** Loads a Google Fonts family at runtime via a single `<link>` this hook owns and reuses (keyed
- * by a `data-hashsome-font` marker, not the family, so switching fonts updates it in place instead of
- * accumulating stale `<link>` tags). A no-op outside the browser (SSR has no `document`). */
-function useGoogleFont(family: string) {
-  useEffect(() => {
-    if (typeof document === 'undefined') {
-      return;
-    }
-
-    let link = document.querySelector<HTMLLinkElement>('link[data-hashsome-font]');
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.dataset.hashsomeFont = '';
-      document.head.appendChild(link);
-    }
-
-    link.href = googleFontHref(family);
-  }, [family]);
 }
 
 function defaultUrl(): string {
@@ -335,7 +309,6 @@ export function HashsomeProvider({
     instance,
   );
 
-  useGoogleFont(font);
   const resolvedTheme = useMemo(
     () =>
       withFontFamily(
