@@ -108,7 +108,7 @@ function Card() {
 
 test("in a tile's second line it moves as well, which is how a dashboard card shows its consumption", async () => {
   renderWithMock(<Card />, {});
-  const second = () => screen.getByRole('button', { name: 'UV lamp' }).textContent ?? '';
+  const second = () => screen.getByRole('button', { name: /^UV lamp/ }).textContent ?? '';
   expect(second()).toContain('2.1 W');
 
   fireEvent.click(screen.getByText('change'));

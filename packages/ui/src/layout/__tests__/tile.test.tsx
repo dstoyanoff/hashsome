@@ -38,7 +38,7 @@ test('dragging an adjustable tile cancels a pending hold', () => {
     <Tile label="led" active fill={0.5} onFillChange={() => {}} detail={<span>led detail</span>} />,
   );
 
-  const tile = screen.getByRole('button', { name: 'led' });
+  const tile = screen.getByRole('button', { name: /^led/ });
   tile.getBoundingClientRect = () => ({ left: 0, width: 200 }) as DOMRect;
   fireEvent.pointerDown(tile, { clientX: 100, pointerId: 1 });
   fireEvent.pointerMove(tile, { clientX: 150, pointerId: 1 });
@@ -75,7 +75,7 @@ test('dragging an off (inactive) tile shows the live fill bar, not just once it 
   );
 
   expect(container.querySelector('[data-fill-visible="true"]')).toBeNull();
-  const tile = screen.getByRole('button', { name: 'led' });
+  const tile = screen.getByRole('button', { name: /^led/ });
   tile.getBoundingClientRect = () => ({ left: 0, width: 200 }) as DOMRect;
   fireEvent.pointerDown(tile, { clientX: 20, pointerId: 1 });
   fireEvent.pointerMove(tile, { clientX: 100, pointerId: 1 });
@@ -96,7 +96,7 @@ test('after releasing a drag, the live value holds until `fill` catches up — n
     </HashsomeProvider>,
   );
 
-  const tile = screen.getByRole('button', { name: 'led' });
+  const tile = screen.getByRole('button', { name: /^led/ });
   tile.getBoundingClientRect = () => ({ left: 0, width: 200 }) as DOMRect;
   fireEvent.pointerDown(tile, { clientX: 100, pointerId: 1 });
   fireEvent.pointerMove(tile, { clientX: 150, pointerId: 1 });
@@ -331,7 +331,7 @@ test('a drag the browser cancels (a touch it took for a scroll) is ended where t
     {},
   );
 
-  const tile = screen.getByRole('button', { name: 'led' });
+  const tile = screen.getByRole('button', { name: /^led/ });
   vi.spyOn(tile, 'getBoundingClientRect').mockReturnValue({ left: 0, width: 200 } as DOMRect);
   fireEvent.pointerDown(tile, { clientX: 60, pointerId: 1 });
   fireEvent.pointerMove(tile, { clientX: 150, pointerId: 1 });

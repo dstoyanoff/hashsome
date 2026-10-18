@@ -31,20 +31,20 @@ test('shows name and state, and toggles on press', () => {
   const { ha } = renderWithMock(<LightTile entity="ha:plain" />, lights);
   // A plain on/off light shows "Off" when off, and no status text at all when on (matches the
   // converged design — an "On" label would be redundant with the tile's own accent color).
-  expect(screen.getByRole('button', { name: 'stairs lamp' }).textContent).toContain('Off');
-  fireEvent.click(screen.getByRole('button', { name: 'stairs lamp' }));
+  expect(screen.getByRole('button', { name: /^stairs lamp/ }).textContent).toContain('Off');
+  fireEvent.click(screen.getByRole('button', { name: /^stairs lamp/ }));
   expect(ha.getEntity('plain')).toMatchObject({ on: true });
-  expect(screen.getByRole('button', { name: 'stairs lamp' }).textContent).not.toContain('Off');
+  expect(screen.getByRole('button', { name: /^stairs lamp/ }).textContent).not.toContain('Off');
 });
 
 test('name prop overrides the friendly name', () => {
   renderWithMock(<LightTile entity="ha:plain" name="hall" />, lights);
-  expect(screen.getByRole('button', { name: 'hall' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: /^hall/ })).toBeTruthy();
 });
 
 test('dimmable lights show brightness and adjust with arrow keys', () => {
   const { ha } = renderWithMock(<LightTile entity="ha:dim" />, lights);
-  const tile = screen.getByRole('button', { name: 'led' });
+  const tile = screen.getByRole('button', { name: /^led/ });
   expect(tile.textContent).toContain('60%');
   fireEvent.keyDown(tile, { key: 'ArrowRight' });
   expect(ha.calls.at(-1)).toEqual({
@@ -56,7 +56,7 @@ test('dimmable lights show brightness and adjust with arrow keys', () => {
 
 test('dragging sets brightness from the pointer position and does not toggle', () => {
   const { ha } = renderWithMock(<LightTile entity="ha:dim" />, lights);
-  const tile = screen.getByRole('button', { name: 'led' });
+  const tile = screen.getByRole('button', { name: /^led/ });
   tile.getBoundingClientRect = () => ({ left: 0, width: 200 }) as DOMRect;
   fireEvent.pointerDown(tile, { clientX: 100, pointerId: 1 });
   fireEvent.pointerMove(tile, { clientX: 150, pointerId: 1 });
@@ -68,7 +68,7 @@ test('dragging sets brightness from the pointer position and does not toggle', (
 
 test('dragging shows the live percentage before the drag is committed', () => {
   renderWithMock(<LightTile entity="ha:dim" />, lights);
-  const tile = screen.getByRole('button', { name: 'led' });
+  const tile = screen.getByRole('button', { name: /^led/ });
   tile.getBoundingClientRect = () => ({ left: 0, width: 200 }) as DOMRect;
   fireEvent.pointerDown(tile, { clientX: 100, pointerId: 1 });
   fireEvent.pointerMove(tile, { clientX: 150, pointerId: 1 });
@@ -78,7 +78,7 @@ test('dragging shows the live percentage before the drag is committed', () => {
 
 test('dragging to the far left turns the light off', () => {
   const { ha } = renderWithMock(<LightTile entity="ha:dim" />, lights);
-  const tile = screen.getByRole('button', { name: 'led' });
+  const tile = screen.getByRole('button', { name: /^led/ });
   tile.getBoundingClientRect = () => ({ left: 0, width: 200 }) as DOMRect;
   fireEvent.pointerDown(tile, { clientX: 100, pointerId: 1 });
   fireEvent.pointerMove(tile, { clientX: 0, pointerId: 1 });
@@ -161,17 +161,17 @@ test('unavailable and missing lights are disabled and say why', () => {
     lights,
   );
 
-  const gone = screen.getByRole('button', { name: 'porch' }) as HTMLButtonElement;
+  const gone = screen.getByRole('button', { name: /^porch/ }) as HTMLButtonElement;
   expect(gone.disabled).toBe(true);
   expect(gone.textContent).toContain('Unavailable');
-  const missing = screen.getByRole('button', { name: 'nope' }) as HTMLButtonElement;
+  const missing = screen.getByRole('button', { name: /^nope/ }) as HTMLButtonElement;
   expect(missing.disabled).toBe(true);
   expect(missing.textContent).toContain('Not found');
 });
 
 test('holding a light tile opens a drawer with a power switch, without toggling it', () => {
   const { ha } = renderWithMock(<LightTile entity="ha:plain" />, lights);
-  const tile = screen.getByRole('button', { name: 'stairs lamp' });
+  const tile = screen.getByRole('button', { name: /^stairs lamp/ });
   fireEvent.pointerDown(tile, { clientX: 0, pointerId: 1 });
   act(() => vi.advanceTimersByTime(500));
   expect(screen.getByText('Power')).toBeTruthy();
@@ -181,7 +181,7 @@ test('holding a light tile opens a drawer with a power switch, without toggling 
 });
 
 function openDrawer(name: string) {
-  const tile = screen.getByRole('button', { name });
+  const tile = screen.getByRole('button', { name: new RegExp('^' + name) });
   fireEvent.pointerDown(tile, { clientX: 0, pointerId: 1 });
   act(() => vi.advanceTimersByTime(500));
   fireEvent.pointerUp(tile, { clientX: 0, pointerId: 1 });
@@ -306,7 +306,7 @@ test('the drawer’s power control is one icon button with two states', () => {
 
 test('drawer={false}: holding the tile opens nothing, and it still toggles with a tap', () => {
   const { ha } = renderWithMock(<LightTile entity="ha:plain" drawer={false} />, lights);
-  const tile = screen.getByRole('button', { name: 'stairs lamp' });
+  const tile = screen.getByRole('button', { name: /^stairs lamp/ });
   fireEvent.pointerDown(tile, { clientX: 0, pointerId: 1 });
   act(() => vi.advanceTimersByTime(800));
   expect(screen.queryByText('Power')).toBeNull();
@@ -332,7 +332,7 @@ test('drawer={false}: a dimmable light still dims by dragging, and the color swa
 test('a tile that mounts is drawn as it is: its fill is already at the brightness, not animated from 0', () => {
   renderWithMock(<LightTile entity="ha:dim" />, lights);
   // Before any frame has run: opening a page must not replay the 0 → 60% sweep.
-  const card = screen.getByRole('button', { name: 'led' }).closest('[data-fill]') as HTMLElement;
+  const card = screen.getByRole('button', { name: /^led/ }).closest('[data-fill]') as HTMLElement;
   const fill = [...card.querySelectorAll('span')].find((span) => span.style.width !== '');
   expect(fill?.style.width).toBe('60%');
 });
