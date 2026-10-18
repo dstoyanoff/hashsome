@@ -1,9 +1,11 @@
 import { startTransition, useCallback, useEffect, useRef, useState, type UIEvent } from 'react';
 
 /** How many rows of a list are drawn to begin with, and how many more each time the end comes near: a library can be
- * hundreds of rows long, and drawing them all at once is seconds of work on a slow display, for rows nobody has scrolled to. */
-export const FIRST_ROWS = 10;
-const MORE_ROWS = 10;
+ * hundreds of rows long, and drawing them all at once is seconds of work on a slow display, for rows nobody has scrolled to.
+ * Five is about what a small display's sheet shows, and the first draw costs about 2 ms a row there: the rest follows in a
+ * transition (see `more`). */
+export const FIRST_ROWS = 5;
+const MORE_ROWS = 5;
 
 /** The rows of a long list as far as they are wanted (`shown`): the first screenful, and more as `onScroll` finds the
  * end close. Another list (`key`) starts over. */
