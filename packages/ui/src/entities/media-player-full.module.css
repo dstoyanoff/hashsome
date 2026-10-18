@@ -127,17 +127,19 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: var(--glide-w, 0);
+  /* Scaled to the tab's width, so it can glide by a transform alone. Not one pixel wide: on a screen at 1.5x a box that small is
+     rounded up to a whole device pixel before it is scaled, and comes out a third too wide. 120px is a whole number of them. */
+  width: 120px;
   height: 2px;
   background: var(--hs-accent);
-  transform: translate(var(--glide-x, 0px), calc(var(--glide-y, 0px) + var(--glide-h, 0px) - 2px));
+  transform-origin: 0 0;
+  transform: translate(var(--glide-x, 0px), calc(var(--glide-y, 0px) + var(--glide-h, 0px) - 2px))
+    scaleX(calc(var(--glide-n, 0) / 120));
   pointer-events: none;
 }
 
-.tabs[data-glide='on'] .underline {
-  transition:
-    transform 0.2s ease-out,
-    width 0.2s ease-out;
+html:not([data-motion='reduced']) .tabs[data-glide='on'] .underline {
+  transition: transform 0.2s ease-out;
 }
 
 @keyframes fade {

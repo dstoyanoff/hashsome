@@ -329,6 +329,22 @@ The player as an upright card for a narrow column beside a dashboard (a quarter 
 | `speakers` | `EntityRef[]`                              | no       | An allowlist of the speakers that can be added: only those that are in it and that the player can be grouped with are offered. Absent, every speaker it can be grouped with is offered.                                                                                                                                                                                                                                                                                                                                                                                      |
 | `fill`     | `boolean`                                  | no       | The card takes all the height its parent gives it (a column that fills a page), the artwork growing to use the room and the controls staying at the bottom, instead of being only as tall as it needs. Default `false`.                                                                                                                                                                                                                                                                                                                                                      |
 
+### `ListTabs`
+
+Library and Queue, as text with an underline that slides between them (not the pills the library's own categories are, so the two rows read as different things). For a page that lays the player, the queue and the library out itself: `lists` are the tabs and their order, `value` the open one, and `onChange` is asked for another.
+
+```ts
+function ListTabs({
+  value,
+  lists,
+  onChange,
+}: {
+  value: ListTab;
+  lists: ListTab[];
+  onChange: (tab: ListTab) => void;
+});
+```
+
 ### `MediaPlayerFull`
 
 The big player: the player centered at the top, and the library (or whatever `browser` is) below it. It is what the media cards' drawers show, at every width, and it is the widget a dashboard puts in a page of its own, around it whatever it likes (a surface that fills the space and scrolls, a heading, other cards beside it). It fills the height it is given, so the page that holds it decides how tall that is.

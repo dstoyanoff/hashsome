@@ -9,3 +9,16 @@
   animation: reveal 0.22s ease-out both;
   animation-delay: calc(var(--i) * 30ms);
 }
+
+/* A row that arrives on its own (see `light`): it fades in, sliding in from the right. `translate`, not `transform`, so it does not meet a transform
+   the row has of its own. */
+@keyframes arrive {
+  from {
+    opacity: 0;
+    translate: 28px 0;
+  }
+}
+
+.arrive {
+  animation: arrive 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}

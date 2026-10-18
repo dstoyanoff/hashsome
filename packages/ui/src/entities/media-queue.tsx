@@ -61,7 +61,7 @@ export function MediaQueue({ entity }: MediaQueueProps) {
       ? draft.ids.map((id) => byId.get(id)!)
       : upcoming;
 
-  const { shown: visible, attach, onScroll } = useRows(shown, 'queue');
+  const { shown: visible, attach, onScroll, reserve } = useRows(shown, 'queue');
   if (!queue || handle.entity?.capabilities.queue !== true) {
     return null;
   }
@@ -250,6 +250,7 @@ export function MediaQueue({ entity }: MediaQueueProps) {
               onStep={(by) => step(item, by)}
             />
           ))}
+          <li {...reserve} />
           {hidden > 0 ? <li className={styles.more}>and {hidden.toLocaleString()} more</li> : null}
         </ul>
       )}

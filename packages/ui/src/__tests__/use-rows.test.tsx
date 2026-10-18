@@ -17,9 +17,12 @@ function List({ items, listKey }: { items: string[]; listKey: string }) {
   );
 }
 
-test('a long list is drawn a screenful at a time, not all at once', () => {
+test('a long list opens with one row and grows a few a frame, not a screenful at once', async () => {
   render(<List items={ITEMS} listKey="a" />);
-  expect(screen.getAllByRole('listitem')).toHaveLength(FIRST_ROWS);
+  expect(screen.getAllByRole('listitem')).toHaveLength(1);
+  await waitFor(() =>
+    expect(screen.getAllByRole('listitem').length).toBeGreaterThanOrEqual(FIRST_ROWS),
+  );
 });
 
 test('a list with room to spare gets the rest, since there is no scrolling to ask for it', async () => {

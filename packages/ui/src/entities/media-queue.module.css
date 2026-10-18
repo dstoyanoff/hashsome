@@ -93,6 +93,18 @@
   transform: translateY(calc(var(--shift, 0) * (var(--row) + var(--hs-space) / 6)));
 }
 
+/* A row arrives with a fade, sliding in from the right, one at a time as the list is drawn (`useRows`); `translate`, so the shift above is left alone. */
+html:not([data-motion='reduced']) .row {
+  animation: arrive 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    translate: 28px 0;
+  }
+}
+
 .row[data-dim='true'] {
   opacity: 0.5;
 }

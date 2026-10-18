@@ -66,9 +66,10 @@ export interface MediaPlayerFullProps {
 /** What the tabs below the player choose between. */
 export type ListTab = 'library' | 'queue';
 
-/** Library and Queue, as text with an underline (not the pills the library's own categories are, so the
- * two rows read as different things). */
-function ListTabs({
+/** Library and Queue, as text with an underline that slides between them (not the pills the library's own categories are, so the
+ * two rows read as different things). For a page that lays the player, the queue and the library out itself: `lists` are the tabs
+ * and their order, `value` the open one, and `onChange` is asked for another. */
+export function ListTabs({
   value,
   lists,
   onChange,
@@ -80,12 +81,12 @@ function ListTabs({
   // One line that slides between the tabs, by CSS (`useGlide`).
   const row = useRef<HTMLDivElement>(null);
   useGlide(row, value);
-  const all: { id: ListTab; label: string; icon: ReactNode }[] = [
-    { id: 'library', label: 'Library', icon: <Library /> },
-    { id: 'queue', label: 'Queue', icon: <ListMusic /> },
-  ];
+  const all: Record<ListTab, { label: string; icon: ReactNode }> = {
+    library: { label: 'Library', icon: <Library /> },
+    queue: { label: 'Queue', icon: <ListMusic /> },
+  };
 
-  const tabs = all.filter((tab) => lists.includes(tab.id));
+  const tabs = lists.map((id) => ({ id, ...all[id] }));
 
   return (
     <div ref={row} className={styles.tabs} role="tablist" aria-label="Library or queue">

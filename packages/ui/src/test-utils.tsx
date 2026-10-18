@@ -4,7 +4,7 @@ import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router';
 import { afterEach } from 'vitest';
 import { resetMediaPending } from './entities/media-pending.ts';
-import { HashsomeProvider } from './provider.tsx';
+import { HashsomeProvider, type MotionPreference } from './provider.tsx';
 
 afterEach(() => {
   cleanup();
@@ -15,7 +15,7 @@ afterEach(() => {
 export function renderWithMock(
   ui: ReactElement,
   entities: Record<string, EntityInput> = {},
-  options: { router?: boolean; library?: MockLibrary } = {},
+  options: { router?: boolean; library?: MockLibrary; motion?: MotionPreference } = {},
 ): RenderResult & { ha: MockIntegration; client: LocalClient } {
   const ha = new MockIntegration({
     entities,
@@ -24,7 +24,7 @@ export function renderWithMock(
 
   const client = new LocalClient([ha]);
   const tree = (
-    <HashsomeProvider client={client}>
+    <HashsomeProvider client={client} motion={options.motion ?? 'reduced'}>
       {options.router ? <MemoryRouter>{ui}</MemoryRouter> : ui}
     </HashsomeProvider>
   );

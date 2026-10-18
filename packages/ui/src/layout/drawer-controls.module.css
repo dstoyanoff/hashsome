@@ -128,11 +128,12 @@
   pointer-events: none;
 }
 
-.chips[data-glide='on'] .pill {
+/* It glides wherever something animates: by a transform and its width (the height is the same chip to chip, so it has nothing to
+   animate). It is positioned out of the flow, so what changes is its own box, not the row's layout. */
+html:not([data-motion='reduced']) .chips[data-glide='on'] .pill {
   transition:
     transform 0.25s ease-out,
-    width 0.25s ease-out,
-    height 0.25s ease-out;
+    width 0.25s ease-out;
 }
 
 /* Above the pill. */
