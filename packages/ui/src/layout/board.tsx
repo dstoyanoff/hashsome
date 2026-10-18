@@ -92,7 +92,7 @@ export function Cell({ cols, rows = 1, children }: CellProps) {
     }
 
     return () => observer.disconnect();
-  });
+  }, [fill]);
 
   const span = typeof rows === 'number' ? rows : 1;
   const stretches = fill || span > 1;
