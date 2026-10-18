@@ -333,6 +333,6 @@ test('a tile that mounts is drawn as it is: its fill is already at the brightnes
   renderWithMock(<LightTile entity="ha:dim" />, lights);
   // Before any frame has run: opening a page must not replay the 0 → 60% sweep.
   const card = screen.getByRole('button', { name: /^led/ }).closest('[data-fill]') as HTMLElement;
-  const fill = [...card.querySelectorAll('span')].find((span) => span.style.width !== '');
-  expect(fill?.style.width).toBe('60%');
+  const fill = [...card.querySelectorAll('span')].find((span) => span.style.transform !== '');
+  expect(fill?.style.transform).toBe('scaleX(0.6)');
 });
