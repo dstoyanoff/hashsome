@@ -96,6 +96,32 @@ describe('MediaQueue', () => {
     });
   });
 
+  test('a track coming up can be dragged by its handle: the rows it passes give way, and where it is let go is where it goes', async () => {
+    const { ha } = render();
+    await screen.findByText(/24 tracks/);
+    const [first] = screen.getAllByRole('button', { name: /^Move / });
+    const row = first!.closest('li')!;
+    // Rows are 56px apart here (jsdom does not lay anything out, so it is the default pitch): two rows down is 112px.
+    fireEvent.pointerDown(first!, { clientY: 100, pointerId: 1 });
+    expect(row.dataset['dragging']).toBe('true');
+    fireEvent.pointerMove(window, { clientY: 212, pointerId: 1 });
+    expect(row.style.getPropertyValue('--drag')).toBe('112px');
+    // The two rows it has passed over each move up one place.
+    const [, second, third, fourth] = screen
+      .getAllByRole('button', { name: /^Move / })
+      .map((b) => b.closest('li')!);
+
+    expect(second!.style.getPropertyValue('--shift')).toBe('-1');
+    expect(third!.style.getPropertyValue('--shift')).toBe('-1');
+    expect(fourth!.style.getPropertyValue('--shift')).toBe('0');
+
+    fireEvent.pointerUp(window, { clientY: 212, pointerId: 1 });
+    expect(ha.calls.at(-1)).toMatchObject({
+      command: 'moveQueueItem',
+      args: { item: expect.stringContaining('q3-'), shift: 2 },
+    });
+  });
+
   test('when the last track has played and the player has stopped, it is shown as played', async () => {
     const queue = (id: string, title: string, current?: boolean) => ({
       id,

@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
-/** How much the app moves: `full` runs the animation library, `light` keeps the few animations that are CSS, `reduced` keeps none.
- * Set once when the app starts (`HashsomeProvider`), from its `motion` prop or the address (`?motion=`). */
+/** How much the app moves, all of it CSS: `reduced` none, `light` the cheap ones that play as something appears, `full` those and more.
+ * Set when the app starts (`HashsomeProvider`'s `motion` prop), by a dashboard (`Motion`), or by the address (`?motion=`). */
 export type MotionLevel = 'full' | 'light' | 'reduced';
 
 let level: MotionLevel = 'full';
@@ -11,6 +11,17 @@ export function setMotionLevel(next: MotionLevel): void {
 }
 
 export const motionLevel = (): MotionLevel => level;
+
+/** What the address asks for motion: `?motion=reduced`, `?motion=light` or `?motion=full`, which wins over what the app or a dashboard
+ * says, for trying one out. Nothing is kept: a reload without it goes back. */
+export function motionFromAddress(): MotionLevel | undefined {
+  try {
+    const asked = new URLSearchParams(window.location.search).get('motion');
+    return asked === 'reduced' || asked === 'light' || asked === 'full' ? asked : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 const QUERY = '(prefers-reduced-motion: reduce)';
 
@@ -35,4 +46,9 @@ const asked = (): boolean =>
 export function useStill(): boolean {
   const prefers = useSyncExternalStore(subscribe, asked, () => false);
   return prefers || level !== 'full';
+}
+
+/** Whether the animations that cost something run: the app is in full motion and the device has not asked for less. */
+export function useFullMotion(): boolean {
+  return !useStill();
 }

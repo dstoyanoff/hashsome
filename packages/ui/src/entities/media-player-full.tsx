@@ -1,6 +1,5 @@
 import { Library, ListMusic, Speaker } from 'lucide-react';
 import type { EntityRef } from '@hashsome/core';
-import { m } from '../motion/index.tsx';
 import { useRef, useState, type ReactNode } from 'react';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
 import { useEntityHandle } from '../hooks.ts';
@@ -248,17 +247,14 @@ export function MediaPlayerFull({
           ) : (
             <div className={styles.line} />
           )}
-          <m.div
-            // Another list fades in where the last one was, so a tab does not cut from one to the other.
+          <div
+            // Another list fades in where the last one was (by CSS), so a tab does not cut from one to the other.
             key={open}
             className={styles.list}
             data-full={full}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
           >
             {open === 'queue' ? queue : browser}
-          </m.div>
+          </div>
         </>
       ) : null}
     </div>

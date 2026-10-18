@@ -1,4 +1,5 @@
 export * from './provider.tsx';
+export * from './layout/motion.tsx';
 export * from './theme/index.ts';
 export type { Density, DensityTokens } from './theme/density.ts';
 export type { ThemeOverrides } from './theme/overrides.ts';

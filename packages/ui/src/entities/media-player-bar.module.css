@@ -353,3 +353,40 @@ button.ring {
     width: 34px;
   }
 }
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+@keyframes grow {
+  from {
+    opacity: 0;
+    transform: scaleX(0.4);
+  }
+}
+
+/* The volume opens with the mute button popping in, the slider growing from its left end and the level fading in after them. */
+html:not([data-motion='reduced']) .volume {
+  animation: fade 0.15s ease-out;
+}
+
+html:not([data-motion='reduced']) .mute {
+  animation: pop 0.2s ease-out;
+}
+
+html:not([data-motion='reduced']) .slider {
+  animation: grow 0.2s ease-out 0.04s both;
+}
+
+html:not([data-motion='reduced']) .percent {
+  animation: fade 0.2s ease-out 0.1s both;
+}

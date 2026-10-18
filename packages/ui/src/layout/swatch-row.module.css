@@ -67,7 +67,8 @@
   }
 }
 
-/* `?motion=light`: the swatches pop in. */
-html[data-motion='light'] .swatch {
-  animation: pop 0.22s ease-out;
+/* Where there is motion: the swatches pop in, one after the other. */
+html:not([data-motion='reduced']) .swatch {
+  animation: pop 0.22s ease-out both;
+  animation-delay: calc(var(--i) * 40ms);
 }

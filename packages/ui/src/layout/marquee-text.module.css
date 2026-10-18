@@ -17,3 +17,20 @@
 .text {
   display: inline-block;
 }
+
+/* Rests at each end for a little more than a tenth of the roll, goes the whole way in the rest of it, and back (alternating). */
+@keyframes roll {
+  0%,
+  12% {
+    transform: translateX(0);
+  }
+
+  88%,
+  100% {
+    transform: translateX(var(--x));
+  }
+}
+
+.roll {
+  animation: roll var(--seconds) linear infinite alternate;
+}

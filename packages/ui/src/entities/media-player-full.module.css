@@ -139,3 +139,13 @@
     transform 0.2s ease-out,
     width 0.2s ease-out;
 }
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+html:not([data-motion='reduced']) .list {
+  animation: fade 0.15s ease-out;
+}

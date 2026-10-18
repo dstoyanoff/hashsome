@@ -1194,6 +1194,15 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
             </Flex>
           </ComponentDoc>
           <ComponentDoc
+            title="Motion"
+            components={['Motion']}
+            description="Says how much a dashboard moves, for the display it is made for: put it in the dashboard's layout. A wall display's takes `light` (the cheap animations that play as something appears), a tablet's or a phone's can have `full`, and `reduced` has none. It draws nothing, lasts while the dashboard is shown, and the app's own setting comes back after. `?motion=` on the address still wins, for trying one out."
+          >
+            <Typography as="span" variant="body" color="textMuted">
+              {`<Motion level="light" />`}
+            </Typography>
+          </ComponentDoc>
+          <ComponentDoc
             title="Hashsome Provider"
             description="The app provider: connects to the runtime, installs the theme, font and density globally, and renders the shared detail drawer. Everything on this page runs inside one — use the toggle above to flip its theme."
             components={['HashsomeProvider']}

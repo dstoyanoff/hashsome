@@ -53,6 +53,7 @@ const sections: Section[] = [
       'layout/top-row.tsx',
       'layout/page.tsx',
       'layout/animated-outlet.tsx',
+      'layout/motion.tsx',
       'layout/room-header.tsx',
       'layout/tile.tsx',
       'layout/task-tile.tsx',

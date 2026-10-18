@@ -1,0 +1,11 @@
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.reveal {
+  animation: reveal 0.22s ease-out both;
+  animation-delay: calc(var(--i) * 30ms);
+}

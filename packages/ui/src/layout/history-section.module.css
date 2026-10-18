@@ -64,10 +64,32 @@
 
 .chevron {
   display: grid;
+  transition: transform 0.2s ease-out;
+}
+
+.chevron[data-open='true'] {
+  transform: rotate(180deg);
 }
 
 .body {
   overflow: hidden;
+}
+
+/* In full motion the body opens by growing, a row of a grid from nothing to its content. */
+@keyframes open {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+
+  to {
+    opacity: 1;
+    max-height: 40em;
+  }
+}
+
+html[data-motion='full'] .body {
+  animation: open 0.22s ease-out;
 }
 
 .empty {

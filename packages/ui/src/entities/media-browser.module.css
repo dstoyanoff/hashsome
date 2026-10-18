@@ -404,3 +404,24 @@
   position: relative;
   display: grid;
 }
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
+html:not([data-motion='reduced']) .crossfade {
+  animation: fade 0.18s ease-out;
+}
+
+html:not([data-motion='reduced']) .crossfade[data-field='true'] {
+  animation-name: slide-in;
+}

@@ -1,6 +1,5 @@
 import { Check, ChevronDown, Palette, Sun } from 'lucide-react';
 import type { ConnectionStatus, EntityRef, LinkStatus } from '@hashsome/core';
-import { m } from '../motion/index.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
@@ -454,9 +453,10 @@ function SceneDot({
   const { active: done, start } = useTimed(SCENE_DONE_MS);
 
   return (
-    <m.button
+    <button
       type="button"
       className={styles.scene}
+      data-done={done}
       {...(color ? { style: { '--scene': color } as CSSProperties } : {})}
       aria-label={label}
       title={label}
@@ -466,22 +466,16 @@ function SceneDot({
           void handle.command('trigger');
         }
       }}
-      animate={{ scale: done ? [1, 1.18, 1] : 1 }}
-      transition={{ duration: 0.4 }}
     >
-      <m.span
-        className={styles.sceneIcon}
-        animate={{ opacity: done ? 0 : 1, scale: done ? 0.5 : 1 }}
-        transition={{ duration: 0.18 }}
-      >
+      <span className={styles.sceneIcon} data-done={done}>
         <Icon size={18}>{icon ?? <Palette />}</Icon>
-      </m.span>
+      </span>
       {done ? (
         <span className={styles.check}>
           <CheckMark />
         </span>
       ) : null}
-    </m.button>
+    </button>
   );
 }
 

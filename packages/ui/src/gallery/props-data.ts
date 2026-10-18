@@ -134,6 +134,23 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
       },
     ],
   },
+  Motion: {
+    doc: "Says how much a dashboard moves, for the display it is made for: wrap the dashboard's layout in it (a wall display's takes `light`, a tablet's or a phone's can have all of it). It lasts while the dashboard is shown, and what the app was set to (`HashsomeProvider`'s `motion`) comes back when another one is. Draws only its children.",
+    props: [
+      {
+        doc: "How much this dashboard moves: `'reduced'` none, `'light'` the cheap animations that play as something appears (for a slow wall display), `'full'` all of them. The address can still ask for another (`?motion=`), for trying one out.",
+        name: 'level',
+        optional: false,
+        type: 'MotionLevel',
+      },
+      {
+        doc: 'The dashboard it is for.',
+        name: 'children',
+        optional: true,
+        type: 'ReactNode',
+      },
+    ],
+  },
   RoomHeader: {
     doc: 'The header that starts a room: muted icon and title, a hairline, and readouts on the right. Put it above a `Grid` (or any tiles); it adds its own space above, so consecutive rooms read as groups.',
     props: [
@@ -1211,7 +1228,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         type: 'Density',
       },
       {
-        doc: "`'reduced'` turns animations and transitions off, for a slow display (and draws what would animate as plain elements, which is most of what such a display saves), `'full'` keeps them and `'auto'` (the default) leaves things as they are. A device can choose for itself with `?motion=reduced` (or `light`, or `full`) on the address it opens, which wins over this prop. Nothing is kept: it holds while the app is open, moving between its pages, and a reload without the parameter goes back to this prop.",
+        doc: "How much the app moves (see `MotionPreference`): `'reduced'` none, for a slow display; `'light'` the cheap animations, which play as something appears; `'full'` (and `'auto'`, the default) all of them. A device can choose for itself with `?motion=reduced` (or `light`, or `full`) on the address it opens, which wins over this prop. Nothing is kept: it holds while the app is open, moving between its pages, and a reload without the parameter goes back to this prop.",
         name: 'motion',
         optional: true,
         type: 'MotionPreference',
