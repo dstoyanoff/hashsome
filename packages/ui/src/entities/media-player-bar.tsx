@@ -190,7 +190,7 @@ export function MediaPlayerBar({
   const artwork = (
     <span className={styles.artwork}>
       {player?.media?.artworkUrl ? (
-        <Cover src={player.media.artworkUrl} size="small" />
+        <Cover src={player.media.artworkUrl} size="small" priority />
       ) : (
         <Icon size={14}>
           <Music />

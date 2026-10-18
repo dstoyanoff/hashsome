@@ -5,13 +5,24 @@ import styles from './cover.module.css';
  * name of what it shows is always written beside it. A picture the runtime serves is asked for at the `size` given, which
  * its backend maps to a size of its own: `small` for a thumbnail (a list's row, the small player), `medium` for a
  * cover (a card, the player's), `large` for a picture that fills a screen. One from anywhere else is used as it is. */
-export function Cover({ src, size }: { src: string; size: AssetSize }) {
+export function Cover({
+  src,
+  size,
+  priority = false,
+}: {
+  src: string;
+  size: AssetSize;
+
+  /** For a picture that is on the screen as the page opens (the player's artwork): fetched at once and first, not when it nears the viewport as a list's rows are. */
+  priority?: boolean;
+}) {
   return (
     <img
       className={styles.cover}
       src={sizedAssetUrl(src, size)}
       alt=""
-      loading="lazy"
+      loading={priority ? 'eager' : 'lazy'}
+      {...(priority ? { fetchPriority: 'high' as const } : {})}
       decoding="async"
     />
   );
