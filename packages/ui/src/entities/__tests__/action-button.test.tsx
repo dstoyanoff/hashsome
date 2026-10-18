@@ -1,3 +1,4 @@
+import { ChefHat, Tv } from 'lucide-react';
 import { mockAction, mockSwitch } from '@hashsome/core';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
@@ -18,13 +19,16 @@ test('scene button triggers the scene, labelled with its name', () => {
 test('a scene button given a color fills its icon badge with it, and a plain one does not', () => {
   const { container } = renderWithMock(
     <>
-      <SceneButton entity="ha:tv" icon="lu:tv" color="#8B5CF6" />
-      <SceneButton entity="ha:cook" icon="lu:chef-hat" />
+      <SceneButton entity="ha:tv" icon={<Tv />} color="#8B5CF6" />
+      <SceneButton entity="ha:cook" icon={<ChefHat />} />
     </>,
     { tv: mockAction({ name: 'tv time' }), cook: mockAction({ name: 'cooking' }) },
   );
 
-  const badges = [...container.querySelectorAll('svg')].map((icon) => icon.parentElement!);
+  const badges = [...container.querySelectorAll('svg')].map(
+    (icon) => icon.parentElement!.parentElement!,
+  );
+
   expect(computed(badges[0]!, 'background')).toBe('#8B5CF6');
   expect(computed(badges[1]!, 'background')).not.toBe('#8B5CF6');
 });

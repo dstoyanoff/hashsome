@@ -1,7 +1,5 @@
-import { join } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
-import { hashsomeIcons } from './src/vite/icons.ts';
 
 // Standalone dev server for the component gallery (`pnpm docs`) — entirely decoupled from
 // `apps/runtime` and any project's own routing, since this documents `@hashsome/ui` itself.
@@ -11,6 +9,6 @@ import { hashsomeIcons } from './src/vite/icons.ts';
 export default defineConfig({
   root: 'docs',
   base: process.env.DOCS_BASE ?? '/',
-  plugins: [react(), hashsomeIcons({ roots: [join(import.meta.dirname, 'src')] })],
+  plugins: [react()],
   build: { outDir: 'dist', emptyOutDir: true },
 });

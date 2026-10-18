@@ -1,9 +1,9 @@
+import { Check, ChevronDown, Palette, Sun } from 'lucide-react';
 import type { ConnectionStatus, EntityRef, LinkStatus } from '@hashsome/core';
 import { motion, type MotionStyle } from 'motion/react';
 import { PlainButton } from '../layout/plain-button.tsx';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import type { IconName } from '../icon-data.ts';
 import { fallbackName } from '../entity-handle.ts';
 import {
   useConnectionStatus,
@@ -22,7 +22,7 @@ import { SensorReadout } from './sensor-readout.tsx';
 import { lazyExport } from '../layout/lazy.tsx';
 import { WeatherIcon } from './weather-icon.tsx';
 import styles from './top-bar.module.css';
-import { CONDITION_LOOK } from './weather-look.ts';
+import { CONDITION_LOOK } from './weather-look.tsx';
 
 const WeatherForecast = lazyExport<{ entity: EntityRef }>(
   () => import('./weather-forecast.tsx'),
@@ -34,12 +34,12 @@ export interface DashboardOption {
   /** Matches the dashboard route id — switching navigates to `/{id}`, always its root. */
   id: string;
   title: string;
-  icon?: IconName;
+  icon?: ReactNode;
 }
 
 export interface TopBarScene {
   entity: EntityRef;
-  icon?: IconName;
+  icon?: ReactNode;
 
   /** A literal CSS color for this scene's dot (the one place a color is not from the theme: scenes are meant to be told apart by their own) (e.g. `#8B5CF6`) — scenes are meant to read as distinct at a glance, which the palette doesn't have enough colors for, so each app picks its own. Defaults to the theme's accent. */
   color?: string;
@@ -187,9 +187,11 @@ function DashboardSwitcher({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        {current?.icon ? <Icon name={current.icon} size={20} /> : null}
+        {current?.icon ? <Icon size={20}>{current.icon}</Icon> : null}
         <h1 className={styles.title}>{title}</h1>
-        <Icon name="lu:chevron-down" size={20} />
+        <Icon size={20}>
+          <ChevronDown />
+        </Icon>
       </button>
       {open ? (
         <ul className={styles.menu} role="listbox">
@@ -209,9 +211,13 @@ function DashboardSwitcher({
                     navigate(`/${d.id}`);
                   }}
                 >
-                  {d.icon ? <Icon name={d.icon} size={16} /> : null}
+                  {d.icon ? <Icon size={16}>{d.icon}</Icon> : null}
                   <span className={styles.optionTitle}>{d.title}</span>
-                  {active ? <Icon name="lu:check" size={16} /> : null}
+                  {active ? (
+                    <Icon size={16}>
+                      <Check />
+                    </Icon>
+                  ) : null}
                 </button>
               </li>
             );
@@ -416,7 +422,9 @@ function SensorWeather({ entity }: { entity: EntityRef }) {
   return (
     <StatusChip>
       <span className={styles.sun}>
-        <Icon name="lu:sun" size={14} />
+        <Icon size={14}>
+          <Sun />
+        </Icon>
       </span>
       <span className={styles.plain}>
         {status === 'ready' && sensor?.numeric !== undefined
@@ -430,7 +438,15 @@ function SensorWeather({ entity }: { entity: EntityRef }) {
 /** How long a scene's dot shows it has been pressed, from the press. */
 const SCENE_DONE_MS = 1500;
 
-function SceneDot({ entity, icon, color }: { entity: EntityRef; icon?: IconName; color?: string }) {
+function SceneDot({
+  entity,
+  icon,
+  color,
+}: {
+  entity: EntityRef;
+  icon?: ReactNode;
+  color?: string;
+}) {
   const handle = useEntityHandle('action', entity);
   const label = handle.entity?.name ?? '';
   // A press is answered at once, for a fixed time and whatever the scene does: the dot pops, turns green and
@@ -458,7 +474,7 @@ function SceneDot({ entity, icon, color }: { entity: EntityRef; icon?: IconName;
         animate={{ opacity: done ? 0 : 1, scale: done ? 0.5 : 1 }}
         transition={{ duration: 0.18 }}
       >
-        <Icon name={icon ?? 'lu:palette'} size={18} />
+        <Icon size={18}>{icon ?? <Palette />}</Icon>
       </motion.span>
       {done ? (
         <span className={styles.check}>

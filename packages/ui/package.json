@@ -6,8 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./package.json": "./package.json",
-    "./gallery": "./src/gallery/index.ts",
-    "./vite": "./src/vite/icons.ts"
+    "./gallery": "./src/gallery/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -17,6 +16,7 @@
   },
   "dependencies": {
     "@hashsome/core": "workspace:*",
+    "lucide-react": "1.59.0",
     "motion": "13.4.5",
     "react": "19.3.0",
     "react-router": "8.4.0",
@@ -41,8 +41,7 @@
   "homepage": "https://github.com/dstoyanoff/hashsome#readme",
   "bugs": "https://github.com/dstoyanoff/hashsome/issues",
   "files": [
-    "dist",
-    "icons.json"
+    "dist"
   ],
   "publishConfig": {
     "access": "public",
@@ -56,10 +55,6 @@
       "./gallery": {
         "types": "./dist/gallery/index.d.ts",
         "default": "./dist/gallery/index.js"
-      },
-      "./vite": {
-        "types": "./dist/vite/icons.d.ts",
-        "default": "./dist/vite/icons.js"
       }
     }
   },

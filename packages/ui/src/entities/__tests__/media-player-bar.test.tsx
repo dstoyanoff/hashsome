@@ -96,7 +96,11 @@ test('transport icons are smaller than their circles', () => {
 
   const button = screen.getByRole('button', { name: 'Pause' });
   expect(button.style.width).toBe('');
-  expect(getComputedStyle(button.querySelector('svg') as SVGElement).width).toBe('18px');
+  expect(
+    (button.querySelector('svg')!.parentElement as HTMLElement).style.getPropertyValue(
+      '--hs-icon-size',
+    ),
+  ).toBe('18px');
 });
 
 test('Next waits until the new track plays, not only until it is announced, and never colours the whole button', async () => {

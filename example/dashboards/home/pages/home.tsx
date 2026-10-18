@@ -1,3 +1,4 @@
+import { House, Lock, RobotVacuum, Sofa, UtensilsCrossed } from 'lucide-react';
 import {
   ActionButton,
   ClimateTile,
@@ -23,7 +24,7 @@ export default function Home() {
 
       <RoomHeader
         title="Living Room"
-        icon="lu:sofa"
+        icon={<Sofa />}
         readouts={
           <>
             <SensorReadout
@@ -70,12 +71,12 @@ export default function Home() {
       />
       <Grid columns={2}>
         <SceneButton entity="ha:scene.movie_night" name="Movie Night" />
-        <ActionButton label="Vacuum" icon="lu:robot-vacuum" entity="ha:vacuum.robot" />
+        <ActionButton label="Vacuum" icon={<RobotVacuum />} entity="ha:vacuum.robot" />
       </Grid>
 
       <RoomHeader
         title="Kitchen"
-        icon="lu:utensils-crossed"
+        icon={<UtensilsCrossed />}
         readouts={
           <SensorReadout entity="ha:sensor.kitchen_temperature" history={kitchenTemperature} />
         }
@@ -99,7 +100,7 @@ export default function Home() {
 
       <RoomHeader
         title="Porch"
-        icon="lu:house"
+        icon={<House />}
         readouts={
           <>
             <SensorReadout entity="ha:sensor.porch_temperature" />
@@ -117,7 +118,7 @@ export default function Home() {
             energy: 'ha:sensor.porch_ambient_energy',
           }}
         />
-        <ActionButton label="Front Door" icon="lu:lock" entity="ha:lock.front_door" />
+        <ActionButton label="Front Door" icon={<Lock />} entity="ha:lock.front_door" />
       </Grid>
     </>
   );

@@ -1,9 +1,9 @@
+import { Crown, LogIn, LogOut, Plus, Speaker, X } from 'lucide-react';
 import type { EntityRef } from '@hashsome/core';
 import { useState, type ReactNode } from 'react';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
 import { useEntities, useEntityHandle } from '../hooks.ts';
 import { Icon } from '../icon.tsx';
-import type { IconName } from '../icon-data.ts';
 import { ConfirmDialog } from '../layout/confirm-dialog.tsx';
 import { Cover } from '../layout/cover.tsx';
 import { ValueBar } from '../layout/drawer-controls.tsx';
@@ -156,7 +156,7 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
             follows ? (
               <PillButton
                 label="Leave"
-                icon="lu:log-out"
+                icon={<LogOut />}
                 description={`Take ${own} out of this stream`}
                 state={feedbackFor('group:reset')}
                 onClick={leave}
@@ -164,7 +164,7 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
             ) : soleHeir ? (
               <PillButton
                 label="Leave"
-                icon="lu:log-out"
+                icon={<LogOut />}
                 description={`Leave this stream; ${heirName ?? 'the other speaker'} carries on and leads it`}
                 state={feedbackFor('group:handover')}
                 onClick={() => handOver(soleHeir)}
@@ -183,7 +183,7 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
               ref === group?.leader ? (
                 <PillButton
                   label="Remove"
-                  icon="lu:x"
+                  icon={<X />}
                   description={`Take ${speaker.name} out of this stream and carry on here`}
                   state={feedbackFor('group:takeover')}
                   onClick={() => press('group:takeover', () => send(me, 'takeOverGroup'))}
@@ -193,7 +193,7 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
                   {handsOver && !soleHeir ? (
                     <PillButton
                       label="Lead"
-                      icon="lu:crown"
+                      icon={<Crown />}
                       description={`Hand this stream to ${speaker.name}; ${own} leaves it`}
                       state={feedbackFor(`group:lead:${ref}`)}
                       onClick={() => handOver(ref)}
@@ -201,7 +201,7 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
                   ) : null}
                   <PillButton
                     label="Remove"
-                    icon="lu:x"
+                    icon={<X />}
                     description={`Take ${speaker.name} out of this stream`}
                     state={feedbackFor(`group:remove:${ref}`)}
                     onClick={() =>
@@ -225,7 +225,7 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
                 <>
                   <PillButton
                     label="Join"
-                    icon="lu:log-in"
+                    icon={<LogIn />}
                     description={`Join ${speaker.name}'s stream`}
                     disabled={!speaker.available}
                     state={feedbackFor(`group:join:${ref}`)}
@@ -233,7 +233,7 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
                   />
                   <PillButton
                     label="Add"
-                    icon="lu:plus"
+                    icon={<Plus />}
                     description={`Add ${speaker.name} to this stream`}
                     disabled={!speaker.available}
                     state={feedbackFor(`group:add:${ref}`)}
@@ -255,7 +255,7 @@ export function MediaSpeakers({ entity, name, speakers }: MediaSpeakersProps) {
               {(speaker) => (
                 <PillButton
                   label="Add"
-                  icon="lu:plus"
+                  icon={<Plus />}
                   description={`Add ${speaker.name} to this stream`}
                   disabled={!speaker.available}
                   state={feedbackFor(`group:add:${ref}`)}
@@ -380,7 +380,9 @@ function SpeakerRow({
         {player?.media?.artworkUrl && info.playing !== undefined ? (
           <Cover src={player.media.artworkUrl} size="small" />
         ) : (
-          <Icon name="lu:speaker" size={18} />
+          <Icon size={18}>
+            <Speaker />
+          </Icon>
         )}
       </div>
       <div className={styles.text}>
@@ -403,7 +405,7 @@ function PillButton({
   onClick,
 }: {
   label: string;
-  icon: IconName;
+  icon: ReactNode;
 
   /** What it does in full, for a screen reader and the tooltip: "Join Patio's stream". */
   description?: string;
@@ -422,7 +424,7 @@ function PillButton({
       onClick={onClick}
       disabled={disabled || busy}
     >
-      {busy ? <Spinner size={14} /> : <Icon name={icon} size={14} />}
+      {busy ? <Spinner size={14} /> : <Icon size={14}>{icon}</Icon>}
       {label}
     </button>
   );

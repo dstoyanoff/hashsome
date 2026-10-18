@@ -1,5 +1,4 @@
 import { reactRouter } from '@react-router/dev/vite';
-import { hashsomeIcons } from '@hashsome/ui/vite';
 import { defineConfig } from 'vite';
 import { hashsomeBuildId } from './build-id.ts';
 
@@ -14,7 +13,7 @@ import { hashsomeBuildId } from './build-id.ts';
  * ("Expected build manifest").
  */
 export default defineConfig(() => ({
-  plugins: [hashsomeIcons(), reactRouter(), hashsomeBuildId()],
+  plugins: [reactRouter(), hashsomeBuildId()],
   // React Router's SPA prerender starts a private preview server; pin it to IPv4 so it is
   // reachable in containers where `localhost` resolves to ::1.
   preview: { host: '127.0.0.1' },

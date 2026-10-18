@@ -1,3 +1,4 @@
+import { Check, ChevronDown } from 'lucide-react';
 import type { EntityRef } from '@hashsome/core';
 import { useId, useRef, useState } from 'react';
 import { Icon } from '../icon.tsx';
@@ -42,7 +43,9 @@ export function PlayerSwitcher({
         onClick={() => setOpen((now) => !now)}
       >
         <span className={styles.name}>{shown?.name ?? 'Speaker'}</span>
-        <Icon name="lu:chevron-down" size={14} />
+        <Icon size={14}>
+          <ChevronDown />
+        </Icon>
       </PlainButton>
       {open ? (
         <div id={list} className={styles.list} role="listbox" aria-label="Speakers">
@@ -62,7 +65,11 @@ export function PlayerSwitcher({
                 }}
               >
                 <span className={styles.optionName}>{player.name}</span>
-                {selected ? <Icon name="lu:check" size={14} /> : null}
+                {selected ? (
+                  <Icon size={14}>
+                    <Check />
+                  </Icon>
+                ) : null}
               </PlainButton>
             );
           })}

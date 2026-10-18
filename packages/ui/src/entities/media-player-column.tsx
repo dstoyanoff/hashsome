@@ -1,3 +1,4 @@
+import { Library, ListMusic, Music } from 'lucide-react';
 import type { EntityRef } from '@hashsome/core';
 import type { ReactNode } from 'react';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
@@ -91,9 +92,9 @@ export function MediaPlayerColumn({
       ref && player?.capabilities.queue === true ? <MediaQueue entity={ref} /> : undefined;
 
     return handle.status === 'ready' ? (
-      <DrawerTrigger icon="lu:library" label="Library" kind={title} body={libraryBody ?? null}>
+      <DrawerTrigger icon={<Library />} label="Library" kind={title} body={libraryBody ?? null}>
         {(_open, _expanded, openLibrary) => (
-          <DrawerTrigger icon="lu:list-music" label="Queue" kind={title} body={queueBody ?? null}>
+          <DrawerTrigger icon={<ListMusic />} label="Queue" kind={title} body={queueBody ?? null}>
             {(_openToo, _expandedToo, openQueue) => (
               <Card>
                 <NowPlaying
@@ -105,7 +106,7 @@ export function MediaPlayerColumn({
                     ? {
                         leading: (
                           <IconButton
-                            icon="lu:library"
+                            icon={<Library />}
                             label="Browse media"
                             glyph={18}
                             onClick={openLibrary}
@@ -117,7 +118,7 @@ export function MediaPlayerColumn({
                     ? {
                         extra: (
                           <IconButton
-                            icon="lu:list-music"
+                            icon={<ListMusic />}
                             label="Queue"
                             glyph={18}
                             onClick={openQueue}
@@ -146,7 +147,7 @@ export function MediaPlayerColumn({
 
   return browser !== undefined && handle.status === 'ready' ? (
     <DrawerTrigger
-      icon="lu:music"
+      icon={<Music />}
       label={name ?? player?.name ?? fallback}
       kind="Media"
       body={
@@ -171,7 +172,7 @@ export function MediaPlayerColumn({
             {...pill}
             extra={
               <IconButton
-                icon="lu:library"
+                icon={<Library />}
                 label="Browse media"
                 glyph={18}
                 onClick={openExpanded}

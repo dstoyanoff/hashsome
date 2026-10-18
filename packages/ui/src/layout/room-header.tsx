@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import styles from './room-header.module.css';
 
@@ -8,7 +7,7 @@ export interface RoomHeaderProps {
   title: string;
 
   /** Icon id, e.g. `lu:sofa`. */
-  icon?: IconName;
+  icon?: ReactNode;
 
   /** Header readouts, typically `<SensorReadout />`s. */
   readouts?: ReactNode;
@@ -18,7 +17,7 @@ export interface RoomHeaderProps {
 export function RoomHeader({ title, icon, readouts }: RoomHeaderProps) {
   return (
     <header data-grid-card className={styles.header}>
-      {icon ? <Icon name={icon} size={16} /> : null}
+      {icon ? <Icon size={16}>{icon}</Icon> : null}
       <h2 className={styles.title}>{title}</h2>
       <span className={styles.line} />
       {readouts ? <div className={styles.readouts}>{readouts}</div> : null}

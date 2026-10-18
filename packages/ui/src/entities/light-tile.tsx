@@ -1,3 +1,13 @@
+import {
+  ChevronDown,
+  ChevronUp,
+  Lightbulb,
+  LightbulbOff,
+  Minus,
+  Palette,
+  Plus,
+  X,
+} from 'lucide-react';
 import type { EntityRef, LightEntity } from '@hashsome/core';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { fallbackName, type EntityHandle } from '../entity-handle.ts';
@@ -5,7 +15,6 @@ import { useEntityHandle } from '../hooks.ts';
 import { useColor } from '../theme/use-theme.ts';
 import rows from '../style/rows.module.css';
 import styles from './light-tile.module.css';
-import type { IconName } from '../icon-data.ts';
 import { Icon } from '../icon.tsx';
 import { PowerButton, StepButton, ValueBar } from '../layout/drawer-controls.tsx';
 import { PlainButton } from '../layout/plain-button.tsx';
@@ -37,7 +46,7 @@ export interface LightTileProps {
   name?: string;
 
   /** Icon id. Defaults to a bulb. */
-  icon?: IconName;
+  icon?: ReactNode;
 
   /** Power-draw chart (e.g. a Shelly's energy monitoring), shown in the drawer above `history`.
    * No default source yet — pass explicitly. */
@@ -98,7 +107,7 @@ export function LightTile({
   return (
     <Tile
       label={name ?? light?.name ?? fallbackName(entity)}
-      icon={icon ?? (on ? 'lu:lightbulb' : 'lu:lightbulb-off')}
+      icon={icon ?? (on ? <Lightbulb /> : <LightbulbOff />)}
       kind="Light"
       status={status}
       active={on}
@@ -193,7 +202,7 @@ export function LightTile({
       trailing={
         showPicker ? (
           <IconButton
-            icon={picking ? 'lu:x' : 'lu:palette'}
+            icon={picking ? <X /> : <Palette />}
             label={picking ? 'Close colors' : 'Color'}
             active={false}
             onClick={() => setPicking((open) => !open)}
@@ -262,7 +271,7 @@ function LightColorSection({
               style={{ '--dot': rgbCss(rgb) } as CSSProperties}
             />
           ) : null}
-          <Icon name={open ? 'lu:chevron-up' : 'lu:chevron-down'} size={16} />
+          <Icon size={16}>{open ? <ChevronUp /> : <ChevronDown />}</Icon>
         </span>
       </PlainButton>
       {open ? (
@@ -387,7 +396,7 @@ function LightDetailBody({
           <div className={styles.brightnessRow}>
             <StepButton
               plain
-              icon="lu:minus"
+              icon={<Minus />}
               label="Decrease brightness"
               delta={-1}
               onStep={step}
@@ -404,7 +413,7 @@ function LightDetailBody({
                 onCommit={commit}
               />
             </div>
-            <StepButton plain icon="lu:plus" label="Increase brightness" delta={1} onStep={step} />
+            <StepButton plain icon={<Plus />} label="Increase brightness" delta={1} onStep={step} />
           </div>
         </div>
       ) : null}

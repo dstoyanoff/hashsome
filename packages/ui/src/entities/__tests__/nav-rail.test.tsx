@@ -1,3 +1,4 @@
+import { Footprints, House, Music, Wrench } from 'lucide-react';
 import { LocalClient, MockIntegration } from '@hashsome/core';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router';
@@ -14,8 +15,8 @@ test('nav rail resolves items against base and marks the current page', () => {
       <NavRail
         base="/home"
         items={[
-          { to: '', label: 'Downstairs', icon: 'lu:house' },
-          { to: 'upstairs', label: 'Upstairs', icon: 'tb:stairs-up' },
+          { to: '', label: 'Downstairs', icon: <House /> },
+          { to: 'upstairs', label: 'Upstairs', icon: <Footprints /> },
         ]}
       />
     </MemoryRouter>,
@@ -32,8 +33,8 @@ test('an item with attention says so to a screen reader, and the others do not',
       <NavRail
         base="/home"
         items={[
-          { to: '', label: 'Home', icon: 'lu:house' },
-          { to: 'maintenance', label: 'Maintenance', icon: 'lu:wrench', attention: 'urgent' },
+          { to: '', label: 'Home', icon: <House /> },
+          { to: 'maintenance', label: 'Maintenance', icon: <Wrench />, attention: 'urgent' },
         ]}
       />
     </MemoryRouter>,
@@ -46,8 +47,8 @@ test('an item with attention says so to a screen reader, and the others do not',
 describe('going back to the main page when the display is left alone', () => {
   const MIN = 60_000;
   const items = [
-    { to: '', label: 'Home', icon: 'lu:house' as const },
-    { to: 'music', label: 'Music', icon: 'lu:music' as const },
+    { to: '', label: 'Home', icon: <House /> },
+    { to: 'music', label: 'Music', icon: <Music /> },
   ];
 
   function Here() {
@@ -121,7 +122,7 @@ describe('going back to the main page when the display is left alone', () => {
 
   test('the main page is the first item when none has an empty path', () => {
     expect(mainPath(items, '/home')).toBe('/home');
-    expect(mainPath([{ to: 'a', label: 'A', icon: 'lu:house' }], '/x')).toBe('/x/a');
+    expect(mainPath([{ to: 'a', label: 'A', icon: <House /> }], '/x')).toBe('/x/a');
     expect(mainPath([], '/x')).toBe('/x');
   });
 });

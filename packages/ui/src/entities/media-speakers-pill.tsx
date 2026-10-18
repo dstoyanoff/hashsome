@@ -1,3 +1,4 @@
+import { Speaker } from 'lucide-react';
 import type { EntityRef, MediaPlayerEntity } from '@hashsome/core';
 import { memo } from 'react';
 import { useEntities } from '../hooks.ts';
@@ -125,7 +126,9 @@ export function SpeakersPill({
       onClick={onClick}
     >
       <span className={styles.icon}>
-        <Icon name="lu:speaker" size={14} />
+        <Icon size={14}>
+          <Speaker />
+        </Icon>
       </span>
       {offering ? <span className={styles.dot} aria-hidden="true" /> : null}
       {words !== undefined ? <span className={styles.words}>{words}</span> : null}
@@ -167,7 +170,7 @@ export const SpeakersOverlay = memo(function SpeakersOverlay({
   );
 
   return (
-    <DrawerTrigger icon="lu:speaker" label="Speakers" kind={title} body={body}>
+    <DrawerTrigger icon={<Speaker />} label="Speakers" kind={title} body={body}>
       {(open) => (
         <SpeakersPill
           player={player}
@@ -212,10 +215,10 @@ export const SpeakersButton = memo(function SpeakersButton({
   );
 
   return (
-    <DrawerTrigger icon="lu:speaker" label="Speakers" kind={title} body={body}>
+    <DrawerTrigger icon={<Speaker />} label="Speakers" kind={title} body={body}>
       {(open) => (
         <IconButton
-          icon="lu:speaker"
+          icon={<Speaker />}
           label={`Speakers: ${summaryLabel(summary)}`}
           glyph={18}
           active={summary.together > 1}

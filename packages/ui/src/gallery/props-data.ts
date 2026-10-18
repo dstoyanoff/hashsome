@@ -147,7 +147,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         doc: 'Icon id, e.g. `lu:sofa`.',
         name: 'icon',
         optional: true,
-        type: 'IconName',
+        type: 'ReactNode',
       },
       {
         doc: 'Header readouts, typically `<SensorReadout />`s.',
@@ -170,7 +170,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         doc: 'Icon id, e.g. `lu:lightbulb`.',
         name: 'icon',
         optional: true,
-        type: 'IconName',
+        type: 'ReactNode',
       },
       {
         doc: "A literal CSS color (e.g. `#8B5CF6`) that fills the icon's badge, with a light glyph, so tiles of one kind (scenes, say) can be told apart at a glance. The palette has too few colors for that, so each app picks its own. Only while the tile is ready; otherwise the badge is the usual one.",
@@ -287,7 +287,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         doc: 'Icon id, e.g. `lu:wrench`.',
         name: 'icon',
         optional: true,
-        type: 'IconName',
+        type: 'ReactNode',
       },
       {
         doc: 'Where the task stands. Whoever has the task decides it: how soon is "soon" is different for a weekly task and a yearly one.',
@@ -445,25 +445,19 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
     ],
   },
   Icon: {
-    doc: 'An inline SVG icon, from a plain prefixed id (`lu:` Lucide, `tb:` Tabler outline). Takes the surrounding text color.',
+    doc: "Sizes and draws an icon the way the rest of the app does: the density's icon size, a thin outline, the surrounding text color. It does not matter which icon library the icon comes from.",
     props: [
       {
-        doc: 'Prefixed icon id, e.g. `lu:lightbulb`, `tb:vacuum-cleaner`.',
-        name: 'name',
+        doc: 'The icon: any SVG element, e.g. `<Lightbulb />` from `lucide-react` or `<IconBath />` from `@tabler/icons-react`.',
+        name: 'children',
         optional: false,
-        type: 'IconName',
+        type: 'ReactNode',
       },
       {
         doc: "Overrides the density's icon size, in px.",
         name: 'size',
         optional: true,
         type: 'number',
-      },
-      {
-        doc: 'For an icon drawn in more than one color: part `i` of the icon (its `i`th shape) is drawn in `colors[i]`, and any part without one, in the surrounding text color. Only for outline icons.',
-        name: 'colors',
-        optional: true,
-        type: 'readonly (string | undefined)[]',
       },
     ],
   },
@@ -486,7 +480,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         doc: 'Icon id. Defaults to a bulb.',
         name: 'icon',
         optional: true,
-        type: 'IconName',
+        type: 'ReactNode',
       },
       {
         doc: "Power-draw chart (e.g. a Shelly's energy monitoring), shown in the drawer above `history`. No default source yet — pass explicitly.",
@@ -533,7 +527,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         doc: 'Icon id. Defaults to a thermometer.',
         name: 'icon',
         optional: true,
-        type: 'IconName',
+        type: 'ReactNode',
       },
       {
         doc: 'Power-draw chart for the drawer, above `history`. No default source yet — pass explicitly.',
@@ -562,7 +556,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         doc: 'Icon id. Defaults by device class (temperature, humidity).',
         name: 'icon',
         optional: true,
-        type: 'IconName',
+        type: 'ReactNode',
       },
       {
         doc: "Drawer title. Defaults to the sensor's name.",
@@ -609,7 +603,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         doc: 'Icon id, e.g. `lu:coffee`.',
         name: 'icon',
         optional: true,
-        type: 'IconName',
+        type: 'ReactNode',
       },
       {
         doc: "A literal CSS color that fills the icon's badge, e.g. `#8B5CF6`, to tell buttons apart at a glance. Default: the usual neutral badge.",
@@ -656,7 +650,7 @@ export const COMPONENT_PROPS: Record<string, { doc: string; props: DocumentedPro
         doc: 'Icon id. Defaults to a palette.',
         name: 'icon',
         optional: true,
-        type: 'IconName',
+        type: 'ReactNode',
       },
       {
         doc: "A literal CSS color that fills the icon's badge, e.g. `#8B5CF6`, so scenes read as distinct at a glance (the top bar's scene dots take one too). Default: the usual neutral badge.",

@@ -1,3 +1,4 @@
+import { Volume2, VolumeX, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Icon } from '../icon.tsx';
 import { ValueBar } from '../layout/drawer-controls.tsx';
@@ -44,7 +45,7 @@ export function VolumeRow({
             onClick={volume.toggleMute}
             className={cx(styles.mute, volume.muted && styles.muted)}
           >
-            <Icon name={volume.muted ? 'lu:volume-x' : 'lu:volume-2'} size={18} />
+            <Icon size={18}>{volume.muted ? <VolumeX /> : <Volume2 />}</Icon>
           </PlainButton>
         ) : null}
         <ValueBar
@@ -59,7 +60,7 @@ export function VolumeRow({
         />
         <span className={styles.level}>{volume.shown}%</span>
       </div>
-      <IconButton icon="lu:x" label="Close volume" glyph={18} onClick={onClose} />
+      <IconButton icon={<X />} label="Close volume" glyph={18} onClick={onClose} />
     </motion.div>
   );
 }

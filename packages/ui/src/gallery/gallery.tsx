@@ -1,3 +1,28 @@
+import {
+  Bath,
+  Bed,
+  Brush,
+  Fan,
+  Footprints,
+  House,
+  Lamp,
+  LampDesk,
+  LayoutGrid,
+  Lightbulb,
+  Martini,
+  Moon,
+  Music,
+  Pipette,
+  RefreshCw,
+  Sofa,
+  Sparkles,
+  Sun,
+  Thermometer,
+  Trash2,
+  Tv,
+  UtensilsCrossed,
+  Wrench,
+} from 'lucide-react';
 import { LocalClient } from '@hashsome/core';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { NavLink, Route, Routes } from 'react-router';
@@ -50,15 +75,15 @@ import { Flex, Typography } from './layout.tsx';
 import { COMPONENT_PROPS } from './props-data.ts';
 
 const ICON_PACKS = [
-  { name: 'Lucide', prefix: 'lu', href: 'https://lucide.dev/icons/' },
-  { name: 'Tabler', prefix: 'tb', href: 'https://tabler.io/icons' },
+  { name: 'Lucide', package: 'lucide-react', href: 'https://lucide.dev/icons/' },
+  { name: 'Tabler', package: '@tabler/icons-react', href: 'https://tabler.io/icons' },
 ];
 
 const NAV_ITEMS = [
-  { to: '', label: 'Home', icon: 'lu:house' as const },
-  { to: 'lights', label: 'Lights', icon: 'lu:lightbulb' as const },
-  { to: 'climate', label: 'Climate', icon: 'lu:thermometer' as const },
-  { to: 'music', label: 'Music', icon: 'lu:music' as const },
+  { to: '', label: 'Home', icon: <House /> },
+  { to: 'lights', label: 'Lights', icon: <Lightbulb /> },
+  { to: 'climate', label: 'Climate', icon: <Thermometer /> },
+  { to: 'music', label: 'Music', icon: <Music /> },
 ];
 
 /** The same pages with something to look at on two of them: a warm dot (`notice`) and a red one (`urgent`). */
@@ -179,7 +204,7 @@ function ConfirmDialogDemo() {
     <Flex align="center" gap={4}>
       <ActionButton
         label="Empty the trash?"
-        icon="lu:trash-2"
+        icon={<Trash2 />}
         onPress={async () => setOpen(true)}
       />
       <Typography as="span" variant="body" color="textMuted">
@@ -213,7 +238,7 @@ function AnimatedNumberDemo() {
       </Typography>
       <ActionButton
         label="Change the reading"
-        icon="lu:refresh-cw"
+        icon={<RefreshCw />}
         onPress={() => {
           // Down to a few watts, then back up to the lamp's own.
           setWatts((current) => (current > 20 ? 3.2 : 38) + Math.round(Math.random() * 60) / 10);
@@ -231,7 +256,7 @@ function TileFillDemo() {
   return (
     <Tile
       label="With fill"
-      icon="lu:sun"
+      icon={<Sun />}
       active
       fill={fill}
       onFillChange={setFill}
@@ -245,9 +270,9 @@ function TileFillDemo() {
  * an ancestor makes it establish a containing block for fixed-position descendants instead (a
  * standard CSS escape hatch), confining it to this box instead of the real viewport. */
 const DEMO_PAGES = [
-  { to: '', label: 'Lights', icon: 'lu:lightbulb' },
-  { to: 'climate', label: 'Climate', icon: 'lu:thermometer' },
-  { to: 'music', label: 'Music', icon: 'lu:music' },
+  { to: '', label: 'Lights', icon: <Lightbulb /> },
+  { to: 'climate', label: 'Climate', icon: <Thermometer /> },
+  { to: 'music', label: 'Music', icon: <Music /> },
 ] as const;
 
 const DEMO_BASE = '/gallery/transition';
@@ -644,8 +669,12 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
               aria-pressed={mode === 'dark'}
             >
               <span className={styles.thumb} data-dark={mode === 'dark'} />
-              <Icon name="lu:sun" size={14} />
-              <Icon name="lu:moon" size={14} />
+              <Icon size={14}>
+                <Sun />
+              </Icon>
+              <Icon size={14}>
+                <Moon />
+              </Icon>
             </button>
           </header>
 
@@ -658,20 +687,20 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
               {/* The player covers the two rows beside it, and ends where the second does. */}
               <Board>
                 <Cell cols={8}>
-                  <RoomHeader title="Kitchen" icon="lu:utensils-crossed" />
+                  <RoomHeader title="Kitchen" icon={<UtensilsCrossed />} />
                   <Grid columns={2}>
-                    <Tile label="Lamp" icon="lu:lightbulb" />
-                    <Tile label="Ceiling" icon="lu:lightbulb" />
+                    <Tile label="Lamp" icon={<Lightbulb />} />
+                    <Tile label="Ceiling" icon={<Lightbulb />} />
                   </Grid>
                 </Cell>
                 <Cell cols={4} rows={2}>
                   <MediaPlayerColumn entity="ha:media_player.off" />
                 </Cell>
                 <Cell cols={8}>
-                  <RoomHeader title="Stairs" icon="lu:footprints" />
+                  <RoomHeader title="Stairs" icon={<Footprints />} />
                   <Grid columns={2}>
-                    <Tile label="Lamp" icon="lu:lightbulb" />
-                    <Tile label="Spotlights" icon="lu:lightbulb" />
+                    <Tile label="Lamp" icon={<Lightbulb />} />
+                    <Tile label="Spotlights" icon={<Lightbulb />} />
                   </Grid>
                 </Cell>
               </Board>
@@ -686,10 +715,10 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
                     </TopRow>
                   </Cell>
                   <Cell cols={8}>
-                    <RoomHeader title="Kitchen" icon="lu:utensils-crossed" />
+                    <RoomHeader title="Kitchen" icon={<UtensilsCrossed />} />
                     <Grid columns={2}>
-                      <Tile label="Lamp" icon="lu:lightbulb" />
-                      <Tile label="Ceiling" icon="lu:lightbulb" />
+                      <Tile label="Lamp" icon={<Lightbulb />} />
+                      <Tile label="Ceiling" icon={<Lightbulb />} />
                     </Grid>
                   </Cell>
                   <Cell cols={4} rows="fill">
@@ -718,13 +747,13 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
           >
             <Flex direction="column" gap={5}>
               <Grid columns={2}>
-                <Tile label="Two" icon="lu:layout-grid" secondary="columns={2}" />
-                <Tile label="Columns" icon="lu:layout-grid" secondary="equal width" />
+                <Tile label="Two" icon={<LayoutGrid />} secondary="columns={2}" />
+                <Tile label="Columns" icon={<LayoutGrid />} secondary="equal width" />
               </Grid>
               <Grid columns={3}>
-                <Tile label="Three" icon="lu:layout-grid" secondary="columns={3}" />
-                <Tile label="Columns" icon="lu:layout-grid" secondary="equal width" />
-                <Tile label="Wide" icon="lu:layout-grid" secondary="fits the row" />
+                <Tile label="Three" icon={<LayoutGrid />} secondary="columns={3}" />
+                <Tile label="Columns" icon={<LayoutGrid />} secondary="equal width" />
+                <Tile label="Wide" icon={<LayoutGrid />} secondary="fits the row" />
               </Grid>
             </Flex>
           </ComponentDoc>
@@ -735,10 +764,10 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
             description="The header that starts a room: a muted icon and title, a hairline and readouts on the right, placed above a Grid (or any tiles). It adds its own space above, so consecutive rooms read as groups."
           >
             <Flex direction="column" gap={4}>
-              <RoomHeader title="Kitchen" icon="lu:utensils-crossed" />
+              <RoomHeader title="Kitchen" icon={<UtensilsCrossed />} />
               <RoomHeader
                 title="Porch"
-                icon="lu:house"
+                icon={<House />}
                 readouts={
                   <>
                     <SensorReadout entity="ha:sensor.temperature" />
@@ -755,22 +784,22 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
             description="The base card every entity tile is built from: icon, label, status line, optional fill bar (drag to change it), trailing controls, a hold-to-open drawer and pending / done / error feedback. Use it directly for something that isn't an entity."
           >
             <Grid>
-              <Tile label="Plain" icon="lu:lamp" secondary="Off" />
-              <Tile label="Active" icon="lu:lamp" active />
+              <Tile label="Plain" icon={<Lamp />} secondary="Off" />
+              <Tile label="Active" icon={<Lamp />} active />
               <TileFillDemo />
               <Tile
                 label="With controls"
-                icon="lu:fan"
+                icon={<Fan />}
                 trailing={
                   <Typography as="span" variant="secondary" color="textMuted">
                     trailing
                   </Typography>
                 }
               />
-              <Tile label="Pending" icon="lu:lamp" feedback="pending" />
-              <Tile label="Error" icon="lu:lamp" feedback="error" />
-              <Tile label="Unavailable" icon="lu:lamp" status="unavailable" />
-              <Tile label="Not found" icon="lu:lamp" status="missing" />
+              <Tile label="Pending" icon={<Lamp />} feedback="pending" />
+              <Tile label="Error" icon={<Lamp />} feedback="error" />
+              <Tile label="Unavailable" icon={<Lamp />} status="unavailable" />
+              <Tile label="Not found" icon={<Lamp />} status="missing" />
             </Grid>
           </ComponentDoc>
 
@@ -782,7 +811,7 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
             <Grid>
               <TaskTile
                 label="Filter"
-                icon="lu:wrench"
+                icon={<Wrench />}
                 state="ok"
                 dueAt={inDays(20)}
                 lastDoneAt={inDays(-10)}
@@ -790,7 +819,7 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
               />
               <TaskTile
                 label="Additive"
-                icon="lu:pipette"
+                icon={<Pipette />}
                 state="dueSoon"
                 dueAt={inDays(2)}
                 lastDoneAt={inDays(-5)}
@@ -798,7 +827,7 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
               />
               <TaskTile
                 label="Salt"
-                icon="lu:shaker"
+                icon={<Martini />}
                 state="overdue"
                 dueAt={inDays(-3)}
                 lastDoneAt={inDays(-10)}
@@ -806,7 +835,7 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
               />
               <TaskTile
                 label="Not found"
-                icon="lu:wrench"
+                icon={<Wrench />}
                 state="ok"
                 status="missing"
                 onComplete={pause}
@@ -825,24 +854,34 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
           <ComponentDoc
             title="Icon"
             components={['Icon']}
-            description="A plain prefixed string, no import: `lu:` is Lucide, `tb:` is Tabler outline. It takes the surrounding text color and scales with `size` (default 24px)."
+            description="Draws any SVG icon element the way the app does (the density's icon size, a thin outline, the surrounding text color): `<Icon><Lightbulb /></Icon>`, with the icon imported from the library you like (Lucide, Tabler, or your own). Props that take an `icon` take the element too: `icon={<Lightbulb />}`. `size` overrides the size (default is the density's)."
           >
             <Flex direction="column" gap={4}>
               <Flex align="center" gap={4}>
-                <Icon name="lu:lightbulb" />
-                <Icon name="lu:thermometer" size={16} />
-                <Icon name="lu:sofa" size={32} />
-                <Icon name="tb:vacuum-cleaner" />
-                <Icon name="tb:car-fan" size={16} />
+                <Icon>
+                  <Lightbulb />
+                </Icon>
+                <Icon size={16}>
+                  <Thermometer />
+                </Icon>
+                <Icon size={32}>
+                  <Sofa />
+                </Icon>
+                <Icon>
+                  <Brush />
+                </Icon>
+                <Icon size={16}>
+                  <Fan />
+                </Icon>
               </Flex>
               <Flex align="center" gap={4} wrap>
                 <Typography as="span" variant="body" color="textMuted">
                   Find an icon:
                 </Typography>
                 {ICON_PACKS.map((pack) => (
-                  <Typography key={pack.prefix} as="span" variant="body">
+                  <Typography key={pack.name} as="span" variant="body">
                     <a className={styles.link} href={pack.href} target="_blank" rel="noreferrer">
-                      Search {pack.name} icons (<span className={styles.code}>{pack.prefix}:</span>)
+                      Search {pack.name} icons (<span className={styles.code}>{pack.package}</span>)
                     </a>
                   </Typography>
                 ))}
@@ -881,12 +920,12 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
               <LightTile entity="ha:light.plain_off" history={stairsHistory} />
               <LightTile
                 entity="ha:light.dimmable"
-                icon="lu:sparkles"
+                icon={<Sparkles />}
                 energy={ledEnergy}
                 history={ledHistory}
               />
-              <LightTile entity="ha:light.color" icon="lu:lamp-desk" history={nightLampHistory} />
-              <LightTile entity="ha:light.cct" icon="lu:lamp-desk" />
+              <LightTile entity="ha:light.color" icon={<LampDesk />} history={nightLampHistory} />
+              <LightTile entity="ha:light.cct" icon={<LampDesk />} />
               <LightTile entity="ha:light.unavailable" />
               <LightTile entity="ha:light.missing" />
             </Grid>
@@ -942,7 +981,7 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
           >
             <Grid columns={3}>
               <SceneButton entity="ha:scene.tv_time" />
-              <ActionButton label="Shower" icon="tb:bath" entity="ha:script.shower" />
+              <ActionButton label="Shower" icon={<Bath />} entity="ha:script.shower" />
               <ActionButton
                 label="Always Fails"
                 onPress={() => Promise.reject(new Error('That went wrong'))}
@@ -1101,11 +1140,11 @@ export function Gallery({ density = 'comfortable' }: { density?: 'comfortable' |
             <TopBar
               title="Living Room"
               dashboards={[
-                { id: 'living-room', title: 'Living Room', icon: 'lu:sofa' },
-                { id: 'bedroom', title: 'Bedroom', icon: 'lu:bed' },
-                { id: 'bathroom', title: 'Bathroom', icon: 'tb:bath' },
+                { id: 'living-room', title: 'Living Room', icon: <Sofa /> },
+                { id: 'bedroom', title: 'Bedroom', icon: <Bed /> },
+                { id: 'bathroom', title: 'Bathroom', icon: <Bath /> },
               ]}
-              scenes={[{ entity: 'ha:scene.tv_time', icon: 'lu:tv' }]}
+              scenes={[{ entity: 'ha:scene.tv_time', icon: <Tv /> }]}
               weather="ha:weather.home"
               people={['ha:person.dan', 'ha:person.alex']}
             />

@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import { Pause, Play } from 'lucide-react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MotionGlobalConfig } from 'motion/react';
 import { MemoryRouter, Link, Route, Routes } from 'react-router';
@@ -66,15 +68,15 @@ test('a page is there as soon as it is navigated to, with no page leaving first'
 
 test('an icon button is a plain button, and still shows the icon it is given next', () => {
   const client = new LocalClient([new MockIntegration({})]);
-  const button = (icon: 'lu:play' | 'lu:pause') => (
+  const button = (icon: ReactNode) => (
     <HashsomeProvider client={client} theme="dark">
       <IconButton icon={icon} label="Play" />
     </HashsomeProvider>
   );
 
-  const { rerender } = render(button('lu:play'));
+  const { rerender } = render(button(<Play />));
   const first = screen.getByRole('button', { name: 'Play' });
   expect(first.style.transform).toBe('');
-  rerender(button('lu:pause'));
+  rerender(button(<Pause />));
   expect(screen.getByRole('button', { name: 'Play' }).querySelector('svg')).toBeTruthy();
 });

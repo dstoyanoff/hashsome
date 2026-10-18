@@ -5,13 +5,5 @@
   "trailingComma": "all",
   "printWidth": 100,
   "sortPackageJson": false,
-  "ignorePatterns": [
-    "node_modules",
-    "dist",
-    "build",
-    ".react-router",
-    "pnpm-lock.yaml",
-    "LICENSE",
-    "packages/ui/icons.json"
-  ]
+  "ignorePatterns": ["node_modules", "dist", "build", ".react-router", "pnpm-lock.yaml", "LICENSE"]
 }

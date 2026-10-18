@@ -1,6 +1,6 @@
+import { ArrowUp, Droplets, Sun, Umbrella, Wind } from 'lucide-react';
 import type { EntityRef, ForecastPoint, ForecastResult, WeatherEntity } from '@hashsome/core';
 import type { CSSProperties, ReactNode } from 'react';
-import type { IconName } from '../icon-data.ts';
 import { useEntityHandle } from '../hooks.ts';
 import { Icon } from '../icon.tsx';
 import { useDetail } from '../layout/detail-provider.tsx';
@@ -8,7 +8,7 @@ import { SeriesChart } from '../layout/series-chart.tsx';
 import { useWeatherForecast } from '../use-weather-forecast.ts';
 import styles from './weather-forecast.module.css';
 import { WeatherIcon } from './weather-icon.tsx';
-import { compass, CONDITION_LABEL, uvLevel } from './weather-look.ts';
+import { compass, CONDITION_LABEL, uvLevel } from './weather-look.tsx';
 
 /** How many hours the chart and the hourly cards cover. */
 const HOURS = 24;
@@ -107,16 +107,18 @@ function ConditionIcon({
 function WindArrow({ bearing, size }: { bearing: number; size: number }) {
   return (
     <span className={styles.arrow} style={{ '--turn': `${bearing + 180}deg` } as CSSProperties}>
-      <Icon name="lu:arrow-up" size={size} />
+      <Icon size={size}>
+        <ArrowUp />
+      </Icon>
     </span>
   );
 }
 
 /** One small reading with an icon in front of it. */
-function Metric({ icon, children }: { icon: ReactNode | IconName; children: ReactNode }) {
+function Metric({ icon, children }: { icon: ReactNode | ReactNode; children: ReactNode }) {
   return (
     <span className={styles.metric}>
-      {typeof icon === 'string' ? <Icon name={icon as IconName} size={12} /> : icon}
+      {typeof icon === 'string' ? <Icon size={12}>{icon as ReactNode}</Icon> : icon}
       <span className={styles.metricText}>{children}</span>
     </span>
   );
@@ -130,7 +132,7 @@ function WindMetric({ point, unit }: { point: ForecastPoint; unit?: string | und
         point.windBearing !== undefined ? (
           <WindArrow bearing={point.windBearing} size={12} />
         ) : (
-          'lu:wind'
+          <Wind />
         )
       }
     >
@@ -288,13 +290,13 @@ export function WeatherForecast({ entity, expanded: layout }: WeatherForecastPro
                     <ConditionIcon condition={hour.condition} size={26} />
                     <span className={styles.hourTemp}>{degrees(hour.temperature)}</span>
                     <div className={styles.metrics}>
-                      {rain ? <Metric icon="lu:umbrella">{rain}</Metric> : null}
+                      {rain ? <Metric icon={<Umbrella />}>{rain}</Metric> : null}
                       <WindMetric point={hour} unit={windUnit} />
                       {hour.humidity !== undefined ? (
-                        <Metric icon="lu:droplets">{Math.round(hour.humidity)}%</Metric>
+                        <Metric icon={<Droplets />}>{Math.round(hour.humidity)}%</Metric>
                       ) : null}
                       {hour.uvIndex !== undefined && hour.uvIndex > 0 ? (
-                        <Metric icon="lu:sun">UV {tenths(hour.uvIndex)}</Metric>
+                        <Metric icon={<Sun />}>UV {tenths(hour.uvIndex)}</Metric>
                       ) : null}
                     </div>
                   </div>
@@ -348,12 +350,12 @@ export function WeatherForecast({ entity, expanded: layout }: WeatherForecastPro
                       </div>
                       <div className={styles.humidity}>
                         {day.humidity !== undefined ? (
-                          <Metric icon="lu:droplets">{Math.round(day.humidity)}%</Metric>
+                          <Metric icon={<Droplets />}>{Math.round(day.humidity)}%</Metric>
                         ) : null}
                       </div>
                       <div className={styles.uv}>
                         {day.uvIndex !== undefined ? (
-                          <Metric icon="lu:sun">UV {tenths(day.uvIndex)}</Metric>
+                          <Metric icon={<Sun />}>UV {tenths(day.uvIndex)}</Metric>
                         ) : null}
                       </div>
                     </div>

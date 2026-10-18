@@ -1,3 +1,4 @@
+import { AudioLines, GripVertical, Music, Trash, X } from 'lucide-react';
 import type { EntityRef, QueueItem } from '@hashsome/core';
 import { AnimatePresence, motion, Reorder, useDragControls } from 'motion/react';
 import { useState, type CSSProperties, type KeyboardEvent } from 'react';
@@ -157,7 +158,9 @@ export function MediaQueue({ entity }: MediaQueueProps) {
             disabled={clearing}
             onClick={() => run('clearQueue')}
           >
-            <Icon name="lu:trash" size={14} />
+            <Icon size={14}>
+              <Trash />
+            </Icon>
             <span className={styles.clearLabel}>Clear</span>
           </PlainButton>
         ) : null}
@@ -272,7 +275,9 @@ function QueueRow({
             }
           }}
         >
-          <Icon name="lu:grip-vertical" size={16} />
+          <Icon size={16}>
+            <GripVertical />
+          </Icon>
         </PlainButton>
       ) : (
         <span className={styles.spacer} />
@@ -287,7 +292,7 @@ function QueueRow({
           {item.artworkUrl ? (
             <Cover src={item.artworkUrl} size="small" />
           ) : (
-            <Icon name={playing ? 'lu:audio-lines' : 'lu:music'} size={18} />
+            <Icon size={18}>{playing ? <AudioLines /> : <Music />}</Icon>
           )}
         </span>
         <span className={styles.names}>
@@ -311,7 +316,9 @@ function QueueRow({
           title="Remove from the queue"
           onClick={onRemove}
         >
-          <Icon name="lu:x" size={16} />
+          <Icon size={16}>
+            <X />
+          </Icon>
         </PlainButton>
       ) : (
         <span className={styles.spacerEnd} />

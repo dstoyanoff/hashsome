@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import type { IconName } from '../icon-data.ts';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { EntityStatus } from '../status.ts';
 import { ConfirmDialog } from './confirm-dialog.tsx';
 import styles from './task-tile.module.css';
@@ -13,7 +13,7 @@ export interface TaskTileProps {
   label: string;
 
   /** Icon id, e.g. `lu:wrench`. */
-  icon?: IconName;
+  icon?: ReactNode;
 
   /** Where the task stands. Whoever has the task decides it: how soon is "soon" is different for a weekly task and a yearly one. */
   state: TaskState;
@@ -178,14 +178,14 @@ function DayStepper({
       <span className={styles.stepperLabel}>{label}</span>
       <div className={styles.days}>
         <IconButton
-          icon="lu:chevron-left"
+          icon={<ChevronLeft />}
           label="Previous day"
           glyph={16}
           onClick={() => onChange(daysAgo + 1)}
         />
         <span className={styles.day}>{words}</span>
         <IconButton
-          icon="lu:chevron-right"
+          icon={<ChevronRight />}
           label="Next day"
           glyph={16}
           disabled={daysAgo === 0}

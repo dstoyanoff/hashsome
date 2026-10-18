@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react';
+import { Palette } from 'lucide-react';
 import type { EntityRef } from '@hashsome/core';
 import type { EntityHandle } from '../entity-handle.ts';
-import type { IconName } from '../icon-data.ts';
 import { ActionButton } from './action-button.tsx';
 
 export interface SceneButtonProps {
@@ -11,7 +12,7 @@ export interface SceneButtonProps {
   name?: string;
 
   /** Icon id. Defaults to a palette. */
-  icon?: IconName;
+  icon?: ReactNode;
 
   /** A literal CSS color that fills the icon's badge, e.g. `#8B5CF6`, so scenes read as distinct at a glance (the top bar's scene dots take one too). Default: the usual neutral badge. */
   color?: string;
@@ -23,7 +24,7 @@ export function SceneButton({ entity, name, icon, color }: SceneButtonProps) {
     <ActionButton
       entity={entity}
       {...(name ? { label: name } : {})}
-      icon={icon ?? 'lu:palette'}
+      icon={icon ?? <Palette />}
       {...(color ? { color } : {})}
     />
   );

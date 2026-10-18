@@ -93,7 +93,7 @@ The header that starts a room: muted icon and title, a hairline, and readouts on
 | Prop       | Type        | Required |                                                  |
 | ---------- | ----------- | -------- | ------------------------------------------------ |
 | `title`    | `string`    | yes      | The room's name.                                 |
-| `icon`     | `IconName`  | no       | Icon id, e.g. `lu:sofa`.                         |
+| `icon`     | `ReactNode` | no       | Icon id, e.g. `lu:sofa`.                         |
 | `readouts` | `ReactNode` | no       | Header readouts, typically `<SensorReadout />`s. |
 
 ### `Tile`
@@ -103,7 +103,7 @@ Base pill used by all entity tiles. Tap to press; hold (with `detail` set) to op
 | Prop           | Type                                                  | Required |                                                                                                                                                                                                                                                                                                 |
 | -------------- | ----------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `label`        | `string`                                              | yes      | The tile's name.                                                                                                                                                                                                                                                                                |
-| `icon`         | `IconName`                                            | no       | Icon id, e.g. `lu:lightbulb`.                                                                                                                                                                                                                                                                   |
+| `icon`         | `ReactNode`                                           | no       | Icon id, e.g. `lu:lightbulb`.                                                                                                                                                                                                                                                                   |
 | `iconColor`    | `string`                                              | no       | A literal CSS color (e.g. `#8B5CF6`) that fills the icon's badge, with a light glyph, so tiles of one kind (scenes, say) can be told apart at a glance. The palette has too few colors for that, so each app picks its own. Only while the tile is ready; otherwise the badge is the usual one. |
 | `secondary`    | `ReactNode`                                           | no       | Second line. Replaced by the status label when the entity is not ready.                                                                                                                                                                                                                         |
 | `status`       | `EntityStatus`                                        | no       | Status of what the tile shows; anything but `ready` disables it and shows why (Loading, Unavailable, Not found).                                                                                                                                                                                |
@@ -137,7 +137,7 @@ function IconButton({
   color,
   feedback,
 }: {
-  icon: IconName;
+  icon: ReactNode;
   label: string;
   onClick?: () => void;
   disabled?: boolean;
@@ -167,7 +167,7 @@ A recurring task as a tile: its name, where it stands (up to date, due soon, ove
 | Prop         | Type                                      | Required |                                                                                                                                                                                   |
 | ------------ | ----------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `label`      | `string`                                  | yes      | What is to be done, e.g. `Septic additive`.                                                                                                                                       |
-| `icon`       | `IconName`                                | no       | Icon id, e.g. `lu:wrench`.                                                                                                                                                        |
+| `icon`       | `ReactNode`                               | no       | Icon id, e.g. `lu:wrench`.                                                                                                                                                        |
 | `state`      | `TaskState`                               | yes      | Where the task stands. Whoever has the task decides it: how soon is "soon" is different for a weekly task and a yearly one.                                                       |
 | `dueAt`      | `Date \| undefined`                       | no       | When it is next due. Shown as "Due in 2 days" or "Overdue by 3 days".                                                                                                             |
 | `lastDoneAt` | `Date \| undefined`                       | no       | When it was last done, shown in the question that marks it done again.                                                                                                            |
@@ -215,13 +215,12 @@ A short activity list for an entity's detail drawer, folded away until asked for
 
 ### `Icon`
 
-An inline SVG icon, from a plain prefixed id (`lu:` Lucide, `tb:` Tabler outline). Takes the surrounding text color.
+Sizes and draws an icon the way the rest of the app does: the density's icon size, a thin outline, the surrounding text color. It does not matter which icon library the icon comes from.
 
-| Prop     | Type                               | Required |                                                                                                                                                                                            |
-| -------- | ---------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `name`   | `IconName`                         | yes      | Prefixed icon id, e.g. `lu:lightbulb`, `tb:vacuum-cleaner`.                                                                                                                                |
-| `size`   | `number`                           | no       | Overrides the density's icon size, in px.                                                                                                                                                  |
-| `colors` | `readonly (string \| undefined)[]` | no       | For an icon drawn in more than one color: part `i` of the icon (its `i`th shape) is drawn in `colors[i]`, and any part without one, in the surrounding text color. Only for outline icons. |
+| Prop       | Type        | Required |                                                                                                                   |
+| ---------- | ----------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
+| `children` | `ReactNode` | yes      | The icon: any SVG element, e.g. `<Lightbulb />` from `lucide-react` or `<IconBath />` from `@tabler/icons-react`. |
+| `size`     | `number`    | no       | Overrides the density's icon size, in px.                                                                         |
 
 ## Entity components
 
@@ -233,7 +232,7 @@ Toggle, drag-to-dim (if dimmable) and a color overlay + drawer picker (if color 
 | --------- | ------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `entity`  | `EntityRef \| EntityHandle<'light'>` | yes      | A light, as a ref like `ha:light.kitchen_ceiling` or a handle (a custom source).                                                                                                                                                                                                                                         |
 | `name`    | `string`                             | no       | Defaults to the light's name.                                                                                                                                                                                                                                                                                            |
-| `icon`    | `IconName`                           | no       | Icon id. Defaults to a bulb.                                                                                                                                                                                                                                                                                             |
+| `icon`    | `ReactNode`                          | no       | Icon id. Defaults to a bulb.                                                                                                                                                                                                                                                                                             |
 | `energy`  | `EnergyChartProps`                   | no       | Power-draw chart (e.g. a Shelly's energy monitoring), shown in the drawer above `history`. No default source yet — pass explicitly.                                                                                                                                                                                      |
 | `history` | `LogbookEntry[]`                     | no       | Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the person opens its History.                                                                                                        |
 | `colors`  | `LightColorPreset[]`                 | no       | Swatches shown when the palette button is opened. Default: four white temperatures. Each takes `kelvin` (color-temp lights) and/or `hs` (color lights) and is skipped if the light can't apply it.                                                                                                                       |
@@ -247,7 +246,7 @@ Heater / thermostat: a mode button that opens mode swatches in the card, a targe
 | --------- | -------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `entity`  | `EntityRef \| EntityHandle<'climate'>` | yes      | A thermostat or heater, as a ref like `ha:climate.living_room` or a handle (a custom source).                                                                                                                     |
 | `name`    | `string`                               | no       | Defaults to the device's name.                                                                                                                                                                                    |
-| `icon`    | `IconName`                             | no       | Icon id. Defaults to a thermometer.                                                                                                                                                                               |
+| `icon`    | `ReactNode`                            | no       | Icon id. Defaults to a thermometer.                                                                                                                                                                               |
 | `energy`  | `EnergyChartProps`                     | no       | Power-draw chart for the drawer, above `history`. No default source yet — pass explicitly.                                                                                                                        |
 | `history` | `LogbookEntry[]`                       | no       | Recent activity, shown in the drawer: who or what changed it, and when. Left out, it comes from the backend's own record when it keeps one (Home Assistant's logbook), fetched when the person opens its History. |
 
@@ -258,7 +257,7 @@ Inline value with icon and unit. Shows "Unavailable" / "Unknown" instead of a re
 | Prop        | Type                                  | Required |                                                                                                                                                                                                                                                                              |
 | ----------- | ------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `entity`    | `EntityRef \| EntityHandle<'sensor'>` | yes      | A sensor, as a ref like `ha:sensor.living_room_humidity` or a handle (a custom source).                                                                                                                                                                                      |
-| `icon`      | `IconName`                            | no       | Icon id. Defaults by device class (temperature, humidity).                                                                                                                                                                                                                   |
+| `icon`      | `ReactNode`                           | no       | Icon id. Defaults by device class (temperature, humidity).                                                                                                                                                                                                                   |
 | `name`      | `string`                              | no       | Drawer title. Defaults to the sensor's name.                                                                                                                                                                                                                                 |
 | `battery`   | `EntityRef`                           | no       | The sensor's battery level, as a sensor ref like `ha:sensor.kitchen_t_h_sensor_battery` (a percentage). Shown in the drawer, in red when low.                                                                                                                                |
 | `history`   | `SensorSample[]`                      | no       | Readings over time (oldest first). Adds a chart and min/max for today / this week / this month to the drawer, plus a custom date and time range when expanded. Left out, they come from the backend's own history when it keeps one (Home Assistant's long-term statistics). |
@@ -272,7 +271,7 @@ Any one-shot thing to trigger — a scene, script, button or switch, or your own
 | Prop        | Type                                                            | Required |                                                                                                                                       |
 | ----------- | --------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `label`     | `string`                                                        | no       | Button text. Defaults to the entity's name.                                                                                           |
-| `icon`      | `IconName`                                                      | no       | Icon id, e.g. `lu:coffee`.                                                                                                            |
+| `icon`      | `ReactNode`                                                     | no       | Icon id, e.g. `lu:coffee`.                                                                                                            |
 | `color`     | `string`                                                        | no       | A literal CSS color that fills the icon's badge, e.g. `#8B5CF6`, to tell buttons apart at a glance. Default: the usual neutral badge. |
 | `secondary` | `string`                                                        | no       | A second line of text under the label.                                                                                                |
 | `entity`    | `EntityRef \| EntityHandle<'action'> \| EntityHandle<'switch'>` | no       | What to trigger: an action entity (scene, script, button — it runs) or a switch (it flips), as a ref or a handle.                     |
@@ -286,7 +285,7 @@ Activates a scene.
 | -------- | ------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `entity` | `EntityRef \| EntityHandle<'action'>` | yes      | A scene (an `action` entity), as a ref like `ha:scene.movie_night` or a handle.                                                                                                    |
 | `name`   | `string`                              | no       | Defaults to the scene's name.                                                                                                                                                      |
-| `icon`   | `IconName`                            | no       | Icon id. Defaults to a palette.                                                                                                                                                    |
+| `icon`   | `ReactNode`                           | no       | Icon id. Defaults to a palette.                                                                                                                                                    |
 | `color`  | `string`                              | no       | A literal CSS color that fills the icon's badge, e.g. `#8B5CF6`, so scenes read as distinct at a glance (the top bar's scene dots take one too). Default: the usual neutral badge. |
 
 ### `MediaPlayerBar`
@@ -360,17 +359,6 @@ A player's queue: the tracks that have just played (dimmed), the one playing, an
 | Prop     | Type        | Required |                                                                                             |
 | -------- | ----------- | -------- | ------------------------------------------------------------------------------------------- |
 | `entity` | `EntityRef` | yes      | The media player, as a ref like `ma:living_room`. Shows nothing for a player with no queue. |
-
-### `offeredSpeakers`
-
-The speakers to offer: the ones the player can be grouped with, narrowed to an allowlist when there is one.
-
-```ts
-function offeredSpeakers(
-  groupable: readonly EntityRef[] | undefined,
-  allowed: readonly EntityRef[] | undefined,
-): EntityRef[];
-```
 
 ### `MediaSpeakers`
 

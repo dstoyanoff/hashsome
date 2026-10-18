@@ -1,3 +1,4 @@
+import { House, Music, Sun } from 'lucide-react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, expect, test } from 'vitest';
@@ -7,9 +8,9 @@ import { AnimatedOutlet } from '../animated-outlet.tsx';
 afterEach(cleanup);
 
 const items: NavItem[] = [
-  { to: '', label: 'One', icon: 'lu:house' },
-  { to: 'two', label: 'Two', icon: 'lu:music' },
-  { to: 'three', label: 'Three', icon: 'lu:sun' },
+  { to: '', label: 'One', icon: <House /> },
+  { to: 'two', label: 'Two', icon: <Music /> },
+  { to: 'three', label: 'Three', icon: <Sun /> },
 ];
 
 function app(withOrder: boolean, start = '/room') {

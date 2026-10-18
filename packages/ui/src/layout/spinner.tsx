@@ -1,3 +1,4 @@
+import { LoaderCircle } from 'lucide-react';
 import { Icon } from '../icon.tsx';
 import { kebab, type PaletteName } from '../style/names.ts';
 import styles from './spinner.module.css';
@@ -8,7 +9,9 @@ import styles from './spinner.module.css';
 export function Spinner({ size = 16, label = 'Loading' }: { size?: number; label?: string }) {
   return (
     <span role="status" aria-label={label} data-keep-motion className={styles.spinner}>
-      <Icon name="lu:loader-circle" size={size} />
+      <Icon size={size}>
+        <LoaderCircle />
+      </Icon>
     </span>
   );
 }

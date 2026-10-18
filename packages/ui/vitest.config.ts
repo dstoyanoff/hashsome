@@ -1,6 +1,4 @@
-import { join } from 'node:path';
 import { defineConfig, type Plugin } from 'vitest/config';
-import { hashsomeIcons } from './src/vite/icons.ts';
 
 /** jsdom's stylesheet parser does not know cascade layers, and drops what is inside one. The stylesheets are made of
  * `@layer name { ... }` blocks and one `@layer a, b;` statement, so for a test they are written without the layers: the
@@ -39,7 +37,7 @@ function withoutLayers(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [withoutLayers(), hashsomeIcons({ roots: [join(import.meta.dirname, 'src')] })],
+  plugins: [withoutLayers()],
   test: {
     name: 'ui',
     environment: 'jsdom',

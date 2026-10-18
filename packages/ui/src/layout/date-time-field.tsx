@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '../icon.tsx';
 import styles from './date-time-field.module.css';
 import { RoundButton } from './round-button.tsx';
@@ -134,7 +135,9 @@ export function DateTimeField({
               hour12: false,
             })}
           </span>
-          <Icon name="lu:calendar" size={14} />
+          <Icon size={14}>
+            <Calendar />
+          </Icon>
         </button>
       </div>
       {open ? (
@@ -146,14 +149,14 @@ export function DateTimeField({
         >
           <div className={styles.head}>
             <NavButton
-              icon="lu:chevron-left"
+              icon={<ChevronLeft />}
               label="Previous month"
               onClick={() => shiftMonth(-1)}
             />
             <span className={styles.month}>
               {month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
             </span>
-            <NavButton icon="lu:chevron-right" label="Next month" onClick={() => shiftMonth(1)} />
+            <NavButton icon={<ChevronRight />} label="Next month" onClick={() => shiftMonth(1)} />
           </div>
           <div className={styles.days}>
             {WEEKDAYS.map((d) => (
@@ -213,13 +216,13 @@ function NavButton({
   label,
   onClick,
 }: {
-  icon: 'lu:chevron-left' | 'lu:chevron-right';
+  icon: ReactNode;
   label: string;
   onClick: () => void;
 }) {
   return (
     <RoundButton size={28} aria-label={label} title={label} onClick={onClick}>
-      <Icon name={icon} size={14} />
+      <Icon size={14}>{icon}</Icon>
     </RoundButton>
   );
 }

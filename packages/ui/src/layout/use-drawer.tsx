@@ -1,5 +1,4 @@
-import { useEffect, useId, type ReactNode } from 'react';
-import type { IconName } from '../icon-data.ts';
+import { isValidElement, useEffect, useId, type ReactNode } from 'react';
 import { Icon } from '../icon.tsx';
 import { useDetail } from './detail-provider.tsx';
 import styles from './use-drawer.module.css';
@@ -9,7 +8,7 @@ export function DrawerHeader({
   label,
   kind,
 }: {
-  icon?: IconName | undefined;
+  icon?: ReactNode | undefined;
   label: string;
   kind?: string | undefined;
 }) {
@@ -17,7 +16,7 @@ export function DrawerHeader({
     <div className={styles.header}>
       {icon ? (
         <span className={styles.badge}>
-          <Icon name={icon} size={16} />
+          <Icon size={16}>{icon}</Icon>
         </span>
       ) : null}
       <div className={styles.names}>
@@ -38,7 +37,7 @@ export function useDrawer({
   kind,
   body,
 }: {
-  icon?: IconName | undefined;
+  icon?: ReactNode | undefined;
   label: string;
   kind?: string | undefined;
   body: ReactNode;
@@ -46,12 +45,16 @@ export function useDrawer({
   const id = useId();
   const { detail, openDetail, updateDetail } = useDetail();
   const isOpen = detail?.id === id;
+  // An icon is an element, made anew in every render of whoever passes it: another icon is another component, not another element, or
+  // the effect would run again after every render, and the drawer's own update is one.
+  const iconKind: unknown = isValidElement(icon) ? icon.type : icon;
 
   useEffect(() => {
     if (isOpen) {
       updateDetail(id, <DrawerHeader icon={icon} label={label} kind={kind} />, body);
     }
-  }, [isOpen, id, icon, label, kind, body, updateDetail]);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, id, iconKind, label, kind, body, updateDetail]);
 
   const open = () => openDetail(id, <DrawerHeader icon={icon} label={label} kind={kind} />, body);
   const openExpanded = () =>
@@ -75,7 +78,7 @@ export function DrawerTrigger({
   body,
   children,
 }: {
-  icon?: IconName | undefined;
+  icon?: ReactNode | undefined;
   label: string;
   kind?: string | undefined;
   body: ReactNode;
