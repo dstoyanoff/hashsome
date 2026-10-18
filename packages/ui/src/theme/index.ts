@@ -109,7 +109,7 @@ export const lightTheme: ThemeConfig = {
     surface: '#FFFFFF',
     surfaceRaised: '#EFEAE1',
     text: '#211E26',
-    textMuted: '#8A8480',
+    textMuted: '#6B6560',
     accent: '#FF7A45',
     accentText: '#FFFFFF',
     onAccent: '#1B1B1F',
