@@ -142,4 +142,49 @@ class RemoteClientSocketTest {
             queue.thread.shutdown()
         }
     }
+
+    @Test
+    fun `reconnecting to another address moves the watch to the new runtime`() {
+        val one = ServerSocket(0, 5, InetAddress.getLoopbackAddress())
+        val two = ServerSocket(0, 5, InetAddress.getLoopbackAddress())
+        val queue = Queue()
+        val client = RemoteClient(ServerAddress("http://127.0.0.1:${one.localPort}"), WsClient.Factory, queue)
+        val snapshots = LinkedBlockingQueue<Snapshot>()
+        val results = LinkedBlockingQueue<Result<JSONObject>>()
+        try {
+            queue.run {
+                client.watch(EntityRef("ha:light.x")) { snapshots.add(it) }
+                client.connect()
+            }
+            assertEquals(Snapshot.Loading, snapshots.poll(5, TimeUnit.SECONDS))
+            val first = Server(one.accept())
+            first.handshake()
+            assertEquals("subscribe", first.read().getString("type"))
+            first.send(entityFrame(true))
+            assertTrue(((snapshots.poll(5, TimeUnit.SECONDS) as Snapshot.Present).entity as LightEntity).on)
+
+            // A raw request the first runtime never answers, then the switch.
+            queue.run { client.raw("ha", HaRequests.callService("light", "turn_on", listOf("light.x"))) { results.add(it) } }
+            val raw = first.read()
+            assertEquals("raw", raw.getString("type"))
+            assertEquals("light.x", raw.getJSONObject("request").getJSONArray("entityIds").getString(0))
+            queue.run { client.reconnect(ServerAddress("http://127.0.0.1:${two.localPort}")) }
+            assertEquals("Connection lost", results.poll(5, TimeUnit.SECONDS)!!.exceptionOrNull()!!.message)
+
+            val second = Server(two.accept())
+            second.handshake()
+            val again = second.read()
+            assertEquals("subscribe", again.getString("type"))
+            assertEquals("ha:light.x", again.getString("ref"))
+            second.send(entityFrame(false))
+            assertEquals(false, ((snapshots.poll(5, TimeUnit.SECONDS) as Snapshot.Present).entity as LightEntity).on)
+            assertEquals(LinkStatus.Open, queue.run { client.link.value })
+            assertEquals("http://127.0.0.1:${two.localPort}", queue.run { client.server.baseUrl })
+        } finally {
+            queue.run { client.close() }
+            one.close()
+            two.close()
+            queue.thread.shutdown()
+        }
+    }
 }
