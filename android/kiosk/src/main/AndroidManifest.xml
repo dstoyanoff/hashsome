@@ -6,10 +6,15 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission
+        android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.SYSTEM_ALERT_WINDOW"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
@@ -17,11 +22,16 @@
     <application>
         <service
             android:name="dev.hashsome.kiosk.KioskService"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps the wall display's dashboard in front and the device reachable from Home Assistant" />
+        </service>
 
         <receiver
             android:name="dev.hashsome.kiosk.BootReceiver"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
@@ -51,7 +61,7 @@
 
         <!-- Disabled until the provision command's home option enables it: the app becomes the launcher of a plain tablet. -->
         <activity-alias
-            android:name="dev.hashsome.kiosk.HomeAlias"
+            android:name="dev.hashsome.kiosk.HomeActivityAlias"
             android:enabled="false"
             android:exported="true"
             android:targetActivity="dev.hashsome.ui.DashboardActivity">

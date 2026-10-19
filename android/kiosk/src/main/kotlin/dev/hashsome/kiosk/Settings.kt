@@ -2,6 +2,7 @@ package dev.hashsome.kiosk
 
 import android.content.Context
 import dev.hashsome.client.Store
+import dev.hashsome.ui.Hashsome
 import dev.hashsome.ui.HostSettings
 import dev.hashsome.ui.ThemeChoice
 
@@ -55,5 +56,10 @@ object Settings : HostSettings {
     val debug: DebugSettings = DebugSettings()
 
     /** Loads the stored values into the stores and starts persisting changes. [defaults] fill in what was never set (first provision only). */
-    fun init(context: Context, defaults: KioskConfig = KioskConfig()): Unit = TODO("WP5")
+    fun init(context: Context, defaults: KioskConfig = KioskConfig()) {
+        Hashsome.settings = this
+        load(context, defaults)
+    }
+
+    private fun load(context: Context, defaults: KioskConfig): Unit = TODO("WP5")
 }

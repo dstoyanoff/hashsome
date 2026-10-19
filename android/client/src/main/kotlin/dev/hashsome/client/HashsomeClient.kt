@@ -126,6 +126,9 @@ class HashsomeClient(
     /** Sends a command to the entity. [done] hears how it ended; cancelling only stops [done] from being called. */
     fun command(ref: EntityRef, name: String, args: JSONObject? = null, done: ((Outcome) -> Unit)? = null): Cancel = TODO("WP1")
 
+    /** [command] from the per-kind builders (`LightCommands.setBrightness(0.4)`); the same as the string form. */
+    fun command(ref: EntityRef, command: Command, done: ((Outcome) -> Unit)? = null): Cancel = command(ref, command.name, command.args, done)
+
     /** Asks a question of the entity; [done] gets the parsed answer or the failure. */
     fun <T> query(ref: EntityRef, query: Query<T>, done: (Result<T>) -> Unit): Cancel = TODO("WP1")
 }

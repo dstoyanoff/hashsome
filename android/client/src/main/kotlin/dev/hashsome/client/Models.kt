@@ -5,10 +5,22 @@ import org.json.JSONObject
 // The entity model, mirroring packages/core/src/model/*.ts field for field (same names, same optionality:
 // `?` here is `?` there). Timestamps stay ISO 8601 strings; `Iso8601` turns one into milliseconds.
 //
-// `raw` is the backend's own payload, untouched. It is a JSONObject, which compares by identity, so two
-// equal entities that were parsed separately are NOT `==` while they carry a raw. The agreed approach:
-// WP1's client keeps the last entity JSON text per ref and skips parsing and notifying when the text is unchanged,
-// so this identity never causes a spurious notification.
+// `raw` is the backend's own payload, untouched, kept as its JSON text in a [RawJson]: equal text is equal, so entities
+// have plain value equality (a `Store` skips an unchanged message) and the text is parsed only if somebody reads it.
+
+/**
+ * The backend's own payload as JSON text. Equality and hash are by text; [json] parses it on first use (and a
+ * `JSONObject` is mutable, so treat it as read-only).
+ */
+class RawJson(val text: String) {
+    val json: JSONObject by lazy { JSONObject(text) }
+
+    override fun equals(other: Any?): Boolean = other is RawJson && other.text == text
+
+    override fun hashCode(): Int = text.hashCode()
+
+    override fun toString(): String = text
+}
 
 /** What every entity has, whatever its kind. */
 sealed interface Entity {
@@ -21,7 +33,7 @@ sealed interface Entity {
 
     /** ISO 8601: when the backend last reported it. */
     val lastUpdated: String?
-    val raw: JSONObject?
+    val raw: RawJson?
 }
 
 /** The current color of a light, when it has one. */
@@ -51,7 +63,7 @@ data class LightEntity(
     val capabilities: LightCapabilities,
     override val lastChanged: String? = null,
     override val lastUpdated: String? = null,
-    override val raw: JSONObject? = null,
+    override val raw: RawJson? = null,
 ) : Entity
 
 /** Anything with two states that can be flipped: an outlet, a fan, a lock (on = locked). */
@@ -62,7 +74,7 @@ data class SwitchEntity(
     val on: Boolean,
     override val lastChanged: String? = null,
     override val lastUpdated: String? = null,
-    override val raw: JSONObject? = null,
+    override val raw: RawJson? = null,
 ) : Entity
 
 data class ClimateCapabilities(
@@ -92,7 +104,7 @@ data class ClimateEntity(
     val capabilities: ClimateCapabilities,
     override val lastChanged: String? = null,
     override val lastUpdated: String? = null,
-    override val raw: JSONObject? = null,
+    override val raw: RawJson? = null,
 ) : Entity
 
 /** A one-shot thing to trigger: a scene, a script, a button, a vacuum's start. */
@@ -104,7 +116,7 @@ data class ActionEntity(
     val lastTriggered: String? = null,
     override val lastChanged: String? = null,
     override val lastUpdated: String? = null,
-    override val raw: JSONObject? = null,
+    override val raw: RawJson? = null,
 ) : Entity
 
 data class SensorEntity(
@@ -120,7 +132,7 @@ data class SensorEntity(
     val measurement: String? = null,
     override val lastChanged: String? = null,
     override val lastUpdated: String? = null,
-    override val raw: JSONObject? = null,
+    override val raw: RawJson? = null,
 ) : Entity
 
 /** Someone who lives here, and whether they are home. */
@@ -134,7 +146,7 @@ data class PersonEntity(
     val pictureUrl: String? = null,
     override val lastChanged: String? = null,
     override val lastUpdated: String? = null,
-    override val raw: JSONObject? = null,
+    override val raw: RawJson? = null,
 ) : Entity
 
 data class WeatherEntity(
@@ -165,7 +177,7 @@ data class WeatherEntity(
     val forecasts: List<ForecastType> = emptyList(),
     override val lastChanged: String? = null,
     override val lastUpdated: String? = null,
-    override val raw: JSONObject? = null,
+    override val raw: RawJson? = null,
 ) : Entity
 
 /** What a player is playing now. */
@@ -221,7 +233,7 @@ data class MediaPlayerEntity(
     val capabilities: MediaPlayerCapabilities,
     override val lastChanged: String? = null,
     override val lastUpdated: String? = null,
-    override val raw: JSONObject? = null,
+    override val raw: RawJson? = null,
 ) : Entity
 
 /** An entity with no dedicated kind: shown, not controlled. Also what an unknown `kind` from a newer runtime parses to. */
@@ -233,7 +245,7 @@ data class GenericEntity(
     val unit: String? = null,
     override val lastChanged: String? = null,
     override val lastUpdated: String? = null,
-    override val raw: JSONObject? = null,
+    override val raw: RawJson? = null,
 ) : Entity
 
 /** Parses an entity of any kind from the runtime's JSON (`kind` selects the parser). */

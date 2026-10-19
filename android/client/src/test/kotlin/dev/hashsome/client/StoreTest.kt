@@ -1,6 +1,7 @@
 package dev.hashsome.client
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Test
 
 class StoreTest {
@@ -81,5 +82,66 @@ class StoreTest {
         // The nested set reaches everyone first; the second listener never sees 1 after 2.
         assertEquals(listOf(2), seen)
         assertEquals(2, store.value)
+    }
+
+    @Test
+    fun `a listener that sets B then A again is not followed by a stale A`() {
+        val store = Store(0)
+        val seen = ArrayList<Int>()
+        var done = false
+        store.listen {
+            if (it == 1 && !done) {
+                done = true
+                store.set(2)
+                store.set(1)
+            }
+        }
+        store.listen { seen += it }
+        store.set(1)
+        assertEquals(listOf(2, 1), seen)
+    }
+
+    @Test
+    fun `listenNow may set a value from its first call`() {
+        val store = Store(0)
+        val seen = ArrayList<Int>()
+        store.listenNow {
+            seen += it
+            if (it == 0) store.set(1)
+        }
+        assertEquals(listOf(0, 1), seen)
+    }
+
+    @Test
+    fun `listenNow may cancel itself on a later call`() {
+        val store = Store(0)
+        var calls = 0
+        var cancel: Cancel? = null
+        cancel = store.listenNow {
+            calls++
+            if (calls == 2) cancel?.invoke()
+        }
+        store.set(1)
+        store.set(2)
+        assertEquals(2, calls)
+    }
+
+    @Test
+    fun `a throwing listener propagates, keeps the new value and leaves the store usable`() {
+        val store = Store(0)
+        val seen = ArrayList<Int>()
+        val boom = store.listen { if (it == 1) throw IllegalStateException("boom") }
+        store.listen { seen += it }
+        try {
+            store.set(1)
+            fail("the exception should reach the caller")
+        } catch (e: IllegalStateException) {
+            assertEquals("boom", e.message)
+        }
+        assertEquals(1, store.value)
+        assertEquals(emptyList<Int>(), seen)
+        boom()
+        store.set(2)
+        assertEquals(listOf(2), seen)
     }
 }

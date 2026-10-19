@@ -50,6 +50,30 @@ subprojects {
             }
         }
 
+        // The layering, checked on what each module declares for production (tests may use :testing): the one module
+        // under it, the Kotlin stdlib, and for kiosk alone the MQTT client. Anything else fails `check`.
+        val allowedProjects = mapOf(
+            "client" to emptySet<String>(),
+            "headless" to setOf(":client"),
+            "ui" to setOf(":headless"),
+            "kiosk" to setOf(":ui"),
+            "testing" to setOf(":client"),
+        )
+        val allowedGroups = setOf("org.jetbrains.kotlin") + if (project.name == "kiosk") setOf("org.eclipse.paho") else emptySet()
+        val checkDependencies = tasks.register("checkDependencies") {
+            doLast {
+                val declared = listOf("api", "implementation", "compileOnly", "runtimeOnly")
+                    .mapNotNull { configurations.findByName(it) }
+                    .flatMap { it.dependencies }
+                val bad = declared.filter { dep ->
+                    if (dep is ProjectDependency) dep.path !in allowedProjects.getValue(project.name)
+                    else dep.group !in allowedGroups
+                }
+                check(bad.isEmpty()) { "${project.name} may not depend on ${bad.map { "${it.group}:${it.name}" }}" }
+            }
+        }
+        tasks.matching { it.name == "check" }.configureEach { dependsOn(checkDependencies) }
+
         afterEvaluate {
             extensions.configure<PublishingExtension> {
                 publications {

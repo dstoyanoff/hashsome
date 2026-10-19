@@ -50,6 +50,14 @@ interface PageListener {
 
 // ---- The app --------------------------------------------------------------------------------------------------------
 
+/**
+ * Something a module outside `ui` (the kiosk) hooks into the app with. `Hashsome.install` runs each one after it has
+ * created the client, scheduler and theme, in list order. It may replace [Hashsome.settings] and the plug points.
+ */
+fun interface AppExtension {
+    fun install(app: Application, hashsome: Hashsome)
+}
+
 /** Everything the consumer decides once, in its `Application`. */
 data class HashsomeApp(
     /** When the dark theme is on. */
@@ -64,6 +72,8 @@ data class HashsomeApp(
     val screenPolicy: ScreenPolicy = ScreenPolicy,
     val touchListener: TouchListener = TouchListener,
     val pageListener: PageListener = PageListener,
+    /** Hooks run at the end of [Hashsome.install]; `HashsomeApp.withKiosk` (in `kiosk`) adds one. */
+    val extensions: List<AppExtension> = emptyList(),
 )
 
 /**
@@ -96,10 +106,20 @@ object Hashsome {
     /** Settings the host reads; `kiosk` replaces it with its persistent `Settings` during [install]. */
     var settings: HostSettings = InMemoryHostSettings()
 
+    /** What the host calls on window and page events; start as `HashsomeApp`'s and may be replaced by an [AppExtension]. */
+    var screenPolicy: ScreenPolicy = ScreenPolicy
+    var touchListener: TouchListener = TouchListener
+    var pageListener: PageListener = PageListener
+
     /** Call once from `Application.onCreate`. */
     fun install(app: Application, config: HashsomeApp) {
         this.config = config
-        // WP3 creates the scheduler, the client (connected once settings.server is known) and the resolved theme here.
+        screenPolicy = config.screenPolicy
+        touchListener = config.touchListener
+        pageListener = config.pageListener
+        // WP3 creates the scheduler, the client (connected once settings.server is known) and the resolved theme here,
+        // before the extensions run.
+        for (extension in config.extensions) extension.install(app, this)
     }
 
     val app: HashsomeApp get() = config ?: error("Hashsome.install(...) was not called in Application.onCreate")

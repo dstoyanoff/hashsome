@@ -112,6 +112,9 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
     /** A thermostat tile over [handle], which may be `EntityHandle.fixed(HandleState.Unavailable...)` for a room that has none. */
     fun climateTile(handle: EntityHandle<dev.hashsome.client.ClimateEntity>, label: String): Unit = TODO("WP4a")
 
+    /** A switch as a tile, with the watts of the power sensor [power] on its secondary line when given. */
+    fun switchTile(ref: String, label: String, power: String? = null): Unit = TODO("WP4a")
+
     fun taskTile(ref: String, label: String): Unit = TODO("WP4a")
 
     fun listTabs(labels: List<String>, surfaces: List<PageScope.() -> Unit>): Unit = TODO("WP4a")

@@ -27,7 +27,10 @@ object ProtocolRules {
     const val ASSET_PATH = "/_hashsome/asset"
 }
 
-/** A message the app sends to the runtime's `/ws`, as in packages/core/src/protocol.ts. */
+/**
+ * A message the app sends to the runtime's `/ws`, as in packages/core/src/protocol.ts. The TS `raw` message (a
+ * request straight to an integration) is left out on purpose: the UI never sends it.
+ */
 sealed interface ClientMessage {
     fun encode(): String = TODO("WP1")
 

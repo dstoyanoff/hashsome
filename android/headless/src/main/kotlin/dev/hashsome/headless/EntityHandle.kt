@@ -1,6 +1,7 @@
 package dev.hashsome.headless
 
 import dev.hashsome.client.Cancel
+import dev.hashsome.client.Command
 import dev.hashsome.client.Entity
 import dev.hashsome.client.EntityKind
 import dev.hashsome.client.EntityRef
@@ -42,14 +43,21 @@ class EntityHandle<E : Entity> private constructor(
     val state: Store<HandleState<E>>,
     private val scope: Scope?,
 ) {
-    /** Watches [ref] (null: nothing to watch, state stays [HandleState.Missing]) through [scope]. */
-    constructor(scope: Scope, ref: EntityRef?, kind: EntityKind<E>) : this(ref, kind, Store(HandleState.Loading), scope)
+    /**
+     * Watches [ref] through [scope]. With no ref there is nothing to watch and the state is [HandleState.Missing] from
+     * the start; with one it is [HandleState.Loading] until the runtime answers.
+     */
+    constructor(scope: Scope, ref: EntityRef? = null, kind: EntityKind<E>) :
+        this(ref, kind, Store(if (ref == null) HandleState.Missing else HandleState.Loading), scope)
 
-    /** The entity when [state] is [HandleState.Ready] or [HandleState.Unavailable]. */
+    /** The entity when [state] is [HandleState.Ready] or [HandleState.Unavailable] with one. */
     val entity: E? get() = TODO("WP2")
 
     /** Sends a command; the entity is not changed here, it changes when the runtime reports it. */
     fun command(name: String, args: JSONObject? = null, done: ((Outcome) -> Unit)? = null): Cancel = TODO("WP2")
+
+    /** [command] from the per-kind builders (`LightCommands.toggle()`); the same as the string form. */
+    fun command(command: Command, done: ((Outcome) -> Unit)? = null): Cancel = command(command.name, command.args, done)
 
     companion object {
         /** A handle that never watches anything and always shows [state] (the heater a bathroom does not have). */

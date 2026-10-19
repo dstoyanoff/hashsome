@@ -1,5 +1,6 @@
 package dev.hashsome.kiosk
 
+import android.app.Application
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -8,9 +9,9 @@ import android.app.admin.DeviceAdminReceiver
 import android.os.IBinder
 import dev.hashsome.client.Scheduler
 import dev.hashsome.client.Store
+import dev.hashsome.ui.AppExtension
+import dev.hashsome.ui.Hashsome
 import dev.hashsome.ui.HashsomeApp
-import dev.hashsome.ui.PageListener
-import dev.hashsome.ui.ScreenPolicy
 import dev.hashsome.ui.TouchListener
 
 // What makes a display a kiosk: it stays in front, dims and sleeps on its own terms, and is a Home Assistant device.
@@ -36,8 +37,22 @@ data class KioskConfig(
     val settingsGesture: Gesture = Gesture.FiveTapsOnStatusDot,
 )
 
-/** [this] with the kiosk's plug points installed (screen policy, touch listener, page listener). Call it in `Application.onCreate`. */
-fun HashsomeApp.withKiosk(config: KioskConfig = KioskConfig()): HashsomeApp = TODO("WP5")
+/**
+ * [this] with the kiosk added as an [AppExtension]. Call it on the `HashsomeApp` in `Application.onCreate`; `ui` has no
+ * constructor parameter for it because it must not reference this module.
+ */
+fun HashsomeApp.withKiosk(config: KioskConfig = KioskConfig()): HashsomeApp = copy(extensions = extensions + KioskExtension(config))
+
+/**
+ * What `withKiosk` installs: initialises [Settings] (which becomes `Hashsome.settings`), builds the [KioskState] and the
+ * [SettingsSheet] wiring, replaces the plug points with the kiosk's, and starts [KioskService].
+ */
+class KioskExtension(val config: KioskConfig) : AppExtension {
+    override fun install(app: Application, hashsome: Hashsome) {
+        Settings.init(app, config)
+        TODO("WP5")
+    }
+}
 
 // ---- Device ---------------------------------------------------------------------------------------------------------
 
@@ -156,13 +171,10 @@ class HashsomeDeviceAdmin : DeviceAdminReceiver()
 
 /** The HOME `activity-alias` (declared disabled in the manifest), for a plain tablet where the app can be the launcher. */
 object HomeAlias {
+    /** The `activity-alias` of the manifest. */
+    const val COMPONENT = "dev.hashsome.kiosk.HomeActivityAlias"
+
     fun isEnabled(context: Context): Boolean = TODO("WP5")
     fun setEnabled(context: Context, enabled: Boolean): Unit = TODO("WP5")
 }
 
-/** The default [ScreenPolicy], [TouchListener] and [PageListener] of the kiosk, assembled by [withKiosk]. */
-internal class KioskPlugs(val config: KioskConfig) {
-    val screenPolicy: ScreenPolicy get() = TODO("WP5")
-    val touchListener: TouchListener get() = TODO("WP5")
-    val pageListener: PageListener get() = TODO("WP5")
-}

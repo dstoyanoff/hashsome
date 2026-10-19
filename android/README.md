@@ -40,16 +40,19 @@ with defaults that do nothing) that `kiosk` implements, installed with `Hashsome
 Needs JDK 17 and the Android SDK (platform 34, build-tools 34.0.0); put `sdk.dir=...` in `android/local.properties` (ignored by
 git) or set `ANDROID_HOME`.
 
+Each Gradle build has its own wrapper and there is none at the repo root, so run from inside the directory (CI does the
+same with `working-directory: android`):
+
 ```sh
-./gradlew -p android build            # compiles all modules, runs lint and the unit tests
-./gradlew -p example/android assembleDebug
+(cd android && ./gradlew build)       # compiles all modules, runs lint, the unit tests and the layering checks
+(cd example/android && ./gradlew assembleDebug)
 ```
 
 Publishing goes to GitHub Packages (`https://maven.pkg.github.com/dstoyanoff/hashsome`), credentials from `GITHUB_ACTOR` and
 `GITHUB_TOKEN`, or `gpr.user` and `gpr.key` in `~/.gradle/gradle.properties`:
 
 ```sh
-./gradlew -p android publishAllPublicationsToGitHubPackagesRepository
+(cd android && ./gradlew publishAllPublicationsToGitHubPackagesRepository)
 ```
 
 Each module publishes its `release` AAR with sources, under group `dev.hashsome` and the module's name as the artifact id.

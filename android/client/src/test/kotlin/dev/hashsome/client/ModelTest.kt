@@ -57,4 +57,20 @@ class ModelTest {
         store.set(Snapshot.Present(entity.copy()))
         assertEquals(1, calls)
     }
+
+    @Test
+    fun `raw json is equal by text and parsed on demand`() {
+        val a = RawJson("{\"a\":1}")
+        assertEquals(a, RawJson("{\"a\":1}"))
+        assertEquals(a.hashCode(), RawJson("{\"a\":1}").hashCode())
+        assertFalse(a == RawJson("{\"a\":2}"))
+        assertEquals(1, a.json.getInt("a"))
+    }
+
+    @Test
+    fun `entities parsed twice from the same text are equal`() {
+        fun entity(text: String) = SwitchEntity(EntityRef("ha:switch.x"), "X", Availability.Ready, on = true, raw = RawJson(text))
+        assertEquals(entity("{\"state\":\"on\"}"), entity("{\"state\":\"on\"}"))
+        assertFalse(entity("{\"state\":\"on\"}") == entity("{\"state\":\"off\"}"))
+    }
 }

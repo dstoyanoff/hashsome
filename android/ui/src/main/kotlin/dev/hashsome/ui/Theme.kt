@@ -131,7 +131,10 @@ data class ResolvedDensity(val space: Int, val tileHeight: Int, val iconSize: In
     }
 }
 
-/** Changes to the built-in theme (mirrors the web's `ThemeOverrides`). */
+/**
+ * Changes to the built-in theme (mirrors the web's `ThemeOverrides`). The web's `zIndex` override is omitted on
+ * purpose: views stack by the order they are added and by elevation, not by numbered layers.
+ */
 data class ThemeOverrides(
     val light: PaletteOverrides? = null,
     val dark: PaletteOverrides? = null,

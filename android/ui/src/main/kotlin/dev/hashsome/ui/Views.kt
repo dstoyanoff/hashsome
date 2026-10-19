@@ -23,10 +23,24 @@ abstract class BoundView(context: Context) : FrameLayout(context) {
     protected fun onDetach(cancel: Cancel): Unit = TODO("WP3")
 }
 
-/** A rounded surface that is the body of every tile: [filled] fills it with the accent. */
+/**
+ * A rounded surface that is the body of every tile, and the one content API they share: an optional [icon], a [title]
+ * and a [secondary] line, a [fill] level behind them (a dimmable tile's brightness), the accent [filled] state, a
+ * [disabled] look, and the touches: [onClick], [onHold], and [onDrag] / [onCommit] along the tile's width (0..1).
+ */
 open class TileView(context: Context) : ViewGroup(context) {
+    var icon: Icon? = null
+    var title: String = ""
+    var secondary: String? = null
+
+    /** 0..1 of the width filled behind the content; null draws no fill. */
+    var fill: Float? = null
     var filled: Boolean = false
     var disabled: Boolean = false
+    var onClick: (() -> Unit)? = null
+    var onHold: (() -> Unit)? = null
+    var onDrag: ((Float) -> Unit)? = null
+    var onCommit: ((Float) -> Unit)? = null
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int): Unit = TODO("WP3")
     override fun onDraw(canvas: Canvas): Unit = TODO("WP3")
