@@ -6,11 +6,16 @@ This product includes work from the following projects.
 ShellyElevate
   https://github.com/RapierXbox/ShellyElevate
   License: Apache License 2.0
-  Used by: kiosk (arrives with the kiosk work package)
+  Used by: kiosk
   Device knowledge and code adapted from it for the Shelly Wall Displays: the backlight sysfs paths, the
   Settings.System brightness handling, the auto-brightness ramp, keeping the app in front through UsageStats,
-  the MQTT discovery builder and the appops used when provisioning. Each adapted file names it in its header.
-  [Copyright holders and the full license text are added here when the first adapted file lands.]
+  the MQTT discovery builder and the appops used when provisioning. Each adapted file names it in its header
+  (kiosk: AutoBrightness.kt, Device.kt, Presence.kt, Mqtt.kt, Service.kt).
+  Copyright the ShellyElevate authors (RapierXbox and contributors). Licensed under the Apache License,
+  Version 2.0; you may obtain a copy at https://www.apache.org/licenses/LICENSE-2.0. The adapted code is
+  rewritten in Kotlin and changed (the proximity polarity of the X2i, the backlight and device-admin handling,
+  the hysteresis band, the discovery payload); it is distributed on an "AS IS" basis, without warranties or
+  conditions of any kind.
 
 Lucide
   https://lucide.dev
