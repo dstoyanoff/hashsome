@@ -42,6 +42,10 @@ data class KioskConfig(
     /** Percent of the panel's range. */
     val minBrightness: Int = 8,
     val settingsGesture: Gesture = Gesture.HoldStatusDot(),
+    /** Shelly profiles, after a boot: the top activity must not change for this long before the dashboard takes the front (the stock app is still starting). */
+    val bootSettleMs: Long = 30_000,
+    /** Shelly profiles, after a boot: and at least this long must have passed since boot. */
+    val bootMinMs: Long = 90_000,
 )
 
 /**
@@ -109,9 +113,32 @@ internal object Kiosk {
     @Volatile
     var dashboardResumed: Boolean = false
 
-    /** Starts the foreground service. Called from `Application.onCreate`, the boot receiver and provisioning. */
-    fun startService(context: Context) {
+    const val EXTRA_BOOT = "boot"
+
+    /** Holds the dashboard back after a boot start until the stock app has settled; null when there was none (or on a generic profile it is ignored). */
+    @Volatile
+    var bootGate: BootGate? = null
+
+    /** The top activity the keep-in-front last saw, for the wake path. */
+    @Volatile
+    var lastTop: TopActivity = TopActivity.UNKNOWN
+
+    /** Whether a start arms the boot gate: the boot receiver's, or any inside [minMs] of boot, on a profile that waits for the stock app. */
+    internal fun shouldArmBootGate(boot: Boolean, elapsedMs: Long, minMs: Long, settles: Boolean): Boolean =
+        settles && (boot || elapsedMs < minMs)
+
+    /** Arms the gate once per process (the profile and the clock decide, see [shouldArmBootGate]). */
+    fun armBootGateIfNeeded(boot: Boolean) {
+        if (bootGate != null) return
+        val elapsed = android.os.SystemClock.elapsedRealtime()
+        if (!shouldArmBootGate(boot, elapsed, config.bootMinMs, DeviceProfile.detect().settlesAtBoot)) return
+        bootGate = BootGate(config.bootSettleMs, config.bootMinMs, { android.os.SystemClock.elapsedRealtime() }) { Log.e("front", it) }
+    }
+
+    /** Starts the foreground service. Called from `Application.onCreate`, the boot receiver ([boot]) and provisioning. */
+    fun startService(context: Context, boot: Boolean = false) {
         val intent = Intent(context, KioskService::class.java)
+        if (boot) intent.putExtra(EXTRA_BOOT, true)
         try {
             if (android.os.Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent) else context.startService(intent)
         } catch (e: Exception) {
