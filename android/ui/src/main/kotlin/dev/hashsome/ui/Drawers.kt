@@ -63,8 +63,26 @@ object DrawerHost {
         scrolls: Boolean = true,
         build: (DrawerContext) -> View,
     ) {
+        prepare(context, owner, title, kind, icon, expandable, full, scrolls, build).open()
+    }
+
+    /**
+     * Builds the drawer's body now and shows it later: [Prepared.open] puts it up at once (the views are made and measured, so the first
+     * frame is the panel's animation), [Prepared.discard] lets go of it. A tile makes one when its hold line starts (`TileView.onHoldWarm`)
+     * so that the drawer appears as the hold completes. The arguments are those of [open].
+     */
+    fun prepare(
+        context: Context,
+        owner: Scope,
+        title: String,
+        kind: String? = null,
+        icon: Icon? = null,
+        expandable: Boolean = false,
+        full: Boolean = false,
+        scrolls: Boolean = true,
+        build: (DrawerContext) -> View,
+    ): Prepared {
         val began = android.os.SystemClock.uptimeMillis()
-        current?.dismissNow()
         val overlay = overlayForScreen(context, expandable)
         overlay.title = title
         overlay.subtitle = kind
@@ -75,21 +93,50 @@ object DrawerHost {
         }
 
         val scope = owner.child()
-        overlay.onDismissed = {
-            scope.dispose()
-            if (current === overlay) current = null
-        }
         val body = try {
             build(DrawerContext(scope, overlay))
         } catch (e: Throwable) {
             scope.dispose()
             throw e
         }
-        current = overlay
-        val built = android.os.SystemClock.uptimeMillis()
-        overlay.show(if (scrolls) scrolled(context, body) else body)
-        // Where the time of an open goes, for a display that feels slow: making the body, then putting the panel up (its first layout and animation follow).
-        android.util.Log.d("hashsome-drawer", "open \"$title\": body built in ${built - began} ms, panel shown in ${android.os.SystemClock.uptimeMillis() - built} ms")
+
+        val content = if (scrolls) scrolled(context, body) else body
+        // Measured once at about the size the panel gives it, so what the first layout would work out from sizes is ready.
+        val m = context.resources.displayMetrics
+        val room = m.widthPixels - 2 * dp(EDGE)
+        val inner = (if (m.widthPixels / screenDensity < SHEET_BELOW_DP) m.widthPixels else minOf(dp(380), room)) - 2 * Math.round(5 * unitPx())
+        content.measure(View.MeasureSpec.makeMeasureSpec(inner, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(m.heightPixels, View.MeasureSpec.AT_MOST))
+        android.util.Log.d("hashsome-drawer", "prepared \"$title\": body built and measured in ${android.os.SystemClock.uptimeMillis() - began} ms")
+        return Prepared(overlay, scope, content, title)
+    }
+
+    private const val EDGE = 20
+
+    /** A drawer whose body is made and waiting: [open] it, or [discard] it. */
+    class Prepared internal constructor(private val overlay: Overlay, private val scope: Scope, private val content: View, private val title: String) {
+        private var done = false
+
+        /** Shows the drawer, replacing the one that is open. Does nothing once opened or discarded. */
+        fun open() {
+            if (done || scope.disposed) return
+            done = true
+            val began = android.os.SystemClock.uptimeMillis()
+            current?.dismissNow()
+            overlay.onDismissed = {
+                scope.dispose()
+                if (current === overlay) current = null
+            }
+            current = overlay
+            overlay.show(content)
+            android.util.Log.d("hashsome-drawer", "open \"$title\": panel shown in ${android.os.SystemClock.uptimeMillis() - began} ms")
+        }
+
+        /** Lets go of the body and what it holds. */
+        fun discard() {
+            if (done) return
+            done = true
+            scope.dispose()
+        }
     }
 
     private fun scrolled(context: Context, body: View): View = ScrollView(context).also {
@@ -97,6 +144,36 @@ object DrawerHost {
         it.isVerticalScrollBarEnabled = false
         it.overScrollMode = View.OVER_SCROLL_NEVER
         it.addView(body, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
+    }
+}
+
+/**
+ * Makes [this] tile open a drawer on a hold, built while the hold line fills so that it appears as the hold completes: the body is
+ * prepared when the line starts, given up if the press is, and shown when the hold fires. [title] and [icon] are read then.
+ */
+fun TileView.opensDrawer(
+    context: Context,
+    owner: Scope,
+    title: () -> String,
+    kind: String? = null,
+    icon: () -> Icon? = { null },
+    expandable: Boolean = false,
+    build: (DrawerContext) -> View,
+) {
+    var ready: DrawerHost.Prepared? = null
+    fun make() = DrawerHost.prepare(context, owner, title(), kind, icon(), expandable, build = build)
+    onHoldWarm = {
+        ready?.discard()
+        ready = make()
+    }
+    onHoldCancel = {
+        ready?.discard()
+        ready = null
+    }
+    onHold = {
+        val drawer = ready ?: make()
+        ready = null
+        drawer.open()
     }
 }
 

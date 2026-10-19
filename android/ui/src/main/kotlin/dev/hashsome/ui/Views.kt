@@ -151,6 +151,13 @@ open class TileView(context: Context) : ViewGroup(context) {
 
     var onClick: (() -> Unit)? = null
     var onHold: (() -> Unit)? = null
+
+    /**
+     * Called when the hold line starts (the press has outlasted a tap, [TileTouch.SHOW_AFTER_MS]): the moment to build what [onHold] will
+     * show, so that it appears as the hold completes. [onHoldCancel] follows if the press is given up before the hold fires.
+     */
+    var onHoldWarm: (() -> Unit)? = null
+    var onHoldCancel: (() -> Unit)? = null
     var onDrag: ((Float) -> Unit)? = null
     var onCommit: ((Float) -> Unit)? = null
 
@@ -181,12 +188,15 @@ open class TileView(context: Context) : ViewGroup(context) {
     private var downY = 0f
     private var dragWidth = 1f
     private var held = false
-    private var hold: ValueAnimator? = null
-    private var holdProgress = 0f
+    // The hold is timed against the clock at each frame, not by an animator: the line is full exactly when the hold fires.
+    private var pressAt = 0L
+    private var timing = false
+    private var warmed = false
     private val holdFire = Runnable {
         held = true
-        this.hold?.cancel()
-        holdProgress = 0f
+        timing = false
+        // What was made ready for the hold is used by it, not given up.
+        warmed = false
         invalidate()
         onHold?.invoke()
     }
@@ -329,45 +339,39 @@ open class TileView(context: Context) : ViewGroup(context) {
         if (shownSecondary.isNotEmpty()) canvas.drawTextCentered(shownSecondary, right - secondaryWidth, cy, secondaryPaint)
         canvas.drawTextCentered(shownTitle, left, cy, titlePaint)
 
+        val holdProgress = if (timing) TileTouch.progress(android.os.SystemClock.uptimeMillis() - pressAt) else 0f
         if (holdProgress > 0f) {
             // The accent, or on a tile that is solid accent all over, what is on an accent.
             paint.color = if (filled && fill == null) theme.palette.onAccent else theme.palette.accent
             canvas.drawRect(0f, h - dp(2f), w * holdProgress, h, paint)
         }
+        if (timing && holdProgress < 1f) postInvalidateOnAnimation()
         canvas.restore()
     }
 
     // A tap never shows the line: it appears only once the press has lasted as long as a tap can.
-    private val showHold = Runnable { animateHold() }
-
-    private fun startHold() {
-        hold?.cancel()
-        removeCallbacks(showHold)
-        if (!Animation.animates) return
-        postDelayed(showHold, TileTouch.SHOW_AFTER_MS)
+    private val showHold = Runnable {
+        warmed = true
+        onHoldWarm?.invoke()
+        invalidate()
     }
 
-    private fun animateHold() {
-        hold = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = HOLD_MS - TileTouch.SHOW_AFTER_MS
-            interpolator = LinearInterpolator()
-            addUpdateListener {
-                holdProgress = it.animatedValue as Float
-                invalidate()
-            }
-            start()
-        }
+    private fun startHold(downTime: Long) {
+        removeCallbacks(showHold)
+        pressAt = downTime
+        timing = Animation.animates
+        postDelayed(showHold, TileTouch.SHOW_AFTER_MS)
     }
 
     private fun stopHold() {
         removeCallbacks(holdFire)
         removeCallbacks(showHold)
-        hold?.cancel()
-        hold = null
-        if (holdProgress != 0f) {
-            holdProgress = 0f
-            invalidate()
+        timing = false
+        if (warmed) {
+            warmed = false
+            onHoldCancel?.invoke()
         }
+        invalidate()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -383,7 +387,7 @@ open class TileView(context: Context) : ViewGroup(context) {
                 dragWidth = maxOf(1, width).toFloat()
                 if (onHold != null) {
                     postDelayed(holdFire, HOLD_MS)
-                    startHold()
+                    startHold(event.downTime)
                 }
                 return true
             }
