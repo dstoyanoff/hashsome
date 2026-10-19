@@ -564,6 +564,7 @@ internal class TitleRow(context: Context) : ViewGroup(context) {
         }
 
     private var used = 0
+    private var actionGap = 0
 
     init {
         addView(title)
@@ -579,7 +580,8 @@ internal class TitleRow(context: Context) : ViewGroup(context) {
         val unspecified = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
         val button = action?.takeIf { it.visibility != GONE }
         button?.measure(unspecified, unspecified)
-        val buttonW = if (button == null) 0 else button.measuredWidth + Math.round(2 * u)
+        val buttonGap = Math.round(2 * u)
+        val buttonW = if (button == null) 0 else button.measuredWidth + buttonGap
         title.measure(unspecified, unspecified)
         var titleW = title.measuredWidth
         var artistW = 0
@@ -590,10 +592,14 @@ internal class TitleRow(context: Context) : ViewGroup(context) {
             artistW = artist.measuredWidth
             dotW = dot.measuredWidth + 2 * gap
         }
+        actionGap = buttonGap
         val room = maxOf(0, avail - buttonW - dotW)
         if (titleW + artistW > room) {
             if (artistW == 0) {
-                titleW = room
+                val fitted = TitleFit.width(titleW, room)
+                // A title let through past its room takes the overflow out of the gap before the button.
+                if (button != null) actionGap = maxOf(0, buttonGap - maxOf(0, fitted - room))
+                titleW = fitted
             } else {
                 // They give way in proportion to what each would like.
                 val scale = room.toFloat() / (titleW + artistW)
@@ -603,7 +609,7 @@ internal class TitleRow(context: Context) : ViewGroup(context) {
         }
         title.measure(MeasureSpec.makeMeasureSpec(titleW, MeasureSpec.EXACTLY), unspecified)
         if (showArtist) artist.measure(MeasureSpec.makeMeasureSpec(artistW, MeasureSpec.EXACTLY), unspecified)
-        used = titleW + buttonW + if (showArtist) dotW + artistW else 0
+        used = titleW + (if (button == null) 0 else button.measuredWidth + actionGap) + if (showArtist) dotW + artistW else 0
         var h = title.measuredHeight
         if (button != null) h = maxOf(h, button.measuredHeight)
         if (showArtist) h = maxOf(h, artist.measuredHeight)
@@ -622,7 +628,7 @@ internal class TitleRow(context: Context) : ViewGroup(context) {
         }
         put(title)
         action?.takeIf { it.visibility != GONE }?.let {
-            x += Math.round(2 * u)
+            x += actionGap
             put(it)
         }
         if (showArtist) {

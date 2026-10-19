@@ -308,6 +308,8 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
                 it.heightDp = ChipRowView.CHIP_HEIGHT
                 it.padUnits = 3f
                 it.primary = primary
+                // The ones that are not the main action are ghost, as the speakers' pills: no fill until pressed.
+                it.flat = !primary
                 it.onClick = run
             }
         }

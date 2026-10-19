@@ -325,4 +325,38 @@ class MediaMathTest {
         assertEquals(0.5f, RowCollapse.alpha(1f, 0.5f), 1e-6f)
         assertEquals(0.25f, RowCollapse.alpha(0.5f, 0.5f), 1e-6f)
     }
+
+    @Test
+    fun `a title a few px past its room is drawn whole, a longer one gives way`() {
+        // "Nothing playing" on the X1: 137 px in the 136 px between the art and the volume key.
+        assertEquals(137, TitleFit.width(137, 136))
+        assertEquals(137, TitleFit.width(137, 134))
+        assertEquals(100, TitleFit.width(100, 300))
+        // The web's own overflow still shortens: a long title ends in an ellipsis at the room.
+        assertEquals(136, TitleFit.width(160, 136))
+        assertEquals(136, TitleFit.width(141, 136))
+        assertEquals(3, TitleFit.slack(100))
+    }
+
+    @Test
+    fun `a row that is leaving keeps its place until it is gone, a newcomer takes its own`() {
+        assertEquals(listOf("a", "b", "c"), RowOrder.merge(listOf("a", "b", "c"), listOf("a", "b", "c")))
+        // b leaves: it stays between a and c.
+        assertEquals(listOf("a", "b", "c"), RowOrder.merge(listOf("a", "b", "c"), listOf("a", "c")))
+        // The first one leaves: it stays first.
+        assertEquals(listOf("a", "b"), RowOrder.merge(listOf("a", "b"), listOf("b")))
+        // A leaver stays after its old neighbour while a newcomer is placed where it is wanted.
+        assertEquals(listOf("a", "b", "x", "c"), RowOrder.merge(listOf("a", "b", "c"), listOf("a", "x", "c")))
+        assertEquals(listOf("h", "x", "q", "r"), RowOrder.merge(listOf("h", "q", "r"), listOf("h", "x", "q", "r")))
+        assertEquals(listOf("h", "s1", "m", "n"), RowOrder.merge(listOf("h", "s1", "m"), listOf("h", "n")))
+    }
+
+    @Test
+    fun `a key removed in the middle of an update is skipped, not looked up`() {
+        val merged = RowOrder.merge(listOf("h", "q:a", "q:b"), listOf("h", "q:b"))
+        assertEquals(listOf("h", "q:a", "q:b"), merged)
+        // q:a was dropped (no motion) while the update ran: the order has no place for it.
+        assertEquals(listOf("h", "q:b"), RowOrder.live(merged) { it != "q:a" })
+        assertEquals(emptyList<String>(), RowOrder.live(merged) { false })
+    }
 }
