@@ -75,17 +75,11 @@ internal object SettingsHost {
             before?.invoke()
         }
         shell.title = "Settings"
-        shell.subtitle = hint()
+        shell.subtitle = (Settings.deviceName.value ?: Settings.deviceId.value)?.takeIf { it.isNotBlank() }
         shell.show(SettingsSheet(activity, Settings, Kiosk.state, Kiosk.actions).view())
     }
 }
 
-
-/** How the sheet is opened, as the line under its title says. */
-internal fun hint(): String {
-    val ms = (Kiosk.config.settingsGesture as? Gesture.HoldStatusDot)?.ms ?: 5_000L
-    return "Hold the status dot for ${ms / 1000} s"
-}
 
 /** Opens the settings over [activity], as the gesture does (a consumer app without the kiosk's gesture can call it). */
 fun showSettingsSheet(activity: Activity) = SettingsHost.open(activity)
