@@ -5,6 +5,8 @@ import dev.hashsome.ui.R
 import dev.hashsome.ui.Icon
 
 object Ui {
+    val arrowLeft = Icon(R.drawable.ic_ui_arrow_left)
+    val audioLines = Icon(R.drawable.ic_ui_audio_lines)
     val bath = Icon(R.drawable.ic_ui_bath)
     val batteryLow = Icon(R.drawable.ic_ui_battery_low)
     val check = Icon(R.drawable.ic_ui_check)
@@ -20,7 +22,10 @@ object Ui {
     val cloudRainWind = Icon(R.drawable.ic_ui_cloud_rain_wind)
     val cloudSnow = Icon(R.drawable.ic_ui_cloud_snow)
     val cloudSun = Icon(R.drawable.ic_ui_cloud_sun)
+    val crown = Icon(R.drawable.ic_ui_crown)
+    val disc3 = Icon(R.drawable.ic_ui_disc_3)
     val droplet = Icon(R.drawable.ic_ui_droplet)
+    val folder = Icon(R.drawable.ic_ui_folder)
     val gauge = Icon(R.drawable.ic_ui_gauge)
     val gripVertical = Icon(R.drawable.ic_ui_grip_vertical)
     val house = Icon(R.drawable.ic_ui_house)
@@ -31,7 +36,10 @@ object Ui {
     val listMusic = Icon(R.drawable.ic_ui_list_music)
     val listPlus = Icon(R.drawable.ic_ui_list_plus)
     val listStart = Icon(R.drawable.ic_ui_list_start)
+    val logIn = Icon(R.drawable.ic_ui_log_in)
+    val logOut = Icon(R.drawable.ic_ui_log_out)
     val maximize2 = Icon(R.drawable.ic_ui_maximize_2)
+    val micVocal = Icon(R.drawable.ic_ui_mic_vocal)
     val minimize2 = Icon(R.drawable.ic_ui_minimize_2)
     val minus = Icon(R.drawable.ic_ui_minus)
     val moon = Icon(R.drawable.ic_ui_moon)
@@ -39,6 +47,7 @@ object Ui {
     val pause = Icon(R.drawable.ic_ui_pause)
     val play = Icon(R.drawable.ic_ui_play)
     val plus = Icon(R.drawable.ic_ui_plus)
+    val radio = Icon(R.drawable.ic_ui_radio)
     val search = Icon(R.drawable.ic_ui_search)
     val shuffle = Icon(R.drawable.ic_ui_shuffle)
     val skipBack = Icon(R.drawable.ic_ui_skip_back)

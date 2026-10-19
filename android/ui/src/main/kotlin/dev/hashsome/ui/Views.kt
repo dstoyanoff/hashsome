@@ -643,6 +643,9 @@ open class BarView(context: Context) : View(context) {
     var onDrag: ((Float) -> Unit)? = null
     var onCommit: ((Float) -> Unit)? = null
 
+    /** The touch was taken away (a gesture, a lost finger): nothing is committed. */
+    var onCancel: (() -> Unit)? = null
+
     /** Whether a finger is dragging it. */
     var dragging: Boolean = false
         private set
@@ -701,7 +704,10 @@ open class BarView(context: Context) : View(context) {
                 onCommit?.invoke(v)
             }
 
-            MotionEvent.ACTION_CANCEL -> dragging = false
+            MotionEvent.ACTION_CANCEL -> if (dragging) {
+                dragging = false
+                onCancel?.invoke()
+            }
         }
         return true
     }
@@ -839,15 +845,7 @@ open class ChipsView(context: Context) : View(context) {
     }
 }
 
-/** One row of a library list: artwork, title, subtitle, and the actions the item allows. Its content API arrives with the media components. */
-open class BrowseRow(context: Context) : View(context) {
-    override fun onDraw(canvas: Canvas): Unit = TODO("WP4b")
-}
-
-/** One row of a queue: artwork, title, artist, a marker on the current track. Its content API arrives with the media components. */
-open class QueueRow(context: Context) : View(context) {
-    override fun onDraw(canvas: Canvas): Unit = TODO("WP4b")
-}
+// BrowseRow and QueueRow are in MediaRows.kt.
 
 /** One line of text that scrolls sideways when it does not fit (in full motion; elsewhere it ends in an ellipsis). */
 open class MarqueeText(context: Context) : View(context) {

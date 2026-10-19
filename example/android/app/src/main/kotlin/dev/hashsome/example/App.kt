@@ -13,8 +13,10 @@ class App : Application() {
             this,
             HashsomeApp(
                 theme = ThemeSchedule.Fixed(dark = true),
-                dashboards = listOf(Demo),
+                dashboards = listOf(Demo, MediaDemo),
             ),
         )
+        DemoLaunch.install(this)
+        FrameGaps.install(this)
     }
 }

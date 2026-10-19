@@ -87,7 +87,10 @@ abstract class Overlay(context: Context) : BoundView(context) {
     /** A glyph in a circle before the title. */
     var titleIcon: Icon? = null
 
-    protected val scrim = View(context).apply {
+    // A flat color: its fade needs no layer of its own to render.
+    protected val scrim = object : View(context) {
+        override fun hasOverlappingRendering(): Boolean = false
+    }.apply {
         setBackgroundColor(SCRIM)
         setOnClickListener { dismiss() }
     }
@@ -186,9 +189,9 @@ abstract class Overlay(context: Context) : BoundView(context) {
 }
 
 /** Which overlay suits this screen's width (the web's `SHEET_BELOW`): a [Sheet] below 500 dp, a [Drawer] from there. */
-fun overlayForScreen(context: Context): Overlay {
+fun overlayForScreen(context: Context, expandable: Boolean = false): Overlay {
     val widthDp = context.resources.displayMetrics.widthPixels / screenDensity
-    return if (widthDp < SHEET_BELOW_DP) Sheet(context) else Drawer(context)
+    return if (widthDp < SHEET_BELOW_DP) Sheet(context) else Drawer(context, expandable)
 }
 
 /** The 30 dp button of a panel's title row: a rounded square in the raised surface with a small glyph. */
@@ -278,10 +281,10 @@ internal class OverlayTitle(context: Context, private val name: CharSequence, pr
 }
 
 /**
- * A panel that slides in from the right: 20 dp in from the window's edges, 380 dp wide (less on a narrow window) and expandable
+ * A panel that slides in from the right: 20 dp in from the window's edges, 380 dp wide (less on a narrow window) and, with [expandable],
  * to nearly the window's width. Its height is the window's less the insets; [show]'s content fills what is under the title row.
  */
-open class Drawer(context: Context) : Overlay(context) {
+open class Drawer(context: Context, val expandable: Boolean = false) : Overlay(context) {
     /** The panel's width when not expanded, in dp; 380 as the web's. */
     var widthDp: Int = COLLAPSED_WIDTH
 
@@ -334,7 +337,6 @@ open class Drawer(context: Context) : Overlay(context) {
         val panel = ColumnLayout(context).apply {
             background = surface(FloatArray(4) { t.radius.drawer })
             elevation = elevationOf(t.shadow.drawer)
-            clipToOutline = true
             isClickable = true
             val pad = Math.round(5 * u)
             setPadding(pad, pad, pad, pad)
@@ -343,7 +345,7 @@ open class Drawer(context: Context) : Overlay(context) {
         val expand = OverlayAction(context, Ui.maximize2) { expanded = !expanded }
         expandButton = expand
         expand.shown = if (expanded) Ui.minimize2 else Ui.maximize2
-        panel.addView(header(expand, closeButton()), FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+        panel.addView(header(*(if (expandable) arrayOf<View>(expand, closeButton()) else arrayOf<View>(closeButton()))), FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             bottomMargin = Math.round(4 * u)
         })
         panel.addView(content, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
@@ -357,8 +359,11 @@ open class Drawer(context: Context) : Overlay(context) {
         if (Animation.animates) {
             scrim.alpha = 0f
             scrim.animate().alpha(1f).setDuration(ENTER_MS).setInterpolator(EASE_OUT).start()
-            panel.alpha = 0f
-            panel.animate().alpha(1f).setDuration(ENTER_MS).setInterpolator(EASE_OUT).start()
+            // The panel itself fades only where the display can afford it: a fade of a panel this size is a layer of its own to render each frame.
+            if (Animation.full) {
+                panel.alpha = 0f
+                panel.animate().alpha(1f).setDuration(ENTER_MS).setInterpolator(EASE_OUT).withLayer().start()
+            }
         }
     }
 
@@ -366,7 +371,7 @@ open class Drawer(context: Context) : Overlay(context) {
         val p = panel
         leave(
             if (p == null) null else { end ->
-                p.animate().alpha(0f).setDuration(EXIT_MS).setInterpolator(EASE_IN).withEndAction(end).start()
+                p.animate().alpha(0f).setDuration(EXIT_MS).setInterpolator(EASE_IN).withLayer().withEndAction(end).start()
             },
         )
     }
@@ -400,7 +405,6 @@ open class Sheet(context: Context) : Overlay(context) {
         val panel = SheetPanel().apply {
             background = surface(floatArrayOf(t.radius.drawer, t.radius.drawer, 0f, 0f))
             elevation = elevationOf(t.shadow.drawer)
-            clipToOutline = true
             isClickable = true
         }
         this.panel = panel
@@ -430,7 +434,7 @@ open class Sheet(context: Context) : Overlay(context) {
                     panel.removeOnLayoutChangeListener(this)
                     // Rises from the bottom.
                     panel.translationY = (b - tp).toFloat()
-                    panel.animate().translationY(0f).setDuration(RISE_MS).setInterpolator(EASE_OUT).start()
+                    panel.animate().translationY(0f).setDuration(RISE_MS).setInterpolator(EASE_OUT).withLayer().start()
                 }
             })
         }
@@ -475,7 +479,7 @@ open class Sheet(context: Context) : Overlay(context) {
         val p = panel
         leave(
             if (p == null) null else { end ->
-                p.animate().translationY(p.height.toFloat()).setDuration(EXIT_MS).setInterpolator(EASE_IN).withEndAction(end).start()
+                p.animate().translationY(p.height.toFloat()).setDuration(EXIT_MS).setInterpolator(EASE_IN).withLayer().withEndAction(end).start()
             },
         )
     }

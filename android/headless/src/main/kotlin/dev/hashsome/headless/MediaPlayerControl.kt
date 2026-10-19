@@ -35,9 +35,10 @@ class VolumeControl {
     // The level a finger has set and the player has not reported yet; kept after the finger lifts so the slider does not snap back.
     private var held: Double? = null
 
-    internal fun attach(handle: EntityHandle<MediaPlayerEntity>) {
+    internal fun attach(handle: EntityHandle<MediaPlayerEntity>, scope: Scope) {
         this.handle = handle
-        handle.state.listenNow { refresh() }
+        // Held by the scope, so a control that is let go of lets go of its listener.
+        scope.bind(handle.state) { refresh() }
     }
 
     private fun refresh() {
@@ -52,6 +53,12 @@ class VolumeControl {
 
     fun drag(level: Double) {
         held = level.coerceIn(0.0, 1.0)
+        refresh()
+    }
+
+    /** A drag that was taken away: the slider shows the player's level again. */
+    fun cancel() {
+        held = null
         refresh()
     }
 
@@ -211,7 +218,7 @@ class MediaPlayerControl(val handle: EntityHandle<MediaPlayerEntity>, val scope:
     private var heldTimer: Cancel? = null
 
     init {
-        volume.attach(handle)
+        volume.attach(handle, scope)
         seek.attach(this)
         scope.bind(handle.state) { update() }
     }

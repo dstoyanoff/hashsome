@@ -520,6 +520,8 @@ internal class FlexBox(private val vertical: Boolean) {
             val (cs, cm) = when {
                 lp.crossDim() > 0 -> lp.crossDim() to MeasureSpec.EXACTLY
                 stretch -> availCross - mc to MeasureSpec.EXACTLY
+                // A layout that is as high as what is in it asks the child how high it is, not for none of its height.
+                crossMode == MeasureSpec.UNSPECIFIED -> 0 to MeasureSpec.UNSPECIFIED
                 else -> maxOf(0, availCross - mc) to MeasureSpec.AT_MOST
             }
             measureChild(child, sizes[i] - lp.mainMargins(), MeasureSpec.EXACTLY, cs, cm)
