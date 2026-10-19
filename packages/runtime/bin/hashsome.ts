@@ -12,6 +12,8 @@ const commands = {
     (await import('../src/cli/package.ts')).packageCommand(process.argv.slice(3)),
   upgrade: async () =>
     (await import('../src/cli/upgrade.ts')).upgradeCommandLine(process.argv.slice(3)),
+  android: async () =>
+    (await import('../src/cli/android.ts')).androidCommand(process.argv.slice(3)),
 } as const;
 
 const command = process.argv[2] as keyof typeof commands | undefined;

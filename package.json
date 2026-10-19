@@ -30,6 +30,8 @@
     "start": "pnpm --filter @hashsome/example start",
     "docs:dev": "pnpm --filter @hashsome/ui run docs",
     "generate:catalog": "node scripts/generate-ui-catalog.ts",
+    "generate:parity": "node scripts/generate-parity.ts",
+    "check:parity": "node scripts/check-parity.ts",
     "package": "pnpm --filter @hashsome/example package",
     "build:packages": "tsc -b packages/core/tsconfig.build.json packages/ui/tsconfig.build.json packages/runtime/tsconfig.build.json packages/integrations/home-assistant/tsconfig.build.json packages/integrations/music-assistant/tsconfig.build.json && node packages/ui/scripts/copy-css.ts",
     "release": "node scripts/release.ts"

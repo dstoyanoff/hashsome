@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
+  bumpVersionCatalog,
+  catalogVersion,
   describeChanges,
   hashsomeDependencies,
   otherPackageManager,
@@ -84,5 +86,42 @@ describe('describeChanges', () => {
   test('nothing moved is nothing listed', () => {
     const same = { dependencies: { '@hashsome/ui': '0.1.0' } };
     expect(describeChanges(same, same)).toEqual([]);
+  });
+});
+
+describe('bumpVersionCatalog', () => {
+  const toml = `[versions]
+agp = "8.7.0"
+hashsome = "0.19.2"
+kotlin = "2.0.21"
+
+[libraries]
+hashsome-ui = { module = "dev.hashsome:ui", version.ref = "hashsome" }
+`;
+
+  test('rewrites the hashsome version and nothing else', () => {
+    const result = bumpVersionCatalog(toml, '0.20.0');
+    expect(result.changed).toBe(true);
+    expect(result.text).toBe(toml.replace('hashsome = "0.19.2"', 'hashsome = "0.20.0"'));
+  });
+
+  test('is a no-op at the same version, without the line, or outside [versions]', () => {
+    expect(bumpVersionCatalog(toml, '0.19.2')).toEqual({ text: toml, changed: false });
+    expect(bumpVersionCatalog('[versions]\nagp = "8.7.0"\n', '1.0.0').changed).toBe(false);
+    const elsewhere = '[bundles]\nhashsome = "0.1.0"\n';
+    expect(bumpVersionCatalog(elsewhere, '1.0.0')).toEqual({ text: elsewhere, changed: false });
+  });
+
+  test('reads and rewrites a single-quoted version too, and catalogVersion tells absent from present', () => {
+    const text = "[versions]\nhashsome = '0.1.0'\n";
+    expect(bumpVersionCatalog(text, '0.2.0').text).toBe("[versions]\nhashsome = '0.2.0'\n");
+    expect(catalogVersion(text)).toBe('0.1.0');
+    expect(catalogVersion('[versions]\nagp = "8"\n')).toBeUndefined();
+    expect(catalogVersion('[libraries]\nhashsome = "1"\n')).toBeUndefined();
+  });
+
+  test('leaves a longer key like hashsome-extra alone', () => {
+    const text = '[versions]\nhashsome-extra = "1.0.0"\n';
+    expect(bumpVersionCatalog(text, '2.0.0').changed).toBe(false);
   });
 });
