@@ -1,7 +1,10 @@
 package dev.hashsome.ui
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.Drawable
 import dev.hashsome.client.WeatherCondition
+import dev.hashsome.ui.icons.Ui
 
 /**
  * An icon, as the web takes `icon={<Lightbulb />}`: components receive this value, never a name. [res] is a
@@ -17,28 +20,77 @@ value class Icon(val res: Int)
  * an icon from the dashboard do not use these.
  */
 object UiIcons {
-    val close: Icon get() = TODO("WP3")
-    val play: Icon get() = TODO("WP3")
-    val pause: Icon get() = TODO("WP3")
-    val skipNext: Icon get() = TODO("WP3")
-    val skipPrevious: Icon get() = TODO("WP3")
-    val shuffle: Icon get() = TODO("WP3")
-    val volume: Icon get() = TODO("WP3")
-    val volumeMuted: Icon get() = TODO("WP3")
-    val grip: Icon get() = TODO("WP3")
-    val chevronLeft: Icon get() = TODO("WP3")
-    val chevronRight: Icon get() = TODO("WP3")
-    val chevronDown: Icon get() = TODO("WP3")
-    val chevronUp: Icon get() = TODO("WP3")
-    val search: Icon get() = TODO("WP3")
-    val list: Icon get() = TODO("WP3")
+    val close: Icon get() = Ui.x
+    val play: Icon get() = Ui.play
+    val pause: Icon get() = Ui.pause
+    val skipNext: Icon get() = Ui.skipForward
+    val skipPrevious: Icon get() = Ui.skipBack
+    val shuffle: Icon get() = Ui.shuffle
+    val volume: Icon get() = Ui.volume2
+    val volumeMuted: Icon get() = Ui.volumeX
+    val grip: Icon get() = Ui.gripVertical
+    val chevronLeft: Icon get() = Ui.chevronLeft
+    val chevronRight: Icon get() = Ui.chevronRight
+    val chevronDown: Icon get() = Ui.chevronDown
+    val chevronUp: Icon get() = Ui.chevronUp
+    val search: Icon get() = Ui.search
+    val list: Icon get() = Ui.list
 
-    /** The glyph for what the sky is doing (with its own tint per shape). */
-    fun weather(condition: WeatherCondition, night: Boolean = false): Icon = TODO("WP3")
+    /**
+     * The glyph for what the sky is doing (with its own tint per shape: see [WeatherLook]). At [night] a sunny sky is the moon's:
+     * the web's weather icon has no such flip, a sunny sky is what the weather entity reports and it reports clear-night itself.
+     */
+    fun weather(condition: WeatherCondition, night: Boolean = false): Icon {
+        val shown = if (night && condition == WeatherCondition.Sunny) WeatherCondition.ClearNight else condition
+        return WeatherLook.of(shown).icon
+    }
 }
 
-/** [icon] drawn at [px] square in [color], cached by (icon, size, color). */
-fun iconBitmap(icon: Icon, px: Int, color: Int): Bitmap = TODO("WP3")
+private val constantStates = HashMap<Int, Drawable.ConstantState>()
 
-/** Decodes every icon the visible page is going to need, off the first frame. */
-fun warmIcons(context: android.content.Context): Unit = TODO("WP3")
+/** A fresh drawable of [icon]. The XML is read once (reading a vector drawable is slow on a Shelly display); every later one is a copy of it. */
+internal fun iconDrawable(icon: Icon): Drawable {
+    val resources = Hashsome.appContext.resources
+    val state = constantStates.getOrPut(icon.res) {
+        @Suppress("DEPRECATION")
+        resources.getDrawable(icon.res, Hashsome.appContext.theme).constantState!!
+    }
+    return state.newDrawable(resources).mutate()
+}
+
+private data class BitmapKey(val res: Int, val px: Int, val color: Int)
+
+private val bitmaps = HashMap<BitmapKey, Bitmap>()
+
+/**
+ * [icon] drawn at [px] square in [color], cached by (icon, size, color). A vector drawable rasterises itself on its first draw,
+ * and a list that made a pair of them per row did that on the main thread as the rows arrived, which stalled the arrival: a
+ * bitmap is drawn once and shared. A weather glyph with colors of its own ignores [color] (only its plain parts take it).
+ */
+fun iconBitmap(icon: Icon, px: Int, color: Int): Bitmap {
+    val colored = WeatherLook.isColored(icon.res)
+    val key = BitmapKey(icon.res, px, if (colored && WeatherLook.plainOf(icon.res) == null) 0 else color)
+    return bitmaps.getOrPut(key) {
+        val bitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        fun draw(icon: Icon, tint: Int?) {
+            val drawable = iconDrawable(icon)
+            if (tint != null) drawable.setTint(tint)
+            drawable.setBounds(0, 0, px, px)
+            drawable.draw(canvas)
+        }
+        draw(icon, if (colored) null else color)
+        WeatherLook.plainOf(icon.res)?.let { draw(it, color) }
+        bitmap
+    }
+}
+
+/** Decodes every icon the chrome is going to need, off the first frame. */
+fun warmIcons(context: android.content.Context) {
+    Hashsome.appContext = context.applicationContext
+    listOf(
+        UiIcons.close, UiIcons.play, UiIcons.pause, UiIcons.skipNext, UiIcons.skipPrevious, UiIcons.shuffle, UiIcons.volume,
+        UiIcons.volumeMuted, UiIcons.grip, UiIcons.chevronLeft, UiIcons.chevronRight, UiIcons.chevronDown, UiIcons.chevronUp,
+        UiIcons.search, UiIcons.list, Ui.listStart, Ui.listPlus, Ui.trash2, Ui.library, Ui.listMusic, Ui.speaker,
+    ).forEach { iconDrawable(it) }
+}
