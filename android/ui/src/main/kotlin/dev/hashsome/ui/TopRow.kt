@@ -5,7 +5,9 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.text.TextPaint
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
+import android.widget.FrameLayout
 import android.view.ViewGroup
 import dev.hashsome.client.ForecastType
 import dev.hashsome.client.SensorEntity
@@ -182,10 +184,57 @@ open class SystemStatus(context: Context, val health: ConnectionHealth) : BoundV
         bind(health.summary) { dot.level = it.overall }
     }
 
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        popover?.dismissNow()
-        popover = null
+    // The dot is 32 dp and often at the screen's edge: a finger lands beside it. A see-through target over the window's content hands a press in a 56 dp square (to the screen's edges) to it.
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        super.onLayout(changed, l, t, r, b)
+        post { extendTarget() }
+    }
+
+    private fun extendTarget() {
+        // The window's content, not the row: the row is only as wide as its chips, and the dot sits at the screen's edge.
+        val host = Overlay.activityOf(context)?.findViewById<ViewGroup>(android.R.id.content) ?: return
+        if (host.width == 0 || dot.width == 0 || !isAttachedToWindow) return
+        val rect = android.graphics.Rect(0, 0, dot.width, dot.height)
+        host.offsetDescendantRectToMyCoords(dot, rect)
+        val min = dp(StatusDotHold.TARGET_DP)
+        val x = StatusDotHold.reach(rect.width(), min, rect.left, host.width - rect.right)
+        val y = StatusDotHold.reach(rect.height(), min, rect.top, host.height - rect.bottom)
+        dot.reachL = x[0]; dot.reachR = x[1]; dot.reachT = y[0]; dot.reachB = y[1]
+        val area = android.graphics.Rect(rect.left - x[0], rect.top - y[0], rect.right + x[1], rect.bottom + y[1])
+        val over = target ?: DotTarget(context, dot).also { target = it }
+        over.originX = rect.left
+        over.originY = rect.top
+        val lp = FrameLayout.LayoutParams(area.width(), area.height(), Gravity.TOP or Gravity.START)
+        lp.leftMargin = area.left
+        lp.topMargin = area.top
+        if (over.parent !== host) {
+            (over.parent as? ViewGroup)?.removeView(over)
+            host.addView(over, lp)
+        } else {
+            over.layoutParams = lp
+        }
+    }
+
+    private var target: DotTarget? = null
+
+    /** A see-through square over the page (the window's content) that hands every touch in it to the [dot], in the dot's own coordinates. */
+    private class DotTarget(context: Context, private val dot: View) : View(context) {
+        var originX = 0
+        var originY = 0
+
+        init {
+            isClickable = true
+            importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+        }
+
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            val dx = originX - (layoutParams as FrameLayout.LayoutParams).leftMargin
+            val dy = originY - (layoutParams as FrameLayout.LayoutParams).topMargin
+            event.offsetLocation(-dx.toFloat(), -dy.toFloat())
+            val handled = dot.dispatchTouchEvent(event)
+            event.offsetLocation(dx.toFloat(), dy.toFloat())
+            return handled || event.actionMasked != MotionEvent.ACTION_DOWN
+        }
     }
 
     private fun toggle() {

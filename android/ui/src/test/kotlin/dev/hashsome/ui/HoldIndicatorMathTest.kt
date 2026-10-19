@@ -29,3 +29,20 @@ class HoldIndicatorMathTest {
         assertEquals(false, StatusDotHold.withinArea(32f + 49f, 16f, 32f, 32f, 48f))
     }
 }
+
+class StatusDotTargetTest {
+    @Test
+    fun `a 32 dp dot grows to 56 evenly in the open and to the edge where the edge is near`() {
+        assertEquals(listOf(12, 12), StatusDotHold.reach(32, 56, 300, 300).toList())
+        // against the right edge with 18 px left: the target reaches the edge, the other side takes the rest
+        assertEquals(listOf(12, 18), StatusDotHold.reach(32, 56, 300, 18).toList())
+        assertEquals(listOf(0, 12), StatusDotHold.reach(32, 56, 0, 300).toList())
+        assertEquals(listOf(0, 0), StatusDotHold.reach(64, 56, 0, 0).toList())
+    }
+
+    @Test
+    fun `the cancel margin is measured from the grown target`() {
+        assertEquals(true, StatusDotHold.withinArea(32f + 18f + 48f, 16f, 32f, 32f, 12f, 12f, 18f, 12f, 48f))
+        assertEquals(false, StatusDotHold.withinArea(32f + 18f + 49f, 16f, 32f, 32f, 12f, 12f, 18f, 12f, 48f))
+    }
+}

@@ -738,6 +738,25 @@ object StatusDotHold {
     fun withinArea(x: Float, y: Float, w: Float, h: Float, marginPx: Float): Boolean =
         x >= -marginPx && x <= w + marginPx && y >= -marginPx && y <= h + marginPx
 
+    /** The smallest side, in dp, of the area a press starts the hold in; the drawn dot is smaller. */
+    const val TARGET_DP = 56
+
+    /** Whether ([x], [y]) is inside the view's bounds grown by [l], [t], [r], [b] and then by [marginPx] on every side. */
+    fun withinArea(x: Float, y: Float, w: Float, h: Float, l: Float, t: Float, r: Float, b: Float, marginPx: Float): Boolean =
+        x >= -l - marginPx && x <= w + r + marginPx && y >= -t - marginPx && y <= h + b + marginPx
+
+    /**
+     * How far, in px, the touch target grows before and after a view of [size] along one axis so that it is at least [min]:
+     * evenly, but all the way to the edge on a side where less than [min] of room is left ([roomBefore], [roomAfter]).
+     */
+    fun reach(size: Int, min: Int, roomBefore: Int, roomAfter: Int): IntArray {
+        val grow = maxOf(0, min - size)
+        val half = grow / 2
+        val before = if (roomBefore < min) maxOf(roomBefore, 0) else half
+        val after = if (roomAfter < min) maxOf(roomAfter, 0) else grow - half
+        return intArrayOf(before, after)
+    }
+
     /** Ms held at [now] by a press that began at [start] (both uptime clock). */
     fun elapsed(now: Long, start: Long): Long = maxOf(0L, now - start)
 
@@ -783,6 +802,12 @@ open class StatusDot(context: Context) : View(context) {
 
     private var held = false
 
+    /** How far, in px, the area a press starts the hold in reaches beyond the dot's bounds (the dot is 32 dp; the finger lands wider). */
+    internal var reachL = 0
+    internal var reachT = 0
+    internal var reachR = 0
+    internal var reachB = 0
+
     init {
         isClickable = true
         setOnClickListener { Hashsome.touchListener.onStatusDotTap() }
@@ -796,7 +821,7 @@ open class StatusDot(context: Context) : View(context) {
             }
             // Drift inside the expanded area changes nothing; leaving it gives the hold up for good.
             MotionEvent.ACTION_MOVE ->
-                if (holding && !StatusDotHold.withinArea(event.x, event.y, width.toFloat(), height.toFloat(), dp(StatusDotHold.MARGIN_DP).toFloat())) stopRing()
+                if (holding && !StatusDotHold.withinArea(event.x, event.y, width.toFloat(), height.toFloat(), reachL.toFloat(), reachT.toFloat(), reachR.toFloat(), reachB.toFloat(), dp(StatusDotHold.MARGIN_DP).toFloat())) stopRing()
             MotionEvent.ACTION_UP -> {
                 // Lifted after the full time but before the timer ran: the hold counts, and the release is swallowed.
                 if (holding && StatusDotHold.completed(StatusDotHold.elapsed(android.os.SystemClock.uptimeMillis(), holdStart), holdMs)) fire.run()
