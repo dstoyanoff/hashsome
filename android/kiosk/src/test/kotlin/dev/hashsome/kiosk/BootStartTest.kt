@@ -43,4 +43,11 @@ class BootStartTest {
         assertFalse(BootStart.claimed)
         assertTrue(BootStart.claim())
     }
+
+    @Test
+    fun `a refused start releases the claim so the next broadcast retries`() {
+        assertTrue(BootStart.claim())
+        BootStart.release()
+        assertTrue(BootStart.claim())
+    }
 }

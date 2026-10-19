@@ -416,7 +416,8 @@ class BootReceiver : BroadcastReceiver() {
         val elapsed = android.os.SystemClock.elapsedRealtime()
         if (decision == BootStart.Decision.Start && BootStart.claim()) {
             Log.e("boot", "starting the service from $action, ${elapsed} ms after boot")
-            Kiosk.startService(context, boot = true)
+            // A refused start gives the claim back, so BOOT_COMPLETED tries again.
+            if (!Kiosk.startService(context, boot = true)) BootStart.release()
         } else {
             Log.e("boot", "$action: $decision (claimed=${BootStart.claimed}), ${elapsed} ms after boot")
         }
@@ -438,6 +439,8 @@ internal object BootStart {
 
     /** True for the first caller only: the later `BOOT_COMPLETED` finds the service already started by `LOCKED_BOOT_COMPLETED`. */
     fun claim(): Boolean = claimedFlag.compareAndSet(false, true)
+
+    fun release() = claimedFlag.set(false)
 
     internal fun reset() = claimedFlag.set(false)
 }

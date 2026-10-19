@@ -64,17 +64,22 @@ class KioskExtension(val config: KioskConfig) : AppExtension {
     override fun install(app: Application, hashsome: Hashsome) {
         // A direct-boot start (the boot receiver is aware) creates the Application while credential-encrypted storage, where
         // Settings lives, is still locked: finish the install when the user unlocks (a no-op on any device that never locks).
-        if (!userUnlocked(app)) {
-            Log.e("kiosk", "storage locked, installing after ACTION_USER_UNLOCKED")
-            app.registerReceiver(object : android.content.BroadcastReceiver() {
-                override fun onReceive(context: Context, intent: Intent) {
-                    app.unregisterReceiver(this)
-                    finish(app, hashsome)
-                }
-            }, android.content.IntentFilter(Intent.ACTION_USER_UNLOCKED))
+        if (userUnlocked(app)) {
+            finish(app, hashsome)
             return
         }
-        finish(app, hashsome)
+        Log.e("kiosk", "storage locked, installing after ACTION_USER_UNLOCKED")
+        // Register first, then re-check: an unlock between the first check and the registration would otherwise be missed.
+        val done = java.util.concurrent.atomic.AtomicBoolean(false)
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (!done.compareAndSet(false, true)) return
+                app.unregisterReceiver(this)
+                finish(app, hashsome)
+            }
+        }
+        app.registerReceiver(receiver, android.content.IntentFilter(Intent.ACTION_USER_UNLOCKED))
+        if (userUnlocked(app)) receiver.onReceive(app, Intent(Intent.ACTION_USER_UNLOCKED))
     }
 
     private fun userUnlocked(app: Application): Boolean =
@@ -247,14 +252,16 @@ internal object Kiosk {
     }
 
     /** Starts the foreground service. Called from `Application.onCreate`, the boot receiver ([boot]) and provisioning. */
-    fun startService(context: Context, boot: Boolean = false) {
+    fun startService(context: Context, boot: Boolean = false): Boolean {
         val intent = Intent(context, KioskService::class.java)
         if (boot) intent.putExtra(EXTRA_BOOT, true)
         try {
             if (android.os.Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent) else context.startService(intent)
+            return true
         } catch (e: Exception) {
             // Android 12+ refuses a foreground service started from the background; the next launch or boot tries again.
             Log.w("kiosk", "could not start the service: ${e.message}")
+            return false
         }
     }
 }
