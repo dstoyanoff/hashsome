@@ -6,7 +6,7 @@ export interface HoldProgressProps {
   /** Which edge of the card the line runs along. Default `top`. */
   edge?: 'top' | 'bottom';
 
-  /** A literal CSS color for the line, alpha included. Left out, a half-faded muted text color. */
+  /** A CSS color for the line, e.g. `var(--hs-accent)`. Left out, a half-faded muted text color. */
   color?: string;
 }
 
