@@ -824,7 +824,7 @@ export const systemCheckCommand = (device: Device, pkg: string): Command =>
 
 /** Whether `systemCheckCommand`'s output says a system app (the SYSTEM flag, or code in /system/priv-app). */
 export const isSystemApp = (dumpsys: string): boolean =>
-  hasSystemFlag(dumpsys) || /codePath=\/system\/priv-app\//.test(dumpsys);
+  hasSystemFlag(dumpsys) || /codePath=\/system\/priv-app\b/.test(dumpsys);
 
 /** Steps that copy the APK over the system copy: the provision's writes, without the reboot. */
 export function systemRefreshStages(device: Device, apk: string, pkg: string) {
@@ -866,7 +866,7 @@ function refreshSystemCopy(
 
   if (!imageIsRootable(stages.image, root, exec)) {
     console.warn(
-      `${device.id}: ${pkg} is a system app but this image has no adb root, so the system copy cannot be refreshed: this update will not survive a reboot (the older system copy comes back). Raise the versionCode and redo the install, or keep the normal install.`,
+      `${device.id}: ${pkg} is a system app but this image has no adb root, so the system copy cannot be refreshed: this update will not survive a reboot (the older system copy comes back). Bump the versionCode and redeploy, or re-run provision --system.`,
     );
 
     return;

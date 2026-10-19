@@ -12,6 +12,7 @@ import {
   parseFreeKb,
   parseVersionCode,
   shouldUninstallDataCopy,
+  isSystemApp,
   systemProvisionStages,
   systemRemoveStages,
   buildCommands,
@@ -605,6 +606,22 @@ describe('androidCommand (dry run)', () => {
         expect(at('chmod 644')).toBeLessThan(at('ro,remount'));
         expect(seen.some((l) => l.includes(' reboot'))).toBe(false);
         expect(warn).not.toHaveBeenCalled();
+      });
+
+      test('a failed install skips the refresh', async () => {
+        const root = setup();
+        const m = mock({ failOn: ' install ' });
+        await expect(androidCommand(['deploy'], root, m.exec, sleep)).rejects.toThrow(
+          'deploy failed',
+        );
+        expect(m.seen.some((l) => l.includes(' push ') || l.includes('remount'))).toBe(false);
+      });
+
+      test('isSystemApp', () => {
+        expect(isSystemApp('privateFlags=[ PRIVILEGED ]')).toBe(false);
+        expect(isSystemApp('flags=[ HAS_CODE UPDATED_SYSTEM_APP ]')).toBe(false);
+        expect(isSystemApp('codePath=/system/priv-app/Hashsome')).toBe(true);
+        expect(isSystemApp('flags=[ SYSTEM HAS_CODE ]')).toBe(true);
       });
 
       test('not a system app: nothing extra', async () => {
