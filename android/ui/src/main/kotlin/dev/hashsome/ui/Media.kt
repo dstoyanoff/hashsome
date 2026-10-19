@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ScrollView
 import dev.hashsome.client.AssetSize
+import dev.hashsome.client.Cancel
 import dev.hashsome.client.EntityRef
 import dev.hashsome.headless.HandleState
 import dev.hashsome.headless.MediaBrowserControl
@@ -54,9 +55,10 @@ internal fun openQueue(context: Context, control: MediaPlayerControl, label: Str
 }
 
 /** Opens who plays together with the player as the side panel. */
-internal fun openSpeakers(context: Context, control: MediaPlayerControl, speakers: SpeakersControl, label: String) {
-    openMediaOverlay(context, control.scope, "Speakers", label, Ui.speaker, full = false) { _ ->
-        MediaSpeakersView(context, speakers)
+internal fun openSpeakers(context: Context, control: MediaPlayerControl, allow: List<EntityRef>, label: String) {
+    // The panel has a control of its own, so it does not depend on the view that opened it staying.
+    openMediaOverlay(context, control.scope, "Speakers", label, Ui.speaker, full = false) { scope ->
+        MediaSpeakersView(context, SpeakersControl(control.handle, scope, allow))
     }
 }
 
@@ -72,8 +74,10 @@ internal fun openPlayer(context: Context, control: MediaPlayerControl, label: St
  * with it, "Patio playing" when there is a stream in another room to join, a dot marking that one and the speaker glyph in the
  * accent color while the player is in a group. [compact] drops the words (the count stays in a group), for a bar with no room.
  */
-internal class SpeakersPillView(context: Context, private val speakers: SpeakersControl, private val compact: Boolean, onOpen: () -> Unit) :
-    BoundView(context) {
+internal class SpeakersPillView(context: Context, private val compact: Boolean, onOpen: () -> Unit) : BoundView(context) {
+    private var speakers: SpeakersControl? = null
+    private var following: Cancel? = null
+
     private val pill = PillButton(context, Ui.speaker, "Speakers", Role.Label).also {
         it.heightDp = 30
         it.padUnits = 3f
@@ -92,16 +96,34 @@ internal class SpeakersPillView(context: Context, private val speakers: Speakers
         pill.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
     }
 
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
+    /** Follows [control]: made once the player is known to be one that can be grouped, so a player that cannot watches no speakers. */
+    fun use(control: SpeakersControl) {
+        speakers = control
+        if (isAttachedToWindow) follow()
+    }
+
+    private fun follow() {
+        following?.invoke()
+        val c = speakers ?: return
         val redraw: (Any?) -> Unit = { render() }
-        onDetach(speakers.speakers.listen(redraw))
-        onDetach(speakers.status.listen(redraw))
-        onDetach(speakers.handle.state.listen(redraw))
+        val all = listOf(c.speakers.listen(redraw), c.status.listen(redraw), c.handle.state.listen(redraw))
+        following = { all.forEach { it() } }
         render()
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        follow()
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        following?.invoke()
+        following = null
+    }
+
     private fun render() {
+        val speakers = speakers ?: return
         val summary = SpeakersSummary.of(speakers.handle.entity?.group, speakers.speakers.value, speakers.status.value)
         val grouped = summary.together > 1
         pill.label = if (compact) (if (grouped) summary.together.toString() else null) else summary.label
@@ -202,6 +224,7 @@ open class MediaPlayerBarView(context: Context, val control: MediaPlayerControl,
     private var ring: MiniRingView? = null
     private var titleRow: TitleRow? = null
     private var artist: MarqueeText? = null
+    private var loadingLine: LabelView? = null
     private var time: LabelView? = null
     private var volumeRow: RowLayout? = null
     private var volumeButton: GlyphButton? = null
@@ -210,6 +233,7 @@ open class MediaPlayerBarView(context: Context, val control: MediaPlayerControl,
     private var line: SeekLineView? = null
     private var artwork: ArtworkSlot? = null
     private var grouping: SpeakersControl? = null
+    private var queue: QueueControl? = null
     private var track: View? = null
     private val tools = ArrayList<View>()
     private val transport = ArrayList<View>()
@@ -229,16 +253,17 @@ open class MediaPlayerBarView(context: Context, val control: MediaPlayerControl,
         val u = unitPx()
         val scope = control.scope.child()
         own = scope
-        val queue = QueueControl(control.handle, scope)
-        val speakersControl = SpeakersControl(control.handle, scope, speakers)
-        grouping = speakersControl
+        val queue = QueueControl(control.handle, scope).also { this.queue = it }
+        grouping = null
         val keys = Transport(context, control, queue).also { this.keys = it }
         val volume = VolumeParts(context, control).also { this.volume = it }
         val circle = dp(t.density.iconCircle)
 
         background = rounded(t.palette.surface, if (twoRows) t.radius.card else t.radius.full)
         clipToOutline = true
-        ring = MiniRingView(context).also { it.onClick = onOpen?.let { open -> { open() } } }
+        // Where the dashboard says: its own page for the player; without one, the whole player as a panel.
+        val open = { onOpen?.invoke() ?: openPlayer(context, control, label, speakers) }
+        ring = MiniRingView(context).also { it.onClick = open }
         artwork = ArtworkSlot(AssetSize.Small, { dp(30) }) { ring?.show(it) }
 
         val row = TitleRow(context).also {
@@ -262,9 +287,9 @@ open class MediaPlayerBarView(context: Context, val control: MediaPlayerControl,
         }
         val library = GlyphButton(context, Ui.library).also {
             browse = it
-            it.onClick = { onOpen?.invoke() ?: openLibrary(context, control, label) }
+            it.onClick = { open() }
         }
-        val speakersPill = SpeakersPillView(context, speakersControl, compact = true) { openSpeakers(context, control, speakersControl, label) }.also { pill = it }
+        val speakersPill = SpeakersPillView(context, compact = true) { openSpeakers(context, control, speakers, label) }.also { pill = it }
         tools.clear()
         tools += listOf(volumeKey, library, speakersPill)
         transport.clear()
@@ -281,6 +306,11 @@ open class MediaPlayerBarView(context: Context, val control: MediaPlayerControl,
             val info = ColumnLayout(context)
             info.addView(row, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             info.addView(sub, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            info.addView(LabelView(context, Role.Secondary, Tone.Muted).also {
+                loadingLine = it
+                it.spinner = true
+                it.visibility = GONE
+            }, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             track = info
             flow.addView(info, wrap().also {
                 it.grow = true
@@ -359,6 +389,7 @@ open class MediaPlayerBarView(context: Context, val control: MediaPlayerControl,
         onDetach(control.volume.shown.listen(redraw))
         onDetach(control.volume.muted.listen(redraw))
         onDetach(control.seek.shown.listen(redraw))
+        queue?.let { onDetach(it.state.listen(redraw)) }
         render()
     }
 
@@ -396,9 +427,14 @@ open class MediaPlayerBarView(context: Context, val control: MediaPlayerControl,
             ready -> player?.media?.artist.orEmpty()
             else -> ""
         }
-        artist?.text = by
+        if (!twoRows) {
+            val waiting = loading != null
+            loadingLine?.text = if (waiting) by else ""
+            loadingLine?.visibility = if (waiting) VISIBLE else GONE
+        }
+        artist?.text = if (!twoRows && loading != null) "" else by
         artist?.color = theme.palette.textMuted
-        if (!twoRows) artist?.visibility = if (by.isEmpty()) GONE else VISIBLE
+        if (!twoRows) artist?.visibility = if (by.isEmpty() || loading != null) GONE else VISIBLE
         titleRow?.showArtist = twoRows && by.isNotEmpty()
         time?.text = if (timed && options.time) "${MediaFormat.duration(shown!!)} / ${MediaFormat.duration(duration!!)}" else ""
         time?.visibility = if (time?.text.isNullOrEmpty() || (open && !twoRows)) GONE else VISIBLE
@@ -412,8 +448,14 @@ open class MediaPlayerBarView(context: Context, val control: MediaPlayerControl,
             icon = if (open) UiIcons.close else if (control.volume.muted.value) UiIcons.volumeMuted else UiIcons.volume
             isEnabled = canVolume || open
         }
-        browse?.visibility = if (ready && options.browse && caps?.browse == true) VISIBLE else GONE
-        pill?.visibility = if (ready && options.grouping && caps?.group == true) VISIBLE else GONE
+        val canBrowse = ready && options.browse && (onOpen != null || caps?.browse == true)
+        val canGroup = ready && options.grouping && caps?.group == true
+        // Speakers are watched only for a player that can be grouped.
+        if (canGroup && grouping == null) {
+            own?.let { scope -> grouping = SpeakersControl(control.handle, scope, speakers).also { pill?.use(it) } }
+        }
+        browse?.visibility = if (canBrowse) VISIBLE else GONE
+        pill?.visibility = if (canGroup) VISIBLE else GONE
 
         // The slider takes the title's place; in two rows it has the row of keys, with only the key that closes it.
         volumeRow?.visibility = if (open) VISIBLE else GONE
@@ -422,8 +464,8 @@ open class MediaPlayerBarView(context: Context, val control: MediaPlayerControl,
             tools.forEach { it.visibility = if (open) GONE else it.visibility.takeIf { v -> v != GONE || it === volumeButton } ?: VISIBLE }
             volumeButton?.visibility = if (open) GONE else VISIBLE
             if (!open) {
-                browse?.visibility = if (ready && options.browse && caps?.browse == true) VISIBLE else GONE
-                pill?.visibility = if (ready && options.grouping && caps?.group == true) VISIBLE else GONE
+                browse?.visibility = if (canBrowse) VISIBLE else GONE
+                pill?.visibility = if (canGroup) VISIBLE else GONE
             }
             transport.forEach { it.visibility = if (open) GONE else VISIBLE }
         } else {
@@ -455,6 +497,8 @@ open class MediaPlayerColumnView(
     private var own: Scope? = null
     private var library: GlyphButton? = null
     private var queueKey: GlyphButton? = null
+    private var pillView: SpeakersPillView? = null
+    private var grouping: SpeakersControl? = null
 
     private fun build() {
         removeAllViews()
@@ -462,11 +506,11 @@ open class MediaPlayerColumnView(
         val scope = control.scope.child()
         own = scope
         val queue = QueueControl(control.handle, scope)
-        val speakersControl = SpeakersControl(control.handle, scope, speakers)
+        grouping = null
         background = rounded(t.palette.surface, t.radius.card)
         val pad = Math.round(4 * unitPx())
         setPadding(pad, pad, pad, pad)
-        val pill = SpeakersPillView(context, speakersControl, compact = false) { openSpeakers(context, control, speakersControl, label) }
+        val pill = SpeakersPillView(context, compact = false) { openSpeakers(context, control, speakers, label) }.also { pillView = it }
         val browse = GlyphButton(context, Ui.library).also {
             library = it
             it.onClick = { if (overlays) openLibrary(context, control, label) else openPlayer(context, control, label, speakers) }
@@ -509,6 +553,11 @@ open class MediaPlayerColumnView(
         // The slots keep their place when a key is not there, so the transport stays centered.
         library?.visibility = if (ready && caps?.browse == true) VISIBLE else INVISIBLE
         queueKey?.visibility = if (ready && caps?.queue == true) VISIBLE else INVISIBLE
+        val canGroup = ready && caps?.group == true
+        if (canGroup && grouping == null) {
+            own?.let { scope -> grouping = SpeakersControl(control.handle, scope, speakers).also { pillView?.use(it) } }
+        }
+        pillView?.visibility = if (canGroup) VISIBLE else GONE
     }
 }
 
@@ -643,14 +692,17 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
     private var shownTab: ListTab? = null
     private var listScope: Scope? = null
     private var column: FullLayout? = null
+    private var pillView: SpeakersPillView? = null
+    private var grouping: SpeakersControl? = null
 
     private fun build() {
         removeAllViews()
         val scope = control.scope.child()
         own = scope
         val queue = QueueControl(control.handle, scope)
-        val speakersControl = SpeakersControl(control.handle, scope, speakers)
-        val pill = SpeakersPillView(context, speakersControl, compact = false) { openSpeakers(context, control, speakersControl, label) }
+        val pill = SpeakersPillView(context, compact = false) { openSpeakers(context, control, speakers, label) }
+        pillView = pill
+        grouping = null
         val player = NowPlayingView(context, control, label, queue, shuffleAtTitle = true, speakers = pill)
         val stack = FullLayout(context)
         column = stack
@@ -733,13 +785,20 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
         build()
         // The lists a player has are known once it has reported.
         var had = lists()
-        onDetach(control.handle.state.listen {
+        val update = {
+            val canGroup = control.ready && control.handle.entity?.capabilities?.group == true
+            if (canGroup && grouping == null) {
+                own?.let { scope -> grouping = SpeakersControl(control.handle, scope, speakers).also { pillView?.use(it) } }
+            }
+            pillView?.visibility = if (canGroup) View.VISIBLE else View.GONE
             val now = lists()
             if (now != had) {
                 had = now
                 arrange()
             }
-        })
+        }
+        onDetach(control.handle.state.listen { update() })
+        update()
     }
 
     override fun onDetachedFromWindow() {

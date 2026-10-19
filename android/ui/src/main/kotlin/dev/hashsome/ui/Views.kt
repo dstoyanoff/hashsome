@@ -643,6 +643,9 @@ open class BarView(context: Context) : View(context) {
     var onDrag: ((Float) -> Unit)? = null
     var onCommit: ((Float) -> Unit)? = null
 
+    /** The touch was taken away (a gesture, a lost finger): nothing is committed. */
+    var onCancel: (() -> Unit)? = null
+
     /** Whether a finger is dragging it. */
     var dragging: Boolean = false
         private set
@@ -701,7 +704,10 @@ open class BarView(context: Context) : View(context) {
                 onCommit?.invoke(v)
             }
 
-            MotionEvent.ACTION_CANCEL -> dragging = false
+            MotionEvent.ACTION_CANCEL -> if (dragging) {
+                dragging = false
+                onCancel?.invoke()
+            }
         }
         return true
     }

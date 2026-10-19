@@ -2,10 +2,11 @@ package dev.hashsome.ui
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapShader
+import android.graphics.Matrix
+import android.graphics.Shader
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.Rect
 import android.graphics.RectF
 import android.text.TextPaint
 import android.text.TextUtils
@@ -32,34 +33,39 @@ internal fun kindIcon(kind: BrowseKind): Icon = when (kind) {
     BrowseKind.Other -> Ui.music
 }
 
-/** The picture of a row: a rounded square (or a circle, for an artist) of the raised surface with the artwork in it, center-cropped, or a glyph. */
-private fun drawPicture(
-    canvas: Canvas,
-    rect: RectF,
-    radius: Float,
-    bitmap: Bitmap?,
-    glyph: Icon,
-    glyphColor: Int,
-    paint: Paint,
-    clip: Path,
-    source: Rect,
-) {
-    val t = theme
-    paint.style = Paint.Style.FILL
-    paint.color = t.palette.surfaceRaised
-    canvas.drawRoundRect(rect, radius, radius, paint)
-    if (bitmap != null) {
-        canvas.save()
-        clip.reset()
-        clip.addRoundRect(rect, radius, radius, Path.Direction.CW)
-        canvas.clipPath(clip)
-        val side = minOf(bitmap.width, bitmap.height)
-        source.set((bitmap.width - side) / 2, (bitmap.height - side) / 2, (bitmap.width + side) / 2, (bitmap.height + side) / 2)
-        canvas.drawBitmap(bitmap, source, rect, null)
-        canvas.restore()
-    } else {
-        val g = dp(20)
-        canvas.drawBitmap(iconBitmap(glyph, g, glyphColor), rect.centerX() - g / 2f, rect.centerY() - g / 2f, null)
+/** A picture as a shader: center-cropped into a rounded square by `drawRoundRect`, with no clip path and nothing made as it draws. */
+internal class PictureFill {
+    private var bitmap: Bitmap? = null
+    private var shader: BitmapShader? = null
+    private val matrix = Matrix()
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    val has: Boolean get() = bitmap != null
+
+    fun set(next: Bitmap?) {
+        bitmap = next
+        shader = next?.let { BitmapShader(it, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP) }
+    }
+
+    /** The picture in [rect], or the raised surface with [glyph] when there is none. */
+    fun draw(canvas: Canvas, rect: RectF, radius: Float, glyph: Icon, glyphColor: Int, paint: Paint) {
+        val t = theme
+        paint.style = Paint.Style.FILL
+        paint.color = t.palette.surfaceRaised
+        canvas.drawRoundRect(rect, radius, radius, paint)
+        val b = bitmap
+        val sh = shader
+        if (b != null && sh != null) {
+            val scale = rect.width() / minOf(b.width, b.height)
+            matrix.setScale(scale, scale)
+            matrix.postTranslate(rect.left + (rect.width() - b.width * scale) / 2, rect.top + (rect.height() - b.height * scale) / 2)
+            sh.setLocalMatrix(matrix)
+            fill.shader = sh
+            canvas.drawRoundRect(rect, radius, radius, fill)
+        } else {
+            val g = dp(20)
+            canvas.drawBitmap(iconBitmap(glyph, g, glyphColor), rect.centerX() - g / 2f, rect.centerY() - g / 2f, null)
+        }
     }
 }
 
@@ -70,6 +76,9 @@ private fun drawPicture(
  * What a button has asked for and is waiting on shows as a ring round it, and a play that is waiting as a spinner on the picture.
  */
 open class BrowseRow(context: Context) : View(context) {
+    // One drawn thing: its fade (a row arriving, a track played) is applied as it draws, with no layer of its own to render.
+    override fun hasOverlappingRendering(): Boolean = false
+
     var title: String = ""
         set(value) {
             field = value
@@ -94,6 +103,7 @@ open class BrowseRow(context: Context) : View(context) {
         set(value) {
             field = value
             dirty = true
+            geoDirty = true
             invalidate()
         }
 
@@ -101,6 +111,7 @@ open class BrowseRow(context: Context) : View(context) {
         set(value) {
             field = value
             dirty = true
+            geoDirty = true
             invalidate()
         }
 
@@ -109,6 +120,7 @@ open class BrowseRow(context: Context) : View(context) {
         set(value) {
             field = value
             dirty = true
+            geoDirty = true
             invalidate()
         }
 
@@ -117,6 +129,7 @@ open class BrowseRow(context: Context) : View(context) {
         set(value) {
             field = value
             dirty = true
+            geoDirty = true
             invalidate()
         }
 
@@ -130,6 +143,7 @@ open class BrowseRow(context: Context) : View(context) {
     var picture: Bitmap? = null
         set(value) {
             field = value
+            fill.set(value)
             invalidate()
         }
 
@@ -173,9 +187,11 @@ open class BrowseRow(context: Context) : View(context) {
     private val subPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
     private val oval = RectF()
-    private val clip = Path()
-    private val source = Rect()
+    private val fill = PictureFill()
     private val spin = Spin(this)
+    private var buttonList: List<RowButton> = emptyList()
+    private var geo = RowGeometry(0f, 0f, 0f, 0)
+    private var geoDirty = true
     private var shownTitle: CharSequence = ""
     private var shownSub: CharSequence = ""
     private var dirty = true
@@ -197,7 +213,18 @@ open class BrowseRow(context: Context) : View(context) {
         pendingPlay = waiting
     }
 
-    private fun buttons(): List<RowButton> = BrowseActions.buttons(expandable, playable, queueable, active)
+    // What the row can do and where it is, worked out when something it depends on changes, not as it draws.
+    private fun buttons(): List<RowButton> {
+        refreshGeometry()
+        return buttonList
+    }
+
+    private fun refreshGeometry() {
+        if (!geoDirty && geo.width == width.toFloat()) return
+        buttonList = BrowseActions.buttons(expandable, playable, queueable, active)
+        geo = RowGeometry(width.toFloat(), dp(theme.density.iconCircle).toFloat(), 2 * unitPx(), buttonList.size)
+        geoDirty = false
+    }
 
     private fun sync() {
         spin.run((waiting || pendingNext || pendingAdd || pendingPlay) && isAttachedToWindow)
@@ -205,8 +232,8 @@ open class BrowseRow(context: Context) : View(context) {
     }
 
     private fun geometry(): RowGeometry {
-        val u = unitPx()
-        return RowGeometry(width.toFloat(), dp(theme.density.iconCircle).toFloat(), 2 * u, buttons().size)
+        refreshGeometry()
+        return geo
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -215,6 +242,7 @@ open class BrowseRow(context: Context) : View(context) {
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         dirty = true
+        geoDirty = true
     }
 
     override fun onAttachedToWindow() {
@@ -244,7 +272,7 @@ open class BrowseRow(context: Context) : View(context) {
         val u = unitPx()
         val h = height.toFloat()
         val buttons = buttons()
-        val geo = RowGeometry(width.toFloat(), dp(t.density.iconCircle).toFloat(), 2 * u, buttons.size)
+        val geo = geo
         val mainWidth = geo.mainWidth
         if (dirty) prepare(mainWidth)
         paint.style = Paint.Style.FILL
@@ -259,7 +287,7 @@ open class BrowseRow(context: Context) : View(context) {
         val left = 2 * u
         val top = (h - side) / 2
         rect.set(left, top, left + side, top + side)
-        drawPicture(canvas, rect, dp(t.radius.small), picture, kindIcon(kind), t.palette.textMuted, paint, clip, source)
+        fill.draw(canvas, rect, dp(t.radius.small), kindIcon(kind), t.palette.textMuted, paint)
         if (waiting) {
             paint.color = withAlpha(t.palette.surface, 0.6f)
             canvas.drawRoundRect(rect, dp(t.radius.small), dp(t.radius.small), paint)
@@ -383,6 +411,9 @@ open class BrowseRow(context: Context) : View(context) {
  * moved down (px), then [onDragEnd]; a press anywhere else plays the track.
  */
 open class QueueRow(context: Context) : View(context) {
+    // One drawn thing: its fade (a row arriving, a track played) is applied as it draws, with no layer of its own to render.
+    override fun hasOverlappingRendering(): Boolean = false
+
     var title: String = ""
         set(value) {
             field = value
@@ -408,6 +439,7 @@ open class QueueRow(context: Context) : View(context) {
     var picture: Bitmap? = null
         set(value) {
             field = value
+            fill.set(value)
             invalidate()
         }
 
@@ -444,8 +476,7 @@ open class QueueRow(context: Context) : View(context) {
     private val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val subPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
-    private val clip = Path()
-    private val source = Rect()
+    private val fill = PictureFill()
     private var shownTitle: CharSequence = ""
     private var shownArtist: CharSequence = ""
     private var dirty = true
@@ -511,9 +542,9 @@ open class QueueRow(context: Context) : View(context) {
         val left = trackLeft + 2 * u
         val top = (h - picture) / 2
         rect.set(left, top, left + picture, top + picture)
-        drawPicture(
-            canvas, rect, dp(t.radius.small), this.picture, if (playing) Ui.audioLines else Ui.music,
-            if (playing) t.palette.accent else t.palette.textMuted, paint, clip, source,
+        fill.draw(
+            canvas, rect, dp(t.radius.small), if (playing) Ui.audioLines else Ui.music,
+            if (playing) t.palette.accent else t.palette.textMuted, paint,
         )
 
         titlePaint.color = if (playing) t.palette.accent else t.palette.text

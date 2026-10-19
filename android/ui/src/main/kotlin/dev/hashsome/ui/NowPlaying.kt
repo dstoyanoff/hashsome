@@ -126,9 +126,11 @@ internal class VolumeParts(context: Context, private val control: MediaPlayerCon
         if (ready) {
             bar.onDrag = { control.volume.drag(it.toDouble()) }
             bar.onCommit = { control.volume.commit(it.toDouble()) }
+            bar.onCancel = { control.volume.cancel() }
         } else {
             bar.onDrag = null
             bar.onCommit = null
+            bar.onCancel = null
         }
         percent.text = "${Math.round(level * 100)}%"
     }
@@ -193,9 +195,14 @@ internal class NowPlayingView(
         it.title.role = Role.Title
     }
     private val sub = MarqueeText(context).also { it.role = Role.Body }
+    private val loadingLine = LabelView(context, Role.Body, Tone.Muted).also {
+        it.spinner = true
+        it.align = Paint.Align.CENTER
+        it.visibility = View.GONE
+    }
     private val time = LabelView(context, Role.Secondary, Tone.Muted).also { it.align = Paint.Align.CENTER }
     private val volumeRow = volume.row(context)
-    private val artwork = ArtworkSlot(AssetSize.Medium, { dp(130) }) { ring.show(it) }
+    private val artwork = ArtworkSlot(AssetSize.Medium, { (minOf(ring.width, ring.height) * 0.72f).toInt().takeIf { it > 0 } ?: dp(130) }) { ring.show(it) }
     private val queueState = queue
 
     init {
@@ -207,6 +214,7 @@ internal class NowPlayingView(
         val titles = ColumnLayout(context).also { it.align = Align.Center }
         titles.addView(titleRow, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         titles.addView(sub, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also { it.topMargin = Math.round(0.5f * unitPx()) })
+        titles.addView(loadingLine, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also { it.topMargin = Math.round(0.5f * unitPx()) })
         panel.addView(titles, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         panel.addView(time, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         speakers?.let {

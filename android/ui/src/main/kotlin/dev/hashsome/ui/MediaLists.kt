@@ -95,9 +95,21 @@ internal class SkeletonList(context: Context, private val rows: Int = 6) : View(
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), rows * row + (rows - 1) * Math.round(u))
     }
 
+    override fun onVisibilityChanged(changed: View, visibility: Int) {
+        super.onVisibilityChanged(changed, visibility)
+        if (changed === this) sync()
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (Animation.full) {
+        sync()
+    }
+
+    /** The pulse runs only while the placeholders are on show: an animation nobody sees still costs a frame each time. */
+    private fun sync() {
+        pulse?.cancel()
+        pulse = null
+        if (Animation.full && isAttachedToWindow && visibility == VISIBLE) {
             pulse = ValueAnimator.ofFloat(0.04f, 0.14f).apply {
                 duration = 700
                 repeatCount = ValueAnimator.INFINITE
@@ -350,8 +362,7 @@ open class MediaBrowserView(context: Context, val control: MediaBrowserControl) 
             bindRow(index)
             host.addView(row, LinearLayout.LayoutParams(-1, BrowseRow.rowHeight()).also { if (index > 0) it.topMargin = Math.round(unitPx()) })
             // A row comes in sliding from the right, the ones after the first starting a little later (not while searching).
-            row.arrive(0)
-            if (searching) row.alpha = 1f
+            if (!searching) row.arrive(0)
         }
         // What is in what is open, at the end of its list: a line above the rows would push them down on opening.
         if (s.stack.isNotEmpty() && s.search == null && rows.size >= items.size) {
@@ -408,10 +419,12 @@ open class MediaQueueView(context: Context, val control: QueueControl) : BoundVi
     private val host = LinearLayout(context).also { it.orientation = LinearLayout.VERTICAL }
     private val skeleton = SkeletonList(context)
     private val note = FrameLayout(context)
-    private val arrival = RowsArrival(control.scope.child()).also { it.stagger = false }
+    private val arrivalScope = control.scope.child()
+    private val arrival = RowsArrival(arrivalScope).also { it.stagger = false }
     private val rows = ArrayList<QueueRow>()
     private val pictures = ArrayList<ArtworkSlot>()
     private var tail: LabelView? = null
+    private var good: QueueState? = null
 
     // The state the rows show, split into what has played (and the track playing) and what comes next.
     private var shown: QueueState? = null
@@ -472,13 +485,17 @@ open class MediaQueueView(context: Context, val control: QueueControl) : BoundVi
         render()
         onDetach {
             pictures.forEach { it.stop() }
+            arrivalScope.dispose()
             clearTimer?.invoke()
             draftTimer?.invoke()
         }
     }
 
     private fun render() {
-        val state = control.state.value
+        val raw = control.state.value
+        if (raw.error == null && !raw.loading) good = raw
+        // The queue is an extra: an error leaves what was last read on show, with the error under the heading.
+        val state = if (raw.error != null) good ?: raw else raw
         val player = control.handle.entity
         val ready = control.handle.state.value is dev.hashsome.headless.HandleState.Ready
         val hasQueue = player?.capabilities?.queue == true
@@ -490,6 +507,7 @@ open class MediaQueueView(context: Context, val control: QueueControl) : BoundVi
         when {
             !ready -> say(mediaStatusLabel(control.handle.state.value).orEmpty())
             !hasQueue -> say("This player has no queue.")
+            raw.error != null && good == null -> say(raw.error!!, Tone.Danger)
             state.loading && state.items.isEmpty() -> skeleton.visibility = VISIBLE
             state.items.isEmpty() -> {
                 heading.count = MediaFormat.queueCount(state.total, state.duration)
@@ -498,8 +516,9 @@ open class MediaQueueView(context: Context, val control: QueueControl) : BoundVi
 
             else -> {
                 heading.count = MediaFormat.queueCount(state.total, state.duration)
-                val line = player?.source?.let { MediaFormat.source(it) }
+                val line = raw.error ?: player?.source?.let { MediaFormat.source(it) }
                 source.text = line.orEmpty()
+                source.tone = if (raw.error != null) Tone.Danger else Tone.Muted
                 source.visibility = if (line == null) GONE else VISIBLE
                 clear.visibility = if (state.total > 0) VISIBLE else GONE
                 clear.isEnabled = !clearing
@@ -511,9 +530,9 @@ open class MediaQueueView(context: Context, val control: QueueControl) : BoundVi
         }
     }
 
-    private fun say(text: String) {
+    private fun say(text: String, tone: Tone = Tone.Muted) {
         note.removeAllViews()
-        note.addView(message(context, text), FrameLayout.LayoutParams(-1, -2))
+        note.addView(message(context, text, tone), FrameLayout.LayoutParams(-1, -2))
         note.visibility = VISIBLE
     }
 
@@ -538,6 +557,20 @@ open class MediaQueueView(context: Context, val control: QueueControl) : BoundVi
         return stopped && at != -1 && at == state.items.size - 1 && state.offset + state.items.size == state.total
     }
 
+    private fun itemOf(row: QueueRow): QueueItem? {
+        val i = rows.indexOf(row)
+        return if (i < 0) null else if (i < leading.size) leading[i] else upcoming.getOrNull(i - leading.size)
+    }
+
+    private fun newRow(): QueueRow {
+        val row = QueueRow(context)
+        // Made once: a row asks the list what it is when it is pressed.
+        row.onPlay = { itemOf(row)?.let { control.play(it) } }
+        row.onRemove = { itemOf(row)?.let { control.remove(it) } }
+        wireDrag(row)
+        return row
+    }
+
     private fun layoutRows() {
         val state = shown ?: return
         val over = finished(state)
@@ -545,7 +578,7 @@ open class MediaQueueView(context: Context, val control: QueueControl) : BoundVi
         val count = leading.size + visible
         // Rows are kept and bound again, so a queue that changes under a finger does not rebuild the list.
         while (rows.size < count) {
-            val row = QueueRow(context)
+            val row = newRow()
             val slot = ArtworkSlot(AssetSize.Small, { dp(QueueRow.PICTURE) }) { row.picture = it }
             rows += row
             pictures += slot
@@ -558,30 +591,21 @@ open class MediaQueueView(context: Context, val control: QueueControl) : BoundVi
             rows.removeAt(rows.size - 1)
             pictures.removeAt(pictures.size - 1).stop()
         }
+        val at = leading.indexOfLast { it.current }
         for (i in 0 until count) {
             val isLeading = i < leading.size
             val item = if (isLeading) leading[i] else upcoming[i - leading.size]
             val row = rows[i]
-            val at = leading.indexOfLast { it.current }
-            val current = isLeading && item.current && !over
-            row.bind(item, playing = current, reorderable = !isLeading)
+            row.bind(item, playing = isLeading && item.current && !over, reorderable = !isLeading)
             row.alpha = when {
                 !isLeading -> if (clearing) 0.5f else 1f
                 // Played, and the track that was playing once it is over.
-                i < at || (over && item.current) || (at == -1) -> 0.5f
+                i < at || (over && item.current) -> 0.5f
                 else -> 1f
             }
             row.translationY = 0f
             row.lifted = false
             pictures[i].set(item.artworkUrl)
-            row.onPlay = { control.play(item) }
-            row.onRemove = { control.remove(item) }
-            if (!isLeading) wireDrag(row, item, i - leading.size)
-            else {
-                row.onDragStart = null
-                row.onDragMove = null
-                row.onDragEnd = null
-            }
         }
         // What is out of sight, said at the end of the list.
         tail?.let { host.removeView(it) }
@@ -601,11 +625,10 @@ open class MediaQueueView(context: Context, val control: QueueControl) : BoundVi
     private fun pitch(): Float = (dp(QueueRow.ROW) + Math.round(dp(theme.density.space) / 6f)).toFloat()
 
     /** Dragging a row by its handle: it follows the finger, the rows it passes give way, and where it is let go is where it goes. */
-    private fun wireDrag(row: QueueRow, item: QueueItem, from: Int) {
-        val first = leading.size
-        val last = arrival.visible.value.coerceAtMost(upcoming.size) - 1
+    private fun wireDrag(row: QueueRow) {
         row.onDragStart = {
-            dragging = true
+            val from = rows.indexOf(row) - leading.size
+            dragging = from >= 0
             dragFrom = from
             dragTarget = from
             row.lifted = true
@@ -614,6 +637,9 @@ open class MediaQueueView(context: Context, val control: QueueControl) : BoundVi
             host.requestLayout()
         }
         row.onDragMove = { dy ->
+            val from = dragFrom
+            val first = leading.size
+            val last = arrival.visible.value.coerceAtMost(upcoming.size) - 1
             row.translationY = dy
             val target = QueueDrag.target(from, dy, pitch(), last)
             if (target != dragTarget) {
@@ -629,6 +655,8 @@ open class MediaQueueView(context: Context, val control: QueueControl) : BoundVi
             }
         }
         row.onDragEnd = { dy, cancelled ->
+            val from = dragFrom
+            val last = arrival.visible.value.coerceAtMost(upcoming.size) - 1
             dragging = false
             row.elevation = 0f
             row.lifted = false
@@ -636,8 +664,9 @@ open class MediaQueueView(context: Context, val control: QueueControl) : BoundVi
                 it.animate().cancel()
                 it.translationY = 0f
             }
+            val item = upcoming.getOrNull(from)
             val target = if (cancelled) from else QueueDrag.target(from, dy, pitch(), last)
-            if (target != from) drop(item, from, target)
+            if (item != null && target != from) drop(item, from, target)
             else if (deferred) render()
             deferred = false
         }

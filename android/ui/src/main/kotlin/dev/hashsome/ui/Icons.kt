@@ -100,5 +100,6 @@ fun warmIcons(context: android.content.Context) {
         UiIcons.close, UiIcons.play, UiIcons.pause, UiIcons.skipNext, UiIcons.skipPrevious, UiIcons.shuffle, UiIcons.volume,
         UiIcons.volumeMuted, UiIcons.grip, UiIcons.chevronLeft, UiIcons.chevronRight, UiIcons.chevronDown, UiIcons.chevronUp,
         UiIcons.search, UiIcons.list, Ui.listStart, Ui.listPlus, Ui.trash2, Ui.library, Ui.listMusic, Ui.speaker,
+        Ui.arrowLeft, Ui.audioLines, Ui.crown, Ui.disc3, Ui.folder, Ui.logIn, Ui.logOut, Ui.micVocal, Ui.radio,
     ).forEach { iconDrawable(it) }
 }

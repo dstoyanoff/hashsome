@@ -87,7 +87,10 @@ abstract class Overlay(context: Context) : BoundView(context) {
     /** A glyph in a circle before the title. */
     var titleIcon: Icon? = null
 
-    protected val scrim = View(context).apply {
+    // A flat color: its fade needs no layer of its own to render.
+    protected val scrim = object : View(context) {
+        override fun hasOverlappingRendering(): Boolean = false
+    }.apply {
         setBackgroundColor(SCRIM)
         setOnClickListener { dismiss() }
     }
@@ -334,7 +337,6 @@ open class Drawer(context: Context) : Overlay(context) {
         val panel = ColumnLayout(context).apply {
             background = surface(FloatArray(4) { t.radius.drawer })
             elevation = elevationOf(t.shadow.drawer)
-            clipToOutline = true
             isClickable = true
             val pad = Math.round(5 * u)
             setPadding(pad, pad, pad, pad)
@@ -357,8 +359,11 @@ open class Drawer(context: Context) : Overlay(context) {
         if (Animation.animates) {
             scrim.alpha = 0f
             scrim.animate().alpha(1f).setDuration(ENTER_MS).setInterpolator(EASE_OUT).start()
-            panel.alpha = 0f
-            panel.animate().alpha(1f).setDuration(ENTER_MS).setInterpolator(EASE_OUT).start()
+            // The panel itself fades only where the display can afford it: a fade of a panel this size is a layer of its own to render each frame.
+            if (Animation.full) {
+                panel.alpha = 0f
+                panel.animate().alpha(1f).setDuration(ENTER_MS).setInterpolator(EASE_OUT).withLayer().start()
+            }
         }
     }
 
@@ -366,7 +371,7 @@ open class Drawer(context: Context) : Overlay(context) {
         val p = panel
         leave(
             if (p == null) null else { end ->
-                p.animate().alpha(0f).setDuration(EXIT_MS).setInterpolator(EASE_IN).withEndAction(end).start()
+                p.animate().alpha(0f).setDuration(EXIT_MS).setInterpolator(EASE_IN).withLayer().withEndAction(end).start()
             },
         )
     }
@@ -400,7 +405,6 @@ open class Sheet(context: Context) : Overlay(context) {
         val panel = SheetPanel().apply {
             background = surface(floatArrayOf(t.radius.drawer, t.radius.drawer, 0f, 0f))
             elevation = elevationOf(t.shadow.drawer)
-            clipToOutline = true
             isClickable = true
         }
         this.panel = panel
@@ -430,7 +434,7 @@ open class Sheet(context: Context) : Overlay(context) {
                     panel.removeOnLayoutChangeListener(this)
                     // Rises from the bottom.
                     panel.translationY = (b - tp).toFloat()
-                    panel.animate().translationY(0f).setDuration(RISE_MS).setInterpolator(EASE_OUT).start()
+                    panel.animate().translationY(0f).setDuration(RISE_MS).setInterpolator(EASE_OUT).withLayer().start()
                 }
             })
         }
@@ -475,7 +479,7 @@ open class Sheet(context: Context) : Overlay(context) {
         val p = panel
         leave(
             if (p == null) null else { end ->
-                p.animate().translationY(p.height.toFloat()).setDuration(EXIT_MS).setInterpolator(EASE_IN).withEndAction(end).start()
+                p.animate().translationY(p.height.toFloat()).setDuration(EXIT_MS).setInterpolator(EASE_IN).withLayer().withEndAction(end).start()
             },
         )
     }

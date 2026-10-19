@@ -67,7 +67,8 @@ internal class Spin(private val view: View) {
     private var animator: ValueAnimator? = null
 
     fun run(on: Boolean) {
-        if (!on) {
+        // Where nothing moves the arc holds still.
+        if (!on || !Animation.animates) {
             animator?.cancel()
             animator = null
             return
@@ -95,6 +96,9 @@ private fun Canvas.drawArcAround(rect: RectF, angle: Float, paint: Paint) = draw
  */
 internal open class GlyphButton(context: Context, icon: Icon, private val glyphDp: Float? = null, private val plain: Boolean = false) :
     View(context) {
+    // One drawn thing: a fade of it needs no layer of its own to render.
+    override fun hasOverlappingRendering(): Boolean = false
+
     var icon: Icon = icon
         set(value) {
             if (field == value) return
@@ -415,6 +419,9 @@ internal enum class Tone { Text, Muted, Accent, Danger }
 
 /** One line of text in a role, aligned within the width it is given and ended with an ellipsis when it does not fit. */
 internal class LabelView(context: Context, role: Role = Role.Body, tone: Tone = Tone.Text) : View(context) {
+    // One drawn thing: a fade of it needs no layer of its own to render.
+    override fun hasOverlappingRendering(): Boolean = false
+
     var text: CharSequence = ""
         set(value) {
             if (field == value) return
@@ -443,9 +450,34 @@ internal class LabelView(context: Context, role: Role = Role.Body, tone: Tone = 
     /** The least width, in dp. */
     var minWidthDp = 0
 
+    /** A spinner turns before the words (something is loading). */
+    var spinner: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            spin.run(value && isAttachedToWindow)
+            dirty = true
+            requestLayout()
+            invalidate()
+        }
+
     private val paint = TextPaint(Paint.ANTI_ALIAS_FLAG)
+    private val spin = Spin(this)
+    private val arc = RectF()
     private var shown: CharSequence = ""
     private var dirty = true
+
+    private fun lead(): Int = if (spinner) dp(12) + Math.round(1.5f * unitPx()) else 0
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        spin.run(spinner)
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        spin.run(false)
+    }
 
     private fun colorOf(): Int = theme.palette.let {
         when (tone) {
@@ -458,7 +490,7 @@ internal class LabelView(context: Context, role: Role = Role.Body, tone: Tone = 
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         paint.style(theme, role, 0)
-        val wide = Math.ceil(paint.measureText(text, 0, text.length).toDouble()).toInt()
+        val wide = Math.ceil(paint.measureText(text, 0, text.length).toDouble()).toInt() + lead()
         val own = maxOf(wide, dp(minWidthDp))
         val w = when (MeasureSpec.getMode(widthMeasureSpec)) {
             MeasureSpec.EXACTLY -> MeasureSpec.getSize(widthMeasureSpec)
@@ -477,13 +509,31 @@ internal class LabelView(context: Context, role: Role = Role.Body, tone: Tone = 
     override fun onDraw(canvas: Canvas) {
         paint.style(theme, role, colorOf())
         if (dirty) {
-            shown = TextUtils.ellipsize(text, paint, width.toFloat(), TextUtils.TruncateAt.END)
+            shown = TextUtils.ellipsize(text, paint, (width - lead()).toFloat(), TextUtils.TruncateAt.END)
             dirty = false
         }
+        val lead = lead()
         val x = when (align) {
             Paint.Align.LEFT -> 0f
             Paint.Align.CENTER -> width / 2f
             Paint.Align.RIGHT -> width.toFloat()
+        }
+        if (spinner) {
+            val textW = paint.measureText(shown, 0, shown.length)
+            val start = when (align) {
+                Paint.Align.LEFT -> 0f
+                Paint.Align.CENTER -> (width - lead - textW) / 2
+                Paint.Align.RIGHT -> width - lead - textW
+            }
+            val r = dp(6f)
+            val cy = height / 2f
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = dp(1.5f)
+            arc.set(start + dp(1f), cy - r + dp(1f), start + 2 * r - dp(1f), cy + r - dp(1f))
+            canvas.drawArc(arc, spin.angle, 90f, false, paint)
+            paint.style = Paint.Style.FILL
+            canvas.drawTextCentered(shown, start + lead, cy, paint)
+            return
         }
         canvas.drawTextCentered(shown, x, height / 2f, paint, align)
     }
@@ -586,6 +636,9 @@ internal class TitleRow(context: Context) : ViewGroup(context) {
 
 /** A labelled pill (an icon and words) for the speakers and the actions of what is open in a library; the sizes are the web's, set per use. */
 internal class PillButton(context: Context, icon: Icon?, label: String?, private val role: Role = Role.Label) : View(context) {
+    // One drawn thing: a fade of it needs no layer of its own to render.
+    override fun hasOverlappingRendering(): Boolean = false
+
     var icon: Icon? = icon
         set(value) {
             field = value
@@ -895,11 +948,13 @@ internal class ChipRowView(context: Context) : View(context) {
                 downX = event.x
                 startOffset = offset
                 dragging = false
-                parent?.requestDisallowInterceptTouchEvent(true)
             }
 
             MotionEvent.ACTION_MOVE -> {
-                if (!dragging && Math.abs(event.x - downX) > dp(8f) && contentWidth() > width) dragging = true
+                if (!dragging && Math.abs(event.x - downX) > dp(8f) && contentWidth() > width) {
+                    dragging = true
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                }
                 if (dragging) {
                     offset = (startOffset - (event.x - downX)).coerceIn(0f, maxOf(0f, contentWidth() - width))
                     invalidate()
@@ -946,6 +1001,17 @@ internal class SearchBar(context: Context) : FrameLayout(context) {
             isSingleLine = true
             imeOptions = EditorInfo.IME_ACTION_SEARCH
             background = null
+            // It takes focus (and its blinking cursor, which draws on) only when it is pressed, not as the panel opens.
+            isFocusableInTouchMode = false
+            isFocusable = false
+            setOnTouchListener { v, e ->
+                if (e.actionMasked == MotionEvent.ACTION_DOWN && !v.isFocusable) {
+                    v.isFocusable = true
+                    v.isFocusableInTouchMode = true
+                    v.requestFocus()
+                }
+                false
+            }
             includeFontPadding = false
             setPadding(0, 0, 0, 0)
             setTextSize(TypedValue.COMPLEX_UNIT_PX, textPx(t.style(Role.Body).size.toFloat()))
@@ -1023,8 +1089,18 @@ internal class LibraryScroll(context: Context) : ScrollView(context) {
 
     override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
         super.onScrollChanged(l, t, oldl, oldt)
+        checkNearEnd()
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        super.onLayout(changed, l, t, r, b)
+        // A list that does not fill the view (it is taller than its first rows) asks for more without being scrolled.
+        checkNearEnd()
+    }
+
+    private fun checkNearEnd() {
         val content = getChildAt(0) ?: return
-        if (content.height - scrollY - height < dp(200)) onNearEnd?.invoke()
+        if (ScrollEnd.near(content.height, scrollY, height, dp(200))) onNearEnd?.invoke()
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
@@ -1047,6 +1123,11 @@ internal class LibraryScroll(context: Context) : ScrollView(context) {
         }
         return super.dispatchTouchEvent(ev)
     }
+}
+
+/** Whether the end of a list is within [slack] px of being on screen. */
+internal object ScrollEnd {
+    fun near(contentHeight: Int, scrollY: Int, viewHeight: Int, slack: Int): Boolean = contentHeight - scrollY - viewHeight < slack
 }
 
 /** Whether a move across a list is a swipe back (`SWIPE_BACK` in `media-browser.tsx`): far enough right, and clearly more across than up or down. */

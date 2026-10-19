@@ -4,8 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.Rect
 import android.graphics.RectF
 import android.view.Gravity
 import android.view.View
@@ -37,13 +35,13 @@ private class SpeakerPicture(context: Context) : View(context) {
     var picture: Bitmap? = null
         set(value) {
             field = value
+            fill.set(value)
             invalidate()
         }
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
-    private val clip = Path()
-    private val source = Rect()
+    private val fill = PictureFill()
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val side = dp(SIDE)
@@ -53,23 +51,7 @@ private class SpeakerPicture(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         val t = theme
         rect.set(0f, 0f, width.toFloat(), height.toFloat())
-        val r = dp(t.radius.small)
-        paint.color = t.palette.surfaceRaised
-        canvas.drawRoundRect(rect, r, r, paint)
-        val b = picture
-        if (b != null) {
-            canvas.save()
-            clip.reset()
-            clip.addRoundRect(rect, r, r, Path.Direction.CW)
-            canvas.clipPath(clip)
-            val side = minOf(b.width, b.height)
-            source.set((b.width - side) / 2, (b.height - side) / 2, (b.width + side) / 2, (b.height + side) / 2)
-            canvas.drawBitmap(b, source, rect, null)
-            canvas.restore()
-        } else {
-            val g = dp(18)
-            canvas.drawBitmap(iconBitmap(Ui.speaker, g, t.palette.textMuted), (width - g) / 2f, (height - g) / 2f, null)
-        }
+        fill.draw(canvas, rect, dp(t.radius.small), Ui.speaker, t.palette.textMuted, paint)
     }
 
     private companion object {
@@ -259,6 +241,9 @@ open class MediaSpeakersView(context: Context, val control: SpeakersControl) : B
     private val scroll = LibraryScroll(context)
     private val list = ColumnLayout(context).also { it.gap = 4 }
     private var rowScope: Scope? = null
+    private var mineScope: Scope? = null
+    private var mine: MediaPlayerControl? = null
+    private var shownKey: String? = null
 
     init {
         scroll.addView(list, FrameLayout.LayoutParams(-1, -2))
@@ -272,7 +257,12 @@ open class MediaSpeakersView(context: Context, val control: SpeakersControl) : B
         onDetach(control.speakers.listen(redraw))
         onDetach(control.status.listen(redraw))
         onDetach(control.feedback.listen(redraw))
-        onDetach { rowScope?.dispose() }
+        onDetach {
+            rowScope?.dispose()
+            mineScope?.dispose()
+            mine = null
+            shownKey = null
+        }
         render()
     }
 
@@ -297,11 +287,35 @@ open class MediaSpeakersView(context: Context, val control: SpeakersControl) : B
         }
     }
 
+    /** This player's own control (its volume), made once for as long as the view is shown. */
+    private fun mineControl(): MediaPlayerControl = mine ?: run {
+        val scope = control.scope.child()
+        mineScope = scope
+        MediaPlayerControl(control.handle, scope).also { mine = it }
+    }
+
     private fun ask(title: String, text: String, go: () -> Unit) {
         ConfirmCard(context, title, text, go).open()
     }
 
+    /** What the rows depend on: when it is the same as what is on show, nothing is made again (a bar being dragged stays in the hand). */
+    private fun structure(): String {
+        val player = control.handle.entity
+        val group = player?.group
+        val b = StringBuilder()
+        b.append(control.handle.state.value.javaClass.simpleName).append('|').append(player?.name).append('|').append(player?.capabilities?.group)
+        b.append('|').append(player?.playback == PlaybackState.Playing)
+        b.append('|').append(group?.leader).append(group?.members)
+        control.speakers.value.forEach { b.append('|').append(it.ref).append(it.name).append(it.joined) }
+        control.status.value.forEach { (k, v) -> b.append('|').append(k).append(v) }
+        control.feedback.value.forEach { (k, v) -> b.append('|').append(k).append(v) }
+        return b.toString()
+    }
+
     private fun render() {
+        val key = structure()
+        if (key == shownKey) return
+        shownKey = key
         rowScope?.dispose()
         val scope = control.scope.child()
         rowScope = scope
@@ -335,7 +349,7 @@ open class MediaSpeakersView(context: Context, val control: SpeakersControl) : B
             soleHeir != null -> listOf(Act("Leave", Ui.logOut, "group:handover") { control.leave() })
             else -> emptyList()
         }
-        stream += StreamRow(context, MediaPlayerControl(control.handle, scope), own, null, myActs.map { pill(it) })
+        stream += StreamRow(context, mineControl(), own, null, myActs.map { pill(it) })
         for (speaker in others) {
             val ref = speaker.ref
             val leading = ref == group?.leader

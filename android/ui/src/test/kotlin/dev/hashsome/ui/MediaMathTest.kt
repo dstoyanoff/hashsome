@@ -231,4 +231,76 @@ class MediaMathTest {
         assertNull(PlayRequests.loading(ref, mapOf("replace:album-1" to Feedback.Error)))
         assertNull(PlayRequests.loading(ref, emptyMap()))
     }
+
+    @Test
+    fun `an hour is hours and a second short of it is not`() {
+        assertEquals("1:00:00", MediaFormat.duration(3600.0))
+        assertEquals("59:59", MediaFormat.duration(3599.9))
+        assertEquals("0:00", MediaFormat.duration(Double.NaN))
+    }
+
+    @Test
+    fun `a length rounds to the minute, and half a minute short of an hour is an hour`() {
+        assertEquals("1 h", MediaFormat.length(59.5 * 60))
+        assertEquals("59 min", MediaFormat.length(59.4 * 60))
+        assertEquals("1 min", MediaFormat.length(Double.NaN))
+    }
+
+    @Test
+    fun `dragging round the ring at the top, backwards, goes back over it`() {
+        val seek = RingSeek(100.0)
+        seek.start(0.02)
+        // Back over the top: the start is held at 0, not jumped to the end.
+        assertEquals(0.0, seek.follow(0.98), 0.0)
+        assertEquals(0.0, seek.follow(0.9), 0.0)
+        // And forward again from the held start it moves on.
+        assertEquals(20.0, seek.follow(0.0).let { seek.follow(0.2) }, 1e-9)
+    }
+
+    @Test
+    fun `a track with no length seeks nowhere`() {
+        val seek = RingSeek(0.0)
+        assertEquals(0.0, seek.start(0.5), 0.0)
+        assertEquals(0.0, seek.follow(0.7), 0.0)
+    }
+
+    @Test
+    fun `row hit regions meet at their edges`() {
+        val g = RowGeometry(400f, 44f, 8f, 2)
+        assertEquals(0, g.regionAt(295.9f))
+        assertEquals(-1, g.regionAt(296f))
+        assertEquals(1, g.regionAt(304f))
+        assertEquals(-1, g.regionAt(348f))
+        assertEquals(2, g.regionAt(356f))
+        assertEquals(-1, g.regionAt(400f))
+        // A spare slot is a region like any other: it is only empty on the screen.
+        val spare = BrowseActions.buttons(false, true, true, true)
+        assertEquals(RowButton.Spare, spare[0])
+        val sg = RowGeometry(400f, 44f, 8f, spare.size)
+        assertEquals(1, sg.regionAt(sg.buttonLeft(0) + 1f))
+    }
+
+    @Test
+    fun `a drag with no distance between rows, or no rows, stays where it is`() {
+        assertEquals(0, QueueDrag.target(from = 3, offset = 10f, pitch = 58f, last = -2))
+        assertEquals(2, QueueDrag.target(from = 2, offset = 0f, pitch = 58f, last = 5))
+        assertEquals(1, QueueDrag.target(from = 3, offset = -58f * 2, pitch = 58f, last = 5))
+        // Half a row down is the next row (it rounds up, as the web's does).
+        assertEquals(3, QueueDrag.target(from = 2, offset = 29f, pitch = 58f, last = 5))
+        assertEquals(2, QueueDrag.target(from = 2, offset = -28f, pitch = 58f, last = 5))
+    }
+
+    @Test
+    fun `a target past the last row is the last row, and the shift of the dragged row is none`() {
+        assertEquals(4, QueueDrag.target(from = 1, offset = 9999f, pitch = 58f, last = 4))
+        assertEquals(0, QueueDrag.shift(2, 2, 4))
+        assertEquals(0, QueueDrag.shift(3, 2, 2))
+    }
+
+    @Test
+    fun `a list shorter than its view is near its end, a long one is not until it is scrolled`() {
+        assertTrue(ScrollEnd.near(contentHeight = 300, scrollY = 0, viewHeight = 500, slack = 200))
+        assertFalse(ScrollEnd.near(contentHeight = 2000, scrollY = 0, viewHeight = 500, slack = 200))
+        assertTrue(ScrollEnd.near(contentHeight = 2000, scrollY = 1400, viewHeight = 500, slack = 200))
+    }
 }

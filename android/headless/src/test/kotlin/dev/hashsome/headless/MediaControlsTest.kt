@@ -39,6 +39,18 @@ class MediaControlsTest {
     }
 
     @Test
+    fun `a control that is let go of stops following the player`() {
+        rig.client.set(ref("room"), player(volume = 0.4))
+        val own = rig.scope.child()
+        val c = MediaPlayerControl(EntityHandle(own, ref("room"), EntityKind.MediaPlayer), own).also { rig.settle() }
+        assertEquals(0.4, c.volume.level.value!!, 0.0)
+        own.dispose()
+        rig.client.set(ref("room"), player(volume = 0.9))
+        rig.settle()
+        assertEquals(0.4, c.volume.level.value!!, 0.0)
+    }
+
+    @Test
     fun `dragging shows the spot and sends nothing`() {
         val c = control()
         c.volume.drag(0.8)
