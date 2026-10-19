@@ -320,6 +320,8 @@ internal class HostClient(private val none: Client, initial: ServerAddress?, pri
     }
 
     override fun reconnect(server: ServerAddress?) {
+        // No address: the one it has, which is nothing to do for the stand-in. Either way it is connecting from now on.
+        wanted = true
         if (server != null) point(server) else inner.reconnect(null)
     }
 

@@ -123,13 +123,27 @@ class HostClientTest {
     }
 
     @Test
-    fun `it connects what it points at only once connecting was asked for`() {
-        val host = host()
-        host.point(a)
-        // point() is a reconnect, so asked for.
-        assertEquals(LinkStatus.Open, host.link.value)
+    fun `a host client is not connected until connecting is asked for, and reconnecting asks for it`() {
         val lazy = host(a)
-        assertSame(LinkStatus.Open, made.last().second.link.value)
-        assertTrue(lazy.link.value == LinkStatus.Open)
+        val first = made.last().second
+        first.link.set(LinkStatus.Closed)
+        // Nothing connects it by itself.
+        assertEquals(LinkStatus.Closed, lazy.link.value)
+        lazy.connect()
+        assertEquals(LinkStatus.Open, lazy.link.value)
+
+        // A stand-in being replaced is connected at once when reconnect() asks for it.
+        val fresh = host()
+        fresh.reconnect(null)
+        fresh.reconnect(b)
+        assertEquals(LinkStatus.Open, fresh.link.value)
+        assertEquals(b, made.last().first)
+    }
+
+    @Test
+    fun `reconnecting with no address reopens the address it has`() {
+        val host = host(a)
+        host.reconnect(null)
+        assertEquals(listOf<ServerAddress?>(null), made.single().second.reconnects)
     }
 }

@@ -41,7 +41,10 @@ object EntityStatus {
             if (snapshot.entity.availability == Availability.Ready) HandleState.Ready(snapshot.entity) else HandleState.Unavailable(snapshot.entity)
     }
 
-    /** The status of [ref] while [scope] lives; [HandleState.Missing] when there is no ref. */
+    /**
+     * The status of [ref] while [scope] lives. A null [ref] is [HandleState.Missing], as for a handle: a component for which no ref means
+     * "always ready" (`taskTile`) passes no store at all instead.
+     */
     fun watch(scope: Scope, ref: String?): Store<HandleState<Entity>> {
         val store = Store<HandleState<Entity>>(if (ref == null) HandleState.Missing else HandleState.Loading)
         if (ref != null) scope.watch(EntityRef(ref)) { store.set(of(it)) }

@@ -90,9 +90,10 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         stack += root
     }
 
-    private fun flex(grow: Boolean = false, minHeight: Int = 0, marginBottom: Int = 0): FlexParams =
+    private fun flex(grow: Boolean = false, minHeight: Int = 0, marginBottom: Int = 0, weight: Float? = null): FlexParams =
         FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also {
             it.grow = grow
+            it.weight = weight
             it.minHeightDp = minHeight
             it.bottomMargin = dp(marginBottom)
         }
@@ -109,10 +110,14 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
 
     // --- Layout ---------------------------------------------------------------------------------------------------
 
-    /** Children top to bottom. [gap] is in spacing units (the web's `gap={3}`), [minHeight] and margins in dp. */
+    /**
+     * Children top to bottom. [gap] is in spacing units (the web's `gap={3}`), [minHeight] and margins in dp. [weight] is the web's
+     * `flex: <weight> 1 0`: its share of what the siblings leave, whatever its content (two columns of 1 and 1.4 split their row 1 : 1.4).
+     */
     fun column(
         gap: Int = 0,
         grow: Boolean = false,
+        weight: Float? = null,
         align: Align = Align.Stretch,
         justify: Justify = Justify.Start,
         minHeight: Int = 0,
@@ -124,12 +129,13 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
             it.align = align
             it.justify = justify
         }
-        nest(layout, flex(grow, minHeight, marginBottom), build)
+        nest(layout, flex(grow, minHeight, marginBottom, weight), build)
     }
 
     fun row(
         gap: Int = 0,
         grow: Boolean = false,
+        weight: Float? = null,
         align: Align = Align.Center,
         justify: Justify = Justify.Start,
         minHeight: Int = 0,
@@ -141,7 +147,7 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
             it.align = align
             it.justify = justify
         }
-        nest(layout, flex(grow, minHeight, marginBottom), build)
+        nest(layout, flex(grow, minHeight, marginBottom, weight), build)
     }
 
     fun grid(columns: Int, gap: Int = 3, build: PageScope.() -> Unit) {
@@ -207,13 +213,13 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
 
     /**
      * The wall header: [left] is drawn at its left edge, then the date, the weather ([weather], when given), the clock and the status
-     * dot at the right, in one row of the top row's height. [mb] is the space below it in spacing units, as the web `Flex`'s `mb`
-     * (negative takes some back: a board puts twice a page gap between its rows, `mb = -3` leaves the header as far from what is under
-     * it as from the top of the page). [clockFormat] is how the clock writes the hours.
+     * dot at the right, in one row of the top row's height. [marginBottom] is the space below it in dp, like `column`'s (negative takes
+     * some back: the web's `mb={-3}` is 3 units = 12 dp, so `marginBottom = -12`; a board puts twice a page gap between its rows, and
+     * that leaves the header as far from what is under it as from the top of the page). [clockFormat] is how the clock writes the hours.
      */
-    fun header(left: (PageScope.() -> Unit)? = null, weather: String? = null, mb: Int = 0, clockFormat: ClockFormat = ClockFormat.Auto) {
+    fun header(left: (PageScope.() -> Unit)? = null, weather: String? = null, marginBottom: Int = 0, clockFormat: ClockFormat = ClockFormat.Auto) {
         val params = flex(minHeight = TOP_ROW)
-        params.bottomMargin = Math.round(mb * unitPx())
+        params.bottomMargin = dp(marginBottom)
         nest(RowLayout(context).also { it.gap = 3; it.align = Align.Center }, params) {
             left?.invoke(this)
             spacer(grow = true)
@@ -227,13 +233,19 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
     /**
      * The card the pages put list tabs and players in (the web's `Flex background="surface" radius="card" p={3}`): the surface color,
      * the card radius, 3 units of padding, children top to bottom ([gap] units apart) and clipped to the corners. [grow] takes the
-     * space left over in its row or column (and may be squeezed to fit, like `minHeight: 0`); [fill] makes the card's last child take
-     * what is left of the card's own height.
+     * space left over in its row or column (and may be squeezed to fit, like `minHeight: 0`); [weight] is its share instead, whatever its
+     * content (the web's `flex: 1.4 1 0`: two cards of 1 and 1.4 split their row 1 : 1.4). [fill] makes the card's last child take what
+     * is left of the card's own height, and give way to it, so a long list scrolls inside the card instead of pushing it past its space.
      */
-    fun surface(grow: Boolean = false, fill: Boolean = false, gap: Int = 0, build: PageScope.() -> Unit) {
+    fun surface(grow: Boolean = false, fill: Boolean = false, gap: Int = 0, weight: Float? = null, build: PageScope.() -> Unit) {
         val card = SurfaceView(context).also { it.gap = gap }
-        nest(card, flex(grow = grow).also { it.shrink = grow }, build)
-        if (fill && card.childCount > 0) (card.getChildAt(card.childCount - 1).layoutParams as? FlexParams)?.grow = true
+        nest(card, flex(grow = grow, weight = weight).also { it.shrink = grow || weight != null }, build)
+        if (fill && card.childCount > 0) {
+            (card.getChildAt(card.childCount - 1).layoutParams as? FlexParams)?.let {
+                it.grow = true
+                it.shrink = true
+            }
+        }
     }
 
     // --- Tiles ------------------------------------------------------------------------------------------------------
