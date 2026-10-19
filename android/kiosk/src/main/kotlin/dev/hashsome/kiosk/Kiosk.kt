@@ -123,7 +123,7 @@ class Presence(context: Context, scheduler: Scheduler) : TouchListener {
     val near: Store<Boolean> = Store(false)
     val lux: Store<Float?> = Store(null)
 
-    override fun onTouch(event: android.view.MotionEvent): Unit = TODO("WP5")
+    override fun onTouch(event: android.view.MotionEvent): Boolean = TODO("WP5")
 }
 
 sealed interface NightState {

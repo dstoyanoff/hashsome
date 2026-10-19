@@ -41,8 +41,11 @@ interface ScreenPolicy {
 
 /** Hears every touch on the dashboard (before the views do), and taps on the status dot. */
 interface TouchListener {
-    /** Called for every touch event; it cannot consume it. */
-    fun onTouch(event: MotionEvent) {}
+    /**
+     * Called for every touch event, before the views see it. Return true to consume it: the dashboard then never gets it (a
+     * touch that only woke a sleeping panel). The default consumes nothing.
+     */
+    fun onTouch(event: MotionEvent): Boolean = false
 
     /** The status dot of the top row was tapped. */
     fun onStatusDotTap() {}
@@ -268,6 +271,12 @@ open class DashboardActivity : Activity() {
         }
     }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        // singleTask: the kiosk reads its extras (`--es settings true`) from the current intent.
+        setIntent(intent)
+    }
+
     /** The dashboard `Hashsome.settings.dashboard` names; the first one when it names none that exists. */
     protected open fun chosenDashboard(): Dashboard? {
         val all = Hashsome.app.dashboards
@@ -288,7 +297,7 @@ open class DashboardActivity : Activity() {
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        Hashsome.touchListener.onTouch(ev)
+        if (Hashsome.touchListener.onTouch(ev)) return true
         host?.touched()
         return super.dispatchTouchEvent(ev)
     }

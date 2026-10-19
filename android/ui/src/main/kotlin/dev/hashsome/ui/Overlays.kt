@@ -75,13 +75,15 @@ abstract class Overlay(context: Context) : BoundView(context) {
 
     /** Puts the overlay over the activity's content. */
     protected fun attach() {
-        val host = activityOf(context)?.findViewById<ViewGroup>(android.R.id.content) ?: error("An overlay needs an Activity")
-        if (parent != null) return
         leaving = false
         removeAllViews()
         addView(scrim, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        host.addView(this, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        Overlays.open += this
+        // Whoever made the overlay may have added it to the window already (`addContentView`); else it goes over the content.
+        if (parent == null) {
+            val host = activityOf(context)?.findViewById<ViewGroup>(android.R.id.content) ?: error("An overlay needs an Activity")
+            host.addView(this, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        }
+        if (this !in Overlays.open) Overlays.open += this
     }
 
     /** Runs the exit [animation] (when this motion level plays one) and then removes the overlay. */
