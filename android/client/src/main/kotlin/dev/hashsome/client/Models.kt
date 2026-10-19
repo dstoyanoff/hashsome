@@ -255,7 +255,11 @@ object Entities {
 
 /** ISO 8601 timestamps without `java.time` (API 24 has none). */
 object Iso8601 {
-    /** Milliseconds since the epoch, or null when [text] is not a timestamp. */
+    /**
+     * Milliseconds since the epoch, or null when [text] is not a timestamp. A date-time with no offset (`2026-03-01T12:00:00`)
+     * is read as UTC, where JavaScript's `Date` would read it as local time: the runtime always sends `Z` or an offset,
+     * so the difference never shows.
+     */
     fun parse(text: String?): Long? {
         if (text == null) return null
         var i = 0

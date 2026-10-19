@@ -6,7 +6,7 @@
     "type": "daily",
     "points": [
       {
-        "timestamp": "2026-02-28T22:00:00.000Z",
+        "timestamp": "2026-03-01T00:00:00.000Z",
         "condition": "partlycloudy",
         "temperature": 23,
         "low": 15,
@@ -21,7 +21,7 @@
         "windGustSpeed": 15.7
       },
       {
-        "timestamp": "2026-03-01T22:00:00.000Z",
+        "timestamp": "2026-03-02T00:00:00.000Z",
         "condition": "cloudy",
         "temperature": 24.9,
         "low": 16.9,
@@ -37,7 +37,7 @@
         "windGustSpeed": 24.3
       },
       {
-        "timestamp": "2026-03-02T22:00:00.000Z",
+        "timestamp": "2026-03-03T00:00:00.000Z",
         "condition": "rainy",
         "temperature": 24,
         "low": 16,
@@ -53,7 +53,7 @@
         "windGustSpeed": 29
       },
       {
-        "timestamp": "2026-03-03T22:00:00.000Z",
+        "timestamp": "2026-03-04T00:00:00.000Z",
         "condition": "pouring",
         "temperature": 21.6,
         "low": 13.6,
@@ -69,7 +69,7 @@
         "windGustSpeed": 27.4
       },
       {
-        "timestamp": "2026-03-04T22:00:00.000Z",
+        "timestamp": "2026-03-05T00:00:00.000Z",
         "condition": "partlycloudy",
         "temperature": 21.2,
         "low": 13.2,
@@ -84,7 +84,7 @@
         "windGustSpeed": 20.2
       },
       {
-        "timestamp": "2026-03-05T22:00:00.000Z",
+        "timestamp": "2026-03-06T00:00:00.000Z",
         "condition": "sunny",
         "temperature": 23.4,
         "low": 15.4,
@@ -99,7 +99,7 @@
         "windGustSpeed": 20.3
       },
       {
-        "timestamp": "2026-03-06T22:00:00.000Z",
+        "timestamp": "2026-03-07T00:00:00.000Z",
         "condition": "sunny",
         "temperature": 25,
         "low": 17,
@@ -114,7 +114,7 @@
         "windGustSpeed": 27.4
       },
       {
-        "timestamp": "2026-03-07T22:00:00.000Z",
+        "timestamp": "2026-03-08T00:00:00.000Z",
         "condition": "cloudy",
         "temperature": 23.6,
         "low": 15.6,
@@ -130,7 +130,7 @@
         "windGustSpeed": 29
       },
       {
-        "timestamp": "2026-03-08T22:00:00.000Z",
+        "timestamp": "2026-03-09T00:00:00.000Z",
         "condition": "fog",
         "temperature": 21.3,
         "low": 13.3,
@@ -146,7 +146,7 @@
         "windGustSpeed": 24.2
       },
       {
-        "timestamp": "2026-03-09T22:00:00.000Z",
+        "timestamp": "2026-03-10T00:00:00.000Z",
         "condition": "sunny",
         "temperature": 21.5,
         "low": 13.5,

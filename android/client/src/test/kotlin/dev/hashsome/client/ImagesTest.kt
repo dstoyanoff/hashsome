@@ -1,6 +1,7 @@
 package dev.hashsome.client
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ImagesTest {
@@ -44,5 +45,68 @@ class ImagesTest {
         assertEquals(4, Images.sampleSize(1600, 400))
         assertEquals(1, Images.sampleSize(100, 400))
         assertEquals(1, Images.sampleSize(1600, 0))
+    }
+
+    private class Fetches {
+        val calls = ArrayList<String>()
+        val queued = ArrayList<() -> Unit>()
+        val posted = ArrayList<() -> Unit>()
+        var now = 0L
+
+        fun install() {
+            Images.reset()
+            Images.fetcher = { url, _ ->
+                calls += url
+                null
+            }
+            Images.execute = { queued += it }
+            Images.post = { posted += it }
+            Images.clock = { now }
+        }
+
+        fun finish() {
+            while (queued.isNotEmpty()) queued.removeAt(0)()
+            while (posted.isNotEmpty()) posted.removeAt(0)()
+        }
+    }
+
+    @Test
+    fun `loads of one picture share one fetch and each caller is told`() {
+        val f = Fetches().also { it.install() }
+        val told = ArrayList<String>()
+        Images.load("u", 100) { told += "a" }
+        Images.load("u", 100) { told += "b" }
+        val dropped = Images.load("u", 100) { told += "c" }
+        Images.load("u", 200) { told += "d" }
+        dropped()
+        f.finish()
+        assertEquals(listOf("u", "u"), f.calls)
+        assertEquals(listOf("a", "b", "d"), told)
+    }
+
+    @Test
+    fun `a url that failed is not asked for again for thirty seconds`() {
+        val f = Fetches().also { it.install() }
+        val told = ArrayList<String>()
+        Images.load("u", 100) { told += "first" }
+        f.finish()
+        f.now = 29_999
+        Images.load("u", 100) { told += "second" }
+        assertTrue("answered through the main thread, not inside load()", told == listOf("first"))
+        f.finish()
+        assertEquals(listOf("first", "second"), told)
+        assertEquals(1, f.calls.size)
+        f.now = 30_000
+        Images.load("u", 100) { told += "third" }
+        f.finish()
+        assertEquals(2, f.calls.size)
+        assertEquals(3, told.size)
+    }
+
+    @Test
+    fun `a body over the limit is refused`() {
+        assertEquals(5, Images.readCapped(java.io.ByteArrayInputStream(ByteArray(5)), limit = 5)!!.size)
+        assertEquals(null, Images.readCapped(java.io.ByteArrayInputStream(ByteArray(6)), limit = 5))
+        assertEquals(40_000, Images.readCapped(java.io.ByteArrayInputStream(ByteArray(40_000)), limit = 50_000)!!.size)
     }
 }

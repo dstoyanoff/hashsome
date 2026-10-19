@@ -31,6 +31,9 @@ import { createMock as createHomeAssistantMock } from '../packages/integrations/
 import { createMock as createMusicAssistantMock } from '../packages/integrations/music-assistant/src/mock.ts';
 import { formatWithRepoConfig } from './format.ts';
 
+// The mocks derive days and hours from the local time zone as well as the clock: pin it, so the output is the same on every machine and in CI.
+process.env.TZ = 'UTC';
+
 const OUT_DIR = join(
   import.meta.dirname,
   '..',

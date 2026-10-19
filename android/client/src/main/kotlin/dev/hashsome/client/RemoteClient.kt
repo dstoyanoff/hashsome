@@ -1,7 +1,6 @@
 package dev.hashsome.client
 
 import org.json.JSONObject
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * The [Client] that talks to a runtime over [transport]. Every callback is delivered through [scheduler].post, so
@@ -22,8 +21,8 @@ class RemoteClient(
     private val transport: Transport.Factory = WsClient.Factory,
     private val scheduler: Scheduler,
 ) : Client {
-    /** Where problems worth a line go (an entity body that could not be read); may be called from the transport's thread. */
-    @Volatile var log: ((String) -> Unit)? = null
+    /** Where problems worth a line go (an entity body that could not be read): `Log.e`, the one level the Shelly X1 shows. May be called from the transport's thread. */
+    @Volatile var log: ((String) -> Unit)? = { android.util.Log.e("hashsome", it) }
 
     internal var parseEntityBody: (EntityRef, JSONObject) -> Entity = ::parseEntity
 
@@ -52,9 +51,6 @@ class RemoteClient(
         var timer: Cancel = {}
     }
 
-    /** The last `entity` frame seen for a ref, so an unchanged one is not parsed again. */
-    private class Frame(val text: String, val message: ServerMessage.EntityUpdate)
-
     private var current: Transport? = null
     private var isOpen = false
     private var stopped = true
@@ -69,7 +65,6 @@ class RemoteClient(
     private val watchers = LinkedHashMap<EntityRef, MutableList<Watcher>>()
     private val known = HashMap<EntityRef, Snapshot>()
     private val status = LinkedHashMap<String, ConnectionStatus>()
-    private val frames = ConcurrentHashMap<String, Frame>()
 
     override fun connect() {
         if (!stopped) return
@@ -85,7 +80,6 @@ class RemoteClient(
         val t = current
         if (t != null) lost(t) else link.set(LinkStatus.Closed)
         giveUpWaiting("Connection closed")
-        frames.clear()
     }
 
     override fun watch(ref: EntityRef, fn: (Snapshot) -> Unit): Cancel {
@@ -110,6 +104,13 @@ class RemoteClient(
     }
 
     override fun command(ref: EntityRef, name: String, args: JSONObject?, done: ((Outcome) -> Unit)?): Cancel {
+        // A number that is not finite cannot be written as JSON; the typed builders leave a JSON null in its place.
+        val invalid = args?.keys()?.asSequence()?.firstOrNull { args.isNull(it) }
+        if (invalid != null) {
+            val request = Pending({}, {})
+            scheduler.post { if (!request.cancelled) done?.invoke(Outcome.Failed("Invalid argument \"$invalid\" for $name")) }
+            return { request.cancelled = true }
+        }
         if (!isOpen) {
             val request = Pending({}, {})
             scheduler.post { if (!request.cancelled) done?.invoke(Outcome.Failed(NOT_CONNECTED)) }
@@ -166,7 +167,7 @@ class RemoteClient(
             }
 
             override fun onMessage(text: String) {
-                val message = decodeFrame(text) ?: return
+                val message = ServerMessage.decode(text, parseEntityBody, log) ?: return
                 scheduler.post { if (current === t) handle(message) }
             }
 
@@ -257,21 +258,6 @@ class RemoteClient(
 
     // --- Messages ----------------------------------------------------------------------------------------------
 
-    /** Decodes a frame, from the transport's thread. An `entity` frame identical to the last one for its ref is not parsed again. */
-    internal fun decodeFrame(text: String): ServerMessage? {
-        if (text.startsWith(ENTITY_PREFIX)) {
-            val end = text.indexOf('"', ENTITY_PREFIX.length)
-            if (end > ENTITY_PREFIX.length) {
-                val key = text.substring(ENTITY_PREFIX.length, end)
-                val cached = frames[key]
-                if (cached != null && cached.text == text) return cached.message
-            }
-        }
-        val message = ServerMessage.decode(text, parseEntityBody, log)
-        if (message is ServerMessage.EntityUpdate) frames[message.ref.value] = Frame(text, message)
-        return message
-    }
-
     private fun handle(message: ServerMessage) {
         // Anything the runtime says shows it is there.
         heard = scheduler.now()
@@ -299,8 +285,5 @@ class RemoteClient(
         const val QUERY_WAIT_MS = 10_000L
 
         private const val NOT_CONNECTED = "Not connected to runtime"
-
-        /** How `JSON.stringify` starts an `entity` frame: type, then ref. */
-        private const val ENTITY_PREFIX = "{\"type\":\"entity\",\"ref\":\""
     }
 }

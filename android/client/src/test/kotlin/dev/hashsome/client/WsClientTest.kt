@@ -391,4 +391,50 @@ class WsClientTest {
         assertEquals(8080, ServerAddress("http://[::1]:8080").port)
         assertEquals("[::1]:8080", ServerAddress("http://[::1]:8080").hostHeader())
     }
+
+    @Test
+    fun `closing before connecting opens no socket at all`() {
+        val client = WsClient(address(), "/ws")
+        client.close()
+        client.connect(listener)
+        assertTrue(next().startsWith("closed:"))
+        listening.soTimeout = 300
+        try {
+            listening.accept().also { sockets += it }
+            throw AssertionError("the client connected after it was closed")
+        } catch (_: java.net.SocketTimeoutException) {
+        }
+    }
+
+    @Test
+    fun `a failed handshake leaves no socket open`() {
+        val (_, peer) = connected(handshake = false)
+        peer.handshake(status = "400 Bad Request", accept = null)
+        assertTrue(next().startsWith("closed:"))
+        assertEquals("the server sees the client hang up", -1, peer.input.read())
+    }
+
+    @Test
+    fun `a message joined from fragments has a limit`() {
+        val client = WsClient(address(), "/ws").also { it.maxMessageBytes = 1000 }
+        client.connect(listener)
+        val peer = Peer(listening.accept().also { sockets += it })
+        peer.handshake()
+        assertEquals("open", next())
+        peer.write(1, ByteArray(600) { 'a'.code.toByte() }, fin = false)
+        peer.write(0, ByteArray(600) { 'a'.code.toByte() }, fin = true)
+        val closed = next()
+        assertTrue(closed, closed.startsWith("closed:") && closed.contains("longer than"))
+    }
+
+    @Test
+    fun `a frame that claims more than it sends costs only what it sent`() {
+        val (client, peer) = connected()
+        // A header for 30 MB, a few bytes, then the end of the connection.
+        peer.output.write(byteArrayOf(0x81.toByte(), 127, 0, 0, 0, 0, 1, 0xC9.toByte(), 0xC3.toByte(), 0x80.toByte(), 1, 2, 3))
+        peer.output.flush()
+        peer.socket.close()
+        assertTrue(next().startsWith("closed:"))
+        client.close()
+    }
 }

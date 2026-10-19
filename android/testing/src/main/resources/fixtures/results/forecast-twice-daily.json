@@ -6,7 +6,7 @@
     "type": "twice_daily",
     "points": [
       {
-        "timestamp": "2026-03-01T04:00:00.000Z",
+        "timestamp": "2026-03-01T06:00:00.000Z",
         "condition": "partlycloudy",
         "temperature": 24,
         "precipitationProbability": 0,
@@ -21,7 +21,7 @@
         "windGustSpeed": 15.7
       },
       {
-        "timestamp": "2026-03-01T10:00:00.000Z",
+        "timestamp": "2026-03-01T12:00:00.000Z",
         "condition": "partlycloudy",
         "temperature": 16.8,
         "precipitationProbability": 0,
@@ -36,7 +36,7 @@
         "windGustSpeed": 24.3
       },
       {
-        "timestamp": "2026-03-02T04:00:00.000Z",
+        "timestamp": "2026-03-02T06:00:00.000Z",
         "condition": "cloudy",
         "temperature": 24.9,
         "precipitationProbability": 15,
@@ -51,7 +51,7 @@
         "windGustSpeed": 29
       },
       {
-        "timestamp": "2026-03-02T10:00:00.000Z",
+        "timestamp": "2026-03-02T12:00:00.000Z",
         "condition": "cloudy",
         "temperature": 16.1,
         "precipitationProbability": 15,
@@ -66,7 +66,7 @@
         "windGustSpeed": 27.4
       },
       {
-        "timestamp": "2026-03-03T04:00:00.000Z",
+        "timestamp": "2026-03-03T06:00:00.000Z",
         "condition": "rainy",
         "temperature": 23.2,
         "precipitationProbability": 70,
@@ -82,7 +82,7 @@
         "precipitation": 1
       },
       {
-        "timestamp": "2026-03-03T10:00:00.000Z",
+        "timestamp": "2026-03-03T12:00:00.000Z",
         "condition": "rainy",
         "temperature": 15,
         "precipitationProbability": 70,
@@ -98,7 +98,7 @@
         "precipitation": 1
       },
       {
-        "timestamp": "2026-03-04T04:00:00.000Z",
+        "timestamp": "2026-03-04T06:00:00.000Z",
         "condition": "pouring",
         "temperature": 23.7,
         "precipitationProbability": 95,
@@ -114,7 +114,7 @@
         "precipitation": 1.4
       },
       {
-        "timestamp": "2026-03-04T10:00:00.000Z",
+        "timestamp": "2026-03-04T12:00:00.000Z",
         "condition": "pouring",
         "temperature": 16.7,
         "precipitationProbability": 95,
@@ -130,7 +130,7 @@
         "precipitation": 1.4
       },
       {
-        "timestamp": "2026-03-05T04:00:00.000Z",
+        "timestamp": "2026-03-05T06:00:00.000Z",
         "condition": "partlycloudy",
         "temperature": 25,
         "precipitationProbability": 0,
@@ -145,7 +145,7 @@
         "windGustSpeed": 24.2
       },
       {
-        "timestamp": "2026-03-05T10:00:00.000Z",
+        "timestamp": "2026-03-05T12:00:00.000Z",
         "condition": "partlycloudy",
         "temperature": 16.4,
         "precipitationProbability": 0,
@@ -160,7 +160,7 @@
         "windGustSpeed": 15.8
       },
       {
-        "timestamp": "2026-03-06T04:00:00.000Z",
+        "timestamp": "2026-03-06T06:00:00.000Z",
         "condition": "sunny",
         "temperature": 23.5,
         "precipitationProbability": 0,
@@ -175,7 +175,7 @@
         "windGustSpeed": 24.5
       },
       {
-        "timestamp": "2026-03-06T10:00:00.000Z",
+        "timestamp": "2026-03-06T12:00:00.000Z",
         "condition": "clear-night",
         "temperature": 15,
         "precipitationProbability": 0,
@@ -190,7 +190,7 @@
         "windGustSpeed": 29
       },
       {
-        "timestamp": "2026-03-07T04:00:00.000Z",
+        "timestamp": "2026-03-07T06:00:00.000Z",
         "condition": "sunny",
         "temperature": 23.5,
         "precipitationProbability": 0,
@@ -205,7 +205,7 @@
         "windGustSpeed": 27.2
       },
       {
-        "timestamp": "2026-03-07T10:00:00.000Z",
+        "timestamp": "2026-03-07T12:00:00.000Z",
         "condition": "clear-night",
         "temperature": 16.4,
         "precipitationProbability": 0,

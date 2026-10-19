@@ -15,6 +15,10 @@ import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLPeerUnverifiedException
+import javax.net.ssl.SSLSocket
 import javax.net.ssl.SSLSocketFactory
 
 /** Where the runtime is. [baseUrl] is the origin the dashboards are served from, e.g. `http://10.1.1.5:3000`. */
@@ -171,6 +175,15 @@ class WsClient(private val server: ServerAddress, private val path: String) : Tr
     /** How long to wait for the TCP connection and for the server's answer to the upgrade. */
     internal var connectTimeoutMs: Int = 5_000
 
+    /** The platform's by default; a seam for tests. */
+    internal var sslFactory: SSLSocketFactory? = null
+
+    /** The platform's by default; a seam for tests. */
+    internal var hostnameVerifier: HostnameVerifier? = null
+
+    /** The longest message accepted once its fragments are joined. */
+    internal var maxMessageBytes: Int = 32 * 1024 * 1024
+
     @Volatile private var socket: Socket? = null
 
     @Volatile private var out: OutputStream? = null
@@ -203,6 +216,9 @@ class WsClient(private val server: ServerAddress, private val path: String) : Tr
                 reason = e.message ?: e.javaClass.simpleName
             } finally {
                 close()
+                // A connection that never got as far as the handshake has no goodbye to wait for, and close() may have run before
+                // the socket existed: whichever got there first, the socket does not outlive this thread.
+                if (out == null) closeSocket()
                 if (notified.compareAndSet(false, true)) listener.onClosed(reason)
             }
         }, "hashsome-ws-reader")
@@ -211,14 +227,22 @@ class WsClient(private val server: ServerAddress, private val path: String) : Tr
     }
 
     private fun openSocket(): Socket {
+        if (closed.get()) throw IOException("Closed before it connected")
         val plain = Socket()
         socket = plain
+        // close() may have run between the check above and the line before: it closed what it saw, which may have been nothing.
+        if (closed.get()) throw IOException("Closed before it connected")
         plain.tcpNoDelay = true
         plain.connect(InetSocketAddress(server.host, server.port), connectTimeoutMs)
         plain.soTimeout = connectTimeoutMs
         if (!server.secure) return plain
-        val tls = (SSLSocketFactory.getDefault() as SSLSocketFactory).createSocket(plain, server.host, server.port, true)
+        val factory = sslFactory ?: (SSLSocketFactory.getDefault() as SSLSocketFactory)
+        val tls = factory.createSocket(plain, server.host, server.port, true) as SSLSocket
         socket = tls
+        tls.startHandshake()
+        // The certificate has to be for the host asked for: a trusted certificate for another name is somebody else.
+        val verifier = hostnameVerifier ?: HttpsURLConnection.getDefaultHostnameVerifier()
+        if (!verifier.verify(server.host, tls.session)) throw SSLPeerUnverifiedException("The certificate is not for ${server.host}")
         return tls
     }
 
@@ -234,7 +258,10 @@ class WsClient(private val server: ServerAddress, private val path: String) : Tr
                         message = ByteArrayOutputStream()
                         inText = true
                     }
-                    if (inText) message.write(frame.payload)
+                    if (inText) {
+                        if (message.size().toLong() + frame.payload.size > maxMessageBytes) throw IOException("The message is longer than $maxMessageBytes bytes")
+                        message.write(frame.payload)
+                    }
                     if (frame.fin && inText) {
                         inText = false
                         listener.onMessage(String(message.toByteArray(), Charsets.UTF_8))
@@ -401,9 +428,26 @@ internal object WsFrames {
         }
         if (length < 0 || length > MAX_PAYLOAD) throw IOException("A frame of $length bytes is too long")
         val mask = if (masked) readFully(input, 4) else null
-        val payload = readFully(input, length.toInt())
+        val payload = readPayload(input, length.toInt())
         if (mask != null) for (i in payload.indices) payload[i] = (payload[i].toInt() xor mask[i and 3].toInt()).toByte()
         return Frame(fin, opcode, payload)
+    }
+
+    private const val CHUNK = 64 * 1024
+
+    /** [n] bytes, read in chunks, so a frame that claims a length it never delivers costs no more than what arrived. */
+    private fun readPayload(input: InputStream, n: Int): ByteArray {
+        if (n <= CHUNK) return readFully(input, n)
+        val out = ByteArrayOutputStream(CHUNK)
+        val buf = ByteArray(CHUNK)
+        var left = n
+        while (left > 0) {
+            val r = input.read(buf, 0, minOf(left, CHUNK))
+            if (r < 0) throw java.io.EOFException()
+            out.write(buf, 0, r)
+            left -= r
+        }
+        return out.toByteArray()
     }
 
     private fun readFully(input: InputStream, n: Int): ByteArray {

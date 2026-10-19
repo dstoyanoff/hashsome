@@ -439,7 +439,7 @@ class ParsersTest {
         assertEquals("mm", daily.precipitationUnit)
         assertEquals("hPa", daily.pressureUnit)
         val first = daily.points.first()
-        assertEquals("2026-02-28T22:00:00.000Z", first.timestamp)
+        assertEquals("2026-03-01T00:00:00.000Z", first.timestamp)
         assertEquals(WeatherCondition.PartlyCloudy, first.condition)
         assertEquals(23.0, first.temperature!!, 0.0)
         assertEquals(15.0, first.low!!, 0.0)

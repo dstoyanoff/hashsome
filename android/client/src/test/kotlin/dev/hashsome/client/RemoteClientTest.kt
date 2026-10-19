@@ -188,22 +188,6 @@ class RemoteClientTest {
     }
 
     @Test
-    fun `an identical entity frame is not parsed again, a changed one is`() {
-        val a = lightFrame(true)
-        val first = client.decodeFrame(a)
-        assertSame(first, client.decodeFrame(a))
-        val changed = client.decodeFrame(lightFrame(false))
-        assertEquals(Snapshot.Present(lightEntity(false)), Snapshot.Present((changed as ServerMessage.EntityUpdate).entity!!))
-        assertTrue(first !== client.decodeFrame(a))
-        // Another ref with the same payload is its own entity.
-        val other = client.decodeFrame(lightFrame(true, "ha:light.y")) as ServerMessage.EntityUpdate
-        assertEquals(EntityRef("ha:light.y"), other.ref)
-        // A ref that needs escaping skips the shortcut and still parses.
-        val odd = client.decodeFrame("""{"type":"entity","ref":"ha:a\"b","entity":null}""") as ServerMessage.EntityUpdate
-        assertEquals(EntityRef("ha:a\"b"), odd.ref)
-    }
-
-    @Test
     fun `watching before the link opens subscribes when it does, and again after a drop`() {
         client.connect()
         val b = client.watch(EntityRef("ha:b")) {}
@@ -620,5 +604,26 @@ class RemoteClientTest {
         assertEquals(Availability.Ready, entity.availability)
         assertEquals(1, logged.size)
         assertTrue(logged[0], logged[0].contains("ha:light.x") && logged[0].contains("broken body"))
+    }
+
+    @Test
+    fun `a number that is not finite fails the command instead of throwing`() {
+        open()
+        val outcomes = ArrayList<Outcome>()
+        client.command(light, LightCommands.setBrightness(Double.NaN)) { outcomes += it }
+        client.command(light, LightCommands.setColor(Double.POSITIVE_INFINITY, 50.0)) { outcomes += it }
+        client.command(light, MediaPlayerCommands.seek(Double.NEGATIVE_INFINITY)) { outcomes += it }
+        assertTrue("nothing is sent", frames("command").isEmpty())
+        scheduler.runCurrent()
+        assertEquals(
+            listOf(
+                Outcome.Failed("Invalid argument \"brightness\" for setBrightness"),
+                Outcome.Failed("Invalid argument \"hue\" for setColor"),
+                Outcome.Failed("Invalid argument \"position\" for seek"),
+            ),
+            outcomes,
+        )
+        client.command(light, LightCommands.setBrightness(0.5))
+        assertEquals(1, frames("command").size)
     }
 }
