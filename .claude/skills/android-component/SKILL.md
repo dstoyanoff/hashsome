@@ -55,6 +55,6 @@ pnpm typecheck && pnpm test` for the scripts and CLI, and deploy to a device whe
 - One component per PR where possible; commit scopes `android-headless` and `android-ui` (a
   `feat(android-ui): ...` releases a minor; say what changed for users).
 - If the component needs a protocol or model change, that is a `@hashsome/core` change first, and
-  the fixtures (`pnpm generate:fixtures`) and the Kotlin parsers follow it: stop and describe it.
+  the fixtures (`pnpm generate:fixtures`; it arrives with the client module, WP1 of this milestone) and the Kotlin parsers follow it: stop and describe it.
 - Do not widen a module's dependencies to make something fit: `checkDependencies` fails, and the
   layering is the point.

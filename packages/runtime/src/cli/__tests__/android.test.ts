@@ -203,13 +203,13 @@ describe('provisionCommands', () => {
 });
 
 describe('uninstallCommands', () => {
-  test('connect, the app removes its own admin, a pause, then pm uninstall', () => {
+  test('connect, the app removes its own admin, a pause, then pm uninstall, retried once after a further pause', () => {
     const plan = uninstallCommands(device(), PKG).map(line);
     expect(plan).toEqual([
       'adb connect 10.1.1.50:5555',
       `adb -s 10.1.1.50:5555 shell am broadcast --include-stopped-packages -a dev.hashsome.REMOVE_ADMIN -p ${PKG}`,
       'adb -s 10.1.1.50:5555 shell sleep 2',
-      `adb -s 10.1.1.50:5555 shell pm uninstall ${PKG}`,
+      `adb -s 10.1.1.50:5555 shell sh -c 'pm uninstall ${PKG} || (sleep 2 && pm uninstall ${PKG})'`,
     ]);
   });
 });
@@ -326,7 +326,7 @@ describe('androidCommand (dry run)', () => {
     const log = output();
     await androidCommand(['uninstall', '--device', 'a'], root, () => ({ status: 0 }));
     const text = log.mock.calls.map((c) => c[0]).join('\n');
-    expect(text).toContain('pm uninstall dev.hashsome.home');
+    expect(text).toContain('pm uninstall dev.hashsome.home ||');
     expect(text).toContain('choose the home app again');
     expect(text).not.toContain('2.2.2.2');
 

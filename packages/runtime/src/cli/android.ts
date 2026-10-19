@@ -11,8 +11,10 @@ Commands:
   deploy      Install the APK on each device and hand it its settings (server, dashboard, ...)
   provision   deploy, plus the one-time permissions and kiosk set-up for a device
   uninstall   Have the app remove its own device admin, then uninstall it (a device admin blocks pm uninstall,
-              and adb cannot remove one that is not a test admin). A device with "home": true prints a reminder
-              to choose its home app again: the previous one is not known.
+              and adb cannot remove one that is not a test admin). The app's kiosk module handles the
+              dev.hashsome.REMOVE_ADMIN broadcast; an app built without withKiosk cannot be uninstalled this
+              way while an admin is active. A device with "home": true prints a reminder to choose its home
+              app again: the previous one is not known.
   icons       Convert an icon pack's SVGs to drawables and a Kotlin object (hashsome android icons --help)
 
 Options (build, deploy, provision, uninstall):
@@ -318,7 +320,8 @@ export function uninstallCommands(device: Device, pkg: string): Command[] {
       pkg,
     ),
     shell(device, 'sleep', '2'),
-    shell(device, 'pm', 'uninstall', pkg),
+    // Once more after a further pause if the first attempt fails: the admin may not be gone yet.
+    shell(device, 'sh', '-c', `pm uninstall ${pkg} || (sleep 2 && pm uninstall ${pkg})`),
   ];
 }
 

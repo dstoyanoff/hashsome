@@ -93,11 +93,9 @@ jobs:
             npm publish "$tarball" --access public --provenance
           done
 
-      # Maven comes after npm and before the push. Before the push, so that a failed publish leaves main and the
-      # tag alone, as for npm. After npm, because it is the likelier to fail (a registry that refuses to overwrite
-      # a version, a token without packages: write) and a failure here, with npm already out, is recoverable by
-      # hand, while the reverse leaves Maven artifacts with no npm release to match. The version it publishes is
-      # the one "Work out the version" wrote into android/gradle.properties and "Commit and tag" committed.
+      # After npm and before the push: a failed publish leaves main and the tag alone, as for npm, and
+      # Maven is the likelier to fail, so a failure here is recovered by hand with npm already out.
+      # It publishes the version "Work out the version" wrote into android/gradle.properties.
       - name: Publish the Android libraries to GitHub Packages
         if: steps.next.outputs.skip != 'true' && !inputs.dry_run
         working-directory: android

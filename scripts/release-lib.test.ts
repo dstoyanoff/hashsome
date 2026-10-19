@@ -93,14 +93,14 @@ describe('bumpVersionIn', () => {
     const text =
       '{\n  "name": "x",\n  "version": "0.19.2",\n  "dependencies": { "y": "1.0.0" }\n}\n';
 
-    expect(bumpVersionIn(text, /"version": "[^"]+"/, '0.20.0')).toBe(
+    expect(bumpVersionIn(text, /"version": "[^"]+"/, '"version": "0.20.0"')).toBe(
       text.replace('0.19.2', '0.20.0'),
     );
   });
 
   it('rewrites the hashsome.version line of gradle.properties and keeps the other lines', () => {
     const text = '# comment\nhashsome.version=0.19.2\norg.gradle.jvmargs=-Xmx3g\n';
-    expect(bumpVersionIn(text, /^hashsome\.version=.*$/m, '0.20.0')).toBe(
+    expect(bumpVersionIn(text, /^hashsome\.version=.*$/m, 'hashsome.version=0.20.0')).toBe(
       '# comment\nhashsome.version=0.20.0\norg.gradle.jvmargs=-Xmx3g\n',
     );
   });

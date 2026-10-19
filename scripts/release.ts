@@ -24,10 +24,20 @@ import {
 
 const REPO = 'https://github.com/dstoyanoff/hashsome';
 
+interface VersionFile {
+  file: string;
+
+  /** The text to replace: the line that carries the version. */
+  pattern: RegExp;
+
+  /** What that line becomes for a version. */
+  format: (version: string) => string;
+}
+
 const PACKAGE_JSON = /"version": "[^"]+"/;
 
 /** Every file that carries the one shared version: the npm packages (and the root) and the Android libraries'. */
-const VERSION_FILES: { file: string; pattern: RegExp }[] = [
+const VERSION_FILES: VersionFile[] = [
   ...[
     'package.json',
     'packages/core/package.json',
@@ -35,8 +45,16 @@ const VERSION_FILES: { file: string; pattern: RegExp }[] = [
     'packages/runtime/package.json',
     'packages/integrations/home-assistant/package.json',
     'packages/integrations/music-assistant/package.json',
-  ].map((file) => ({ file, pattern: PACKAGE_JSON })),
-  { file: 'android/gradle.properties', pattern: /^hashsome\.version=.*$/m },
+  ].map((file) => ({
+    file,
+    pattern: PACKAGE_JSON,
+    format: (version: string) => `"version": "${version}"`,
+  })),
+  {
+    file: 'android/gradle.properties',
+    pattern: /^hashsome\.version=.*$/m,
+    format: (version) => `hashsome.version=${version}`,
+  },
 ];
 
 const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8' }).trim();
@@ -101,12 +119,15 @@ if (notesFile) {
 }
 
 if (!dryRun) {
-  for (const { file, pattern } of VERSION_FILES) {
+  // All must exist before any is written, so a missing file leaves the tree as it was.
+  for (const { file } of VERSION_FILES) {
     if (!existsSync(file)) {
       throw new Error(`${file} is listed in VERSION_FILES but does not exist`);
     }
+  }
 
-    writeFileSync(file, bumpVersionIn(readFileSync(file, 'utf8'), pattern, version));
+  for (const { file, pattern, format } of VERSION_FILES) {
+    writeFileSync(file, bumpVersionIn(readFileSync(file, 'utf8'), pattern, format(version)));
   }
 
   const date = new Date().toISOString().slice(0, 10);

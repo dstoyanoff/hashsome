@@ -640,7 +640,8 @@ and nothing else: subscribe/unsubscribe by `EntityRef`, commands by kind, querie
 ok/err, the heartbeat that finds a silent connection dead, resubscribe after a reconnect with
 backoff. A kind the client does not know parses to `GenericEntity` with the raw payload kept; parsers
 read tolerantly (`opt*`). Fixtures are generated from `@hashsome/core`'s mock builders
-(`pnpm generate:fixtures`), so the Kotlin parsers are tested against what the server really sends,
+(`pnpm generate:fixtures`; the script and the fixtures arrive with the `client` module's tests, WP1
+of this milestone), so the Kotlin parsers are tested against what the server really sends,
 and a change to the protocol breaks the Android tests, not a display.
 
 **A consumer project.** Beside the web side of a project (`hashsome.config.ts`, `app/`,
@@ -663,8 +664,9 @@ component exists in that PR; otherwise it is `planned`.
 **Device quirks live in `kiosk`.** Keeping the app in front on a display whose stock app stays HOME,
 owning the backlight, waking on presence, removing the app's own device admin: a non-test device
 admin cannot be removed with `dpm remove-active-admin`, and `pm uninstall` fails while it is active,
-so `hashsome android uninstall` first broadcasts `dev.hashsome.REMOVE_ADMIN`, which the app answers
-by removing its own admin.
+so `hashsome android uninstall` first broadcasts `dev.hashsome.REMOVE_ADMIN`, which the app's
+`kiosk` module answers by removing its own admin, and retries `pm uninstall` once after a pause.
+An app built without `withKiosk` cannot be uninstalled this way while an admin is active.
 
 ## Packaging and deployment
 
@@ -788,8 +790,9 @@ Release → Run workflow** on `main`.
   lives in `android/gradle.properties` (`hashsome.version`), which `scripts/release.ts` rewrites with
   the package.json files (`VERSION_FILES`); never edit it by hand. A consumer needs `gpr.user` and
   `gpr.key` (a classic personal access token with `read:packages`) in `~/.gradle/gradle.properties`,
-  since GitHub Packages asks for credentials even for a public repository. The repo keeps `exports` pointing at `src/*.ts` so development needs no
-  build; each package's `publishConfig.exports` swaps them for the compiled `dist/` (ES modules plus
+  since GitHub Packages asks for credentials even for a public repository.
+- **How the npm packages are built.** The repo keeps `exports` pointing at `src/*.ts` so development
+  needs no build; each package's `publishConfig.exports` swaps them for the compiled `dist/` (ES modules plus
   `.d.ts`, no CommonJS) when `pnpm pack` makes the tarball. `pnpm build:packages` builds them.
 - **The version** comes from the conventional commits since the last `v*` tag
   (`scripts/release.ts`): `feat` is a minor, `fix`/`perf` a patch, nothing else releases. Below 1.0 a
@@ -801,9 +804,9 @@ Release → Run workflow** on `main`.
   GitHub Packages (after npm, since it is the likelier to fail and then recoverable by hand), and only
   then pushes the commit and tag to `main` and creates the GitHub release with the notes. A failed
   publish therefore leaves `main` untouched. GitHub Packages does not overwrite a published version,
-  so a re-run after a partial Maven publish needs the modules already there skipped. Pushing to `main` uses the `RELEASE_TOKEN` secret (a
-  fine-grained token with Contents write), since `main` requires PRs and the built-in token cannot
-  bypass that.
+  so a re-run after a partial Maven publish needs the modules already there skipped. Pushing to
+  `main` uses the `RELEASE_TOKEN` secret (a fine-grained token with Contents write), since `main`
+  requires PRs and the built-in token cannot bypass that.
 - **The docs site follows the release.** After a run has published, its last job (`docs`) runs
   `pages.yml` for the tag it just made, so the component gallery and the live demo show what is
   released, not what is merged. A dry run, or a run with nothing to release, deploys nothing. It runs
