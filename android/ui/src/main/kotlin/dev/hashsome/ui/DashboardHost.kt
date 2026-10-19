@@ -38,7 +38,7 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
     }
 
     /** The window and the chrome in the colors of the theme now, and the page at [startAt]. */
-    private fun build(startAt: Int) {
+    private fun build(startAt: Int, scrollY: Int = 0) {
         val bg = Hashsome.theme.palette.bg
         activity.window.setBackgroundDrawable(ColorDrawable(bg))
         root.setBackgroundColor(bg)
@@ -62,6 +62,30 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
         if (pages.isNotEmpty()) show(startAt.coerceIn(0, pages.size - 1), animate = false, side = 0)
         rail?.let { root.addView(it, FrameLayout.LayoutParams(dp(NAV_RAIL), ViewGroup.LayoutParams.MATCH_PARENT)) }
         pageView?.let { Pager.syncRail(rail, pages, index) }
+        if (scrollY > 0) restoreScroll(scrollY)
+    }
+
+    /** The scrolled distance of the page shown: the content's, with a pinned header or without. */
+    private fun scrollOf(): Int = when (val view = pageView) {
+        is PageFrame -> view.scroll.scrollY
+        is PageScroll -> view.scrollY
+        else -> 0
+    }
+
+    /** Puts a rebuilt page back where it was scrolled to, once it has been laid out (it cannot scroll before it has a size). */
+    private fun restoreScroll(y: Int) {
+        val scroller = when (val view = pageView) {
+            is PageFrame -> view.scroll
+            is PageScroll -> view
+            else -> return
+        }
+        scroller.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                if (scroller.height == 0) return
+                scroller.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                scroller.scrollTo(0, y)
+            }
+        })
     }
 
     private fun rebuild() {
@@ -69,7 +93,7 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
         // The icons were drawn in the colors of the theme that is gone.
         clearIconCache()
         rebuilding = true
-        build(startAt = index)
+        build(startAt = index, scrollY = scrollOf())
         rebuilding = false
     }
 
@@ -112,7 +136,7 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
         }
         val scroll: View = if (isTopRow(first)) {
             holder.removeView(first)
-            PageFrame(activity, first!!, layout, if (shell.rail != null) NAV_RAIL else 0)
+            PageFrame(activity, first!!, layout, if (shell.rail != null) NAV_RAIL else 0, (holder as? ColumnLayout)?.gap ?: 3)
         } else {
             PageScroll(activity, layout)
         }

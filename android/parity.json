@@ -17,7 +17,7 @@
   "HistorySection": "planned",
   "Icon": "web-only",
   "LightTile": "native",
-  "ClimateTile": "native",
+  "ClimateTile": "native:ClimateTileView",
   "SensorReadout": "native",
   "ActionButton": "planned",
   "SceneButton": "planned",

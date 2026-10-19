@@ -258,7 +258,7 @@ open class ClimateTileView(context: Context, val control: ClimateControl, val la
         tile.disabled = true
         val current = control.current.value
         val unit = control.handle.entity?.unit ?: "°C"
-        tile.secondary = if (current != null) "${String.format(java.util.Locale.US, "%.1f", current)} $unit" else StatusLabels.of(control.handle.state.value)
+        tile.secondary = if (current != null) climateReading(current, unit) else StatusLabels.of(control.handle.state.value)
     }
 }
 
@@ -288,9 +288,14 @@ open class TaskTileView(context: Context, val control: ActionControl, val label:
     /**
      * What completing does: called with the day it was done on (epoch ms) when the question is confirmed; call `finish(null)` when it
      * went through (the dialog closes) or `finish(message)` when it did not (the message is shown in the dialog, which stays open).
-     * Without one the question can only be answered with an error.
+     * Without one the question can only be answered with an error. `finish` has to be called: the dialog waits for it, and gives up
+     * with an error after 15 seconds so that cancelling and the back button work again.
      */
     var onComplete: ((doneOn: Long, finish: (String?) -> Unit) -> Unit)? = null
+
+    private companion object {
+        const val COMPLETE_TIMEOUT_MS = 15_000L
+    }
 
     private var now = 0L
     private var dialog: ConfirmDialogView? = null
@@ -353,8 +358,19 @@ open class TaskTileView(context: Context, val control: ActionControl, val label:
             if (error == null) ask.close() else ask.error = error
         }
 
+        // `finish` must be called, or the dialog stays busy; if it is not within a while, it is called with an error so the dialog can be left.
+        var settled = false
+        var timeout: dev.hashsome.client.Cancel = {}
+        val once = { error: String? ->
+            if (!settled) {
+                settled = true
+                timeout()
+                finish(error)
+            }
+        }
+        timeout = Hashsome.scheduler.after(COMPLETE_TIMEOUT_MS) { once("Timed out") }
         val handler = onComplete
-        if (handler == null) finish("Nothing is set to complete this task") else handler(doneOn, finish)
+        if (handler == null) once("Nothing is set to complete this task") else handler(doneOn, once)
     }
 }
 
@@ -594,9 +610,15 @@ open class ListTabsView(context: Context, val tabs: List<String>) : BoundView(co
         setWillNotDraw(false)
     }
 
-    private fun tabWidth(): Float = (width - (tabs.size - 1) * 5 * unitPx()) / maxOf(1, tabs.size)
+    private fun tabWidth(): Float = ListTabsMath.tabWidth(width.toFloat(), tabs.size, 5 * unitPx())
 
-    private fun tabLeft(i: Int): Float = i * (tabWidth() + 5 * unitPx())
+    private fun tabLeft(i: Int): Float = ListTabsMath.tabLeft(i, width.toFloat(), tabs.size, 5 * unitPx())
+
+    private var downTab = -1
+    private var downX = 0f
+    private var downY = 0f
+
+    private fun hit(x: Float): Int = ListTabsMath.hit(x, width.toFloat(), tabs.size, 5 * unitPx())
 
     private fun glide(i: Int) {
         left.to(tabLeft(i))
@@ -640,13 +662,42 @@ open class ListTabsView(context: Context, val tabs: List<String>) : BoundView(co
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_UP) {
-            val i = tabs.indices.firstOrNull { event.x >= tabLeft(it) - 2.5f * unitPx() && event.x <= tabLeft(it) + tabWidth() + 2.5f * unitPx() }
-            if (i != null && i != selected) {
-                selected = i
-                onSelect?.invoke(i)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downTab = hit(event.x)
+                downX = event.x
+                downY = event.y
             }
+
+            // A tab is chosen by a tap: the finger comes up on the tab it went down on, and has not travelled (a scroll starting here is not one).
+            MotionEvent.ACTION_UP -> {
+                val i = hit(event.x)
+                val still = Math.abs(event.x - downX) <= dp(TAP_SLOP) && Math.abs(event.y - downY) <= dp(TAP_SLOP)
+                if (i >= 0 && i == downTab && still && i != selected) {
+                    selected = i
+                    onSelect?.invoke(i)
+                }
+                downTab = -1
+            }
+
+            MotionEvent.ACTION_CANCEL -> downTab = -1
         }
         return true
     }
+
+    private companion object {
+        const val TAP_SLOP = 12f
+    }
+}
+
+/** Where the tabs of a [ListTabsView] are, as pure arithmetic: they share [width] with [gap] between them. */
+internal object ListTabsMath {
+    fun tabWidth(width: Float, count: Int, gap: Float): Float = (width - (count - 1) * gap) / maxOf(1, count)
+
+    fun tabLeft(i: Int, width: Float, count: Int, gap: Float): Float = i * (tabWidth(width, count, gap) + gap)
+
+    /** The tab at [x], the gap before and after it (half the gap each side) counting as part of it; -1 when none. */
+    fun hit(x: Float, width: Float, count: Int, gap: Float): Int = (0 until count).firstOrNull {
+        x >= tabLeft(it, width, count, gap) - gap / 2 && x <= tabLeft(it, width, count, gap) + tabWidth(width, count, gap) + gap / 2
+    } ?: -1
 }

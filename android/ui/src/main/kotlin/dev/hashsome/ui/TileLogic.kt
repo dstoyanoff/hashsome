@@ -35,8 +35,18 @@ object LightTileText {
     }
 }
 
+/** JavaScript's `Number.prototype.toFixed`: [value]'s exact binary value rounded to [digits] decimals, ties away from zero. */
+fun toFixed(value: Double, digits: Int): String = java.math.BigDecimal(value).setScale(digits, java.math.RoundingMode.HALF_UP).toPlainString()
+
 /** A switch's draw, as the second line of its tile: one decimal and the unit (`toFixed(1)`). */
-fun wattsText(watts: Double): String = String.format(Locale.US, "%.1f W", watts)
+fun wattsText(watts: Double): String = toFixed(watts, 1) + " W"
+
+/** How many decimals a number is written with: `21.5` has one, `21.0` none (the web's `decimalsOf`). */
+fun decimalsOf(value: Double): Int =
+    if (value.isFinite()) java.math.BigDecimal(value.toString()).stripTrailingZeros().scale().coerceAtLeast(0) else 0
+
+/** The climate tile's second line: the room's temperature with the decimals it has (`21 °C`, `21.5 °C`). */
+fun climateReading(current: Double, unit: String): String = "${toFixed(current, decimalsOf(current))} $unit"
 
 /** The time and date as the top row writes them. */
 object WallClockText {

@@ -9,7 +9,7 @@ Statuses: `native` (a Kotlin counterpart exists; `native:<Name>` when it is name
 | Web                 | Kind      | Status  | Native type / notes |
 | ------------------- | --------- | ------- | ------------------- |
 | `LightTile`         | component | native  |                     |
-| `ClimateTile`       | component | native  |                     |
+| `ClimateTile`       | component | native  | `ClimateTileView`   |
 | `SensorReadout`     | component | native  |                     |
 | `ActionButton`      | component | planned |                     |
 | `SceneButton`       | component | planned |                     |

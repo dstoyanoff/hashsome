@@ -140,4 +140,46 @@ class TileLogicTest {
         assertEquals(now, TaskText.doneOn(0, now, utc))
         assertEquals(at("2026-03-08T00:00:00Z"), TaskText.doneOn(2, now, utc))
     }
+
+    @Test
+    fun `watts round the exact binary value, as toFixed does`() {
+        assertEquals("0.3 W", wattsText(0.25))
+        assertEquals("1.1 W", wattsText(1.05))
+        assertEquals("1.1 W", wattsText(1.15))
+        assertEquals("38.0 W", wattsText(38.0))
+    }
+
+    @Test
+    fun `the climate reading has the decimals the temperature has`() {
+        assertEquals("21 °C", climateReading(21.0, "°C"))
+        assertEquals("21.5 °C", climateReading(21.5, "°C"))
+        assertEquals("21.25 °C", climateReading(21.25, "°C"))
+        assertEquals("16.4 °F", climateReading(16.4, "°F"))
+        assertEquals(0, decimalsOf(Double.NaN))
+    }
+
+    @Test
+    fun `days across a daylight saving change are still counted by the calendar`() {
+        val ny = TimeZone.getTimeZone("America/New_York")
+        fun local(y: Int, m: Int, d: Int, h: Int): Long =
+            java.util.Calendar.getInstance(ny).apply { clear(); set(y, m - 1, d, h, 0) }.timeInMillis
+        // The clocks go back on Nov 1 2026: that day is 25 hours long.
+        assertEquals(1, TaskText.daysTo(local(2026, 11, 2, 12), local(2026, 11, 1, 12), ny))
+        assertEquals(2, TaskText.daysTo(local(2026, 11, 2, 12), local(2026, 10, 31, 12), ny))
+        assertEquals(1, TaskText.daysTo(local(2026, 11, 2, 0), local(2026, 11, 1, 23), ny))
+        assertEquals(-1, TaskText.daysTo(local(2026, 10, 31, 23), local(2026, 11, 1, 0), ny))
+    }
+
+    @Test
+    fun `the next date names the year when it is another year`() {
+        val now = at("2026-12-20T10:00:00Z")
+        assertEquals("Next Jan 5, 2027", TaskText.line(TaskInfo(TaskState.Ok, at("2027-01-05T00:00:00Z")), now, us, utc))
+        assertEquals("Next Dec 31", TaskText.line(TaskInfo(TaskState.Ok, at("2026-12-31T00:00:00Z")), now, us, utc))
+    }
+
+    @Test
+    fun `a task that is due soon but already past its date reads as overdue`() {
+        val now = at("2026-03-10T10:00:00Z")
+        assertEquals("Overdue by 2 days", TaskText.line(TaskInfo(TaskState.DueSoon, at("2026-03-08T00:00:00Z")), now, us, utc))
+    }
 }
