@@ -88,6 +88,9 @@ fun showSettingsSheet(activity: Activity) = SettingsHost.open(activity)
 /** The width of a control at the right of a row, dp. */
 private const val CONTROL_DP = 200
 
+/** What an armed confirm pill says; short, so the pill keeps the width its own name gave it. */
+private const val ARMED_LABEL = "Tap again"
+
 /** The content: it listens to the stores while it is on screen and lets go when it is not. */
 private class SheetContent(
     private val ctx: Context,
@@ -268,14 +271,22 @@ private class SheetContent(
             it.onClick = onClick
         }
 
-    /** A button that needs a second tap within 4 s, for what cannot be undone from the display; in the danger color. */
+    /**
+     * A button that needs a second tap within 4 s, for what cannot be undone from the display; in the danger color. Armed, it
+     * turns to the danger fill and says "Tap again" in the width it already had (the widest of both labels), so it does not
+     * move and the second tap lands where the first did; [confirm] is what a screen reader hears while it waits.
+     */
     private fun confirmButton(name: String, confirm: String, onConfirmed: () -> Unit): PillButton {
         val b = button(name) {}
         b.failed = true
+        b.alsoFits = listOf(name, ARMED_LABEL)
+        b.contentDescription = name
         var armed = false
         val disarm = Runnable {
             armed = false
+            b.armed = false
             b.label = name
+            b.contentDescription = name
         }
         b.onClick = {
             if (armed) {
@@ -284,7 +295,9 @@ private class SheetContent(
                 onConfirmed()
             } else {
                 armed = true
-                b.label = confirm
+                b.armed = true
+                b.label = ARMED_LABEL
+                b.contentDescription = confirm
                 b.postDelayed(disarm, 4_000)
             }
         }

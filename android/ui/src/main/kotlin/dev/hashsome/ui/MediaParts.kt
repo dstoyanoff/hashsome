@@ -711,6 +711,20 @@ class PillButton(context: Context, icon: Icon?, label: String?, private val role
             invalidate()
         }
 
+    /** The danger fill with light words: a pill waiting for its confirming tap. Changes no size. */
+    var armed = false
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /** Other labels this pill will show: it is as wide as the widest of them and its own, so changing the label never moves its neighbours. */
+    var alsoFits: List<String> = emptyList()
+        set(value) {
+            field = value
+            requestLayout()
+        }
+
     var onClick: (() -> Unit)? = null
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -735,8 +749,9 @@ class PillButton(context: Context, icon: Icon?, label: String?, private val role
         var w = 2 * pad
         if (icon != null) w += glyphPx()
         if (dot) w += gap + dp(7f)
-        if (words.isNotEmpty()) w += (if (icon != null) gap else 0f) + textPaint.measureText(words)
-        if (words.isEmpty()) w = maxOf(w - 2 * pad, 0f) + 2 * pad
+        val widest = (alsoFits + words).maxOf { textPaint.measureText(it) }
+        if (words.isNotEmpty() || alsoFits.isNotEmpty()) w += (if (icon != null) gap else 0f) + widest
+        if (words.isEmpty() && alsoFits.isEmpty()) w = maxOf(w - 2 * pad, 0f) + 2 * pad
         return w
     }
 
@@ -766,11 +781,12 @@ class PillButton(context: Context, icon: Icon?, label: String?, private val role
         val w = width.toFloat()
         val h = height.toFloat()
         paint.style = Paint.Style.FILL
-        paint.color = if (primary) t.palette.accent else t.palette.surfaceRaised
+        paint.color = if (armed) t.palette.danger else if (primary) t.palette.accent else t.palette.surfaceRaised
         rect.set(0f, 0f, w, h)
-        if (!flat || held) canvas.drawRoundRect(rect, h / 2, h / 2, paint)
+        if (!flat || held || armed) canvas.drawRoundRect(rect, h / 2, h / 2, paint)
         val words = label.orEmpty()
         val ink = when {
+            armed -> t.palette.accentText
             primary -> t.palette.accentText
             failed -> t.palette.danger
             muted -> t.palette.textMuted
