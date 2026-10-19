@@ -197,6 +197,7 @@ internal object Kiosk {
     /** Installed as a system app (`FLAG_SYSTEM`, also an updated one): the stock app's force-stop hook skips it, so nothing waits for or avoids the stock app's start-up. */
     @Volatile
     var systemApp: Boolean = false
+    private var flagsLogged = false
 
     /** The top activity the keep-in-front last saw, for the wake path. */
     @Volatile
@@ -208,7 +209,15 @@ internal object Kiosk {
 
     /** Arms the gate once per process (the profile and the clock decide, see [shouldArmBootGate]). */
     fun armBootGateIfNeeded(context: Context, boot: Boolean) {
-        systemApp = context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0
+        val flags = try {
+            context.packageManager.getApplicationInfo(context.packageName, 0).flags
+        } catch (e: Exception) {
+            context.applicationInfo.flags
+        }
+        val system = flags and (android.content.pm.ApplicationInfo.FLAG_SYSTEM or android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+        if (system != systemApp || !flagsLogged) Log.e("front", "boot: appflags=0x${Integer.toHexString(flags)} system=$system")
+        flagsLogged = true
+        systemApp = system
         if (bootGate != null) return
         val elapsed = android.os.SystemClock.elapsedRealtime()
         if (!shouldArmBootGate(boot, elapsed, config.bootMinMs, DeviceProfile.detect().settlesAtBoot)) return
