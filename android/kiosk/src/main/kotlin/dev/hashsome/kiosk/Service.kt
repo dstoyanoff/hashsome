@@ -4,10 +4,12 @@ package dev.hashsome.kiosk
 // read incrementally, with a fallback when the appop was not granted.
 
 import android.app.ActivityManager
+import android.app.AlarmManager
 import android.app.AppOpsManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.app.admin.DeviceAdminReceiver
 import android.app.usage.UsageEvents
@@ -33,6 +35,8 @@ class KioskService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Within five seconds of startForegroundService, whatever else happens.
         startInForeground()
+        // The boot receiver's start: the gate must hold from here (the process may already be up, started by Application.onCreate).
+        if (intent?.getBooleanExtra(Kiosk.EXTRA_BOOT, false) == true) Kiosk.armBootGate()
         if (rebuilder == null) {
             // The displays are mains-powered: the CPU stays up while the panel is dark, so the idle timer, the MQTT keep-alive and the
             // proximity sensor's events are never starved (spike S2b left proximity-while-dark open; this removes the doubt about timers).
@@ -112,12 +116,18 @@ class KioskService : Service() {
         closers += { bridge.stop() }
 
         val linkBinder = LinkBinder(state)
-        val front = KeepInFront(this)
+        val front = KeepInFront(this, profile)
+        val watchdog = Watchdog(this)
+        closers += { watchdog.cancel() }
+        var ticks = 0L
         // Also while the screen is off: a stock popup must not sit in front of the dashboard when it wakes.
         closers += sched.every(CHECK_MS) {
             linkBinder.bindIfPossible()
             front.check()
+            // A healthy tick pushes the watchdog's alarm back; it only fires when the ticks stop (our process was killed).
+            if (ticks++ % REARM_EVERY_TICKS == 0L) watchdog.arm()
         }
+        watchdog.arm()
         return { closers.reversed().forEach { it() } }
     }
 
@@ -125,6 +135,7 @@ class KioskService : Service() {
         const val CHANNEL = "hashsome.kiosk"
         const val NOTIFICATION_ID = 1
         const val CHECK_MS = 2_000L
+        const val REARM_EVERY_TICKS = 5L
     }
 }
 
@@ -210,42 +221,34 @@ internal class LinkBinder(private val state: KioskState) {
     }
 }
 
-/** Whether the dashboard has to be started to be in front. Starting it when it already is only makes the host re-resume (and, on a bad day, rebuild). */
-internal object FrontDecision {
-    /**
-     * [dashboardResumed]: our activity is the resumed one, so nothing is in front of it and no launch is needed. Otherwise [top] (the
-     * package of the last activity moved to the foreground, null when unknown) decides, and without it [ownProcessVisible].
-     */
-    fun shouldLaunch(top: String?, ownPackage: String, dashboardResumed: Boolean, ownProcessVisible: () -> Boolean): Boolean {
-        if (dashboardResumed) return false
-        val front = if (top != null) top == ownPackage else ownProcessVisible()
-        return !front
-    }
-}
-
 /**
  * Checks every 2 s whether the dashboard is the app in front and relaunches it if not (the stock Shelly app pops up over
  * ours now and then). Through `UsageStatsManager` when `GET_USAGE_STATS` was granted (`appops set ... GET_USAGE_STATS allow`),
  * otherwise by our own process importance: with a visible activity it is FOREGROUND, with only the service it is above that.
  */
-internal class KeepInFront(private val context: Context) {
-    private var lastTop: String? = null
+internal class KeepInFront(private val context: Context, private val profile: DeviceProfile) {
+    private var lastTop = TopActivity.UNKNOWN
     private var lastQueryEnd = 0L
-    private var lastLaunch = Long.MIN_VALUE / 2
 
-    fun check() {
-        val top = if (Kiosk.dashboardResumed) null else topPackage()
-        if (!FrontDecision.shouldLaunch(top, context.packageName, Kiosk.dashboardResumed) { ownProcessVisible() }) return
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (now - lastLaunch < RELAUNCH_COOLDOWN_MS) return
-        lastLaunch = now
-        Log.i("front", "top is ${top ?: "unknown"}, bringing the dashboard back")
-        try {
-            context.startActivity(dashboardIntent(context, Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
-        } catch (e: Exception) {
-            Log.w("front", "could not relaunch: ${e.message}")
-        }
-    }
+    private val keeper = FrontKeeper(
+        ownPackage = context.packageName,
+        clock = { android.os.SystemClock.elapsedRealtime() },
+        // Only a boot start of a Shelly profile waits for the stock app; Kiosk.bootGate is armed by the boot receiver's start.
+        gate = { if (profile.settlesAtBoot) Kiosk.bootGate else null },
+        top = { topActivity() },
+        dashboardResumed = { Kiosk.dashboardResumed },
+        ownProcessVisible = { ownProcessVisible() },
+        launch = {
+            try {
+                context.startActivity(dashboardIntent(context, Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            } catch (e: Exception) {
+                Log.w("front", "could not relaunch: ${e.message}")
+            }
+        },
+        log = { Log.i("front", it) },
+    )
+
+    fun check() = keeper.check()
 
     @Suppress("DEPRECATION")
     private fun usageAllowed(): Boolean {
@@ -254,20 +257,20 @@ internal class KeepInFront(private val context: Context) {
     }
 
     @Suppress("DEPRECATION")
-    private fun topPackage(): String? {
-        if (!usageAllowed()) return null
+    private fun topActivity(): TopActivity {
+        if (!usageAllowed()) return TopActivity.UNKNOWN
         val usage = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val now = System.currentTimeMillis()
         val from = if (lastQueryEnd == 0L) now - INITIAL_WINDOW_MS else lastQueryEnd - OVERLAP_MS
         val events = try {
             usage.queryEvents(from, now)
         } catch (e: SecurityException) {
-            return null
+            return TopActivity.UNKNOWN
         }
         val event = UsageEvents.Event()
         while (events != null && events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) lastTop = event.packageName
+            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) lastTop = TopActivity(event.packageName, event.className)
         }
         lastQueryEnd = now
         return lastTop
@@ -282,14 +285,61 @@ internal class KeepInFront(private val context: Context) {
     private companion object {
         const val INITIAL_WINDOW_MS = 10 * 60_000L
         const val OVERLAP_MS = 2_000L
-        const val RELAUNCH_COOLDOWN_MS = 4_000L
+    }
+}
+
+/**
+ * A one-shot alarm [DELAY_MS] ahead that restarts [KioskService] unless a healthy tick pushed it back: if our process is killed
+ * (out of memory, a crash) the service comes back. It cannot help after a force-stop (`am force-stop`, or the stock Shelly app's
+ * shutdown on the X1): the system drops a stopped package's alarms and receivers, and nothing of ours runs until an `am start`
+ * (the CLI's `deploy` does that, and so does provisioning).
+ */
+internal class Watchdog(private val context: Context) {
+    private val alarms get() = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+    private fun pending() = PendingIntent.getBroadcast(
+        context, 0, Intent(context, WatchdogReceiver::class.java),
+        PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0),
+    )
+
+    fun arm() {
+        val at = android.os.SystemClock.elapsedRealtime() + DELAY_MS
+        try {
+            if (Build.VERSION.SDK_INT >= 23) {
+                alarms.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, pending())
+            } else {
+                alarms.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, pending())
+            }
+        } catch (e: Exception) {
+            Log.w("service", "could not arm the watchdog: ${e.message}")
+        }
+    }
+
+    fun cancel() {
+        try {
+            alarms.cancel(pending())
+        } catch (e: Exception) {
+            Log.w("service", "could not cancel the watchdog: ${e.message}")
+        }
+    }
+
+    companion object {
+        const val DELAY_MS = 60_000L
+    }
+}
+
+/** The watchdog's alarm went off: the service did not push it back, so it is not running. */
+class WatchdogReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        Log.e("service", "watchdog: the service stopped ticking, starting it")
+        Kiosk.startService(context)
     }
 }
 
 /** Starts [KioskService] after a reboot. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) Kiosk.startService(context)
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED) Kiosk.startService(context, boot = true)
     }
 }
 

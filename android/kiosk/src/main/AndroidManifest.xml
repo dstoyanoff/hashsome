@@ -37,6 +37,10 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name="dev.hashsome.kiosk.WatchdogReceiver"
+            android:exported="false" />
+
         <!-- Provisioning is `adb shell am broadcast`, which is the shell user: exported, and guarded by the permission only the shell holds. -->
         <receiver
             android:name="dev.hashsome.kiosk.ProvisionReceiver"

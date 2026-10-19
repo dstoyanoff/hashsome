@@ -51,6 +51,9 @@ sealed interface DeviceProfile {
     /** Whether this profile needs the device-admin permission for its screen-off (`lockNow()`). */
     val needsDeviceAdmin: Boolean
 
+    /** Whether, after a boot, the dashboard waits for the stock Shelly app to finish starting before it takes the front (see [BootGate]). */
+    val settlesAtBoot: Boolean get() = false
+
     fun screen(context: Context): Screen
     fun presence(context: Context, scheduler: Scheduler): Presence
 
@@ -58,6 +61,7 @@ sealed interface DeviceProfile {
     data object ShellyStargate : DeviceProfile {
         override val id = "shelly-stargate"
         override val needsDeviceAdmin = false
+        override val settlesAtBoot = true
         override fun screen(context: Context): Screen = PanelScreen(context, sysfs = true, floor = floor)
         override fun presence(context: Context, scheduler: Scheduler): Presence = Presence(context, scheduler)
     }
@@ -66,6 +70,7 @@ sealed interface DeviceProfile {
     data object ShellyJenna : DeviceProfile {
         override val id = "shelly-jenna"
         override val needsDeviceAdmin = true
+        override val settlesAtBoot = true
         override fun screen(context: Context): Screen = PanelScreen(context, sysfs = false, floor = floor)
 
         // The X2i's proximity sensor reports 1.0 for "near" and 0.0 for "far": the opposite of the X1 (ShellyElevate DeviceModel.JENNA).

@@ -27,3 +27,18 @@ class FrontDecisionTest {
         assertTrue(launch(null, resumed = false, visible = false))
     }
 }
+
+class StockSplashTest {
+    private val own = "dev.hashsome.app"
+    private val splash = "cloud.shelly.stargate.activities.SplashActivity"
+
+    @Test
+    fun `the stock app's splash is never launched over`() {
+        assertFalse(FrontDecision.shouldLaunch("cloud.shelly.stargate", own, false, splash) { false })
+    }
+
+    @Test
+    fun `another stock activity is launched over`() {
+        assertTrue(FrontDecision.shouldLaunch("cloud.shelly.stargate", own, false, "cloud.shelly.stargate.activities.MainActivity") { false })
+    }
+}
