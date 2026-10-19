@@ -188,10 +188,10 @@ class TileTouchTest {
     @Test
     fun `the hold line shows nothing for a tap, then fills to the hold`() {
         assertEquals(0f, TileTouch.progress(0), 0f)
-        assertEquals(0f, TileTouch.progress(400), 0f)
-        assertEquals(0.5f, TileTouch.progress(450), 1e-6f)
-        assertEquals(1f, TileTouch.progress(500), 0f)
-        assertEquals(1f, TileTouch.progress(900), 0f)
+        assertEquals(0f, TileTouch.progress(250), 0f)
+        assertEquals(0.5f, TileTouch.progress(525), 1e-6f)
+        assertEquals(1f, TileTouch.progress(800), 0f)
+        assertEquals(1f, TileTouch.progress(1200), 0f)
     }
 
     @Test
@@ -202,7 +202,7 @@ class TileTouchTest {
 
     @Test
     fun `a press as long as a hold is a hold, and does nothing without one`() {
-        assertEquals(TileRelease.Hold, TileTouch.release(500, dragged = false, hasHold = true))
+        assertEquals(TileRelease.Hold, TileTouch.release(800, dragged = false, hasHold = true))
         assertEquals(TileRelease.Nothing, TileTouch.release(900, dragged = false, hasHold = false))
         assertEquals(TileRelease.Nothing, TileTouch.release(400, dragged = false, hasHold = false, thresholdMs = 400))
     }

@@ -25,8 +25,8 @@ import dev.hashsome.client.Store
 // The base views every component is made of. All are `open`: a consumer can subclass one, or write its own view against
 // a headless control. All colors, radii and sizes are read from `Hashsome.theme` at draw time.
 
-/** How long a press has to last to count as a hold (the web's `HOLD_MS`). */
-const val HOLD_MS = 500L
+/** How long a press has to last to count as a hold on a tile: 800 ms, longer than the web's 500 (a user decision: a tap that lingers is not a hold). */
+const val HOLD_MS = 800L
 
 /** What a release of a press on a tile means. */
 enum class TileRelease { Tap, Hold, Drag, Nothing }
@@ -37,8 +37,8 @@ enum class TileRelease { Tap, Hold, Drag, Nothing }
  * off its spot is nothing.
  */
 object TileTouch {
-    /** How long a press has lasted before a tile shows that it is being timed as a hold: a tap never shows it (the status dot's `TAP_MAX_MS`). */
-    const val SHOW_AFTER_MS = 400L
+    /** How long a press has lasted before a tile shows that it is being timed as a hold: a tap never shows it (the status dot has its own, `TAP_MAX_MS`). */
+    const val SHOW_AFTER_MS = 250L
 
     /** The fill of the hold line, 0..1, after [elapsedMs] of a press: nothing until [showAfterMs], then full at [holdMs]. */
     fun progress(elapsedMs: Long, showAfterMs: Long = SHOW_AFTER_MS, holdMs: Long = HOLD_MS): Float =
