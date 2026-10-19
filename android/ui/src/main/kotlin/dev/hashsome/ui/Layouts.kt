@@ -339,7 +339,8 @@ object FlexMath {
      * The main-axis sizes of children given their [basis] sizes, which of them [grow], the [available] space and the [gap]
      * between children. The space left over is shared equally among the growers (the remainder pixels to the first ones). If
      * the children do not fit, only the growers give way, in proportion to how much each has to give and never below its [min]
-     * (a grower that must not shrink, as the web board's `flex: 1 0 auto`, has its basis as its min).
+     * (a grower that must not shrink, as the web board's `flex: 1 0 auto`, has its basis as its min). There are [gaps] gaps:
+     * one fewer than the children that are shown, since a child that is gone (`display: none`) has none beside it.
      */
     fun distribute(
         basis: IntArray,
@@ -348,12 +349,13 @@ object FlexMath {
         gap: Int,
         min: IntArray = IntArray(basis.size),
         weight: FloatArray? = null,
+        gaps: Int = basis.size - 1,
     ): IntArray {
         val n = basis.size
         val sizes = basis.copyOf()
         val growers = (0 until n).count { grow[it] }
         if (n == 0 || growers == 0) return sizes
-        val leftover = available - basis.sum() - gap * (n - 1)
+        val leftover = available - basis.sum() - gap * maxOf(0, gaps)
         if (leftover > 0) {
             // Each grower takes its weight's part of what is left; one that would end below its min is held at the min and the
             // rest share what remains (the web's frozen items). Whole pixels, the remainder to the first growers.
@@ -509,7 +511,7 @@ internal class FlexBox(private val vertical: Boolean) {
             }
         }
         val overfull = mainMode == MeasureSpec.AT_MOST && basis.sum() + gapPx * maxOf(0, visibleCount - 1) > availMain
-        sizes = if (mainMode == MeasureSpec.EXACTLY || overfull) FlexMath.distribute(basis, grow, availMain, gapPx, minSizes, weights) else basis
+        sizes = if (mainMode == MeasureSpec.EXACTLY || overfull) FlexMath.distribute(basis, grow, availMain, gapPx, minSizes, weights, visibleCount - 1) else basis
         for (i in 0 until n) {
             val child = v.getChildAt(i)
             if (child.visibility == View.GONE || sizes[i] == basis[i]) continue

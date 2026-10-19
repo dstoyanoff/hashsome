@@ -303,4 +303,26 @@ class MediaMathTest {
         assertFalse(ScrollEnd.near(contentHeight = 2000, scrollY = 0, viewHeight = 500, slack = 200))
         assertTrue(ScrollEnd.near(contentHeight = 2000, scrollY = 1400, viewHeight = 500, slack = 200))
     }
+
+    @Test
+    fun `a collapse eases out from whole to gone in 160 ms`() {
+        assertEquals(0f, RowCollapse.at(0f, 1f, 0), 1e-6f)
+        assertEquals(1f, RowCollapse.at(0f, 1f, 160), 1e-6f)
+        assertEquals(1f, RowCollapse.at(0f, 1f, 500), 1e-6f)
+        // Ease-out: more than half done at half the time.
+        assertTrue(RowCollapse.at(0f, 1f, 80) > 0.5f)
+        // Coming back goes the other way from where it was.
+        assertEquals(0f, RowCollapse.at(1f, 0f, 160), 1e-6f)
+        assertEquals(0.5f, RowCollapse.at(0.5f, 0.5f, 40), 1e-6f)
+    }
+
+    @Test
+    fun `a collapsing row gives up its height and its opacity together`() {
+        assertEquals(100, RowCollapse.size(100, 0f))
+        assertEquals(40, RowCollapse.size(100, 0.6f))
+        assertEquals(0, RowCollapse.size(100, 1f))
+        assertEquals(0, RowCollapse.size(100, 2f))
+        assertEquals(0.5f, RowCollapse.alpha(1f, 0.5f), 1e-6f)
+        assertEquals(0.25f, RowCollapse.alpha(0.5f, 0.5f), 1e-6f)
+    }
 }

@@ -29,6 +29,9 @@ internal class Transport(context: Context, private val control: MediaPlayerContr
     /** Shuffle as a small plain key beside a title. */
     val shuffle = GlyphButton(context, UiIcons.shuffle, 14f, plain = true).also { it.sizeDp = 28 }
 
+    /** Shuffle beside the title of a player's own page: the web's round button, a circle twice the glyph, warm when on. */
+    val shuffleRound = GlyphButton(context, UiIcons.shuffle, 14f).also { it.sizeDp = 28 }
+
     /** Shuffle as a key of the transport row. */
     val shuffleKey = GlyphButton(context, UiIcons.shuffle)
 
@@ -41,6 +44,7 @@ internal class Transport(context: Context, private val control: MediaPlayerContr
             control.press("setShuffle", MediaPlayerCommands.setShuffle(player?.shuffle != true))
         }
         shuffle.onClick = toggle
+        shuffleRound.onClick = toggle
         shuffleKey.onClick = toggle
     }
 
@@ -70,8 +74,8 @@ internal class Transport(context: Context, private val control: MediaPlayerContr
         next.feedback(control.feedbackFor("next"))
         val shown = ready && caps?.shuffle == true
         val on = player?.shuffle == true
-        for (key in listOf(shuffle, shuffleKey)) {
-            key.visibility = if (key === shuffle && !shown) View.GONE else View.VISIBLE
+        for (key in listOf(shuffle, shuffleRound, shuffleKey)) {
+            key.visibility = if (key !== shuffleKey && !shown) View.GONE else View.VISIBLE
             key.isEnabled = ready
             key.active = on
             key.feedback(control.feedbackFor("setShuffle"))
@@ -224,7 +228,7 @@ internal class NowPlayingView(
                 p.topMargin = -Math.round(unitPx())
             })
         }
-        titleRow.action = if (shuffleAtTitle) keys.shuffle else null
+        titleRow.action = if (shuffleAtTitle) keys.shuffleRound else null
         val transport = RowLayout(context).also {
             it.gap = 3
             it.justify = Justify.Center

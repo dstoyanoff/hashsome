@@ -64,8 +64,9 @@ class QueueControl(val handle: EntityHandle<MediaPlayerEntity>, val scope: Scope
         run(MediaPlayerCommands.playQueueItem(item.id))
     }
 
-    fun remove(item: QueueItem) {
-        run(MediaPlayerCommands.removeQueueItem(item.id))
+    /** Takes [item] out; [done] says whether the player accepted it (a view that took the row out at once puts it back on false). */
+    fun remove(item: QueueItem, done: ((Boolean) -> Unit)? = null) {
+        run(MediaPlayerCommands.removeQueueItem(item.id), done)
     }
 
     /** Moves [item] by [shift] places: later when positive, earlier when negative. */
@@ -75,14 +76,15 @@ class QueueControl(val handle: EntityHandle<MediaPlayerEntity>, val scope: Scope
     }
 
     /** Empties the queue after the track playing. */
-    fun clear() {
-        run(MediaPlayerCommands.clearQueue())
+    fun clear(done: ((Boolean) -> Unit)? = null) {
+        run(MediaPlayerCommands.clearQueue(), done)
     }
 
     // After a change the queue is read again, once the player has had a moment to apply it.
-    private fun run(command: dev.hashsome.client.Command) {
+    private fun run(command: dev.hashsome.client.Command, done: ((Boolean) -> Unit)? = null) {
         handle.command(command) { outcome ->
             if (outcome is Outcome.Ok) scope.after(REFRESH_AFTER_MS) { fetch() }
+            done?.invoke(outcome is Outcome.Ok)
         }
     }
 

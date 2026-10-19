@@ -210,7 +210,6 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
     init {
         header.addView(back, wrap().also { it.rightMargin = 0 })
         header.addView(heading, wrap().also { it.grow = true })
-        header.addView(actions, wrap())
         tabsRow.addView(chips, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(ChipRowView.CHIP_HEIGHT)).also {
             it.grow = true
             it.shrink = true
@@ -287,6 +286,12 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
         }
 
         // What can be done with the whole album, playlist or artist that is open sits at the end of the row of tabs (or of the heading).
+        // They are in the row of tabs when there is one, and in the heading when there are no tabs.
+        val home: ViewGroup = if (tabs) tabsRow else header
+        if (actions.parent !== home) {
+            (actions.parent as? ViewGroup)?.removeView(actions)
+            home.addView(actions, wrap())
+        }
         setActions(if (inside) s.stack.last().item else null)
         scroll.onSwipeBack = if (inside || s.stack.isNotEmpty()) ({ control.back(); Unit }) else null
         content(s)
@@ -448,6 +453,7 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
         it.padUnits = 2.5f
         it.gapUnits = 1f
         it.muted = true
+        it.flat = true
     }
     private val area = FrameLayout(context)
     private val scroll = LibraryScroll(context)
@@ -466,7 +472,12 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
     private var leading: List<QueueItem> = emptyList()
     private var upcoming: List<QueueItem> = emptyList()
     private var clearing = false
-    private var clearTimer: Cancel? = null
+
+    // Rows that are leaving (taken out, or all of what comes next on Clear) by id, how far each has collapsed (1 is gone), until
+    // the queue read afterwards no longer has them. A refused command brings them back.
+    private val leaving = HashMap<String, Float>()
+    private var leaveAnim: ValueAnimator? = null
+    private var landing: Map<String, Float> = emptyMap()
 
     // The order of what comes next after a drag, until the queue read afterwards replaces it.
     private var draft: List<String>? = null
@@ -492,11 +503,13 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
         addView(column, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         heading.heading = "Queue"
         clear.onClick = {
+            // As the web: pending from the press until the player has answered (ok or not).
             clearing = true
-            control.clear()
-            clearTimer?.invoke()
-            clearTimer = control.scope.after(CLEAR_MS) {
+            val ids = upcoming.map { it.id }
+            collapse(ids, toward = 1f)
+            control.clear { ok ->
                 clearing = false
+                if (!ok) collapse(ids, toward = 0f)
                 render()
             }
             render()
@@ -510,9 +523,12 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
             if (dragging) deferred = true else render()
         }
         onDetach(control.state.listen { state ->
-            // A queue read afterwards replaces the order a drag put it in, and ends the wait of Clear.
+            // A queue read afterwards replaces the order a drag put it in, and what it no longer has is no longer leaving.
             if (state !== draftOf) draft = null
-            clearing = false
+            if (leaving.isNotEmpty() && !state.loading && state.error == null) {
+                val ids = state.items.map { it.id }.toSet()
+                leaving.keys.retainAll(ids)
+            }
             redraw(state)
         })
         onDetach(control.handle.state.listen(redraw))
@@ -521,7 +537,7 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
         onDetach {
             pictures.forEach { it.stop() }
             arrivalScope.dispose()
-            clearTimer?.invoke()
+            leaveAnim?.cancel()
             draftTimer?.invoke()
         }
     }
@@ -535,6 +551,10 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
         val ready = control.handle.state.value is dev.hashsome.headless.HandleState.Ready
         val hasQueue = player?.capabilities?.queue == true
         shown = state
+        // Waiting for the player's answer to Clear, whatever the list shows (an emptied one has no rows left to say so).
+        clear.visibility = if (state.total > 0) VISIBLE else GONE
+        clear.isEnabled = !clearing
+        clear.pending = clearing
         skeleton.visibility = GONE
         note.visibility = GONE
         scroll.visibility = GONE
@@ -555,9 +575,6 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
                 source.text = line.orEmpty()
                 source.tone = if (raw.error != null) Tone.Danger else Tone.Muted
                 source.visibility = if (line == null) GONE else VISIBLE
-                clear.visibility = if (state.total > 0) VISIBLE else GONE
-                clear.isEnabled = !clearing
-                clear.pending = clearing
                 scroll.visibility = VISIBLE
                 split(state)
                 layoutRows()
@@ -601,7 +618,12 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
         val row = QueueRow(context)
         // Made once: a row asks the list what it is when it is pressed.
         row.onPlay = { itemOf(row)?.let { control.play(it) } }
-        row.onRemove = { itemOf(row)?.let { control.remove(it) } }
+        row.onRemove = {
+            itemOf(row)?.let { item ->
+                collapse(listOf(item.id), toward = 1f)
+                control.remove(item) { ok -> if (!ok) collapse(listOf(item.id), toward = 0f) }
+            }
+        }
         wireDrag(row)
         return row
     }
@@ -641,6 +663,7 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
             row.translationY = 0f
             row.lifted = false
             pictures[i].set(item.artworkUrl)
+            shape(i, row, item, row.alpha)
         }
         // What is out of sight, said at the end of the list.
         tail?.let { host.removeView(it) }
@@ -654,6 +677,69 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
                     p.bottomMargin = Math.round(2 * unitPx())
                 })
             }
+        }
+    }
+
+    /** A row's fade and height for how far its track has collapsed (not at all unless it is leaving). */
+    private fun shape(index: Int, row: QueueRow, item: QueueItem, base: Float) {
+        val p = leaving[item.id] ?: 0f
+        val lp = row.layoutParams as LinearLayout.LayoutParams
+        val height = RowCollapse.size(dp(QueueRow.ROW), p)
+        val margin = if (index > 0) RowCollapse.size(Math.round(dp(theme.density.space) / 6f), p) else 0
+        row.alpha = RowCollapse.alpha(base, p)
+        row.visibility = if (p >= 1f) INVISIBLE else VISIBLE
+        if (lp.height != height || lp.topMargin != margin) {
+            lp.height = height
+            lp.topMargin = margin
+            row.layoutParams = lp
+        }
+    }
+
+    /** What a row's opacity is when it is not leaving. */
+    private fun baseAlpha(index: Int): Float {
+        val isLeading = index < leading.size
+        val at = leading.indexOfLast { it.current }
+        val over = shown?.let { finished(it) } == true
+        return when {
+            !isLeading -> if (clearing) 0.5f else 1f
+            index < at || (over && leading[index].current) -> 0.5f
+            else -> 1f
+        }
+    }
+
+    /**
+     * Takes the rows of [ids] toward gone (1) or back (0): they fade and give up their height in [RowCollapse.MS] ms, the rows below
+     * sliding up with them, or at once when motion is off. One animator moves all of them together, so Clear is one collapse.
+     */
+    private fun collapse(ids: List<String>, toward: Float) {
+        if (ids.isEmpty()) return
+        fun apply(values: Map<String, Float>) {
+            for ((id, p) in values) if (p <= 0f) leaving.remove(id) else leaving[id] = p
+            for (i in rows.indices) {
+                val item = if (i < leading.size) leading[i] else upcoming.getOrNull(i - leading.size)
+                if (item != null && item.id in values) shape(i, rows[i], item, baseAlpha(i))
+            }
+        }
+        if (!Animation.animates || !isAttachedToWindow) {
+            leaveAnim?.cancel()
+            apply(landing)
+            landing = emptyMap()
+            apply(ids.associateWith { toward })
+            return
+        }
+        // One that is still going is finished where it was heading, so no row is left half way.
+        leaveAnim?.cancel()
+        apply(landing)
+        val from = ids.associateWith { leaving[it] ?: 0f }
+        landing = ids.associateWith { toward }
+        leaveAnim = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = RowCollapse.MS
+            interpolator = android.view.animation.LinearInterpolator()
+            addUpdateListener { a ->
+                val t = a.animatedValue as Float
+                apply(from.mapValues { (_, f) -> RowCollapse.at(f, toward, Math.round(t * RowCollapse.MS.toFloat()).toLong()) })
+            }
+            start()
         }
     }
 
@@ -727,7 +813,6 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
     }
 
     private companion object {
-        const val CLEAR_MS = 4000L
         const val DRAFT_MS = 2500L
     }
 }
