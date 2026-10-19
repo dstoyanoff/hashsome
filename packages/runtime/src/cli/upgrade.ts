@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const USAGE = `Usage: hashsome upgrade [--dry-run]
@@ -8,8 +8,12 @@ Updates every @hashsome/* package your project depends on to the latest release 
 share one version, so they move together. Packages linked from a local checkout (workspace:, link:,
 file:) are left alone. A project on another package manager upgrades them by hand.
 
+A project with an Android app (android/gradle/libs.versions.toml) also gets that file's
+\`hashsome = "..."\` line set to the installed @hashsome/runtime version, so the Kotlin libraries
+move with the npm packages.
+
 Options:
-  --dry-run   Show what would run, change nothing
+  --dry-run   Show what would run and write, change nothing
 
 Afterwards run your typecheck, and read the release notes for what changed:
   https://github.com/dstoyanoff/hashsome/releases
@@ -91,6 +95,65 @@ export function describeChanges(before: ProjectPackage, after: ProjectPackage): 
 
 const read = (file: string): ProjectPackage => JSON.parse(readFileSync(file, 'utf8'));
 
+/** Sets `hashsome = "<version>"` under `[versions]` in a Gradle version catalog, leaving every other line alone. `changed` is false when the line is absent or already there. */
+export function bumpVersionCatalog(
+  text: string,
+  version: string,
+): { text: string; changed: boolean } {
+  let inVersions = false;
+  const lines = text.split('\n').map((line) => {
+    const section = /^\s*\[([^\]]+)\]/.exec(line)?.[1];
+    if (section !== undefined) {
+      inVersions = section.trim() === 'versions';
+      return line;
+    }
+
+    return inVersions ? line.replace(/^(\s*hashsome\s*=\s*")[^"]*(")/, `$1${version}$2`) : line;
+  });
+
+  const next = lines.join('\n');
+  return { text: next, changed: next !== text };
+}
+
+const CATALOG = join('android', 'gradle', 'libs.versions.toml');
+
+/** Points the Android project's version catalog at the installed `@hashsome/runtime`, if the project has one. On a dry run says so and writes nothing. */
+export function syncVersionCatalog(root: string, dryRun: boolean): void {
+  const file = join(root, CATALOG);
+  if (!existsSync(file)) {
+    return;
+  }
+
+  if (dryRun) {
+    console.log(
+      `Would set hashsome = "<the @hashsome/runtime version just installed>" in ${CATALOG}`,
+    );
+
+    return;
+  }
+
+  const installed = join(root, 'node_modules', '@hashsome', 'runtime', 'package.json');
+  const version = existsSync(installed)
+    ? (JSON.parse(readFileSync(installed, 'utf8')).version as unknown)
+    : undefined;
+
+  if (typeof version !== 'string') {
+    console.log(
+      `Could not read the installed @hashsome/runtime version, left ${CATALOG} as it is.`,
+    );
+
+    return;
+  }
+
+  const { text, changed } = bumpVersionCatalog(readFileSync(file, 'utf8'), version);
+  if (changed) {
+    writeFileSync(file, text);
+    console.log(`Set hashsome = "${version}" in ${CATALOG}`);
+  } else {
+    console.log(`${CATALOG} already at ${version} (or has no hashsome version).`);
+  }
+}
+
 /** `hashsome upgrade`: updates the project's @hashsome packages to the latest release. */
 export function upgradeCommandLine(args: string[], root: string = resolve(process.cwd())): void {
   if (args.includes('--help') || args.includes('-h')) {
@@ -130,6 +193,7 @@ export function upgradeCommandLine(args: string[], root: string = resolve(proces
   const [command, ...rest] = upgradeCommand(upgrade);
   console.log(`$ ${[command, ...rest].join(' ')}`);
   if (args.includes('--dry-run')) {
+    syncVersionCatalog(root, true);
     return;
   }
 
@@ -146,4 +210,6 @@ export function upgradeCommandLine(args: string[], root: string = resolve(proces
   console.log(
     changes.length > 0 ? `\nUpgraded:\n${changes.join('\n')}` : '\nAlready on the latest.',
   );
+
+  syncVersionCatalog(root, false);
 }
