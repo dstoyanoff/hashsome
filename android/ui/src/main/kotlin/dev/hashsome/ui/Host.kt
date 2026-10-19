@@ -6,6 +6,7 @@ import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
@@ -402,20 +403,28 @@ internal class ThemeHost(
  */
 open class DashboardActivity : Activity() {
     private var host: DashboardHost? = null
+    private var switch: DashboardSwitch<DashboardHost>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         hideSystemBars()
         Hashsome.screenPolicy.attach(this)
         Hashsome.connect()
-        val dashboard = chosenDashboard()
-        if (dashboard != null) {
-            val shown = DashboardHost(this, dashboard)
-            host = shown
-            setContentView(shown.root)
-            // After the first frame, with the screen drawn, so it costs nothing at start.
-            shown.root.postDelayed({ warmIcons(this) }, 800)
-        }
+        // The settings sheet, Home Assistant's select and a PROVISION broadcast all write `settings.dashboard`: whichever writes last
+        // switches the dashboard on screen, in place.
+        val shown = DashboardSwitch(
+            choose = { chosenDashboard() },
+            make = { DashboardHost(this, it) },
+            drop = { it.dispose() },
+            show = { shown ->
+                host = shown
+                setContentView(shown.root)
+                // After the first frame, with the screen drawn, so it costs nothing at start.
+                shown.root.postDelayed({ warmIcons(this) }, 800)
+            },
+        )
+        switch = shown
+        shown.start(Hashsome.settings.dashboard)
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
@@ -426,9 +435,7 @@ open class DashboardActivity : Activity() {
 
     /** The dashboard `Hashsome.settings.dashboard` names; the first one when it names none that exists. */
     protected open fun chosenDashboard(): Dashboard? {
-        val all = Hashsome.app.dashboards
-        val id = Hashsome.settings.dashboard.value
-        return all.firstOrNull { it.id == id } ?: all.firstOrNull()
+        return pickDashboard(Hashsome.app.dashboards, Hashsome.settings.dashboard.value) { Log.e("Hashsome", it) }
     }
 
     private fun hideSystemBars() {
@@ -459,17 +466,79 @@ open class DashboardActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        switch?.start(Hashsome.settings.dashboard)
         Hashsome.screenPolicy.onResume(this)
     }
 
     override fun onPause() {
+        switch?.pause()
         Hashsome.screenPolicy.onPause(this)
         super.onPause()
     }
 
     override fun onDestroy() {
-        host?.dispose()
+        switch?.stop()
+        switch = null
         host = null
         super.onDestroy()
+    }
+}
+
+/** The dashboard [id] names; the first one when [id] is null, and the first one, reported through [error], when no dashboard has that id. */
+internal fun pickDashboard(all: List<Dashboard>, id: String?, error: (String) -> Unit): Dashboard? {
+    if (id == null) return all.firstOrNull()
+    all.firstOrNull { it.id == id }?.let { return it }
+    all.firstOrNull()?.let { error("Unknown dashboard '$id', showing '${it.id}' (known: ${all.joinToString { d -> d.id }})") }
+    return all.firstOrNull()
+}
+
+/**
+ * Keeps one [H] (a dashboard host) for the dashboard [choose] names, and swaps it when the setting changes to another one:
+ * the old one is dropped (its overlays, page scope and idle timer with it) before the new one is made and shown at its first page.
+ * The same dashboard again is nothing to do.
+ */
+internal class DashboardSwitch<H>(
+    private val choose: () -> Dashboard?,
+    private val make: (Dashboard) -> H,
+    private val drop: (H) -> Unit,
+    private val show: (H) -> Unit,
+) {
+    private var currentId: String? = null
+    private var current: H? = null
+    private var cancel: Cancel = {}
+
+    private var following = false
+
+    /** Shows the chosen dashboard, then follows [setting]. Again after [pause]: catches up with what changed meanwhile. */
+    fun start(setting: Store<String?>) {
+        if (following) return
+        following = true
+        apply()
+        cancel = setting.listen { apply() }
+    }
+
+    /** Stops following (the activity left the front: an old one must not rebuild a host or dismiss the new one's overlays). The dashboard stays. */
+    fun pause() {
+        cancel()
+        cancel = {}
+        following = false
+    }
+
+    fun stop() {
+        pause()
+        current?.let(drop)
+        current = null
+        currentId = null
+    }
+
+    private fun apply() {
+        val next = choose() ?: return
+        if (next.id == currentId && current != null) return
+        current?.let(drop)
+        current = null
+        val made = make(next)
+        current = made
+        currentId = next.id
+        show(made)
     }
 }
