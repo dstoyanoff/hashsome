@@ -21,7 +21,7 @@ class RemoteClient(
     private val transport: Transport.Factory = WsClient.Factory,
     private val scheduler: Scheduler,
 ) : Client {
-    /** Where the runtime is; [reconnect] can change it. */
+    /** Where the runtime is; [reconnect] can change it. Read it on the scheduler's thread. */
     var server: ServerAddress = server
         private set
 
@@ -175,9 +175,20 @@ class RemoteClient(
      * Closes the current socket and opens a new one at once, to [server] when it is given, with the backoff reset. Watchers, subscriptions
      * and stores stay: the subscriptions are sent again when the new socket opens. Requests in flight fail with "Connection lost"; queries
      * not yet sent wait for the new socket. The link goes `Connecting` (not `Closed`). A client that was closed starts again.
+     * When the address changes, the known snapshots and integration statuses of the old runtime are forgotten (watchers see `Loading`).
+     * Like every method here, call it on the scheduler's thread.
      */
     override fun reconnect(server: ServerAddress?) {
-        if (server != null) this.server = server
+        if (server != null && server != this.server) {
+            // Nothing the old runtime said holds for the new one: watchers see Loading until it answers.
+            this.server = server
+            known.clear()
+            status.clear()
+            integrations.set(emptyMap())
+            for (list in watchers.values) for (watcher in list.toList()) watcher.emit(Snapshot.Loading)
+        } else if (server != null) {
+            this.server = server
+        }
         retryTimer()
         retryTimer = {}
         retry = 0

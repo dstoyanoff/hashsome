@@ -177,6 +177,7 @@ class RemoteClientSocketTest {
             assertEquals("subscribe", again.getString("type"))
             assertEquals("ha:light.x", again.getString("ref"))
             second.send(entityFrame(false))
+            assertEquals(Snapshot.Loading, snapshots.poll(5, TimeUnit.SECONDS))
             assertEquals(false, ((snapshots.poll(5, TimeUnit.SECONDS) as Snapshot.Present).entity as LightEntity).on)
             assertEquals(LinkStatus.Open, queue.run { client.link.value })
             assertEquals("http://127.0.0.1:${two.localPort}", queue.run { client.server.baseUrl })

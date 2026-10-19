@@ -133,7 +133,8 @@ interface Client {
 
     /**
      * Drops the socket and opens a new one at once, at [server] when given, keeping every watch and store (subscriptions are sent again
-     * on open); requests in flight fail with "Connection lost" and [link] goes `Connecting`.
+     * on open); requests in flight fail with "Connection lost" and [link] goes `Connecting`. A new address clears what the old runtime said
+     * (snapshots, [integrations]). Call it on the main thread, like every method.
      */
     fun reconnect(server: ServerAddress? = null)
 }

@@ -764,4 +764,78 @@ class RemoteClientTest {
         assertEquals(1, frames("raw").size)
         assertNull(got)
     }
+
+    @Test
+    fun `a new address forgets the old runtime's snapshots and statuses, the same address does not`() {
+        open()
+        val seen = ArrayList<Snapshot>()
+        client.watch(light) { seen += it }
+        transport.receive(lightFrame(true))
+        transport.receive("""{"type":"status","integration":"ha","status":"connected"}""")
+        scheduler.runCurrent()
+        client.reconnect(ServerAddress("http://runtime.test:3000"))
+        scheduler.runCurrent()
+        assertEquals(Snapshot.Present(lightEntity(true)), seen.last())
+        assertEquals(1, client.integrations.value.size)
+
+        client.reconnect(ServerAddress("http://other.test:1"))
+        scheduler.runCurrent()
+        assertEquals(Snapshot.Loading, seen.last())
+        assertTrue(client.integrations.value.isEmpty())
+        var late: Snapshot? = null
+        client.watch(light) { late = it }
+        scheduler.runCurrent()
+        assertEquals(Snapshot.Loading, late)
+    }
+
+    @Test
+    fun `a late message or close from the old transport after a reconnect does nothing`() {
+        open()
+        val old = transport
+        client.watch(light) {}
+        client.reconnect()
+        val fresh = transport
+        fresh.open()
+        scheduler.runCurrent()
+        val seen = ArrayList<Snapshot>()
+        client.watch(light) { seen += it }
+        scheduler.runCurrent()
+        seen.clear()
+        old.receive(lightFrame(true))
+        old.drop("late")
+        scheduler.runCurrent()
+        assertTrue(seen.isEmpty())
+        assertEquals(LinkStatus.Open, client.link.value)
+        assertEquals(2, factory.created.size)
+        scheduler.advance(10_000)
+        assertEquals(2, factory.created.size)
+    }
+
+    @Test
+    fun `after a reconnect the pong-gated dead rule still holds`() {
+        open()
+        client.reconnect()
+        transport.open()
+        scheduler.runCurrent()
+        // No pong was ever seen on the new socket: silence is not death.
+        scheduler.advance(ProtocolRules.DEAD_AFTER_MS + ProtocolRules.PING_MS * 2)
+        assertEquals(LinkStatus.Open, client.link.value)
+        // Once it answers, silence is.
+        transport.receive("""{"type":"pong"}""")
+        scheduler.runCurrent()
+        val before = factory.created.size
+        scheduler.advance(ProtocolRules.DEAD_AFTER_MS + ProtocolRules.PING_MS * 2)
+        assertTrue("the quiet socket is given up and a new one opened", transport.closedByClient || factory.created.size > before)
+        assertTrue(factory.created[before - 1].closedByClient)
+    }
+
+    @Test
+    fun `a raw request and a query share one id sequence`() {
+        open()
+        client.query(EntityRef("ma:p"), Query.Browse()) {}
+        client.raw("ha", serviceCall)
+        client.query(EntityRef("ma:p"), Query.Browse()) {}
+        val ids = transport.sent.map { JSONObject(it) }.filter { it.getString("type") != "ping" }.map { it.getInt("id") }
+        assertEquals(listOf(ids[0], ids[0] + 1, ids[0] + 2), ids)
+    }
 }
