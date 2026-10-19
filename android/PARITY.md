@@ -68,3 +68,14 @@ Statuses: `native` (a Kotlin counterpart exists; `native:<Name>` when it is name
 | `useIntegrationStatus`   | hook | planned  |                     |
 | `useIntegrationStatuses` | hook | planned  |                     |
 | `useCallRaw`             | hook | planned  |                     |
+
+## Native only
+
+| Native        | Reason                                                                               |
+| ------------- | ------------------------------------------------------------------------------------ |
+| `FormHeading` | a form control of the settings sheet (the web's debug menu uses its ChipRow instead) |
+| `FormRow`     | a form control of the settings sheet (the web's debug menu uses its ChipRow instead) |
+| `ToggleView`  | a form control of the settings sheet (the web's debug menu uses its ChipRow instead) |
+| `FormSelect`  | a form control of the settings sheet (the web's debug menu uses its ChipRow instead) |
+| `FormSlider`  | a form control of the settings sheet (the web's debug menu uses its ChipRow instead) |
+| `FormField`   | a form control of the settings sheet (the web's debug menu uses its ChipRow instead) |
