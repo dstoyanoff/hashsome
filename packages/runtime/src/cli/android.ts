@@ -23,7 +23,8 @@ Options (build, deploy, provision, uninstall):
   --system        provision / uninstall, Shelly displays only: install the app as a system app (adb root,
                   /system/priv-app/Hashsome, a reboot), or remove that copy. For the X1, whose stock app
                   force-stops every non-system app at boot. Needs a userdebug image (the X2i is a user
-                  build). Later updates are a plain deploy.
+                  build). Later updates are a plain deploy, which also refreshes
+                  the system copy (no reboot).
   --dry-run       Print every command instead of running it
 
 devices.json (project root):
@@ -660,23 +661,15 @@ function printRoot(commands: Command[], cwd: string): void {
   runCommands(commands.slice(1), cwd, { dryRun: true });
 }
 
-/** The image check and `adb root`, before anything on the device is touched: throws on a user build or when adbd will not run as root. */
-function requireRoot(
-  device: Device,
-  image: Command[],
-  rootSteps: Command[],
-  cwd: string,
-  exec: Exec,
-  sleep: Sleep,
-): void {
+/** Whether the image behind `image` (connect, then the two getprops) is rootable. */
+function imageIsRootable(image: Command[], cwd: string, exec: Exec): boolean {
   const [first, buildType, debuggable] = image;
   runCommands([first!], cwd, { dryRun: false, exec });
-  if (!isRootable(readOutput(buildType!, cwd, exec), readOutput(debuggable!, cwd, exec))) {
-    throw new Error(
-      `${device.id}: this image has no adb root (ro.build.type is not userdebug and ro.debuggable is not 1); the X2i is a user build. Keep the normal install.`,
-    );
-  }
+  return isRootable(readOutput(buildType!, cwd, exec), readOutput(debuggable!, cwd, exec));
+}
 
+/** `adb root` and the reconnect (adbd restarts); throws when adbd will not run as root. */
+function becomeRoot(device: Device, rootSteps: Command[], cwd: string, exec: Exec, sleep: Sleep) {
   try {
     runCommands([rootSteps[0]!], cwd, { dryRun: false, exec });
     sleep(2000);
@@ -689,9 +682,27 @@ function requireRoot(
   }
 }
 
-/** The writes to /system between the two remounts and the reboot; a failure puts /system back to read-only (best effort) before it is thrown. */
+/** The image check and `adb root`, before anything on the device is touched: throws on a user build or when adbd will not run as root. */
+function requireRoot(
+  device: Device,
+  image: Command[],
+  rootSteps: Command[],
+  cwd: string,
+  exec: Exec,
+  sleep: Sleep,
+): void {
+  if (!imageIsRootable(image, cwd, exec)) {
+    throw new Error(
+      `${device.id}: this image has no adb root (ro.build.type is not userdebug and ro.debuggable is not 1); the X2i is a user build. Keep the normal install.`,
+    );
+  }
+
+  becomeRoot(device, rootSteps, cwd, exec, sleep);
+}
+
+/** The writes to /system between the two remounts and the reboot (none when `reboot` is absent); a failure puts /system back to read-only (best effort) before it is thrown. */
 function writeSystem(
-  stages: { rw: Command; write: Command[]; ro: Command; reboot: Command },
+  stages: { rw: Command; write: Command[]; ro: Command; reboot?: Command },
   cwd: string,
   exec: Exec,
 ): void {
@@ -707,7 +718,10 @@ function writeSystem(
     throw error;
   }
 
-  runCommands([stages.ro, stages.reboot], cwd, { dryRun: false, exec });
+  runCommands(stages.reboot ? [stages.ro, stages.reboot] : [stages.ro], cwd, {
+    dryRun: false,
+    exec,
+  });
 }
 
 /**
@@ -802,6 +816,65 @@ function provisionSystem(
   console.log(
     `${device.id}: installed as a system app. This is one-time: later updates are a plain \`hashsome android deploy\` (adb install -r keeps the system flag).`,
   );
+}
+
+/** `dumpsys package <pkg>` lines that tell a system app: its flags and where its code is. */
+export const systemCheckCommand = (device: Device, pkg: string): Command =>
+  shellLine(device, `dumpsys package ${pkg} | grep -E 'flags|codePath'`);
+
+/** Whether `systemCheckCommand`'s output says a system app (the SYSTEM flag, or code in /system/priv-app). */
+export const isSystemApp = (dumpsys: string): boolean =>
+  hasSystemFlag(dumpsys) || /codePath=\/system\/priv-app\b/.test(dumpsys);
+
+/** Steps that copy the APK over the system copy: the provision's writes, without the reboot. */
+export function systemRefreshStages(device: Device, apk: string, pkg: string) {
+  const { image, root, rw, write, ro } = systemProvisionStages(device, apk, pkg);
+  return { image, root, rw, write: write.filter((c) => c[3] !== 'mkdir'), ro };
+}
+
+/**
+ * deploy on a Shelly display whose app is a system app: `adb install -r` with the same versionCode updates the
+ * running app, but the next boot drops that /data update for the older /system/priv-app copy, so the copy is
+ * refreshed too. No reboot: the running app is already the new code. A user build cannot write /system, so
+ * there the update will not survive a reboot, and that is said.
+ */
+function refreshSystemCopy(
+  device: Device,
+  apk: string,
+  pkg: string,
+  opts: { dryRun: boolean; root: string; exec: Exec | undefined; sleep: Sleep },
+): void {
+  if (device.profile === 'generic') {
+    return;
+  }
+
+  const { dryRun, root } = opts;
+  const stages = systemRefreshStages(device, apk, pkg);
+  if (dryRun) {
+    console.log('# if the app is a system app (flags have SYSTEM) on a rootable image:');
+    runCommands([systemCheckCommand(device, pkg), ...stages.image.slice(1)], root, { dryRun });
+    printRoot(stages.root, root);
+    runCommands([stages.rw, ...stages.write, stages.ro], root, { dryRun });
+    console.log('# (system copy refreshed; no reboot)');
+    return;
+  }
+
+  const exec = opts.exec ?? spawnExec;
+  if (!isSystemApp(readOutput(systemCheckCommand(device, pkg), root, exec))) {
+    return;
+  }
+
+  if (!imageIsRootable(stages.image, root, exec)) {
+    console.warn(
+      `${device.id}: ${pkg} is a system app but this image has no adb root, so the system copy cannot be refreshed: this update will not survive a reboot (the older system copy comes back). Bump the versionCode and redeploy, or re-run provision --system.`,
+    );
+
+    return;
+  }
+
+  becomeRoot(device, stages.root, root, exec, opts.sleep);
+  writeSystem(stages, root, exec);
+  console.log(`${device.id}: system copy refreshed; no reboot.`);
 }
 
 /** `hashsome android`: build, deploy and provision the native app. */
@@ -907,6 +980,10 @@ export async function androidCommand(
             : provisionCommands(device, apk, pkg, flags.has('home') || device.home === true);
 
       runCommands(plan, root, { dryRun, exec });
+      if (sub === 'deploy') {
+        refreshSystemCopy(device, apk, pkg, { dryRun, root, exec, sleep });
+      }
+
       if (sub === 'uninstall' && device.home === true) {
         console.log(`${device.id}: ${HOME_NOTE}`);
       }

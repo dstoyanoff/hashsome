@@ -89,7 +89,7 @@ hashsome android provision --device bathroom [--home]   # first time only: permi
 hashsome android uninstall --device bathroom            # removes the app's own device admin first, then the app
 ```
 
-On the X1 (userdebug) the app must be a system app or the stock app kills it at every boot: `hashsome android provision --system --device <id>` once (instead of plain `provision`; later updates are plain `deploy`; `uninstall --system` undoes it; a lower-version /data copy is removed with `pm uninstall -k`, keeping its data; refused on a tablet and on the X2i). See `android/README.md` "System install on Shelly displays (X1)".
+On the X1 (userdebug) the app must be a system app or the stock app kills it at every boot: `hashsome android provision --system --device <id>` once (instead of plain `provision`; later updates are plain `deploy`, which also refreshes the system copy without a reboot; `uninstall --system` undoes it; a lower-version /data copy is removed with `pm uninstall -k`, keeping its data; refused on a tablet and on the X2i). See `android/README.md` "System install on Shelly displays (X1)".
 
 `uninstall` relies on the app's kiosk module answering `dev.hashsome.REMOVE_ADMIN`; an app built without
 `withKiosk` cannot be uninstalled this way while a device admin is active.

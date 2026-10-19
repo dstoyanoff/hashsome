@@ -12,6 +12,7 @@ import {
   parseFreeKb,
   parseVersionCode,
   shouldUninstallDataCopy,
+  isSystemApp,
   systemProvisionStages,
   systemRemoveStages,
   buildCommands,
@@ -442,6 +443,16 @@ describe('androidCommand (dry run)', () => {
     expect(text).toContain('dumpsys package dev.hashsome.home | grep flags');
   });
 
+  test('deploy --dry-run on a Shelly shows the system copy refresh', async () => {
+    const root = project([{ id: 'x1', host: '1.1.1.1', profile: 'shelly-stargate' }]);
+    const log = output();
+    await androidCommand(['deploy', '--dry-run'], root);
+    const text = log.mock.calls.map((c) => c[0]).join('\n');
+    expect(text).toContain('/system/priv-app/Hashsome/Hashsome.apk');
+    expect(text).toContain('(system copy refreshed; no reboot)');
+    expect(text).not.toContain('1.1.1.1:5555 reboot');
+  });
+
   test('provision --system refuses a generic device, and says so', async () => {
     const root = project([{ id: 'tab', host: '1.1.1.1', profile: 'generic' }]);
     output();
@@ -561,6 +572,72 @@ describe('androidCommand (dry run)', () => {
       await expect(androidCommand(['provision', '--system'], root, exec, sleep)).rejects.toThrow(
         'failed for 1',
       );
+    });
+
+    describe('deploy on a system app', () => {
+      const run = async (opts: Parameters<typeof mock>[0], system: boolean) => {
+        const root = setup();
+        const m = mock(opts);
+        const exec: Exec = (command) => {
+          if (line(command).includes("grep -E 'flags|codePath'")) {
+            m.seen.push(line(command));
+            return {
+              status: 0,
+              output: system ? 'flags=[ SYSTEM HAS_CODE ]\n' : 'flags=[ HAS_CODE ]\n',
+            };
+          }
+
+          return m.exec(command, root);
+        };
+
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        await androidCommand(['deploy'], root, exec, sleep);
+        return { seen: m.seen, warn };
+      };
+
+      test('system and rootable: the system copy is refreshed, without a reboot', async () => {
+        const { seen, warn } = await run({}, true);
+        const at = (needle: string) => seen.findIndex((l) => l.includes(needle));
+        expect(at(' install ')).toBeLessThan(at('rw,remount'));
+        expect(at('1.1.1.1:5555 root')).toBeLessThan(at('rw,remount'));
+        expect(at('rw,remount')).toBeLessThan(at(' push '));
+        expect(seen[at(' push ')]).toContain('/system/priv-app/Hashsome/Hashsome.apk');
+        expect(at(' push ')).toBeLessThan(at('chmod 644'));
+        expect(at('chmod 644')).toBeLessThan(at('ro,remount'));
+        expect(seen.some((l) => l.includes(' reboot'))).toBe(false);
+        expect(warn).not.toHaveBeenCalled();
+      });
+
+      test('a failed install skips the refresh', async () => {
+        const root = setup();
+        const m = mock({ failOn: ' install ' });
+        await expect(androidCommand(['deploy'], root, m.exec, sleep)).rejects.toThrow(
+          'deploy failed',
+        );
+
+        expect(m.seen.some((l) => l.includes(' push ') || l.includes('remount'))).toBe(false);
+      });
+
+      test('isSystemApp', () => {
+        expect(isSystemApp('privateFlags=[ PRIVILEGED ]')).toBe(false);
+        expect(isSystemApp('flags=[ HAS_CODE UPDATED_SYSTEM_APP ]')).toBe(false);
+        expect(isSystemApp('codePath=/system/priv-app/Hashsome')).toBe(true);
+        expect(isSystemApp('flags=[ SYSTEM HAS_CODE ]')).toBe(true);
+      });
+
+      test('not a system app: nothing extra', async () => {
+        const { seen, warn } = await run({}, false);
+        expect(seen.some((l) => l.includes(' push ') || l.includes('remount'))).toBe(false);
+        expect(seen.some((l) => l.includes(' root'))).toBe(false);
+        expect(warn).not.toHaveBeenCalled();
+      });
+
+      test('system but not rootable: a warning only', async () => {
+        const { seen, warn } = await run({ buildType: 'user', debuggable: '0' }, true);
+        expect(seen.some((l) => l.includes(' push ') || l.includes('remount'))).toBe(false);
+        expect(warn).toHaveBeenCalledOnce();
+        expect(String(warn.mock.calls[0]![0])).toContain('will not survive a reboot');
+      });
     });
 
     test('uninstall --system on a user build fails before anything is removed', async () => {
