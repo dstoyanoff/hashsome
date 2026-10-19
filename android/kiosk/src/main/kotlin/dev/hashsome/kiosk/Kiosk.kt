@@ -62,6 +62,25 @@ fun HashsomeApp.withKiosk(config: KioskConfig = KioskConfig()): HashsomeApp = co
  */
 class KioskExtension(val config: KioskConfig) : AppExtension {
     override fun install(app: Application, hashsome: Hashsome) {
+        // A direct-boot start (the boot receiver is aware) creates the Application while credential-encrypted storage, where
+        // Settings lives, is still locked: finish the install when the user unlocks (a no-op on any device that never locks).
+        if (!userUnlocked(app)) {
+            Log.e("kiosk", "storage locked, installing after ACTION_USER_UNLOCKED")
+            app.registerReceiver(object : android.content.BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    app.unregisterReceiver(this)
+                    finish(app, hashsome)
+                }
+            }, android.content.IntentFilter(Intent.ACTION_USER_UNLOCKED))
+            return
+        }
+        finish(app, hashsome)
+    }
+
+    private fun userUnlocked(app: Application): Boolean =
+        android.os.Build.VERSION.SDK_INT < 24 || (app.getSystemService(Context.USER_SERVICE) as android.os.UserManager).isUserUnlocked
+
+    private fun finish(app: Application, hashsome: Hashsome) {
         Settings.init(app, config)
         Kiosk.config = config
         Kiosk.appContext = app
