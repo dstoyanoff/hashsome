@@ -12,6 +12,7 @@ import {
   runCommands,
   shellQuote,
   validateDevices,
+  uninstallCommands,
   type Device,
   type Exec,
 } from '../android.ts';
@@ -201,6 +202,18 @@ describe('provisionCommands', () => {
   });
 });
 
+describe('uninstallCommands', () => {
+  test('connect, the app removes its own admin, a pause, then pm uninstall, retried once after a further pause', () => {
+    const plan = uninstallCommands(device(), PKG).map(line);
+    expect(plan).toEqual([
+      'adb connect 10.1.1.50:5555',
+      `adb -s 10.1.1.50:5555 shell am broadcast --include-stopped-packages -a dev.hashsome.REMOVE_ADMIN -p ${PKG}`,
+      'adb -s 10.1.1.50:5555 shell sleep 2',
+      `adb -s 10.1.1.50:5555 shell sh -c 'pm uninstall ${PKG} || (sleep 2 && pm uninstall ${PKG})'`,
+    ]);
+  });
+});
+
 describe('runCommands', () => {
   afterEach(() => vi.restoreAllMocks());
 
@@ -304,6 +317,24 @@ describe('androidCommand (dry run)', () => {
     expect(provisioned).toContain('HomeAlias');
   });
 
+  test('uninstall needs no APK, honours --device, and reminds about the home app only for a home device', async () => {
+    const root = project([
+      { id: 'a', host: '1.1.1.1', profile: 'generic', home: true },
+      { id: 'b', host: '2.2.2.2', profile: 'shelly-jenna' },
+    ]);
+
+    const log = output();
+    await androidCommand(['uninstall', '--device', 'a'], root, () => ({ status: 0 }));
+    const text = log.mock.calls.map((c) => c[0]).join('\n');
+    expect(text).toContain('pm uninstall dev.hashsome.home ||');
+    expect(text).toContain('choose the home app again');
+    expect(text).not.toContain('2.2.2.2');
+
+    log.mockClear();
+    await androidCommand(['uninstall', '--device', 'b', '--dry-run'], root);
+    expect(log.mock.calls.map((c) => c[0]).join('\n')).not.toContain('choose the home app');
+  });
+
   test('build runs the wrapper inside android/, and needs it there', async () => {
     output();
     const root = project([]);
@@ -377,11 +408,11 @@ describe('androidCommand (dry run)', () => {
     );
   });
 
-  test('--help lists the four commands', async () => {
+  test('--help lists the five commands', async () => {
     const log = output();
     await androidCommand(['--help']);
     const text = log.mock.calls.map((c) => c[0]).join('\n');
-    for (const sub of ['build', 'deploy', 'provision', 'icons']) {
+    for (const sub of ['build', 'deploy', 'provision', 'uninstall', 'icons']) {
       expect(text).toContain(`  ${sub} `);
     }
   });

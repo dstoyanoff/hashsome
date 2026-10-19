@@ -85,6 +85,20 @@ export function bump(version: string, level: Level): string {
   return level === 'minor' ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
 }
 
+/**
+ * `text` with the first match of `pattern` replaced by `line`, the file's own form of the version
+ * (`"version": "x"` in a package.json, `hashsome.version=x` in the Gradle properties). Throws when
+ * the pattern matches nothing, so a file that stopped carrying its version fails the release instead
+ * of shipping the old one.
+ */
+export function bumpVersionIn(text: string, pattern: RegExp, line: string): string {
+  if (!pattern.test(text)) {
+    throw new Error(`${pattern} matches nothing`);
+  }
+
+  return text.replace(pattern, () => line);
+}
+
 const SECTIONS: [string, (c: Parsed) => boolean][] = [
   ['⚠ Breaking changes', (c) => c.breaking],
   ['Features', (c) => !c.breaking && c.type === 'feat'],

@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-const USAGE = `Usage: hashsome android <build|deploy|provision|icons> [options]
+const USAGE = `Usage: hashsome android <build|deploy|provision|uninstall|icons> [options]
 
 Builds the project's native Android app and puts it on the displays listed in devices.json.
 
@@ -10,9 +10,14 @@ Commands:
   build       Build the release APK (./gradlew -p android assembleRelease)
   deploy      Install the APK on each device and hand it its settings (server, dashboard, ...)
   provision   deploy, plus the one-time permissions and kiosk set-up for a device
+  uninstall   Have the app remove its own device admin, then uninstall it (a device admin blocks pm uninstall,
+              and adb cannot remove one that is not a test admin). The app's kiosk module handles the
+              dev.hashsome.REMOVE_ADMIN broadcast; an app built without withKiosk cannot be uninstalled this
+              way while an admin is active. A device with "home": true prints a reminder to choose its home
+              app again: the previous one is not known.
   icons       Convert an icon pack's SVGs to drawables and a Kotlin object (hashsome android icons --help)
 
-Options (build, deploy, provision):
+Options (build, deploy, provision, uninstall):
   --device <id>   Only this device from devices.json
   --home          provision: also make the app the device's home screen
   --dry-run       Print every command instead of running it
@@ -42,6 +47,7 @@ export interface Device {
 
 export const APK = 'android/app/build/outputs/apk/release/app-release.apk';
 const PROVISION_ACTION = 'dev.hashsome.PROVISION';
+const REMOVE_ADMIN_ACTION = 'dev.hashsome.REMOVE_ADMIN';
 const ACTIVITY = 'dev.hashsome.ui.DashboardActivity';
 const ADMIN = 'dev.hashsome.kiosk.HashsomeDeviceAdmin';
 const HOME_ALIAS = 'dev.hashsome.kiosk.HomeAlias';
@@ -295,6 +301,34 @@ export function provisionCommands(
   ];
 }
 
+/**
+ * Take the app off a device. A device admin that is not a test one cannot be removed from outside
+ * (`dpm remove-active-admin` fails, and `pm uninstall` fails while the admin is active), so the app is
+ * asked to remove its own: the broadcast, a moment for it to run, then the uninstall.
+ */
+export function uninstallCommands(device: Device, pkg: string): Command[] {
+  return [
+    connect(device),
+    shell(
+      device,
+      'am',
+      'broadcast',
+      '--include-stopped-packages',
+      '-a',
+      REMOVE_ADMIN_ACTION,
+      '-p',
+      pkg,
+    ),
+    shell(device, 'sleep', '2'),
+    // Once more after a further pause if the first attempt fails: the admin may not be gone yet.
+    shell(device, 'sh', '-c', `pm uninstall ${pkg} || (sleep 2 && pm uninstall ${pkg})`),
+  ];
+}
+
+/** What a person has to do after `uninstall` on a device that had the app as its home screen: the previous home app is not known. */
+export const HOME_NOTE =
+  "The app was this display's home screen: choose the home app again by hand (Settings > Apps > Default apps > Home app, or the launcher chooser after pressing Home).";
+
 // --- Running ---
 
 /** A command as a line you can paste into a shell (each word single-quoted when it needs it, so `adb shell '<string>'` survives). */
@@ -374,7 +408,7 @@ export async function androidCommand(
     return;
   }
 
-  if (sub !== 'build' && sub !== 'deploy' && sub !== 'provision') {
+  if (!['build', 'deploy', 'provision', 'uninstall'].includes(sub)) {
     throw new Error(`Unknown command "${sub}"\n\n${USAGE}`);
   }
 
@@ -417,7 +451,7 @@ export async function androidCommand(
   const devices = loadDevices(root, values.device);
   const pkg = applicationId(root);
   const apk = join(root, APK);
-  if (!dryRun && !existsSync(apk)) {
+  if (sub !== 'uninstall' && !dryRun && !existsSync(apk)) {
     throw new Error(`No APK at ${APK}. Run \`hashsome android build\` first.`);
   }
 
@@ -426,12 +460,17 @@ export async function androidCommand(
   for (const device of devices) {
     console.log(`\n# ${device.id} (${serialOf(device)}, ${device.profile})`);
     const plan =
-      sub === 'deploy'
-        ? deployCommands(device, apk, pkg)
-        : provisionCommands(device, apk, pkg, flags.has('home') || device.home === true);
+      sub === 'uninstall'
+        ? uninstallCommands(device, pkg)
+        : sub === 'deploy'
+          ? deployCommands(device, apk, pkg)
+          : provisionCommands(device, apk, pkg, flags.has('home') || device.home === true);
 
     try {
       runCommands(plan, root, { dryRun, exec });
+      if (sub === 'uninstall' && device.home === true) {
+        console.log(`${device.id}: ${HOME_NOTE}`);
+      }
     } catch (error) {
       console.error((error as Error).message);
       failed.push(device.id);

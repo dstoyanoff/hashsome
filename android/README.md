@@ -66,3 +66,10 @@ checkout of this repo; one that wants the published libraries declares the GitHu
 `hashsome` in its `gradle/libs.versions.toml`.
 
 An app's `versionCode` is `major*10000 + minor*100 + patch` of the version, so it grows with every release.
+
+## See also
+
+- [ARCHITECTURE.md](../ARCHITECTURE.md) "Native Android": the layers, the plug points, the protocol rules and how a consumer project is laid out; "Releasing" for how these artifacts are published.
+- [PARITY.md](PARITY.md): which `@hashsome/ui` components have a Kotlin counterpart (generated from `parity.json`).
+- `hashsome android build|deploy|provision|uninstall|icons` builds and installs an app on the displays in `devices.json`.
+- Skills for agents: `.claude/skills/create-android-dashboard` and `.claude/skills/android-component`.
