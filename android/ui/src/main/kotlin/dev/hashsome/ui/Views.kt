@@ -731,8 +731,12 @@ open class BarView(context: Context) : View(context) {
 object StatusDotHold {
     const val DEFAULT_MS = 5_000L
 
-    /** How far the finger may drift, in px, before the hold is given up (the platform's touch slop). */
-    fun withinSlop(dx: Float, dy: Float, slop: Float): Boolean = dx * dx + dy * dy <= slop * slop
+    /** How far past the dot's edge, in dp, the finger may wander before the hold is given up. */
+    const val MARGIN_DP = 24
+
+    /** Whether the point ([x], [y]) is inside a [w] x [h] view's bounds expanded by [marginPx] on every side. */
+    fun withinArea(x: Float, y: Float, w: Float, h: Float, marginPx: Float): Boolean =
+        x >= -marginPx && x <= w + marginPx && y >= -marginPx && y <= h + marginPx
 
     /** Ms held at [now] by a press that began at [start] (both uptime clock). */
     fun elapsed(now: Long, start: Long): Long = maxOf(0L, now - start)
@@ -773,9 +777,6 @@ open class StatusDot(context: Context) : View(context) {
     private val tone = EasedColor(this, theme.palette.success)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    private val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat()
-    private var downX = 0f
-    private var downY = 0f
     private var ringProgress = 0f
     private var held = false
 
@@ -787,16 +788,19 @@ open class StatusDot(context: Context) : View(context) {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                downX = event.x
-                downY = event.y
                 held = false
                 startRing(Hashsome.touchListener.statusDotHoldMs)
             }
-            MotionEvent.ACTION_MOVE -> if (!StatusDotHold.withinSlop(event.x - downX, event.y - downY, slop)) stopRing()
+            // Drift inside the expanded area changes nothing; leaving it gives the hold up for good.
+            MotionEvent.ACTION_MOVE ->
+                if (holding && !StatusDotHold.withinArea(event.x, event.y, width.toFloat(), height.toFloat(), dp(StatusDotHold.MARGIN_DP).toFloat())) stopRing()
             MotionEvent.ACTION_UP -> {
+                // Lifted after the full time but before the timer ran: the hold counts, and the release is swallowed.
+                if (holding && StatusDotHold.completed(StatusDotHold.elapsed(android.os.SystemClock.uptimeMillis(), holdStart), holdMs)) fire.run()
                 stopRing()
                 if (held) {
                     held = false
+                    isPressed = false
                     return true
                 }
             }
