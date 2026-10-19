@@ -42,8 +42,8 @@ class WeatherLookTest {
     }
 
     @Test
-    fun `at night a sunny sky is the moon's`() {
-        assertEquals(WeatherLook.of(WeatherCondition.ClearNight).icon, UiIcons.weather(WeatherCondition.Sunny, night = true))
+    fun `night changes nothing, as on the web`() {
+        assertEquals(WeatherLook.of(WeatherCondition.Sunny).icon, UiIcons.weather(WeatherCondition.Sunny, night = true))
         assertEquals(WeatherLook.of(WeatherCondition.Sunny).icon, UiIcons.weather(WeatherCondition.Sunny))
         assertEquals(WeatherLook.of(WeatherCondition.Rainy).icon, UiIcons.weather(WeatherCondition.Rainy, night = true))
     }

@@ -37,13 +37,11 @@ object UiIcons {
     val list: Icon get() = Ui.list
 
     /**
-     * The glyph for what the sky is doing (with its own tint per shape: see [WeatherLook]). At [night] a sunny sky is the moon's:
-     * the web's weather icon has no such flip, a sunny sky is what the weather entity reports and it reports clear-night itself.
+     * The glyph for what the sky is doing (with its own tint per shape: see [WeatherLook]). [night] is accepted for the frozen
+     * signature and ignored, as the web's weather icon ignores it: the weather entity reports `clear-night` itself.
      */
-    fun weather(condition: WeatherCondition, night: Boolean = false): Icon {
-        val shown = if (night && condition == WeatherCondition.Sunny) WeatherCondition.ClearNight else condition
-        return WeatherLook.of(shown).icon
-    }
+    @Suppress("UNUSED_PARAMETER")
+    fun weather(condition: WeatherCondition, night: Boolean = false): Icon = WeatherLook.of(condition).icon
 }
 
 private val constantStates = HashMap<Int, Drawable.ConstantState>()
