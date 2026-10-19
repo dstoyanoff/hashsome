@@ -19,7 +19,8 @@ import java.util.WeakHashMap
  * One tracker is shared by everything that presses on the same player of the same client (the transport, the library,
  * the speakers), as the web shares the pending part per player: a play started from the library is pending on the
  * transport too. It keeps its own timers on the scheduler, so a screen going away does not leave a wait stuck for the
- * next one; the waits are bounded, so they end by themselves. The queue of the player is read again when a wait begins
+ * next one; the waits are bounded, so they end by themselves. A wait therefore outlives the screen that began it, as the
+ * web's pending part, which is per player, survives a component unmounting. The queue of the player is read again when a wait begins
  * and when it ends, as the web does by watching the pending requests.
  */
 internal class PressTracker private constructor(
