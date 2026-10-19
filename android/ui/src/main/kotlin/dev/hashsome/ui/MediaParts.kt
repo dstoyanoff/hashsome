@@ -641,7 +641,7 @@ internal class TitleRow(context: Context) : ViewGroup(context) {
 }
 
 /** A labelled pill (an icon and words) for the speakers and the actions of what is open in a library; the sizes are the web's, set per use. */
-internal class PillButton(context: Context, icon: Icon?, label: String?, private val role: Role = Role.Label) : View(context) {
+class PillButton(context: Context, icon: Icon?, label: String?, private val role: Role = Role.Label) : View(context) {
     // One drawn thing: a fade of it needs no layer of its own to render.
     override fun hasOverlappingRendering(): Boolean = false
 

@@ -650,6 +650,20 @@ open class BarView(context: Context) : View(context) {
     var dragging: Boolean = false
         private set
 
+    /** The track in the raised surface rather than the surface, for a bar on a panel that is itself the surface (a form). */
+    var raisedTrack: Boolean = false
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /** The border's color; the theme's border color when null. */
+    var outline: Int? = null
+        set(value) {
+            field = value
+            invalidate()
+        }
+
     private val fill = Eased(this, 0f, 200)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
@@ -666,7 +680,7 @@ open class BarView(context: Context) : View(context) {
         val h = height.toFloat()
         rect.set(0f, 0f, w, h)
         paint.style = Paint.Style.FILL
-        paint.color = p.surface
+        paint.color = if (raisedTrack) p.surfaceRaised else p.surface
         canvas.drawRoundRect(rect, h / 2, h / 2, paint)
         clip.reset()
         rect.set(dp(1f), dp(1f), w - dp(1f), h - dp(1f))
@@ -678,7 +692,7 @@ open class BarView(context: Context) : View(context) {
         canvas.restore()
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = dp(1f)
-        paint.color = p.border
+        paint.color = outline ?: p.border
         rect.set(dp(0.5f), dp(0.5f), w - dp(0.5f), h - dp(0.5f))
         canvas.drawRoundRect(rect, h / 2, h / 2, paint)
     }
