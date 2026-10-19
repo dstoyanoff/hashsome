@@ -299,6 +299,8 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
 
     private fun setActions(opened: BrowseItem?) {
         actions.removeAllViews()
+        // Nothing to show costs no gap in the row.
+        actions.visibility = if (opened == null || !opened.playable) GONE else VISIBLE
         if (opened == null || !opened.playable) return
         val pill = { icon: Icon, label: String, primary: Boolean, run: () -> Unit ->
             PillButton(context, icon, null, Role.Body).also {
@@ -475,9 +477,12 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
 
     // Rows that are leaving (taken out, or all of what comes next on Clear) by id, how far each has collapsed (1 is gone), until
     // the queue read afterwards no longer has them. A refused command brings them back.
-    private val leaving = HashMap<String, Float>()
+    private class Leave(var p: Float, var from: Float = 0f)
+
+    private val leaving = HashMap<String, Leave>()
     private var leaveAnim: ValueAnimator? = null
-    private var landing: Map<String, Float> = emptyMap()
+    private var batch: List<Leave> = emptyList()
+    private var batchTo = 0f
 
     // The order of what comes next after a drag, until the queue read afterwards replaces it.
     private var draft: List<String>? = null
@@ -537,7 +542,7 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
         onDetach {
             pictures.forEach { it.stop() }
             arrivalScope.dispose()
-            leaveAnim?.cancel()
+            finishLeaving()
             draftTimer?.invoke()
         }
     }
@@ -682,7 +687,7 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
 
     /** A row's fade and height for how far its track has collapsed (not at all unless it is leaving). */
     private fun shape(index: Int, row: QueueRow, item: QueueItem, base: Float) {
-        val p = leaving[item.id] ?: 0f
+        val p = leaving[item.id]?.p ?: 0f
         val lp = row.layoutParams as LinearLayout.LayoutParams
         val height = RowCollapse.size(dp(QueueRow.ROW), p)
         val margin = if (index > 0) RowCollapse.size(Math.round(dp(theme.density.space) / 6f), p) else 0
@@ -713,33 +718,49 @@ open class MediaQueueView private constructor(context: Context, lazyControl: Laz
      */
     private fun collapse(ids: List<String>, toward: Float) {
         if (ids.isEmpty()) return
-        fun apply(values: Map<String, Float>) {
-            for ((id, p) in values) if (p <= 0f) leaving.remove(id) else leaving[id] = p
-            for (i in rows.indices) {
-                val item = if (i < leading.size) leading[i] else upcoming.getOrNull(i - leading.size)
-                if (item != null && item.id in values) shape(i, rows[i], item, baseAlpha(i))
-            }
-        }
+        // One that is still going is finished where it was heading, so no row is left half way.
+        finishLeaving()
+        val moving = ids.map { id -> leaving.getOrPut(id) { Leave(0f) }.also { it.from = it.p } }
         if (!Animation.animates || !isAttachedToWindow) {
-            leaveAnim?.cancel()
-            apply(landing)
-            landing = emptyMap()
-            apply(ids.associateWith { toward })
+            moving.forEach { it.p = toward }
+            settleLeaving()
             return
         }
-        // One that is still going is finished where it was heading, so no row is left half way.
-        leaveAnim?.cancel()
-        apply(landing)
-        val from = ids.associateWith { leaving[it] ?: 0f }
-        landing = ids.associateWith { toward }
+        batch = moving
+        batchTo = toward
         leaveAnim = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = RowCollapse.MS
             interpolator = android.view.animation.LinearInterpolator()
+            // One fraction drives every row of the batch: nothing is made again for a frame.
             addUpdateListener { a ->
                 val t = a.animatedValue as Float
-                apply(from.mapValues { (_, f) -> RowCollapse.at(f, toward, Math.round(t * RowCollapse.MS.toFloat()).toLong()) })
+                val elapsed = (t * RowCollapse.MS).toLong()
+                for (l in batch) l.p = RowCollapse.at(l.from, batchTo, elapsed)
+                reshape()
+                if (t >= 1f) settleLeaving()
             }
             start()
+        }
+    }
+
+    /** Ends a collapse that is going at the place it was heading. */
+    private fun finishLeaving() {
+        leaveAnim?.cancel()
+        leaveAnim = null
+        for (l in batch) l.p = batchTo
+        settleLeaving()
+    }
+
+    private fun settleLeaving() {
+        batch = emptyList()
+        reshape()
+        leaving.values.removeAll { it.p <= 0f }
+    }
+
+    private fun reshape() {
+        for (i in rows.indices) {
+            val item = if (i < leading.size) leading[i] else upcoming.getOrNull(i - leading.size)
+            if (item != null && leaving.containsKey(item.id)) shape(i, rows[i], item, baseAlpha(i))
         }
     }
 
