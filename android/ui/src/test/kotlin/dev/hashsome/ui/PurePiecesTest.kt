@@ -1,0 +1,77 @@
+package dev.hashsome.ui
+
+import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class PurePiecesTest {
+    @Test
+    fun `a grid child that is gone takes no cell`() {
+        assertArrayEquals(intArrayOf(0, -1, 1, 2), GridSlots.of(booleanArrayOf(true, false, true, true)))
+        assertArrayEquals(intArrayOf(-1, 0), GridSlots.of(booleanArrayOf(false, true)))
+        assertArrayEquals(intArrayOf(), GridSlots.of(booleanArrayOf()))
+    }
+
+    @Test
+    fun `an overlay is removed, and so reported dismissed, once however many things try`() {
+        val once = Once()
+        var removed = 0
+        assertTrue(once.run { removed++ })
+        assertFalse(once.run { removed++ })
+        assertFalse(once.run { removed++ })
+        assertEquals(1, removed)
+        // Shown again, it may go again.
+        once.reset()
+        assertTrue(once.run { removed++ })
+        assertEquals(2, removed)
+    }
+
+    @Test
+    fun `a pulled sheet is let go past 100 dp or faster than half a dp a millisecond`() {
+        assertFalse(SheetPull.dismisses(100f, 0.5f))
+        assertTrue(SheetPull.dismisses(100.5f, 0f))
+        assertTrue(SheetPull.dismisses(10f, 0.6f))
+        assertFalse(SheetPull.dismisses(0f, 0f))
+        assertFalse(SheetPull.dismisses(33f, 0.1f))
+    }
+
+    @Test
+    fun `a grower with a min does not shrink below it`() {
+        // 100 wanted in 60: 40 too many, but the grower may only give 20 (min 80 of 100).
+        assertArrayEquals(intArrayOf(0, 80), FlexMath.distribute(intArrayOf(0, 100), booleanArrayOf(false, true), 20, 0, intArrayOf(0, 80)))
+        assertArrayEquals(
+            intArrayOf(50, 80),
+            FlexMath.distribute(intArrayOf(50, 100), booleanArrayOf(false, true), 130, 0, intArrayOf(0, 80)),
+        )
+        // The board of a page: its content is its min, so it overflows rather than shrinks.
+        assertArrayEquals(
+            intArrayOf(30, 100),
+            FlexMath.distribute(intArrayOf(30, 100), booleanArrayOf(false, true), 90, 0, intArrayOf(0, 100)),
+        )
+    }
+
+    @Test
+    fun `growers share the shrinking by what each has to give`() {
+        // 300 in 240: 60 over; gives of 100 and 200 take 20 and 40.
+        assertArrayEquals(
+            intArrayOf(80, 160),
+            FlexMath.distribute(intArrayOf(100, 200), booleanArrayOf(true, true), 240, 0, intArrayOf(0, 0)),
+        )
+    }
+
+    @Test
+    fun `negative bases (a negative margin) are a basis like any other`() {
+        // -12 and 100 and a grower of 0 in 200: the grower takes 200 - 88 = 112.
+        assertArrayEquals(
+            intArrayOf(-12, 100, 112),
+            FlexMath.distribute(intArrayOf(-12, 100, 0), booleanArrayOf(false, false, true), 200, 0),
+        )
+        // A negative grower never gives anything.
+        assertArrayEquals(
+            intArrayOf(-5, 40),
+            FlexMath.distribute(intArrayOf(-5, 60), booleanArrayOf(true, true), 35, 0, intArrayOf(0, 0)),
+        )
+    }
+}

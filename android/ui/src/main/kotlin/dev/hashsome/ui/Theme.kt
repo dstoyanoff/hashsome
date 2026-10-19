@@ -3,7 +3,7 @@ package dev.hashsome.ui
 import android.graphics.Typeface
 
 // The theme model, mirroring packages/ui/src/theme (tokens.ts, density.ts, overrides.ts).
-// Colors are ARGB ints, lengths are dp, text sizes are sp. A component reads all of them from the resolved
+// Colors are ARGB ints, lengths and text sizes are dp (the web's px). A component reads all of them from the resolved
 // `Theme` when it draws and never holds a literal, so an override reaches every component.
 
 enum class ThemeMode { Light, Dark }
@@ -66,7 +66,7 @@ data class ThemeConfig(
 ) {
     companion object {
         /** The values of packages/ui/src/theme/tokens.ts. */
-        val Default: ThemeConfig get() = TODO("WP3")
+        val Default: ThemeConfig get() = DefaultTheme
     }
 }
 
@@ -160,12 +160,18 @@ class Theme(
             overrides: ThemeOverrides?,
             density: Density = Density.Comfortable,
             typefaces: FontSet = FontSet.System,
-        ): Theme = TODO("WP3")
+        ): Theme {
+            val tokens = resolveTokens(base, mode, overrides)
+            return Theme(mode, tokens.palette, tokens.radius, tokens.shadow, tokens.typography, density.tokens(overrides), typefaces)
+        }
     }
+
+    /** The style of [role]: its own fields over the default style's, so the size is always set. */
+    fun style(role: Role): ResolvedText = typography.resolved(role)
 }
 
 /** Mirrors `densityTokens`. */
-fun Density.tokens(overrides: ThemeOverrides?): ResolvedDensity = TODO("WP3")
+fun Density.tokens(overrides: ThemeOverrides?): ResolvedDensity = resolveDensity(this, overrides)
 
 // --- Fonts -----------------------------------------------------------------------------------------------------------
 
@@ -184,6 +190,14 @@ fun interface FontSource {
 }
 
 object Fonts {
-    /** The Inter Regular, Medium and SemiBold bundled in `ui`. Another font is a `FontSource` of the consumer's own. */
-    val Inter: FontSource = FontSource { TODO("WP3") }
+    /** The Inter Regular, Medium (Latin only) and SemiBold bundled in `ui`. Another font is a `FontSource` of the consumer's own. */
+    val Inter: FontSource = FontSource { context ->
+        fun load(file: String): Typeface = try {
+            Typeface.createFromAsset(context.assets, "fonts/$file")
+        } catch (e: RuntimeException) {
+            Typeface.SANS_SERIF
+        }
+        // The Medium face is the Latin subset of Inter 500 (`@fontsource/inter`), the others are the full families.
+        FontSet(load("Inter-Regular.otf"), load("Inter-Medium.ttf"), load("Inter-SemiBold.otf"))
+    }
 }

@@ -2,6 +2,7 @@ package dev.hashsome.ui
 
 import android.content.Context
 import android.view.View
+import android.view.ViewGroup
 import dev.hashsome.client.Entity
 import dev.hashsome.client.EntityKind
 import dev.hashsome.client.EntityRef
@@ -39,15 +40,58 @@ abstract class Dashboard(val id: String, val motion: Motion = Motion.Full, val i
 /** The chrome of a dashboard: what is drawn around its pages. A dashboard owns its whole layout, so this is optional. */
 @HashsomeDsl
 class ShellScope internal constructor() {
-    fun navRail(pages: List<PageSpec>): Unit = TODO("WP3")
+    internal var rail: List<PageSpec>? = null
+    internal val attention = LinkedHashMap<String, Attention>()
+    internal var topBarTitle: String? = null
+    internal var switcher: List<DashboardOption> = emptyList()
+
+    /** The page navigation down the left edge; the pages are padded for it. */
+    fun navRail(pages: List<PageSpec>) {
+        rail = pages
+    }
+
+    /** A dot on the rail item of the page at [path], for something on it that needs a look. */
+    fun attention(path: String, level: Attention) {
+        attention[path] = level
+    }
 
     /** The top bar (WP4a for the Shelly pages, M2 for the tablets': title, switcher, scenes). */
-    fun topBar(title: String, dashboards: List<DashboardOption> = emptyList()): Unit = TODO("WP3")
+    fun topBar(title: String, dashboards: List<DashboardOption> = emptyList()) {
+        topBarTitle = title
+        switcher = dashboards
+    }
 }
 
 /** Where a page's views are added, in the order the calls are made. */
 @HashsomeDsl
 class PageScope internal constructor(val context: Context, val scope: Scope) {
+    /** How a page asks the host to show another page; set by the host. */
+    internal var navigator: (String) -> Unit = {}
+    private val stack = ArrayList<ViewGroup>()
+
+    /** Starts building into [root]. */
+    internal fun begin(root: ViewGroup) {
+        stack.clear()
+        stack += root
+    }
+
+    private fun flex(grow: Boolean = false, minHeight: Int = 0, marginBottom: Int = 0): FlexParams =
+        FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also {
+            it.grow = grow
+            it.minHeightDp = minHeight
+            it.bottomMargin = dp(marginBottom)
+        }
+
+    private fun nest(layout: ViewGroup, params: ViewGroup.LayoutParams, build: PageScope.() -> Unit) {
+        stack.last().addView(layout, params)
+        stack += layout
+        try {
+            build()
+        } finally {
+            stack.removeAt(stack.size - 1)
+        }
+    }
+
     // --- Layout ---------------------------------------------------------------------------------------------------
 
     /** Children top to bottom. [gap] is in spacing units (the web's `gap={3}`), [minHeight] and margins in dp. */
@@ -59,7 +103,14 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         minHeight: Int = 0,
         marginBottom: Int = 0,
         build: PageScope.() -> Unit,
-    ): Unit = TODO("WP3")
+    ) {
+        val layout = ColumnLayout(context).also {
+            it.gap = gap
+            it.align = align
+            it.justify = justify
+        }
+        nest(layout, flex(grow, minHeight, marginBottom), build)
+    }
 
     fun row(
         gap: Int = 0,
@@ -69,26 +120,50 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         minHeight: Int = 0,
         marginBottom: Int = 0,
         build: PageScope.() -> Unit,
-    ): Unit = TODO("WP3")
+    ) {
+        val layout = RowLayout(context).also {
+            it.gap = gap
+            it.align = align
+            it.justify = justify
+        }
+        nest(layout, flex(grow, minHeight, marginBottom), build)
+    }
 
-    fun grid(columns: Int, gap: Int = 3, build: PageScope.() -> Unit): Unit = TODO("WP3")
+    fun grid(columns: Int, gap: Int = 3, build: PageScope.() -> Unit) {
+        nest(GridLayout(context, columns).also { it.gap = gap }, flex(), build)
+    }
 
-    /** A 12-column board; its children are [cell]s. */
-    fun board(columns: Int = 12, gap: Int = 3, build: PageScope.() -> Unit): Unit = TODO("WP3")
+    /** A 12-column board; its children are [cell]s. It takes the height that is left of the page. */
+    fun board(columns: Int = 12, gap: Int = 3, build: PageScope.() -> Unit) {
+        nest(BoardLayout(context, columns).also { it.gap = gap }, flex(grow = true), build)
+    }
 
     /** A cell of the board: [cols] wide, [rows] tall (`RowSpan.Fill` takes what is left). */
-    fun cell(cols: Int = 12, rows: RowSpan = RowSpan.Rows(1), build: PageScope.() -> Unit): Unit = TODO("WP3")
+    fun cell(cols: Int = 12, rows: RowSpan = RowSpan.Rows(1), build: PageScope.() -> Unit) {
+        val layout = ColumnLayout(context).also { it.gap = 3 }
+        nest(layout, CellParams(cols, rows), build)
+        // In a cell that reaches across rows, or fills, the last card takes what is left of the cell's height.
+        val stretches = rows is RowSpan.Fill || (rows is RowSpan.Rows && rows.count > 1)
+        if (stretches && layout.childCount > 0) (layout.getChildAt(layout.childCount - 1).layoutParams as? FlexParams)?.grow = true
+    }
 
-    fun spacer(grow: Boolean = false): Unit = TODO("WP3")
+    fun spacer(grow: Boolean = false) {
+        stack.last().addView(Spacer(context), flex(grow = grow))
+    }
 
     /** Adds a view of your own. */
-    fun add(view: View): Unit = TODO("WP3")
+    fun add(view: View) {
+        stack.last().addView(view)
+    }
 
     /** Goes to another page of this dashboard by its path. */
-    fun navigate(path: String): Unit = TODO("WP3")
+    fun navigate(path: String) {
+        navigator(path)
+    }
 
     /** A handle on an entity, watched for as long as this page is shown; for views and controls of your own. */
-    fun <E : Entity> handle(ref: String?, kind: EntityKind<E>): EntityHandle<E> = TODO("WP3")
+    fun <E : Entity> handle(ref: String?, kind: EntityKind<E>): EntityHandle<E> =
+        EntityHandle(scope, ref?.let { EntityRef(it) }, kind)
 
     // --- Top row ----------------------------------------------------------------------------------------------------
 

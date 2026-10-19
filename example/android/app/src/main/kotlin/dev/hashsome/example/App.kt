@@ -13,7 +13,7 @@ class App : Application() {
             this,
             HashsomeApp(
                 theme = ThemeSchedule.Fixed(dark = true),
-                dashboards = emptyList(),
+                dashboards = listOf(Demo),
             ),
         )
     }
