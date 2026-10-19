@@ -398,11 +398,51 @@ internal fun RestartAlarm(context: Context) = RestartAlarm { at ->
     }
 }
 
-/** Starts [KioskService] after a reboot. */
+/**
+ * Starts [KioskService] as early as the system allows after a reboot: on `LOCKED_BOOT_COMPLETED` (this receiver is direct-boot
+ * aware) where the user is already unlocked, otherwise on `BOOT_COMPLETED`. [Settings] lives in credential-encrypted storage,
+ * which is not readable before the user unlocks, so a locked start waits (see [BootStart.decide]); it is not migrated to
+ * device-protected storage because that would move the prefs of every installed display.
+ */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) Kiosk.startService(context, boot = true)
+        val action = intent.action ?: return
+        val unlocked = if (Build.VERSION.SDK_INT >= 24) {
+            (context.getSystemService(Context.USER_SERVICE) as android.os.UserManager).isUserUnlocked
+        } else {
+            true
+        }
+        val decision = BootStart.decide(action, unlocked)
+        val elapsed = android.os.SystemClock.elapsedRealtime()
+        if (decision == BootStart.Decision.Start && BootStart.claim()) {
+            Log.e("boot", "starting the service from $action, ${elapsed} ms after boot")
+            // A refused start gives the claim back, so BOOT_COMPLETED tries again.
+            if (!Kiosk.startService(context, boot = true)) BootStart.release()
+        } else {
+            Log.e("boot", "$action: $decision (claimed=${BootStart.claimed}), ${elapsed} ms after boot")
+        }
     }
+}
+
+/** The pure part of the boot receiver: which broadcast starts the service, and at most once per process. */
+internal object BootStart {
+    enum class Decision { Start, WaitForUnlock, Ignore }
+
+    private val claimedFlag = java.util.concurrent.atomic.AtomicBoolean(false)
+    val claimed: Boolean get() = claimedFlag.get()
+
+    /** Both boot broadcasts start the service; a locked user's storage is unreadable, so that start waits for the next broadcast. */
+    fun decide(action: String, unlocked: Boolean): Decision = when (action) {
+        "android.intent.action.LOCKED_BOOT_COMPLETED", Intent.ACTION_BOOT_COMPLETED -> if (unlocked) Decision.Start else Decision.WaitForUnlock
+        else -> Decision.Ignore
+    }
+
+    /** True for the first caller only: the later `BOOT_COMPLETED` finds the service already started by `LOCKED_BOOT_COMPLETED`. */
+    fun claim(): Boolean = claimedFlag.compareAndSet(false, true)
+
+    fun release() = claimedFlag.set(false)
+
+    internal fun reset() = claimedFlag.set(false)
 }
 
 /**
