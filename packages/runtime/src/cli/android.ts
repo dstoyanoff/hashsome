@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const USAGE = `Usage: hashsome android <build|deploy|provision|uninstall|icons> [options]
@@ -20,6 +20,10 @@ Commands:
 Options (build, deploy, provision, uninstall):
   --device <id>   Only this device from devices.json
   --home          provision: also make the app the device's home screen
+  --system        provision / uninstall, Shelly displays only: install the app as a system app (adb root,
+                  /system/priv-app/Hashsome, a reboot), or remove that copy. For the X1, whose stock app
+                  force-stops every non-system app at boot. Needs a userdebug image (the X2i is a user
+                  build). Later updates are a plain deploy.
   --dry-run       Print every command instead of running it
 
 devices.json (project root):
@@ -274,11 +278,12 @@ export function provisionCommands(
   apk: string,
   pkg: string,
   home: boolean = device.home === true,
+  withInstall: boolean = true,
 ): Command[] {
   const admin = device.profile !== 'shelly-stargate';
   return [
     connect(device),
-    install(device, apk),
+    ...(withInstall ? [install(device, apk)] : []),
     ...['WRITE_SETTINGS', 'SYSTEM_ALERT_WINDOW', 'GET_USAGE_STATS'].map((op) =>
       shell(device, 'appops', 'set', pkg, op, 'allow'),
     ),
@@ -306,7 +311,7 @@ export function provisionCommands(
  * (`dpm remove-active-admin` fails, and `pm uninstall` fails while the admin is active), so the app is
  * asked to remove its own: the broadcast, a moment for it to run, then the uninstall.
  */
-export function uninstallCommands(device: Device, pkg: string): Command[] {
+export function uninstallCommands(device: Device, pkg: string, system: boolean = false): Command[] {
   return [
     connect(device),
     shell(
@@ -321,7 +326,175 @@ export function uninstallCommands(device: Device, pkg: string): Command[] {
     ),
     shell(device, 'sleep', '2'),
     // Once more after a further pause if the first attempt fails: the admin may not be gone yet.
-    shell(device, 'sh', '-c', `pm uninstall ${pkg} || (sleep 2 && pm uninstall ${pkg})`),
+    // A system app cannot be uninstalled (only its /data update can): the copy in priv-app goes next.
+    shell(
+      device,
+      'sh',
+      '-c',
+      `pm uninstall ${pkg} || (sleep 2 && pm uninstall ${pkg})${system ? ' || true' : ''}`,
+    ),
+    ...(system ? systemRemoveCommands(device) : []),
+  ];
+}
+
+// --- System install (Shelly displays) ---
+//
+// The procedure (adb root, remount /system, a directory in /system/priv-app, push, permissions and label, a
+// reboot so the package scanner picks it up) is the one ShellyElevate's tools/install-privapp.sh uses
+// (Apache-2.0, see android/NOTICE). Rewritten here; the device-specific extras of that script are not taken.
+
+export const SYSTEM_DIR = '/system/priv-app/Hashsome';
+export const SYSTEM_APK = `${SYSTEM_DIR}/Hashsome.apk`;
+const SYSTEM_PROFILES: Profile[] = ['shelly-stargate', 'shelly-jenna'];
+const REMOUNT_RW = 'mount -o rw,remount /system || mount -o rw,remount /';
+const REMOUNT_RO = 'mount -o ro,remount /system || mount -o ro,remount /';
+
+/** The room /system must have beyond the APK itself, in KB. */
+export const SYSTEM_SPARE_KB = 1024;
+
+/** Throws unless `--system` makes sense for this device: only the Shelly displays. */
+export function assertSystemProfile(device: Device): void {
+  if (!SYSTEM_PROFILES.includes(device.profile)) {
+    throw new Error(
+      `${device.id}: --system is for Shelly displays; a tablet keeps the normal install.`,
+    );
+  }
+}
+
+/** True for an image `adb root` works on: `ro.build.type` is userdebug, or `ro.debuggable` is 1. */
+export const isRootable = (buildType: string, debuggable: string): boolean =>
+  buildType.trim() === 'userdebug' || debuggable.trim() === '1';
+
+/** Free space in KB on the last row of `df -k` output (the Available column), or undefined if it cannot be read. */
+export function parseFreeKb(df: string): number | undefined {
+  const rows = df
+    .split('\n')
+    .map((row) => row.trim().split(/\s+/))
+    .filter((cols) => cols.length >= 4 && /^\d+$/.test(cols[1]!) && /^\d+$/.test(cols[3]!));
+
+  const row = rows[rows.length - 1];
+  return row ? Number(row[3]) : undefined;
+}
+
+/** Whether `needKb` fits in `freeKb`: the APK (rounded up) plus SYSTEM_SPARE_KB. */
+export const hasRoomFor = (apkBytes: number, freeKb: number): boolean =>
+  freeKb >= Math.ceil(apkBytes / 1024) + SYSTEM_SPARE_KB;
+
+/** The `versionCode=N` of `dumpsys package` output, or undefined. */
+export function parseVersionCode(dumpsys: string): number | undefined {
+  const match = /versionCode=(\d+)/.exec(dumpsys);
+  return match ? Number(match[1]) : undefined;
+}
+
+/** The `versionCode='N'` of `aapt dump badging` output, or undefined. */
+export function parseAaptVersionCode(badging: string): number | undefined {
+  const match = /versionCode='(\d+)'/.exec(badging);
+  return match ? Number(match[1]) : undefined;
+}
+
+/** Whether `pm path` says the package is installed outside /system (a /data/app copy). */
+export const isDataInstall = (pmPath: string): boolean => /^package:\/data\//m.test(pmPath);
+
+/** Whether a `dumpsys package | grep flags` line carries the SYSTEM flag. */
+export const hasSystemFlag = (flags: string): boolean => /\bSYSTEM\b/.test(flags);
+
+/**
+ * Whether a /data copy has to be uninstalled before the system copy goes in: it is there and its versionCode
+ * is lower than the pushed one (a same-signature update only layers over the system copy when it is not
+ * older). With either version unknown the copy is left, and the package scanner sorts it out on boot.
+ */
+export const shouldUninstallDataCopy = (
+  installed: number | undefined,
+  pushed: number | undefined,
+): boolean => installed !== undefined && pushed !== undefined && installed < pushed;
+
+/** A shell command line given whole (pipes, `||`): the device's shell parses it, so its words are not quoted one by one. */
+const shellLine = (device: Device, line: string): Command => adbOn(device, 'shell', line);
+
+const adbOn = (device: Device, ...words: string[]): Command => [
+  'adb',
+  '-s',
+  serialOf(device),
+  ...words,
+];
+
+/** The stages of a system provision. `read` ones decide whether to go on; the rest change the device. */
+export interface SystemStages {
+  /** Is the image rootable? */
+  image: Command[];
+
+  /** adbd as root; over the network adbd restarts and the connection must be made again. */
+  root: Command[];
+
+  /** Free space on /system, and whether (and which version of) the package is installed. */
+  inspect: Command[];
+
+  /** Push the APK into priv-app. */
+  push: Command[];
+
+  /** After the reboot: wait for the device, then the settings and permissions. */
+  afterReboot: Command[];
+  provision: Command[];
+
+  /** `dumpsys package <pkg> | grep flags`. */
+  verify: Command;
+}
+
+const rootAgain = (device: Device): Command[] => [
+  adbOn(device, 'root'),
+  connect(device),
+  adbOn(device, 'wait-for-device'),
+];
+
+export function systemProvisionStages(
+  device: Device,
+  apk: string,
+  pkg: string,
+  home: boolean = device.home === true,
+): SystemStages {
+  assertSystemProfile(device);
+  return {
+    image: [
+      connect(device),
+      shell(device, 'getprop', 'ro.build.type'),
+      shell(device, 'getprop', 'ro.debuggable'),
+    ],
+    root: rootAgain(device),
+    inspect: [
+      shell(device, 'df', '-k', '/system'),
+      shell(device, 'pm', 'path', pkg),
+      shellLine(device, `dumpsys package ${pkg} | grep versionCode`),
+    ],
+    push: [
+      shellLine(device, REMOUNT_RW),
+      shell(device, 'mkdir', '-p', SYSTEM_DIR),
+      adbOn(device, 'push', apk, SYSTEM_APK),
+      shell(device, 'chmod', '755', SYSTEM_DIR),
+      shell(device, 'chmod', '644', SYSTEM_APK),
+      shell(device, 'chown', 'root:root', SYSTEM_DIR, SYSTEM_APK),
+      shellLine(
+        device,
+        `if command -v restorecon >/dev/null 2>&1; then restorecon -R ${SYSTEM_DIR}; fi`,
+      ),
+      shellLine(device, REMOUNT_RO),
+      // The package manager only learns of the app in the boot scan, so the permissions below wait for it.
+      adbOn(device, 'reboot'),
+    ],
+    afterReboot: [connect(device), adbOn(device, 'wait-for-device')],
+    provision: provisionCommands(device, apk, pkg, home, false),
+    verify: shellLine(device, `dumpsys package ${pkg} | grep flags`),
+  };
+}
+
+/** The removal of the system copy, after the usual uninstall steps: remount, delete, remount read-only, reboot. */
+export function systemRemoveCommands(device: Device): Command[] {
+  assertSystemProfile(device);
+  return [
+    ...rootAgain(device),
+    shellLine(device, REMOUNT_RW),
+    shell(device, 'rm', '-rf', SYSTEM_DIR),
+    shellLine(device, REMOUNT_RO),
+    adbOn(device, 'reboot'),
   ];
 }
 
@@ -334,7 +507,11 @@ export const HOME_NOTE =
 /** A command as a line you can paste into a shell (each word single-quoted when it needs it, so `adb shell '<string>'` survives). */
 const show = (command: Command) => `$ ${command.map(shellQuote).join(' ')}`;
 
-const CONNECT_FAILED = /failed to connect|cannot connect|unable to connect/i;
+const CONNECT_FAILED = /failed to connect|cannot connect|unable to connect|cannot run as root/i;
+
+/** The adb verb of a command (`connect`, `root`, `shell`, `push`, ...), past the `-s <serial>` pair. */
+const adbVerb = (command: Command) => (command[1] === '-s' ? command[3] : command[1]) ?? '';
+const CAPTURED = new Set(['connect', 'root', 'shell']);
 
 export type Exec = (
   command: Command,
@@ -348,8 +525,9 @@ export type Exec = (
 };
 
 const spawnExec: Exec = ([program, ...rest], cwd) => {
-  // `adb connect` exits 0 even when it cannot connect, so its output is read (and still shown).
-  const capture = program === 'adb' && rest[0] === 'connect';
+  // `adb connect` and `adb root` exit 0 even when they fail, and the shell commands' output decides the
+  // system install's checks, so their output is read (and still shown).
+  const capture = program === 'adb' && CAPTURED.has(adbVerb([program, ...rest]));
   const result = spawnSync(program!, rest, {
     cwd,
     stdio: capture ? ['inherit', 'pipe', 'pipe'] : 'inherit',
@@ -383,7 +561,12 @@ export function runCommands(
     }
 
     const result = (options.exec ?? spawnExec)(command, cwd);
-    if (result.error || result.status !== 0 || CONNECT_FAILED.test(result.output ?? '')) {
+    const checked = ['connect', 'root'].includes(adbVerb(command));
+    if (
+      result.error ||
+      result.status !== 0 ||
+      (checked && CONNECT_FAILED.test(result.output ?? ''))
+    ) {
       throw new Error(
         `Failed: ${show(command)}\n${result.error ?? (result.status === 0 ? result.output?.trim() : `exit status ${result.status}`)}. Nothing after it was run.`,
       );
@@ -391,11 +574,162 @@ export function runCommands(
   }
 }
 
+// --- System provision, run ---
+
+export type Sleep = (ms: number) => void;
+const sleepSync: Sleep = (ms) => {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+};
+
+/** The newest `aapt` under the Android SDK's build-tools, if there is one (it reads the APK's versionCode). */
+function findAapt(): string | undefined {
+  const sdk = process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT;
+  if (!sdk) {
+    return undefined;
+  }
+
+  const tools = join(sdk, 'build-tools');
+  if (!existsSync(tools)) {
+    return undefined;
+  }
+
+  return readdirSync(tools)
+    .toSorted((a, b) => b.localeCompare(a, undefined, { numeric: true }))
+    .map((version) => join(tools, version, 'aapt'))
+    .find((file) => existsSync(file));
+}
+
+/** The versionCode of the APK, read with aapt; undefined without an SDK that has it. */
+function apkVersionCode(apk: string): number | undefined {
+  const aapt = findAapt();
+  if (!aapt) {
+    return undefined;
+  }
+
+  const result = spawnSync(aapt, ['dump', 'badging', apk], { encoding: 'utf8' });
+  return result.status === 0 ? parseAaptVersionCode(result.stdout) : undefined;
+}
+
+/** Runs `command` and returns what it printed; a failure throws as in runCommands. */
+function readOutput(command: Command, cwd: string, exec: Exec): string {
+  console.log(show(command));
+  const result = exec(command, cwd);
+  if (result.error || result.status !== 0) {
+    throw new Error(
+      `Failed: ${show(command)}\n${result.error ?? `exit status ${result.status}`}. Nothing after it was run.`,
+    );
+  }
+
+  return result.output ?? '';
+}
+
+/** Polls until the device answers and says its boot is done (5 minutes at most). */
+function waitForBoot(device: Device, cwd: string, exec: Exec, sleep: Sleep): void {
+  // The old boot can still answer for a moment after `adb reboot`.
+  sleep(15_000);
+  const deadline = Date.now() + 300_000;
+  while (Date.now() < deadline) {
+    exec(connect(device), cwd);
+    const booted = exec(shell(device, 'getprop', 'sys.boot_completed'), cwd);
+    if (booted.status === 0 && booted.output?.trim().endsWith('1')) {
+      return;
+    }
+
+    sleep(3000);
+  }
+
+  throw new Error(`${device.id} did not finish booting within 5 minutes.`);
+}
+
+/**
+ * provision --system for one device. The image and free-space checks come first and nothing on the device
+ * changes until they pass. The permissions and the settings broadcast come after the reboot, because the
+ * package manager only knows a priv-app after the boot scan. A /data copy of the same app with a lower
+ * versionCode is uninstalled first; any other stays and becomes an update of the system app.
+ */
+function provisionSystem(
+  device: Device,
+  apk: string,
+  pkg: string,
+  home: boolean,
+  opts: { dryRun: boolean; root: string; exec: Exec | undefined; sleep: Sleep },
+): void {
+  const { dryRun, root } = opts;
+  const exec = opts.exec ?? spawnExec;
+  const stages = systemProvisionStages(device, apk, pkg, home);
+  if (dryRun) {
+    runCommands([...stages.image, ...stages.root, ...stages.inspect], root, { dryRun });
+    console.log(
+      `# if the /data copy has a lower versionCode than the APK: adb shell pm uninstall ${pkg}`,
+    );
+
+    runCommands([...stages.push, ...stages.afterReboot], root, { dryRun });
+    console.log('# (polls getprop sys.boot_completed until the device has booted)');
+    runCommands([...stages.provision, stages.verify], root, { dryRun });
+    return;
+  }
+
+  const [, buildType, debuggable] = stages.image;
+  runCommands([stages.image[0]!], root, { dryRun, exec });
+  if (!isRootable(readOutput(buildType!, root, exec), readOutput(debuggable!, root, exec))) {
+    throw new Error(
+      `${device.id}: this image has no adb root (ro.build.type is not userdebug and ro.debuggable is not 1); the X2i is a user build. Keep the normal install.`,
+    );
+  }
+
+  try {
+    runCommands(stages.root, root, { dryRun, exec });
+  } catch (error) {
+    throw new Error(
+      `${device.id}: adb root failed, so /system cannot be written.\n${(error as Error).message}`,
+      {
+        cause: error,
+      },
+    );
+  }
+
+  const [df, pmPath, versions] = stages.inspect;
+  const free = parseFreeKb(readOutput(df!, root, exec));
+  const size = statSync(apk).size;
+  if (free === undefined || !hasRoomFor(size, free)) {
+    throw new Error(
+      `${device.id}: not enough room on /system (${free ?? 'unknown'} KB free; the APK needs ${Math.ceil(size / 1024) + SYSTEM_SPARE_KB} KB with ${SYSTEM_SPARE_KB} KB to spare).`,
+    );
+  }
+
+  if (isDataInstall(readOutput(pmPath!, root, exec))) {
+    const installed = parseVersionCode(readOutput(versions!, root, exec));
+    const pushed = apkVersionCode(apk);
+
+    if (shouldUninstallDataCopy(installed, pushed)) {
+      runCommands([shell(device, 'pm', 'uninstall', pkg)], root, { dryRun, exec });
+    } else {
+      console.log(
+        `${device.id}: the /data copy (versionCode ${installed ?? 'unknown'}${pushed === undefined ? ', the APK is not read: no aapt under ANDROID_HOME/build-tools' : `, APK ${pushed}`}) stays; with the same signature it becomes an updated system app.`,
+      );
+    }
+  }
+
+  runCommands(stages.push, root, { dryRun, exec });
+  waitForBoot(device, root, exec, opts.sleep);
+  runCommands([...stages.afterReboot, ...stages.provision], root, { dryRun, exec });
+
+  const flags = readOutput(stages.verify, root, exec);
+  if (!hasSystemFlag(flags)) {
+    throw new Error(`${device.id}: ${pkg} is installed but not as a system app (no SYSTEM flag).`);
+  }
+
+  console.log(
+    `${device.id}: installed as a system app. This is one-time: later updates are a plain \`hashsome android deploy\` (adb install -r keeps the system flag).`,
+  );
+}
+
 /** `hashsome android`: build, deploy and provision the native app. */
 export async function androidCommand(
   args: string[],
   root: string = resolve(process.cwd()),
   exec?: Exec,
+  sleep: Sleep = sleepSync,
 ): Promise<void> {
   const [sub, ...rest] = args;
   if (!sub || sub === '--help' || sub === '-h' || sub === 'help') {
@@ -419,7 +753,7 @@ export async function androidCommand(
 
   const { positional, values, flags } = parseFlags(rest, {
     values: ['device'],
-    flags: ['dry-run', 'home'],
+    flags: ['dry-run', 'home', 'system'],
   });
 
   if (positional.length > 0) {
@@ -428,6 +762,10 @@ export async function androidCommand(
 
   if (flags.has('home') && sub !== 'provision') {
     throw new Error('--home only applies to provision.');
+  }
+
+  if (flags.has('system') && sub !== 'provision' && sub !== 'uninstall') {
+    throw new Error('--system only applies to provision and uninstall.');
   }
 
   if (values.device !== undefined && sub === 'build') {
@@ -459,14 +797,26 @@ export async function androidCommand(
   const failed: string[] = [];
   for (const device of devices) {
     console.log(`\n# ${device.id} (${serialOf(device)}, ${device.profile})`);
-    const plan =
-      sub === 'uninstall'
-        ? uninstallCommands(device, pkg)
-        : sub === 'deploy'
-          ? deployCommands(device, apk, pkg)
-          : provisionCommands(device, apk, pkg, flags.has('home') || device.home === true);
-
+    const system = flags.has('system');
     try {
+      if (sub === 'provision' && system) {
+        provisionSystem(device, apk, pkg, flags.has('home') || device.home === true, {
+          dryRun,
+          root,
+          exec,
+          sleep,
+        });
+
+        continue;
+      }
+
+      const plan =
+        sub === 'uninstall'
+          ? uninstallCommands(device, pkg, system)
+          : sub === 'deploy'
+            ? deployCommands(device, apk, pkg)
+            : provisionCommands(device, apk, pkg, flags.has('home') || device.home === true);
+
       runCommands(plan, root, { dryRun, exec });
       if (sub === 'uninstall' && device.home === true) {
         console.log(`${device.id}: ${HOME_NOTE}`);
