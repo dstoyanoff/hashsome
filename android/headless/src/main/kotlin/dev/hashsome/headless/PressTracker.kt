@@ -86,7 +86,10 @@ internal class PressTracker(private val scope: Scope, handle: EntityHandle<Media
     }
 
     companion object {
-        /** How long a press is shown as waiting at most. */
+        /**
+         * How long a press is shown as waiting at most. Diverges from the web (`media-pending.ts`: per-kind settle times, a
+         * 600 ms minimum, a 60 s cap): the POC's rule, where any visible change of the player ends every wait.
+         */
         const val PENDING_MS = 4_000L
 
         /** How long a failed press shows its error. */

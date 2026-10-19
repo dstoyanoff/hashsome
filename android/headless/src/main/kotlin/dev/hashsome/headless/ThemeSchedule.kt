@@ -121,6 +121,7 @@ class ThemeController(val schedule: ThemeSchedule, private val scope: Scope) {
     }
 
     companion object {
+        // A sun schedule starts light until the sun answers; the web starts from the last answer it remembered, or the system. Persisting it is for the host.
         const val BOUNDARY_SLACK_MS = 500L
     }
 }

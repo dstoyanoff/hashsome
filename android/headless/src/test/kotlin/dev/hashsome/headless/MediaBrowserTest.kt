@@ -453,4 +453,61 @@ class MediaBrowserTest {
         rig.scheduler.advance(700)
         assertEquals(emptyMap<String, Feedback>(), b.feedback.value)
     }
+
+    // --- the kind of a search, and shuffling -----------------------------------------------------------------------
+
+    @Test
+    fun `the kinds to search for are offered while searching, starting on the shelf's`() {
+        val b = browser()
+        assertEquals(emptyList<BrowseKind>(), b.at.kinds)
+        b.openTab(2)
+        rig.settle()
+        b.search("a")
+        assertEquals(listOf(BrowseKind.Track, BrowseKind.Playlist, BrowseKind.Album, BrowseKind.Artist), b.at.kinds)
+        assertEquals(BrowseKind.Album, b.at.kind)
+    }
+
+    @Test
+    fun `choosing a kind asks for that kind, keeps it while typing, and forgets it when cleared`() {
+        found = mapOf(BrowseKind.Artist to listOf(item("ar", "Abba", BrowseKind.Artist)), BrowseKind.Track to listOf(track))
+        val b = browser()
+        b.search("ab", BrowseKind.Artist)
+        rig.scheduler.advance(300)
+        rig.settle()
+        assertEquals(BrowseKind.Artist, asked.last().kind)
+        assertEquals(listOf("ar"), b.rows)
+        b.search("abb")
+        rig.scheduler.advance(300)
+        rig.settle()
+        assertEquals(BrowseKind.Artist, asked.last().kind)
+        b.search("")
+        b.search("abb")
+        assertEquals(BrowseKind.Track, b.at.kind)
+        // A kind that is not offered is ignored.
+        b.search("abb", BrowseKind.Radio)
+        assertEquals(BrowseKind.Track, b.at.kind)
+    }
+
+    @Test
+    fun `opening a result with a kind chosen, and going back, returns to that kind`() {
+        found = mapOf(BrowseKind.Playlist to listOf(morning))
+        val b = browser()
+        b.search("morn", BrowseKind.Playlist)
+        rig.scheduler.advance(300)
+        rig.settle()
+        b.open(morning)
+        rig.settle()
+        assertTrue(b.back())
+        assertEquals("morn", b.at.search)
+        assertEquals(BrowseKind.Playlist, b.at.kind)
+    }
+
+    @Test
+    fun `an album can be played shuffled`() {
+        val b = browser()
+        b.play(abbey, PlayMode.Replace, shuffle = true)
+        assertEquals(true, rig.client.commands.last().third!!.getBoolean("shuffle"))
+        b.play(abbey, PlayMode.Replace)
+        assertFalse(rig.client.commands.last().third!!.has("shuffle"))
+    }
 }

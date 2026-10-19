@@ -149,7 +149,10 @@ class SeekControl {
     }
 
     companion object {
-        /** How long a drag or a seek may go without the player moving before it is given up on. */
+        /**
+         * How long a drag or a seek may go without the player moving before it is given up on. Diverges from the web
+         * (`media-seek.ts`: a seek is released after 1500 ms): here it is held until the player reports a moved position.
+         */
         const val IDLE_MS = 8_000L
     }
 }

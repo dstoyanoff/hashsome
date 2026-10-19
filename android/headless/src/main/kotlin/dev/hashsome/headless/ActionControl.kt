@@ -30,6 +30,10 @@ class ActionControl(val handle: EntityHandle<ActionEntity>) {
     }
 
     companion object {
+        /**
+         * `error` stays until the next trigger; the web button clears its feedback after 1200 ms and has a "done" state, which
+         * this control does not.
+         */
         /** What `error` says when there is no entity to run. */
         const val NOTHING_TO_TRIGGER = "Nothing to trigger"
     }

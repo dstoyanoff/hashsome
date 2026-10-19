@@ -26,6 +26,10 @@ data class BrowserState(
     val error: String? = null,
     /** The search text, when a search is on. */
     val search: String? = null,
+    /** While searching: the kinds a search can be narrowed to, in the order they are offered (tracks first). */
+    val kinds: List<BrowseKind> = emptyList(),
+    /** While searching: the kind the results are of. */
+    val kind: BrowseKind? = null,
 )
 
 /**
@@ -128,7 +132,7 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
     private class Answer(val key: String, val items: List<BrowseItem>, val title: String?, val error: String?)
 
     // A level and, when it was opened from search results, the search to return to.
-    private class Level(val level: BrowserLevel, val from: String?)
+    private class Level(val level: BrowserLevel, val from: String?, val fromKind: BrowseKind?)
 
     private class Shown(
         val tabs: List<BrowseItem>?,
@@ -136,6 +140,7 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
         val needle: String,
         val searching: Boolean,
         val kind: BrowseKind,
+        val offered: List<BrowseKind>,
         val key: String,
         val request: Query.Browse?,
         val listing: Answer?,
@@ -146,6 +151,9 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
     private var answer: Answer? = null
     private var text = ""
     private var active = 0
+
+    // The kind of thing a search is for, once one has been chosen; until then it is the open shelf's, or tracks.
+    private var kindChoice: BrowseKind? = null
     private val levels = ArrayList<Level>()
 
     // The phrase last sent: typing waits for a pause; opening a folder or a tab does not.
@@ -171,6 +179,7 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
         if (index !in 0 until count) return
         active = index
         text = ""
+        kindChoice = null
         levels.clear()
         changed()
     }
@@ -178,7 +187,7 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
     /** Opens an expandable item below the current level. */
     fun open(item: BrowseItem) {
         val from = text.trim().takeIf { it.isNotEmpty() }
-        levels += Level(BrowserLevel(item, item.title), from)
+        levels += Level(BrowserLevel(item, item.title), from, if (from != null) shown().kind else null)
         text = ""
         changed()
     }
@@ -193,14 +202,23 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
 
         if (levels.isEmpty()) return false
         val left = levels.removeAt(levels.size - 1)
-        if (left.from != null) text = left.from
+        if (left.from != null) {
+            text = left.from
+            kindChoice = left.fromKind
+        }
         changed()
         return true
     }
 
-    /** Searches the library (null or blank clears the search). Results are ranked as on the web. */
-    fun search(text: String?) {
+    /**
+     * Searches the library (null or blank clears the search, and forgets the kind chosen). Results are ranked as on
+     * the web. A search is for one [kind] at a time; given, it is kept while typing goes on, and without one the kind is
+     * the open shelf's if it holds one, else tracks (`filterBy` of `use-media-browser.ts`; the choices are in
+     * [BrowserState.kinds]). A kind that is not offered is ignored.
+     */
+    fun search(text: String?, kind: BrowseKind? = null) {
         this.text = text ?: ""
+        if (this.text.isBlank()) kindChoice = null else if (kind != null) kindChoice = kind
         changed()
     }
 
@@ -208,7 +226,7 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
      * Plays [item] from this player's library. A track opened from an album or a playlist plays in it (the album goes
      * on after the track), as on the web. The wait for the player shows in [feedback] under `<mode>:<item id>`.
      */
-    fun play(item: BrowseItem, mode: PlayMode = PlayMode.Play) {
+    fun play(item: BrowseItem, mode: PlayMode = PlayMode.Play, shuffle: Boolean? = null) {
         val container = levels.lastOrNull()?.level?.item
         val within = if (
             item.kind == BrowseKind.Track && container != null &&
@@ -222,7 +240,7 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
 
         val limit = if (mode == PlayMode.Play || mode == PlayMode.Replace) PLAY_PENDING_MS else QUEUE_PENDING_MS
         presses.press("${mode.wire}:${item.id}", limit) { done ->
-            handle.command(MediaPlayerCommands.playMedia(item.id, mode, context = within?.id)) { outcome ->
+            handle.command(MediaPlayerCommands.playMedia(item.id, mode, context = within?.id, shuffle = shuffle)) { outcome ->
                 // Added to or played from the library, the queue changes without the track changing.
                 if (outcome is Outcome.Ok) handle.ref?.let { QueueEpoch.bump(scope.client, it) }
                 done(outcome)
@@ -243,7 +261,8 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
         // A search is for one kind at a time: the open shelf's, when it holds one, or tracks.
         val holds = tabItems?.get(selected)?.holds
         val offered = ALWAYS_SEARCHABLE + (tabItems?.mapNotNull { it.holds } ?: emptyList())
-        val kind = if (holds != null && holds in offered) holds else BrowseKind.Track
+        val kind = listOf(kindChoice, holds).firstOrNull { it != null && it in offered } ?: BrowseKind.Track
+        val ordered = KIND_ORDER.filter { it in offered }
 
         val path = if (atTop) tabItems?.get(selected)?.id else here?.level?.item?.id
         val key = if (searching) "search:$needle:${kind.wire}" else "path:${path ?: ""}"
@@ -255,7 +274,7 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
             else -> null
         }
 
-        return Shown(tabItems, selected, needle, searching, kind, key, request, listing)
+        return Shown(tabItems, selected, needle, searching, kind, ordered, key, request, listing)
     }
 
     private fun publish() {
@@ -270,6 +289,8 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
                 loading = s.listing == null,
                 error = s.listing?.error,
                 search = if (s.searching) text else null,
+                kinds = if (s.searching) s.offered else emptyList(),
+                kind = if (s.searching) s.kind else null,
             ),
         )
 
@@ -344,11 +365,17 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
         /** How long typing stops before a search is sent. */
         const val SEARCH_PAUSE_MS = 300L
 
-        /** How long a play from the library is shown as waiting at most (a player takes many seconds to start an album). */
+        /** How long a play from the library is shown as waiting at most (the web's `playItem` settle time is also 15 s; see [PressTracker.PENDING_MS] for the divergence) (a player takes many seconds to start an album). */
         const val PLAY_PENDING_MS = 15_000L
 
         /** How long adding to the queue is shown as waiting at most. */
         const val QUEUE_PENDING_MS = 2_000L
+
+        /** The order the kinds of a search are offered in: what is played most, first. */
+        private val KIND_ORDER = listOf(
+            BrowseKind.Track, BrowseKind.Playlist, BrowseKind.Album, BrowseKind.Artist,
+            BrowseKind.Radio, BrowseKind.Folder, BrowseKind.Other,
+        )
 
         /** What a search is offered for whatever the library, and then for each kind a shelf says it holds (radio, say). */
         private val ALWAYS_SEARCHABLE = listOf(BrowseKind.Track, BrowseKind.Playlist, BrowseKind.Album, BrowseKind.Artist)

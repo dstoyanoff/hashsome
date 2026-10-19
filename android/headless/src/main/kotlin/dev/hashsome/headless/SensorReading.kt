@@ -104,6 +104,7 @@ class SensorReading(
         /** Below this a battery is shown as low. */
         const val LOW_BATTERY = 20.0
 
+        /** Humidity is held to 30..60 unless a range is given (as the web does); an unbounded range turns the default off, standing in for the web's `safeRange={false}`. */
         private val DEFAULT_SAFE_RANGES = mapOf("humidity" to 30.0..60.0)
 
         /** A reading to one decimal, as the web readout writes it: `21.4`, `21` and not `21.0`; text that is no number as it is. */
