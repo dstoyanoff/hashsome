@@ -102,7 +102,20 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
         builder.begin(layout)
         spec.build(builder)
         // The page scrolls when its content is taller than the screen.
-        val scroll = PageScroll(activity, layout)
+        // A top row (date, weather, clock, status, or the shell's top bar) stays pinned and only what is under it scrolls.
+        // A page is often one column holding everything: its first child is the candidate then.
+        var holder: ViewGroup = layout
+        var first = if (layout.childCount > 0) layout.getChildAt(0) else null
+        if (layout.childCount == 1 && first is ColumnLayout) {
+            holder = first
+            first = if (holder.childCount > 0) holder.getChildAt(0) else null
+        }
+        val scroll: View = if (isTopRow(first)) {
+            holder.removeView(first)
+            PageFrame(activity, first!!, layout, if (shell.rail != null) NAV_RAIL else 0)
+        } else {
+            PageScroll(activity, layout)
+        }
         pageView = scroll
         index = i
         // Under the rail, which stays where it is.

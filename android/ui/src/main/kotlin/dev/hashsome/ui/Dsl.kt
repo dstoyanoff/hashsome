@@ -256,22 +256,22 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         put(ClimateTileView(context, ClimateControl(handle), label))
     }
 
-    /** A switch as a tile, with the watts of the power sensor [power] on its secondary line when given. */
-    fun switchTile(ref: String, label: String, power: String? = null, icon: Icon? = null) {
+    /** A switch as a tile with its [icon], with the watts of the power sensor [power] on its secondary line when given. */
+    fun switchTile(ref: String, label: String, icon: Icon, power: String? = null) {
         val control = SwitchControl(handle(ref, EntityKind.Switch), power?.let { handle(it, EntityKind.Sensor) })
         put(SwitchTileView(context, control, label)).icon = icon
     }
 
     /**
-     * A recurring task over the action [ref]: tap, then confirm with the day it was done. [info] says where the task stands (it is
-     * the dashboard's to work out); [onComplete] is what completing does, else the action is triggered.
+     * A recurring task over the action [ref]: tap, then confirm with the day it was done. As on the web the tile holds no task data:
+     * [info] says where the task stands and [onComplete] what completing does, both the dashboard's.
      */
     fun taskTile(
         ref: String,
         label: String,
+        onComplete: (doneOn: Long, finish: (String?) -> Unit) -> Unit,
         info: Store<TaskInfo>? = null,
         icon: Icon? = null,
-        onComplete: ((doneOn: Long, finish: (String?) -> Unit) -> Unit)? = null,
     ) {
         val view = put(TaskTileView(context, ActionControl(handle(ref, EntityKind.Action)), label))
         if (icon != null) view.icon = icon

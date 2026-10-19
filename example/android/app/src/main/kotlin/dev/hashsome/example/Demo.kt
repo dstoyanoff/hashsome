@@ -99,8 +99,8 @@ object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
                 lightTile("ha:light.porch_lamp", "Unavailable")
                 lightTile("ha:light.does_not_exist", "Missing")
                 add(LightTileView(context, LightControl(EntityHandle.fixed(HandleState.Loading)), "Loading"))
-                switchTile("ha:lock.front_door", "Switch, on", power = "ha:sensor.living_room_lamp_power")
-                switchTile("ha:switch.kitchen_coffee_maker", "Switch, off")
+                switchTile("ha:lock.front_door", "Switch, on", Ui.house, power = "ha:sensor.living_room_lamp_power")
+                switchTile("ha:switch.kitchen_coffee_maker", "Switch, off", Ui.house)
             }
             roomHeader("Sensors", Ui.thermometer) {
                 sensorReadout("ha:sensor.master_bedroom_temperature")
@@ -121,10 +121,12 @@ object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
             header(left = { add(text("Tasks", Role.Title)) })
             val now = System.currentTimeMillis()
             val day = 86_400_000L
-            taskTile("ha:scene.movie_night", "Up to date", info = Store(TaskInfo(TaskState.Ok, now + 30 * day, now - 5 * day)))
-            taskTile("ha:scene.movie_night", "Due soon", info = Store(TaskInfo(TaskState.DueSoon, now + 2 * day, now - 20 * day)))
-            taskTile("ha:scene.movie_night", "Overdue", info = Store(TaskInfo(TaskState.Overdue, now - 3 * day, now - 40 * day)))
-            taskTile("ha:scene.does_not_exist", "Missing")
+            // What the dashboard does with the day it was done on; the demo only says it went through.
+            val done: (Long, (String?) -> Unit) -> Unit = { _, finish -> finish(null) }
+            taskTile("ha:scene.movie_night", "Up to date", onComplete = done, info = Store(TaskInfo(TaskState.Ok, now + 30 * day, now - 5 * day)))
+            taskTile("ha:scene.movie_night", "Due soon", onComplete = done, info = Store(TaskInfo(TaskState.DueSoon, now + 2 * day, now - 20 * day)))
+            taskTile("ha:scene.movie_night", "Overdue", onComplete = done, info = Store(TaskInfo(TaskState.Overdue, now - 3 * day, now - 40 * day)))
+            taskTile("ha:scene.does_not_exist", "Missing", onComplete = done)
             listTabs(
                 listOf("Library", "Queue"),
                 listOf({ add(text("The library surface")) }, { add(text("The queue surface")) }),

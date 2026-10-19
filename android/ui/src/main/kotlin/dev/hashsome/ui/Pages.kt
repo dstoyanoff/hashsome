@@ -17,6 +17,9 @@ internal class PageLayout(context: Context) : ColumnLayout(context) {
     /** The width a nav rail takes at the left edge, in dp. */
     var leftInsetDp: Int = 0
 
+    /** The page's top row is pinned above the scroll (see [PageFrame]): the content starts at the top of its own area and is not centered. */
+    var pinned: Boolean = false
+
     init {
         gap = 3
         align = Align.Stretch
@@ -27,15 +30,16 @@ internal class PageLayout(context: Context) : ColumnLayout(context) {
         val space = dp(density.space)
         var top = 0
         var bottom = 0
-        if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) {
+        if (!pinned && MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) {
             val heightDp = MeasureSpec.getSize(heightMeasureSpec) / screenDensity
             val centering = centeringOffsets(heightDp - 2 * density.space, gridMetrics(density.space).module)
             top = dp(centering.top)
             bottom = dp(centering.bottom)
         }
         val left = space + dp(leftInsetDp)
-        if (paddingLeft != left || paddingTop != space + top || paddingRight != space || paddingBottom != space + bottom) {
-            setPadding(left, space + top, space, space + bottom)
+        val above = if (pinned) 0 else space
+        if (paddingLeft != left || paddingTop != above + top || paddingRight != space || paddingBottom != space + bottom) {
+            setPadding(left, above + top, space, space + bottom)
         }
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
     }
@@ -48,10 +52,21 @@ internal class PageLayout(context: Context) : ColumnLayout(context) {
  */
 internal class PageScroll(context: Context, val page: PageLayout) : android.widget.ScrollView(context) {
     init {
-        isFillViewport = true
         isVerticalScrollBarEnabled = false
         overScrollMode = OVER_SCROLL_NEVER
         addView(page, android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+    }
+
+    // `fillViewport` compares the content with the whole height, not the room inside the padding (a pinned header's), so it is done here.
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        val room = measuredHeight - paddingTop - paddingBottom
+        if (MeasureSpec.getMode(heightMeasureSpec) != MeasureSpec.UNSPECIFIED && page.measuredHeight < room) {
+            page.measure(
+                MeasureSpec.makeMeasureSpec(measuredWidth - paddingLeft - paddingRight, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(room, MeasureSpec.EXACTLY),
+            )
+        }
     }
 }
 
@@ -88,3 +103,51 @@ internal class Spacer(context: Context) : View(context) {
 
 /** The params a view gets as a direct child of a page. */
 internal fun pageParams(): ViewGroup.LayoutParams = FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+
+/** Whether [view] is the top row of a page: a top bar, or a row that holds the date, weather, clock or status. */
+internal fun isTopRow(view: View?): Boolean = when (view) {
+    is TopBarView -> true
+    is RowLayout -> (0 until view.childCount).any { val c = view.getChildAt(it); c is DateChip || c is WeatherChip || c is Clock || c is SystemStatus || isTopRow(c) }
+    else -> false
+}
+
+/**
+ * A page whose top row stays put: the [header] is drawn at the top of the page's padding and only [page] scrolls, in the room
+ * under it (clipped there, so nothing shows between the header and the content's edge). The web's top bar draws no edge or shadow
+ * over scrolled content, and neither does this.
+ */
+internal class PageFrame(context: Context, private val header: View, page: PageLayout, private val leftInsetDp: Int) : ViewGroup(context) {
+    private val scroll = PageScroll(context, page).also {
+        it.clipToPadding = true
+    }
+
+    init {
+        page.pinned = true
+        addView(scroll)
+        addView(header)
+    }
+
+    private fun gap(): Int {
+        val lp = header.layoutParams as? FlexParams
+        return Math.round(3 * unitPx()) + (lp?.bottomMargin ?: 0)
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val space = dp(Hashsome.theme.density.space)
+        val w = MeasureSpec.getSize(widthMeasureSpec)
+        val h = MeasureSpec.getSize(heightMeasureSpec)
+        val inner = w - space - dp(leftInsetDp) - space
+        header.measure(MeasureSpec.makeMeasureSpec(inner, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+        val top = space + header.measuredHeight + gap()
+        if (scroll.paddingTop != top) scroll.setPadding(0, top, 0, 0)
+        scroll.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY))
+        setMeasuredDimension(w, h)
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        scroll.layout(0, 0, r - l, b - t)
+        val left = dp(Hashsome.theme.density.space) + dp(leftInsetDp)
+        val top = dp(Hashsome.theme.density.space)
+        header.layout(left, top, left + header.measuredWidth, top + header.measuredHeight)
+    }
+}

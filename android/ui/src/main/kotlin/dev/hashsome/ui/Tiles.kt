@@ -10,7 +10,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import dev.hashsome.client.Cancel
 import dev.hashsome.headless.ActionControl
 import dev.hashsome.headless.ClimateControl
 import dev.hashsome.headless.HandleState
@@ -92,10 +91,11 @@ open class SensorReadoutView(context: Context, val reading: SensorReading, icon:
     init {
         row.gap = 1
         row.align = Align.Center
+        // The low battery leads its own reading.
+        row.addView(battery, FlexParams(WRAP, WRAP))
         row.addView(glyph, FlexParams(WRAP, WRAP))
         row.addView(value, FlexParams(WRAP, WRAP))
         row.addView(warning, FlexParams(WRAP, WRAP))
-        row.addView(battery, FlexParams(WRAP, WRAP))
         addView(row, LayoutParams(WRAP, WRAP))
     }
 
@@ -180,7 +180,7 @@ open class LightTileView(context: Context, val control: LightControl, val label:
 open class SwitchTileView(context: Context, val control: SwitchControl, val label: String) : BoundView(context) {
     val tile: TileView = hostTile()
 
-    /** The glyph; a power symbol when null. */
+    /** The glyph (the dashboard picks it, as on the web); none when null. */
     var icon: Icon? = null
         set(value) {
             field = value
@@ -202,7 +202,7 @@ open class SwitchTileView(context: Context, val control: SwitchControl, val labe
     private fun render() {
         val state = control.handle.state.value
         tile.disabled = state !is HandleState.Ready
-        tile.icon = icon ?: Ui.power
+        tile.icon = icon
         tile.filled = control.on.value
         tile.secondary = StatusLabels.of(state) ?: control.watts.value?.let { wattsText(it) }
     }
@@ -265,14 +265,14 @@ open class TaskTileView(context: Context, val control: ActionControl, val label:
     var infoSource: dev.hashsome.client.Store<TaskInfo>? = null
 
     /**
-     * Called with the day it was done on (epoch ms) when the question is confirmed; call `finish(null)` when it went through (the
-     * dialog closes) or `finish(message)` when it did not (the message is shown in the dialog, which stays open).
+     * What completing does: called with the day it was done on (epoch ms) when the question is confirmed; call `finish(null)` when it
+     * went through (the dialog closes) or `finish(message)` when it did not (the message is shown in the dialog, which stays open).
+     * Without one the question can only be answered with an error.
      */
     var onComplete: ((doneOn: Long, finish: (String?) -> Unit) -> Unit)? = null
 
     private var now = 0L
     private var dialog: ConfirmDialogView? = null
-    private var waiting: Cancel? = null
 
     init {
         tile.title = label
@@ -291,8 +291,6 @@ open class TaskTileView(context: Context, val control: ActionControl, val label:
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        waiting?.invoke()
-        waiting = null
         dialog?.dismissNow()
         dialog = null
     }
@@ -335,28 +333,7 @@ open class TaskTileView(context: Context, val control: ActionControl, val label:
         }
 
         val handler = onComplete
-        if (handler != null) {
-            handler(doneOn, finish)
-            return
-        }
-
-        control.trigger()
-        if (!control.pending.value) {
-            finish(control.error.value)
-            return
-        }
-
-        waiting?.invoke()
-        var cancel: Cancel = {}
-        cancel = control.pending.listen { pending ->
-            if (!pending) {
-                cancel()
-                waiting = null
-                finish(control.error.value)
-            }
-        }
-
-        waiting = cancel
+        if (handler == null) finish("Nothing is set to complete this task") else handler(doneOn, finish)
     }
 }
 

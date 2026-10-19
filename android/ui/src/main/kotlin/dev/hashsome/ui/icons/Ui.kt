@@ -39,7 +39,6 @@ object Ui {
     val pause = Icon(R.drawable.ic_ui_pause)
     val play = Icon(R.drawable.ic_ui_play)
     val plus = Icon(R.drawable.ic_ui_plus)
-    val power = Icon(R.drawable.ic_ui_power)
     val search = Icon(R.drawable.ic_ui_search)
     val shuffle = Icon(R.drawable.ic_ui_shuffle)
     val skipBack = Icon(R.drawable.ic_ui_skip_back)
