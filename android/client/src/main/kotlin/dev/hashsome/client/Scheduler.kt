@@ -34,14 +34,20 @@ class AndroidScheduler(private val handler: Handler) : Scheduler {
     }
 
     override fun every(ms: Long, fn: () -> Unit): Cancel {
+        // A flag, not only removeCallbacks: while `fn` runs the task is not queued, so a cancel from inside `fn` would remove nothing and the re-post below would revive the loop.
+        var live = true
         val task = object : Runnable {
             override fun run() {
+                if (!live) return
                 fn()
-                handler.postDelayed(this, ms)
+                if (live) handler.postDelayed(this, ms)
             }
         }
         handler.postDelayed(task, ms)
-        return { handler.removeCallbacks(task) }
+        return {
+            live = false
+            handler.removeCallbacks(task)
+        }
     }
 
     override fun now(): Long = SystemClock.uptimeMillis()
