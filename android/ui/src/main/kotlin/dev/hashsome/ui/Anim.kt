@@ -16,8 +16,8 @@ internal val EASE_IN = PathInterpolator(0.42f, 0f, 1f, 1f)
 /** The curve of a row that arrives: `cubic-bezier(0.2, 0.8, 0.2, 1)`. */
 internal val ARRIVE = PathInterpolator(0.2f, 0.8f, 0.2f, 1f)
 
-/** How long a page takes to come in, in ms (the web dashboards' is 90). */
-const val PAGE_MS = 140L
+/** How long a page takes to come in, in ms (as the web dashboards'). */
+const val PAGE_MS = 90L
 
 /**
  * How much the app moves, set by the dashboard shown (`Dashboard.motion`; the web's `motion/mode.ts`). `Full` plays every

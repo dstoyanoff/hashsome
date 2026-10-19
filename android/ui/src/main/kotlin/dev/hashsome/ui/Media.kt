@@ -41,30 +41,30 @@ private fun rounded(color: Int, radiusDp: Float): GradientDrawable = GradientDra
 }
 
 /** Opens the player's library as a panel of its own over the page. */
-internal fun openLibrary(context: Context, control: MediaPlayerControl, label: String, prebuilt: Prebuilt? = null) {
-    openMediaOverlay(context, control.scope, "Library", label, Ui.library, full = true, prebuilt = prebuilt) { scope ->
+internal fun openLibrary(context: Context, control: MediaPlayerControl, label: String, prebuilt: Prebuilt? = null, expandable: Boolean = false) {
+    openMediaOverlay(context, control.scope, "Library", label, Ui.library, full = true, expandable = expandable, prebuilt = prebuilt) { scope ->
         MediaBrowserView(context, MediaBrowserControl(control.handle, scope))
     }
 }
 
 /** Opens the player's queue as a panel of its own over the page. */
-internal fun openQueue(context: Context, control: MediaPlayerControl, label: String, prebuilt: Prebuilt? = null) {
-    openMediaOverlay(context, control.scope, "Queue", label, Ui.listMusic, full = true, prebuilt = prebuilt) { scope ->
+internal fun openQueue(context: Context, control: MediaPlayerControl, label: String, prebuilt: Prebuilt? = null, expandable: Boolean = false) {
+    openMediaOverlay(context, control.scope, "Queue", label, Ui.listMusic, full = true, expandable = expandable, prebuilt = prebuilt) { scope ->
         MediaQueueView(context, QueueControl(control.handle, scope))
     }
 }
 
 /** Opens who plays together with the player as the side panel. */
-internal fun openSpeakers(context: Context, control: MediaPlayerControl, allow: List<EntityRef>, label: String, prebuilt: Prebuilt? = null) {
+internal fun openSpeakers(context: Context, control: MediaPlayerControl, allow: List<EntityRef>, label: String, prebuilt: Prebuilt? = null, expandable: Boolean = false) {
     // The panel has a control of its own, so it does not depend on the view that opened it staying.
-    openMediaOverlay(context, control.scope, "Speakers", label, Ui.speaker, full = false, prebuilt = prebuilt) { scope ->
+    openMediaOverlay(context, control.scope, "Speakers", label, Ui.speaker, full = false, expandable = expandable, prebuilt = prebuilt) { scope ->
         MediaSpeakersView(context, SpeakersControl(control.handle, scope, allow))
     }
 }
 
 /** Opens the whole player, with its library and queue, as a panel (a column with no panels of its own for them). */
-internal fun openPlayer(context: Context, control: MediaPlayerControl, label: String, speakers: List<EntityRef>) {
-    openMediaOverlay(context, control.scope, label, "Media", Ui.music, full = false) { scope ->
+internal fun openPlayer(context: Context, control: MediaPlayerControl, label: String, speakers: List<EntityRef>, expandable: Boolean = false) {
+    openMediaOverlay(context, control.scope, label, "Media", Ui.music, full = false, expandable = expandable) { scope ->
         MediaPlayerFullView(context, MediaPlayerControl(control.handle, scope), label).also { it.speakers = speakers }
     }
 }
@@ -215,6 +215,9 @@ open class MediaPlayerBarView(context: Context, val control: MediaPlayerControl,
     BoundView(context) {
     var onOpen: (() -> Unit)? = null
 
+    /** The panels it opens have a button that widens them (off by default: a small display has no use for it). */
+    var expandable: Boolean = false
+
     /** The speakers that may be grouped with this player; empty for any it can be grouped with. Set before the view is shown. */
     var speakers: List<EntityRef> = emptyList()
 
@@ -262,7 +265,7 @@ open class MediaPlayerBarView(context: Context, val control: MediaPlayerControl,
         background = rounded(t.palette.surface, if (twoRows) t.radius.card else t.radius.full)
         clipToOutline = true
         // Where the dashboard says: its own page for the player; without one, the whole player as a panel.
-        val open = { onOpen?.invoke() ?: openPlayer(context, control, label, speakers) }
+        val open = { onOpen?.invoke() ?: openPlayer(context, control, label, speakers, expandable) }
         ring = MiniRingView(context).also { it.onClick = open }
         artwork = ArtworkSlot(AssetSize.Small, { dp(30) }) { ring?.show(it) }
 
@@ -289,7 +292,7 @@ open class MediaPlayerBarView(context: Context, val control: MediaPlayerControl,
             browse = it
             it.onClick = { open() }
         }
-        val speakersPill = SpeakersPillView(context, compact = true) { openSpeakers(context, control, speakers, label) }.also { pill = it }
+        val speakersPill = SpeakersPillView(context, compact = true) { openSpeakers(context, control, speakers, label, null, expandable) }.also { pill = it }
         tools.clear()
         tools += listOf(volumeKey, library, speakersPill)
         transport.clear()
@@ -491,6 +494,9 @@ open class MediaPlayerColumnView(
     val overlays: Boolean = true,
     val fill: Boolean = true,
 ) : BoundView(context) {
+    /** The panels it opens have a button that widens them (off by default: a small display has no use for it). */
+    var expandable: Boolean = false
+
     /** The speakers that may be grouped with this player; empty for any it can be grouped with. Set before the view is shown. */
     var speakers: List<EntityRef> = emptyList()
 
@@ -518,15 +524,15 @@ open class MediaPlayerColumnView(
         background = rounded(t.palette.surface, t.radius.card)
         val pad = Math.round(4 * unitPx())
         setPadding(pad, pad, pad, pad)
-        val pill = SpeakersPillView(context, compact = false) { openSpeakers(context, control, speakers, label, speakersReady) }.also { pillView = it }
+        val pill = SpeakersPillView(context, compact = false) { openSpeakers(context, control, speakers, label, speakersReady, expandable) }.also { pillView = it }
         val browse = GlyphButton(context, Ui.library).also {
             library = it
-            it.onClick = { if (overlays) openLibrary(context, control, label, libraryReady) else openPlayer(context, control, label, speakers) }
+            it.onClick = { if (overlays) openLibrary(context, control, label, libraryReady, expandable) else openPlayer(context, control, label, speakers, expandable) }
         }
         val queueButton = if (overlays) {
             GlyphButton(context, Ui.listMusic).also {
                 queueKey = it
-                it.onClick = { openQueue(context, control, label, queueReady) }
+                it.onClick = { openQueue(context, control, label, queueReady, expandable) }
             }
         } else {
             null
@@ -536,7 +542,7 @@ open class MediaPlayerColumnView(
         } else {
             NowPlayingView(
                 context, control, label, queue, shuffleAtTitle = false, extra = browse, speakers = pill,
-                onOpenArtwork = { openPlayer(context, control, label, speakers) },
+                onOpenArtwork = { openPlayer(context, control, label, speakers, expandable) },
             )
         }
         addView(panel, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))

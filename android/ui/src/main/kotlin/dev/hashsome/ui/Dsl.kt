@@ -371,17 +371,19 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         grouping: Boolean = true,
         onOpen: (() -> Unit)? = null,
         speakers: List<EntityRef> = emptyList(),
+        expandable: Boolean = false,
     ) {
         val bar = MediaPlayerBarView(context, player(ref), label, PlayerOptions(time, shuffle, browse, grouping, rows))
         bar.onOpen = onOpen
         bar.speakers = speakers
+        bar.expandable = expandable
         place(bar)
     }
 
     /**
      * The player as an upright card for a narrow column: art in a ring that shows (and seeks) the position, title, transport and a
      * volume bar. With [overlays] its library and queue open as panels of their own; [fill] takes all the height the parent gives it.
-     * [speakers] are the players that may be grouped with this one.
+     * [speakers] are the players that may be grouped with this one. [expandable] gives the panels it opens a button that widens them (the tablets').
      */
     fun mediaPlayerColumn(
         ref: String,
@@ -389,9 +391,11 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         overlays: Boolean = true,
         fill: Boolean = true,
         speakers: List<EntityRef> = emptyList(),
+        expandable: Boolean = false,
     ) {
         val column = MediaPlayerColumnView(context, player(ref), label, overlays, fill)
         column.speakers = speakers
+        column.expandable = expandable
         place(column, grow = fill)
     }
 

@@ -1145,10 +1145,11 @@ internal fun openMediaOverlay(
     subtitle: String?,
     icon: Icon,
     full: Boolean,
+    expandable: Boolean = false,
     prebuilt: Prebuilt? = null,
     build: (Scope) -> View,
 ) {
-    val overlay = overlayForScreen(context)
+    val overlay = overlayForScreen(context, expandable)
     overlay.title = title
     overlay.subtitle = subtitle
     overlay.titleIcon = icon

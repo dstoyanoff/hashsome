@@ -189,9 +189,9 @@ abstract class Overlay(context: Context) : BoundView(context) {
 }
 
 /** Which overlay suits this screen's width (the web's `SHEET_BELOW`): a [Sheet] below 500 dp, a [Drawer] from there. */
-fun overlayForScreen(context: Context): Overlay {
+fun overlayForScreen(context: Context, expandable: Boolean = false): Overlay {
     val widthDp = context.resources.displayMetrics.widthPixels / screenDensity
-    return if (widthDp < SHEET_BELOW_DP) Sheet(context) else Drawer(context)
+    return if (widthDp < SHEET_BELOW_DP) Sheet(context) else Drawer(context, expandable)
 }
 
 /** The 30 dp button of a panel's title row: a rounded square in the raised surface with a small glyph. */
@@ -281,10 +281,10 @@ internal class OverlayTitle(context: Context, private val name: CharSequence, pr
 }
 
 /**
- * A panel that slides in from the right: 20 dp in from the window's edges, 380 dp wide (less on a narrow window) and expandable
+ * A panel that slides in from the right: 20 dp in from the window's edges, 380 dp wide (less on a narrow window) and, with [expandable],
  * to nearly the window's width. Its height is the window's less the insets; [show]'s content fills what is under the title row.
  */
-open class Drawer(context: Context) : Overlay(context) {
+open class Drawer(context: Context, val expandable: Boolean = false) : Overlay(context) {
     /** The panel's width when not expanded, in dp; 380 as the web's. */
     var widthDp: Int = COLLAPSED_WIDTH
 
@@ -345,7 +345,7 @@ open class Drawer(context: Context) : Overlay(context) {
         val expand = OverlayAction(context, Ui.maximize2) { expanded = !expanded }
         expandButton = expand
         expand.shown = if (expanded) Ui.minimize2 else Ui.maximize2
-        panel.addView(header(expand, closeButton()), FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+        panel.addView(header(*(if (expandable) arrayOf<View>(expand, closeButton()) else arrayOf<View>(closeButton()))), FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             bottomMargin = Math.round(4 * u)
         })
         panel.addView(content, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
