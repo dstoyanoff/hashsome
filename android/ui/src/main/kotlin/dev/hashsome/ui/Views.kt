@@ -875,19 +875,25 @@ open class StatusDot(context: Context) : View(context) {
         Hashsome.touchListener.onStatusDotHold()
     }
 
+    private val show = Runnable {
+        if (holding) Hashsome.holdIndicator?.begin(HOLD_SOURCE, holdStart, holdMs, HOLD_LABEL)
+    }
+
     private fun startRing(ms: Long) {
         stopRing()
         holdMs = ms
         holdStart = android.os.SystemClock.uptimeMillis()
         holding = true
         postDelayed(fire, ms)
-        Hashsome.holdIndicator?.begin(HOLD_SOURCE, holdStart, ms, HOLD_LABEL)
+        // Not for a quick tap: the indicator shows once the press has outlasted one, filled as far as the hold has got.
+        if (ms > StatusDotHold.TAP_MAX_MS) postDelayed(show, StatusDotHold.TAP_MAX_MS) else show.run()
     }
 
     private fun stopRing() {
         if (holding) Hashsome.holdIndicator?.cancel(HOLD_SOURCE)
         holding = false
         removeCallbacks(fire)
+        removeCallbacks(show)
     }
 
     override fun onDetachedFromWindow() {

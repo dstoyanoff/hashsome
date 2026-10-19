@@ -22,6 +22,7 @@ import dev.hashsome.ui.FormSelect
 import dev.hashsome.ui.FormSlider
 import dev.hashsome.ui.Hashsome
 import dev.hashsome.ui.Overlay
+import dev.hashsome.ui.FlowRow
 import dev.hashsome.ui.PillButton
 import dev.hashsome.ui.RowLayout
 import dev.hashsome.ui.Sheet
@@ -128,14 +129,14 @@ private class SheetContent(
         textField("Device id", settings.deviceId, { it ?: "" }, { it.trim().ifEmpty { null } }, clearable = true)
         textField("Device name", settings.deviceName, { it ?: "" }, { it.trim().ifEmpty { null } }, clearable = true)
         select("Profile", listOf("auto") + listOf(DeviceProfile.ShellyStargate, DeviceProfile.ShellyJenna, DeviceProfile.Generic).map { it.id }, settings.profileOverride, { it ?: "auto" }, { if (it == "auto") null else it })
+        val stock = button("Open Shelly app") { actions.openStockApp() }
+        binders += { actions.canOpenStockApp.listenNow { stock.visibility = if (it) View.VISIBLE else View.GONE } }
         buttons(
             button("Reload (reconnect)", primary = true) { actions.reload() },
             button("Restart app") { actions.restartApp() },
-        )
-        val stock = buttons(button("Open Shelly app") { actions.openStockApp() })
-        binders += { actions.canOpenStockApp.listenNow { stock.visibility = if (it) View.VISIBLE else View.GONE } }
-        buttons(
-            button("Re-provision from the last broadcast") {
+            stock,
+            // Applies the last PROVISION broadcast again.
+            button("Re-provision", description = "Re-provision from the last broadcast") {
                 val last = Provisioning.decode(settings.lastProvision)
                 if (last.isEmpty()) toast("No provisioning broadcast yet") else {
                     Provisioning.apply(settings, last)
@@ -160,7 +161,7 @@ private class SheetContent(
         section("Night mode")
         switch("Night mode", settings.night)
         textField("Idle time (s)", settings.nightIdleMs, { (it / 1000).toString() }, { it.trim().toLongOrNull()?.let { s -> s.coerceIn(5, 3600) * 1000 } }, InputType.TYPE_CLASS_NUMBER)
-        buttons(button("Wake the screen") { actions.wake() }, button("Sleep the screen") { actions.sleep() })
+        buttons(button("Sleep the screen") { actions.sleep() })
 
         section("MQTT")
         switch("Enabled", settings.mqtt.enabled)
@@ -171,14 +172,15 @@ private class SheetContent(
         section("Debug")
         switch("Module grid overlay", settings.debug.grid)
         info("Device admin") { show -> show(if (DeviceAdmin.isActive(ctx)) "active" else "not active"); {} }
+        // Restart device only where the device can be rebooted (probed after the service starts, so it may appear a moment after the sheet opens).
+        val restart = confirmButton("Restart device", "Tap again to restart the device") { actions.restartDevice() }
+        binders += { actions.canRestartDevice.listenNow { restart.visibility = if (it) View.VISIBLE else View.GONE } }
         buttons(
             confirmButton("Remove device admin (before uninstalling)", "Tap again to remove the device admin") {
                 toast(if (DeviceAdmin.remove(ctx)) "Device admin removed" else "The device admin is not active")
             },
+            restart,
         )
-        // Only where the device can be rebooted (probed after the service starts, so it may appear a moment after the sheet opens).
-        val restart = buttons(confirmButton("Restart device", "Tap again to restart the device") { actions.restartDevice() })
-        binders += { actions.canRestartDevice.listenNow { restart.visibility = if (it) View.VISIBLE else View.GONE } }
     }
 
     // ---- rows -----------------------------------------------------------------------------------------------------
@@ -257,8 +259,9 @@ private class SheetContent(
         }
     }
 
-    private fun button(name: String, primary: Boolean = false, onClick: () -> Unit): PillButton =
+    private fun button(name: String, primary: Boolean = false, description: String? = null, onClick: () -> Unit): PillButton =
         PillButton(ctx, null, name).also {
+            if (description != null) it.contentDescription = description
             it.heightDp = 40
             it.padUnits = 4.5f
             it.primary = primary
@@ -288,11 +291,10 @@ private class SheetContent(
         return b
     }
 
-    /** Action buttons: side by side when their words are short, else one under the other. */
+    /** Action buttons: each its own width, filling a line and wrapping only when the next does not fit. */
     private fun buttons(vararg actions: PillButton): View {
-        val short = actions.sumOf { it.label.orEmpty().length } <= 40
-        val holder: ViewGroup = if (short) RowLayout(ctx).apply { gap = 2 } else ColumnLayout(ctx).apply { gap = 2; align = Align.Start }
-        actions.forEach { holder.addView(it, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)) }
+        val holder = FlowRow(ctx).apply { gap = 2 }
+        actions.forEach { holder.addView(it, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)) }
         holder.setPadding(0, dp(8), 0, dp(4))
         add(holder)
         return holder

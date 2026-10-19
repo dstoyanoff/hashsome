@@ -55,6 +55,7 @@ internal class HoldIndicator(context: Context) : View(context), HoldProgressSink
     private var source = ""
     private var label = ""
     private var startedAt = 0L
+    private var shownAt = 0L
     private var holdMs = 1L
     private var endedAt = 0L
     private var endAlpha = 0f
@@ -77,6 +78,8 @@ internal class HoldIndicator(context: Context) : View(context), HoldProgressSink
     override fun begin(source: String, startUptimeMs: Long, holdMs: Long, label: String) {
         this.source = source
         this.startedAt = startUptimeMs
+        // The hold counts from [startUptimeMs], but it may begin showing later (not for a quick tap): the fade runs from now.
+        this.shownAt = SystemClock.uptimeMillis()
         this.holdMs = holdMs
         if (this.label != label) {
             this.label = label
@@ -96,7 +99,7 @@ internal class HoldIndicator(context: Context) : View(context), HoldProgressSink
     private fun end(source: String, to: Phase) {
         if (phase != Phase.Holding || source != this.source) return
         val now = SystemClock.uptimeMillis()
-        endAlpha = HoldIndicatorMath.fadeIn(now - startedAt)
+        endAlpha = HoldIndicatorMath.fadeIn(now - shownAt)
         endProgress = if (to == Phase.Completed) 1f else StatusDotHold.progress(StatusDotHold.elapsed(now, startedAt), holdMs)
         endedAt = now
         phase = to
@@ -142,7 +145,7 @@ internal class HoldIndicator(context: Context) : View(context), HoldProgressSink
         val progress: Float
         when (phase) {
             Phase.Holding -> {
-                alpha = if (Animation.animates) HoldIndicatorMath.fadeIn(now - startedAt) else 1f
+                alpha = if (Animation.animates) HoldIndicatorMath.fadeIn(now - shownAt) else 1f
                 progress = StatusDotHold.progress(StatusDotHold.elapsed(now, startedAt), holdMs)
             }
             else -> {
