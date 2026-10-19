@@ -6,8 +6,9 @@ import org.json.JSONObject
 // `?` here is `?` there). Timestamps stay ISO 8601 strings; `Iso8601` turns one into milliseconds.
 //
 // `raw` is the backend's own payload, untouched. It is a JSONObject, which compares by identity, so two
-// equal entities that were parsed separately are NOT `==` while they carry a raw: a parser that wants a
-// `Store` to skip an unchanged message must hand back the previous instance when the text is the same (WP1).
+// equal entities that were parsed separately are NOT `==` while they carry a raw. The agreed approach:
+// WP1's client keeps the last entity JSON text per ref and skips parsing and notifying when the text is unchanged,
+// so this identity never causes a spurious notification.
 
 /** What every entity has, whatever its kind. */
 sealed interface Entity {

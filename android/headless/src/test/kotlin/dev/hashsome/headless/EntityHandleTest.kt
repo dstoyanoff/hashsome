@@ -16,6 +16,12 @@ class EntityHandleTest {
     }
 
     @Test
+    fun `a fixed handle can be unavailable with no entity`() {
+        val handle = EntityHandle.fixed<SwitchEntity>(HandleState.Unavailable(null))
+        assertEquals(HandleState.Unavailable<SwitchEntity>(null), handle.state.value)
+    }
+
+    @Test
     fun `ready and unavailable states compare by entity`() {
         val e = SwitchEntity(EntityRef("ha:switch.x"), "X", Availability.Ready, on = false)
         assertEquals(HandleState.Ready(e), HandleState.Ready(e.copy()))

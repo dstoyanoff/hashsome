@@ -25,8 +25,11 @@ sealed interface HandleState<out E : Entity> {
     /** Reported and usable. */
     data class Ready<E : Entity>(val entity: E) : HandleState<E>
 
-    /** The device is unreachable; [entity] is what it last reported. */
-    data class Unavailable<E : Entity>(val entity: E) : HandleState<E>
+    /**
+     * The device is unreachable; [entity] is what it last reported, or null when there never was one (a room with no
+     * heater: `EntityHandle.fixed(HandleState.Unavailable(null))` renders the disabled tile).
+     */
+    data class Unavailable<E : Entity>(val entity: E?) : HandleState<E>
 }
 
 /**
