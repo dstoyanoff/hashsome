@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     api(project(":headless"))
+    testImplementation(project(":testing"))
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
 }

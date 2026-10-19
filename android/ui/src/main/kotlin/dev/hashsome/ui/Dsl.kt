@@ -7,7 +7,6 @@ import dev.hashsome.client.Entity
 import dev.hashsome.client.EntityKind
 import dev.hashsome.client.EntityRef
 import dev.hashsome.client.Store
-import dev.hashsome.headless.ActionControl
 import dev.hashsome.headless.ClimateControl
 import dev.hashsome.headless.ConnectionHealth
 import dev.hashsome.headless.EntityHandle
@@ -197,8 +196,9 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         put(WeatherChip(context, WeatherControl(handle(ref, EntityKind.Weather), scope), handle(ref, EntityKind.Sensor)))
     }
 
-    fun clock() {
-        put(Clock(context))
+    /** The time of day. [format] writes the hours as 24 or 12 (the web's `format="24h"`), or as the device's own setting ([ClockFormat.Auto]). */
+    fun clock(format: ClockFormat = ClockFormat.Auto) {
+        put(Clock(context, format))
     }
 
     fun systemStatus() {
@@ -207,17 +207,33 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
 
     /**
      * The wall header: [left] is drawn at its left edge, then the date, the weather ([weather], when given), the clock and the status
-     * dot at the right, in one row of the top row's height.
+     * dot at the right, in one row of the top row's height. [mb] is the space below it in spacing units, as the web `Flex`'s `mb`
+     * (negative takes some back: a board puts twice a page gap between its rows, `mb = -3` leaves the header as far from what is under
+     * it as from the top of the page). [clockFormat] is how the clock writes the hours.
      */
-    fun header(left: (PageScope.() -> Unit)? = null, weather: String? = null) {
-        row(gap = 3, minHeight = TOP_ROW) {
+    fun header(left: (PageScope.() -> Unit)? = null, weather: String? = null, mb: Int = 0, clockFormat: ClockFormat = ClockFormat.Auto) {
+        val params = flex(minHeight = TOP_ROW)
+        params.bottomMargin = Math.round(mb * unitPx())
+        nest(RowLayout(context).also { it.gap = 3; it.align = Align.Center }, params) {
             left?.invoke(this)
             spacer(grow = true)
             dateChip()
             if (weather != null) weatherChip(weather)
-            clock()
+            clock(clockFormat)
             systemStatus()
         }
+    }
+
+    /**
+     * The card the pages put list tabs and players in (the web's `Flex background="surface" radius="card" p={3}`): the surface color,
+     * the card radius, 3 units of padding, children top to bottom ([gap] units apart) and clipped to the corners. [grow] takes the
+     * space left over in its row or column (and may be squeezed to fit, like `minHeight: 0`); [fill] makes the card's last child take
+     * what is left of the card's own height.
+     */
+    fun surface(grow: Boolean = false, fill: Boolean = false, gap: Int = 0, build: PageScope.() -> Unit) {
+        val card = SurfaceView(context).also { it.gap = gap }
+        nest(card, flex(grow = grow).also { it.shrink = grow }, build)
+        if (fill && card.childCount > 0) (card.getChildAt(card.childCount - 1).layoutParams as? FlexParams)?.grow = true
     }
 
     // --- Tiles ------------------------------------------------------------------------------------------------------
@@ -263,17 +279,19 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
     }
 
     /**
-     * A recurring task over the action [ref]: tap, then confirm with the day it was done. As on the web the tile holds no task data:
-     * [info] says where the task stands and [onComplete] what completing does, both the dashboard's.
+     * A recurring task: tap, then confirm with the day it was done. As on the web the tile holds no task data: [info] says where the
+     * task stands and [onComplete] what completing does, both the dashboard's. [ref] is only for the tile's status, as the web's
+     * `status`: an entity of any kind (an action, a `binary_sensor`, a switch...) whose being unavailable, missing or still loading
+     * disables the tile and says why; null (no ref) is always ready.
      */
     fun taskTile(
-        ref: String,
+        ref: String?,
         label: String,
         onComplete: (doneOn: Long, finish: (String?) -> Unit) -> Unit,
         info: Store<TaskInfo>? = null,
         icon: Icon? = null,
     ) {
-        val view = put(TaskTileView(context, ActionControl(handle(ref, EntityKind.Action)), label))
+        val view = put(TaskTileView(context, ref?.let { EntityStatus.watch(scope, it) }, label))
         if (icon != null) view.icon = icon
         view.infoSource = info
         view.onComplete = onComplete

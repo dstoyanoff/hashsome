@@ -1,6 +1,10 @@
 package dev.hashsome.ui
 
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import android.view.View.MeasureSpec
@@ -539,3 +543,50 @@ internal class FlexBox(private val vertical: Boolean) {
     }
 }
 
+
+/**
+ * The card pages put their lists and players in: the web's `Flex background="surface" radius="card" p={3}`. A [ColumnLayout] that
+ * draws the theme's surface color with the card radius, pads itself 3 spacing units, and clips what it holds to its corners
+ * (`overflow: hidden`). No border and no shadow, as on the web.
+ */
+open class SurfaceView(context: Context) : ColumnLayout(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val rect = RectF()
+    private val clip = Path()
+
+    init {
+        setWillNotDraw(false)
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val pad = Math.round(PADDING_UNITS * unitPx())
+        if (paddingLeft != pad || paddingTop != pad || paddingRight != pad || paddingBottom != pad) setPadding(pad, pad, pad, pad)
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
+    private fun shape() {
+        val r = minOf(dp(theme.radius.card), minOf(width, height) / 2f)
+        rect.set(0f, 0f, width.toFloat(), height.toFloat())
+        clip.reset()
+        clip.addRoundRect(rect, r, r, Path.Direction.CW)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        shape()
+        paint.color = theme.palette.surface
+        canvas.drawPath(clip, paint)
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        shape()
+        canvas.save()
+        canvas.clipPath(clip)
+        super.dispatchDraw(canvas)
+        canvas.restore()
+    }
+
+    companion object {
+        /** The card's padding, in spacing units (the web's `p={3}`). */
+        const val PADDING_UNITS = 3
+    }
+}
