@@ -21,6 +21,8 @@ import dev.hashsome.client.PlayMode
 import dev.hashsome.client.PlaybackState
 import dev.hashsome.client.QueueItem
 import dev.hashsome.headless.BrowserState
+import dev.hashsome.headless.EntityHandle
+import dev.hashsome.headless.Scope
 import dev.hashsome.headless.MediaBrowserControl
 import dev.hashsome.headless.QueueControl
 import dev.hashsome.headless.QueueState
@@ -175,7 +177,16 @@ internal fun isActive(item: BrowseItem, player: MediaPlayerEntity?): Boolean {
  * at a time. Tap a folder to open it, a track to play it, or the play button of an album or playlist to play all of it; opened, the
  * chosen tab is the way back (and so is a swipe to the right), and Play, Shuffle and Add to queue act on the whole.
  */
-open class MediaBrowserView(context: Context, val control: MediaBrowserControl) : BoundView(context) {
+open class MediaBrowserView private constructor(context: Context, lazyControl: Lazy<MediaBrowserControl>, @Suppress("UNUSED_PARAMETER") marker: Unit) :
+    BoundView(context) {
+    constructor(context: Context, control: MediaBrowserControl) : this(context, lazyOf(control), Unit)
+
+    /** For a panel made ahead: the control is made when the view is first shown, so nothing is asked of the runtime while it is hidden. */
+    constructor(context: Context, scope: Scope, handle: EntityHandle<MediaPlayerEntity>) :
+        this(context, lazy(LazyThreadSafetyMode.NONE) { MediaBrowserControl(handle, scope) }, Unit)
+
+    val control: MediaBrowserControl by lazyControl
+
     private val column = ColumnLayout(context).also { it.gap = 3 }
     private val header = RowLayout(context).also { it.gap = 2 }
     private val back = GlyphButton(context, Ui.arrowLeft, 16f).also { it.sizeDp = 28 }
@@ -418,7 +429,16 @@ open class MediaBrowserView(context: Context, val control: MediaBrowserControl) 
  * to jump to it, the cross takes it out, and Clear takes out everything after the track playing, which carries on. What comes next is put
  * in another order by dragging a track by its handle.
  */
-open class MediaQueueView(context: Context, val control: QueueControl) : BoundView(context) {
+open class MediaQueueView private constructor(context: Context, lazyControl: Lazy<QueueControl>, @Suppress("UNUSED_PARAMETER") marker: Unit) :
+    BoundView(context) {
+    constructor(context: Context, control: QueueControl) : this(context, lazyOf(control), Unit)
+
+    /** For a panel made ahead: the control (and its poll) starts when the view is first shown. */
+    constructor(context: Context, scope: Scope, handle: EntityHandle<MediaPlayerEntity>) :
+        this(context, lazy(LazyThreadSafetyMode.NONE) { QueueControl(handle, scope) }, Unit)
+
+    val control: QueueControl by lazyControl
+
     private val column = ColumnLayout(context).also { it.gap = 2 }
     private val head = RowLayout(context).also { it.gap = 2 }
     private val heading = HeadingLine(context)
@@ -434,8 +454,8 @@ open class MediaQueueView(context: Context, val control: QueueControl) : BoundVi
     private val host = LinearLayout(context).also { it.orientation = LinearLayout.VERTICAL }
     private val skeleton = SkeletonList(context)
     private val note = FrameLayout(context)
-    private val arrivalScope = control.scope.child()
-    private val arrival = RowsArrival(arrivalScope).also { it.stagger = false }
+    private val arrivalScope by lazy(LazyThreadSafetyMode.NONE) { control.scope.child() }
+    private val arrival by lazy(LazyThreadSafetyMode.NONE) { RowsArrival(arrivalScope).also { it.stagger = false } }
     private val rows = ArrayList<QueueRow>()
     private val pictures = ArrayList<ArtworkSlot>()
     private var tail: LabelView? = null

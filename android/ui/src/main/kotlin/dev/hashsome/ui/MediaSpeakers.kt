@@ -237,7 +237,16 @@ private class SpeakerRow(context: Context, private val handle: EntityHandle<Medi
  * The speakers of a player's stream: who plays together with it (a volume for each, a way to take one out), the ones playing something
  * else that it could join or add, and the quiet ones it could add. Playing something else on a speaker, or on this player, asks first.
  */
-open class MediaSpeakersView(context: Context, val control: SpeakersControl) : BoundView(context) {
+open class MediaSpeakersView private constructor(context: Context, lazyControl: Lazy<SpeakersControl>, @Suppress("UNUSED_PARAMETER") marker: Unit) :
+    BoundView(context) {
+    constructor(context: Context, control: SpeakersControl) : this(context, lazyOf(control), Unit)
+
+    /** For a panel made ahead: the control (and its watches) starts when the view is first shown. */
+    constructor(context: Context, scope: Scope, handle: EntityHandle<MediaPlayerEntity>, allow: List<EntityRef>) :
+        this(context, lazy(LazyThreadSafetyMode.NONE) { SpeakersControl(handle, scope, allow) }, Unit)
+
+    val control: SpeakersControl by lazyControl
+
     private val scroll = LibraryScroll(context)
     private val list = ColumnLayout(context).also { it.gap = 4 }
     private var rowScope: Scope? = null

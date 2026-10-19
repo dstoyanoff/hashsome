@@ -1192,6 +1192,8 @@ internal class Prebuilt(private val context: Context, private val owner: Scope, 
     }
 
     fun take(): Pair<Scope, View>? {
+        pending?.invoke()
+        pending = null
         val s = scope
         val v = view
         scope = null
@@ -1199,9 +1201,13 @@ internal class Prebuilt(private val context: Context, private val owner: Scope, 
         return if (s != null && v != null) s to v else null
     }
 
+    /** Makes one after a pause; a call while one is made or waited for does nothing. */
     fun later() {
-        pending?.invoke()
-        pending = owner.after(600) { prepare() }
+        if (view != null || pending != null) return
+        pending = owner.after(600) {
+            pending = null
+            prepare()
+        }
     }
 
     fun dispose() {

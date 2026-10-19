@@ -511,13 +511,17 @@ open class MediaPlayerColumnView(
 
     private fun build() {
         removeAllViews()
+        libraryReady?.dispose()
+        queueReady?.dispose()
+        speakersReady?.dispose()
+        own?.dispose()
         val t = theme
         val scope = control.scope.child()
         own = scope
         if (overlays) {
-            libraryReady = Prebuilt(context, scope) { MediaBrowserView(context, MediaBrowserControl(control.handle, it)) }
-            queueReady = Prebuilt(context, scope) { MediaQueueView(context, QueueControl(control.handle, it)) }
-            speakersReady = Prebuilt(context, scope) { MediaSpeakersView(context, SpeakersControl(control.handle, it, speakers)) }
+            libraryReady = Prebuilt(context, scope) { MediaBrowserView(context, it, control.handle) }
+            queueReady = Prebuilt(context, scope) { MediaQueueView(context, it, control.handle) }
+            speakersReady = Prebuilt(context, scope) { MediaSpeakersView(context, it, control.handle, speakers) }
         }
         val queue = QueueControl(control.handle, scope)
         grouping = null
