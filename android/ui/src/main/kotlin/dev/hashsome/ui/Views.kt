@@ -732,7 +732,7 @@ object StatusDotHold {
     const val DEFAULT_MS = 5_000L
 
     /** How far past the dot's edge, in dp, the finger may wander before the hold is given up. */
-    const val MARGIN_DP = 24
+    const val MARGIN_DP = 48
 
     /** Whether the point ([x], [y]) is inside a [w] x [h] view's bounds expanded by [marginPx] on every side. */
     fun withinArea(x: Float, y: Float, w: Float, h: Float, marginPx: Float): Boolean =
@@ -748,9 +748,13 @@ object StatusDotHold {
     fun completed(elapsedMs: Long, holdMs: Long): Boolean = elapsedMs >= holdMs
 }
 
+private const val HOLD_SOURCE = "status-dot"
+private const val HOLD_LABEL = "Hold for settings"
+
 /**
  * A small dot with a ring round it: green when [ok], red otherwise. A tap reaches `TouchListener.onStatusDotTap`; pressing and
- * holding it still for `TouchListener.statusDotHoldMs` (5 s) fills a ring round it and then calls `TouchListener.onStatusDotHold`
+ * holding it still for `TouchListener.statusDotHoldMs` (5 s) shows the hold's progress in the middle of the screen (the dot is under
+ * the finger) and then calls `TouchListener.onStatusDotHold`
  * (the kiosk's settings gesture). A completed hold swallows the release, so no tap and no popover follow it.
  */
 open class StatusDot(context: Context) : View(context) {
@@ -777,7 +781,6 @@ open class StatusDot(context: Context) : View(context) {
     private val tone = EasedColor(this, theme.palette.success)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    private var ringProgress = 0f
     private var held = false
 
     init {
@@ -820,8 +823,7 @@ open class StatusDot(context: Context) : View(context) {
         if (!holding) return@Runnable
         holding = false
         held = true
-        ringProgress = 0f
-        invalidate()
+        Hashsome.holdIndicator?.complete(HOLD_SOURCE)
         Hashsome.touchListener.onStatusDotHold()
     }
 
@@ -831,16 +833,13 @@ open class StatusDot(context: Context) : View(context) {
         holdStart = android.os.SystemClock.uptimeMillis()
         holding = true
         postDelayed(fire, ms)
-        postInvalidateOnAnimation()
+        Hashsome.holdIndicator?.begin(HOLD_SOURCE, holdStart, ms, HOLD_LABEL)
     }
 
     private fun stopRing() {
+        if (holding) Hashsome.holdIndicator?.cancel(HOLD_SOURCE)
         holding = false
         removeCallbacks(fire)
-        if (ringProgress != 0f) {
-            ringProgress = 0f
-            invalidate()
-        }
     }
 
     override fun onDetachedFromWindow() {
@@ -856,19 +855,6 @@ open class StatusDot(context: Context) : View(context) {
         canvas.drawCircle(c, c, dp(10f), paint)
         paint.color = tone.value
         canvas.drawCircle(c, c, dp(6f), paint)
-        if (holding) {
-            ringProgress = StatusDotHold.progress(StatusDotHold.elapsed(android.os.SystemClock.uptimeMillis(), holdStart), holdMs)
-            postInvalidateOnAnimation()
-        }
-        if (ringProgress > 0f) {
-            val r = dp(14f)
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = dp(2f)
-            paint.strokeCap = Paint.Cap.ROUND
-            paint.color = theme.palette.accent
-            canvas.drawArc(c - r, c - r, c + r, c + r, -90f, 360f * ringProgress, false, paint)
-            paint.style = Paint.Style.FILL
-        }
     }
 }
 
