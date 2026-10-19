@@ -43,14 +43,33 @@ internal class Reboot(
 
     /** Looks for a way to reboot, off the main thread; a Shelly profile tries the display's RPC first, any profile the local permission. */
     fun probe(shelly: Boolean) {
+        retry?.invoke()
+        retry = null
         background {
             val found = choose(shelly)
             scheduler.post {
+                if (closed) return@post
                 path = found
                 available.set(found != null)
                 Log.i("reboot", "restart the device: ${found?.name ?: "not available"}")
+                // The stock app's RPC server comes and goes with the stock process: look again until a way turns up.
+                if (found == null) retry = scheduler.after(RETRY_MS) { retry = null; probe(shelly) }
             }
         }
+    }
+
+    private var retry: dev.hashsome.client.Cancel? = null
+    private var closed = false
+
+    /** Stops looking (the profile changed and a new [Reboot] took over). */
+    fun close() {
+        closed = true
+        retry?.invoke()
+        retry = null
+    }
+
+    companion object {
+        const val RETRY_MS = 5 * 60_000L
     }
 
     internal fun choose(shelly: Boolean): RebootPath? = when {

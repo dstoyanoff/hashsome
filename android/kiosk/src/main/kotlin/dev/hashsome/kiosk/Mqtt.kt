@@ -42,6 +42,11 @@ interface KioskActions {
     /** Restarts the device where [canRestartDevice] says it can be; otherwise it only logs. */
     fun restartDevice()
 
+    /** Opens the stock Shelly app and pauses keep-in-front (Shelly profiles only, see [canOpenStockApp]). */
+    fun openStockApp()
+
+    val canOpenStockApp: Boolean
+
     /** Whether [restartDevice] has a way to work (probed once the service runs); false until then. */
     val canRestartDevice: Store<Boolean>
 }
@@ -62,7 +67,7 @@ class KioskState(
  * switch screen, switch night_mode, number night_idle (s), number brightness, switch auto_brightness, number min_brightness,
  * select dashboard (options = the app's dashboard ids), switch dashboard_switcher, select theme (auto|dark|light),
  * sensor illuminance (lx), binary_sensor occupancy, binary_sensor sleeping, sensor page, sensor link (diagnostic),
- * buttons wake/sleep/reload/restart_app, and restart_device only where the device can be rebooted.
+ * buttons wake/sleep/reload/restart_app, open_stock_app (Shelly profiles) and restart_device only where the device can be rebooted.
  * Every `Settings` change is published back, so HA and the settings sheet always agree.
  */
 class MqttBridge(
@@ -199,6 +204,11 @@ class MqttBridge(
             Component("sleep", "button", "Sleep", describe = { put("payload_press", "PRESS") }, command = { actions.sleep() }),
             Component("reload", "button", "Reload", describe = { put("payload_press", "PRESS") }, command = { actions.reload() }),
             Component("restart_app", "button", "Restart app", describe = { put("payload_press", "PRESS") }, command = { actions.restartApp() }),
+            Component(
+                "open_stock_app", "button", "Open Shelly app", describe = { put("payload_press", "PRESS") },
+                command = { actions.openStockApp() },
+                offered = { actions.canOpenStockApp },
+            ),
             Component(
                 "restart_device", "button", "Restart device",
                 describe = { put("payload_press", "PRESS"); put("device_class", "restart") },

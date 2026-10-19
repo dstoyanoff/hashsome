@@ -46,6 +46,8 @@ data class KioskConfig(
     val bootSettleMs: Long = 30_000,
     /** Shelly profiles, after a boot: and at least this long must have passed since boot. */
     val bootMinMs: Long = 90_000,
+    /** "Open Shelly app": keep-in-front stands down this long (ending early when the dashboard is resumed again). */
+    val stockAppPauseMs: Long = 600_000,
 )
 
 /**
@@ -110,6 +112,10 @@ internal object Kiosk {
             reboot?.rebootIfPossible() ?: Log.w("kiosk", "reboot is not available")
         }
 
+        override val canOpenStockApp: Boolean get() = DeviceProfile.detect().settlesAtBoot
+
+        override fun openStockApp() = openStockApp(Kiosk.activity?.get() ?: Kiosk.appContext)
+
         override val canRestartDevice: Store<Boolean> = rebootAvailable
     }
 
@@ -125,10 +131,29 @@ internal object Kiosk {
     /** Probes the reboot paths of [profile]; the result lands in [KioskActions.canRestartDevice]. */
     fun probeReboot(context: Context, profile: DeviceProfile) {
         rebootWatch?.invoke()
+        reboot?.close()
         val r = Reboot(DeviceRebootBackend(context))
         rebootWatch = r.available.listenNow { rebootAvailable.set(it) }
         reboot = r
         r.probe(shelly = profile.settlesAtBoot)
+    }
+
+    /** Keep-in-front's pause while the stock app is used. */
+    val pause = FrontPause({ android.os.SystemClock.elapsedRealtime() }) { Log.e("front", it) }
+
+    /** Launches the stock Shelly app and pauses keep-in-front; where it is not installed nothing is paused. */
+    internal fun openStockApp(context: Context?) {
+        val intent = context?.packageManager?.getLaunchIntentForPackage(FrontDecision.STOCK_PACKAGE)
+        if (context == null || intent == null) {
+            Log.w("kiosk", "the stock Shelly app is not installed")
+            return
+        }
+        try {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            pause.start(config.stockAppPauseMs)
+        } catch (e: Exception) {
+            Log.w("kiosk", "could not open the stock app: ${e.message}")
+        }
     }
 
     /** Schedules the service's start and ends this process (see [AppRestarter]). */

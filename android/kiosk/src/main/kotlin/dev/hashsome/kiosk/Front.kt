@@ -78,6 +78,40 @@ internal class BootGate(
 }
 
 /**
+ * Keep-in-front stands down for [durationMs] after the user asked for the stock Shelly app, so it can be used. It ends early when
+ * the dashboard is resumed again after having been left (it is still resumed right after [start], until the stock app covers it).
+ * [clock] is `SystemClock.elapsedRealtime()`.
+ */
+internal class FrontPause(private val clock: () -> Long, private val log: (String) -> Unit = {}) {
+    @Volatile
+    private var until = 0L
+    private var left = false
+    private var on = false
+
+    fun start(durationMs: Long) {
+        until = clock() + durationMs
+        left = false
+        on = true
+        log("front: paused for ${durationMs / 1000} s (the stock app was opened)")
+    }
+
+    /** Whether keep-in-front must hold off now; [dashboardResumed] is observed, so call it every tick. */
+    fun active(dashboardResumed: Boolean): Boolean {
+        if (!on) return false
+        if (!dashboardResumed) left = true
+        if (dashboardResumed && left) return end("the dashboard is back")
+        if (clock() >= until) return end("the pause is over")
+        return true
+    }
+
+    private fun end(why: String): Boolean {
+        on = false
+        log("front: resumed ($why)")
+        return false
+    }
+}
+
+/**
  * The 2 s check: relaunches the dashboard when something else is in front, unless [gate] (a boot start of a Shelly profile) still
  * holds it back. Everything the device provides is passed in, so it is tested with a fake clock and top activity.
  */
@@ -90,11 +124,13 @@ internal class FrontKeeper(
     private val ownProcessVisible: () -> Boolean,
     private val launch: () -> Unit,
     private val log: (String) -> Unit = {},
+    private val pause: FrontPause? = null,
 ) {
     private var lastLaunch = Long.MIN_VALUE / 2
 
     fun check() {
         val resumed = dashboardResumed()
+        if (pause?.active(resumed) == true) return
         val t = if (resumed) TopActivity(ownPackage, null) else top()
         val g = gate()
         if (g != null && !g.admit(t)) return

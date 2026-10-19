@@ -249,6 +249,7 @@ internal class KeepInFront(private val context: Context, private val profile: De
             }
         },
         log = { Log.i("front", it) },
+        pause = Kiosk.pause,
     )
 
     fun check() = keeper.check()

@@ -95,6 +95,33 @@ class RestartTest {
     }
 
     @Test
+    fun `the probe looks again every 5 minutes until a way turns up`() {
+        val backend = FakeBackend()
+        val r = reboot(backend)
+        r.probe(shelly = true)
+        sched.runCurrent()
+        assertFalse(r.canReboot())
+        sched.advance(Reboot.RETRY_MS - 1)
+        assertFalse(r.canReboot())
+        backend.rpc = true
+        sched.advance(1)
+        assertTrue(r.canReboot())
+        assertEquals(RebootPath.ShellyRpc, r.path)
+    }
+
+    @Test
+    fun `a closed probe stops looking`() {
+        val backend = FakeBackend()
+        val r = reboot(backend)
+        r.probe(shelly = true)
+        sched.runCurrent()
+        r.close()
+        backend.rpc = true
+        sched.advance(Reboot.RETRY_MS * 2)
+        assertFalse(r.canReboot())
+    }
+
+    @Test
     fun `the status line is read`() {
         assertEquals(200, DeviceRebootBackend.statusOf("HTTP/1.0 200 OK"))
         assertEquals(401, DeviceRebootBackend.statusOf("HTTP/1.1 401 Unauthorized"))

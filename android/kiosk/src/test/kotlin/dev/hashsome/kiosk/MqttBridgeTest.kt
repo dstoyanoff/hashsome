@@ -55,6 +55,8 @@ private class Actions : KioskActions {
     override fun reload() { calls += "reload" }
     override fun restartApp() { calls += "restart_app" }
     override fun restartDevice() { calls += "restart_device" }
+    override fun openStockApp() { calls += "open_stock_app" }
+    override var canOpenStockApp = false
     override val canRestartDevice = Store(false)
 }
 
