@@ -19,6 +19,9 @@ data class Reading(
     val inSafeRange: Boolean,
 )
 
+/** The line under the value in a sensor's drawer: whether the reading is within its safe range, e.g. `Too low · safe range 30–60 %`. */
+data class Verdict(val text: String, val warning: Boolean)
+
 /**
  * A sensor readout (mirrors `sensor-readout.tsx`). With no [safeRange] a humidity sensor is held to 30..60 and any
  * other has none; pass an unbounded range (`Double.NEGATIVE_INFINITY..Double.POSITIVE_INFINITY`) to turn the default off.
@@ -32,6 +35,9 @@ class SensorReading(
 
     /** Why the reading is flagged, e.g. `Bedroom is too low (safe range 30–60 %)`; null while it is not. */
     val hint: Store<String?> = Store(null)
+
+    /** The verdict of the sensor's drawer; null while the sensor has no safe range or no numeric reading. */
+    val verdict: Store<Verdict?> = Store(null)
 
     init {
         handle.state.listenNow { update() }
@@ -53,6 +59,18 @@ class SensorReading(
                 battery = batteryOf(),
                 inSafeRange = level != RangeLevel.Low && level != RangeLevel.High,
             ),
+        )
+
+        verdict.set(
+            if (range != null && level != null && (range.start.isFinite() || range.endInclusive.isFinite())) {
+                val warning = level != RangeLevel.Ok
+                Verdict(
+                    if (warning) "Too ${if (level == RangeLevel.Low) "low" else "high"} · safe range ${describeRange(range, unit)}" else "Within the safe range (${describeRange(range, unit)})",
+                    warning,
+                )
+            } else {
+                null
+            },
         )
 
         hint.set(

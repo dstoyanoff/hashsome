@@ -295,7 +295,11 @@ open class Drawer(context: Context, val expandable: Boolean = false) : Overlay(c
             field = value
             expandButton?.shown = if (value) Ui.minimize2 else Ui.maximize2
             resize(animated = true)
+            onExpandedChanged?.invoke(value)
         }
+
+    /** Told when the panel is made wider or narrower again (what it holds lays itself out for the room it has). */
+    var onExpandedChanged: ((Boolean) -> Unit)? = null
 
     private var panel: ColumnLayout? = null
     private var expandButton: OverlayAction? = null
