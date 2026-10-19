@@ -304,6 +304,9 @@ private class Slot(context: Context, val key: String, val content: View, val sco
         addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
     }
 
+    /** A row that is leaving takes no more presses (no second Remove) while it collapses. */
+    override fun onInterceptTouchEvent(ev: android.view.MotionEvent): Boolean = leaving || super.onInterceptTouchEvent(ev)
+
     fun collapse(value: Float) {
         if (p == value) return
         p = value
@@ -356,6 +359,7 @@ open class MediaSpeakersView private constructor(context: Context, lazyControl: 
     private var plain: View? = null
     private var built = false
     private var ticking = false
+    private val gone = ArrayList<Slot>()
     private val frame = Runnable { step() }
 
     init {
@@ -583,12 +587,11 @@ open class MediaSpeakersView private constructor(context: Context, lazyControl: 
             }
         }
         if (done) {
-            var i = order.size - 1
-            while (i >= 0) {
-                val slot = order[i]
-                if (slot.leaving && !slot.moving) drop(slot)
-                i--
-            }
+            // Collected first: dropping changes the order being walked.
+            gone.clear()
+            for (i in order.indices) if (order[i].leaving && !order[i].moving) gone += order[i]
+            for (i in gone.indices) drop(gone[i])
+            gone.clear()
         }
         if (going) postOnAnimation(frame) else ticking = false
     }

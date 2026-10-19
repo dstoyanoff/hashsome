@@ -218,11 +218,11 @@ object QueueDrag {
     }
 }
 
-/** A queue row leaving (or coming back, when the player refused): it fades and gives up its height, ease-out, in [MS] ms. */
 /**
  * How wide a lone title is drawn in a [room] that is a little short of what it measures. The face's advances measure about 2% wider on
  * the device than the browser lays the same words out (137 px against 134 for "Nothing playing" at 12 px x 1.5), so a title that
- * overflows by no more than that is drawn whole, into the gap beside it, rather than ending in an ellipsis the web does not show.
+ * overflows by no more than that is drawn whole rather than ending in an ellipsis the web does not show; the overflow is taken from the
+ * gap before the button beside it (or, with no button, runs into the gap the parent leaves), so the row never grows past its room.
  */
 object TitleFit {
     const val SLACK = 0.025f
@@ -264,6 +264,7 @@ object RowOrder {
     fun live(keys: List<String>, alive: (String) -> Boolean): List<String> = keys.filter(alive)
 }
 
+/** A queue row leaving (or coming back, when the player refused): it fades and gives up its height, ease-out, in [MS] ms. */
 object RowCollapse {
     const val MS = 160L
 
