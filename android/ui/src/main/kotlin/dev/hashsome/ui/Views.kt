@@ -28,6 +28,23 @@ import dev.hashsome.client.Store
 /** How long a press has to last to count as a hold (the web's `HOLD_MS`). */
 const val HOLD_MS = 500L
 
+/** What a release of a press on a tile means. */
+enum class TileRelease { Tap, Hold, Drag, Nothing }
+
+/**
+ * Classifies the end of a press on a tile by how long it lasted: shorter than [thresholdMs] and still is a tap; longer is a hold, which
+ * does nothing on release (the hold itself fired at the threshold, when the tile has one); a drag stays a drag. A press that wandered
+ * off its spot is nothing.
+ */
+object TileTouch {
+    fun release(elapsedMs: Long, dragged: Boolean, hasHold: Boolean, thresholdMs: Long = HOLD_MS, moved: Boolean = false): TileRelease = when {
+        dragged -> TileRelease.Drag
+        elapsedMs >= thresholdMs -> if (hasHold) TileRelease.Hold else TileRelease.Nothing
+        moved -> TileRelease.Nothing
+        else -> TileRelease.Tap
+    }
+}
+
 /** A finger that moves further than this many dp is dragging, not tapping. */
 private const val DRAG_THRESHOLD = 8f
 
@@ -375,10 +392,13 @@ open class TileView(context: Context) : ViewGroup(context) {
                     dragging = false
                     onCommit?.invoke((event.x / dragWidth).coerceIn(0f, 1f))
                     sync(animate = true)
-                } else if (held) {
+                } else {
+                    // Only a tap toggles: a press that lasted as long as a hold does nothing when it ends, with a hold set or not.
+                    val moved = Math.abs(event.x - downX) >= dp(12f) || Math.abs(event.y - downY) >= dp(12f)
+                    val threshold = if (onHold != null) HOLD_MS else android.view.ViewConfiguration.getLongPressTimeout().toLong()
+                    val release = if (held) TileRelease.Hold else TileTouch.release(event.eventTime - event.downTime, false, onHold != null, threshold, moved)
                     held = false
-                } else if (Math.abs(event.x - downX) < dp(12f) && Math.abs(event.y - downY) < dp(12f)) {
-                    onClick?.invoke()
+                    if (release == TileRelease.Tap) onClick?.invoke()
                 }
             }
 
