@@ -3,9 +3,8 @@ package dev.hashsome.headless
 import dev.hashsome.client.Availability
 import dev.hashsome.client.EntityKind
 import dev.hashsome.client.EntityRef
-import dev.hashsome.client.HashsomeClient
-import dev.hashsome.client.ServerAddress
 import dev.hashsome.client.SwitchEntity
+import dev.hashsome.testing.FakeClient
 import dev.hashsome.testing.TestScheduler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -14,7 +13,7 @@ import org.junit.Test
 class EntityHandleTest {
     private fun scope(): Scope {
         val scheduler = TestScheduler()
-        return Scope(HashsomeClient(ServerAddress("http://localhost:3000"), scheduler = scheduler), scheduler)
+        return Scope(FakeClient(scheduler), scheduler)
     }
 
     @Test

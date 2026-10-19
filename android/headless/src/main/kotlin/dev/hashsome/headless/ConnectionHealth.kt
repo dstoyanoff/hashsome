@@ -1,7 +1,7 @@
 package dev.hashsome.headless
 
 import dev.hashsome.client.ConnectionStatus
-import dev.hashsome.client.HashsomeClient
+import dev.hashsome.client.Client
 import dev.hashsome.client.Store
 
 /** What the system status popover shows. */
@@ -16,6 +16,6 @@ data class Health(
 }
 
 /** The link and the integrations as one value (mirrors `ConnectionHealth` on the web). */
-class ConnectionHealth(client: HashsomeClient, scope: Scope) {
+class ConnectionHealth(client: Client, scope: Scope) {
     val state: Store<Health> = Store(Health(false, emptyMap()))
 }

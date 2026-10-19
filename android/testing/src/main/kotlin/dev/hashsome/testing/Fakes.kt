@@ -1,8 +1,8 @@
 package dev.hashsome.testing
 
+import dev.hashsome.client.Client
 import dev.hashsome.client.Entity
 import dev.hashsome.client.EntityRef
-import dev.hashsome.client.HashsomeClient
 import dev.hashsome.client.ServerAddress
 import dev.hashsome.client.Transport
 
@@ -36,12 +36,12 @@ class FakeTransport : Transport {
 }
 
 /**
- * The runtime as a test sees it: a set of entities that a [HashsomeClient] (wired to a [FakeTransport]
+ * The runtime as a test sees it: a set of entities that a [dev.hashsome.client.RemoteClient] (wired to a [FakeTransport]
  * and a [TestScheduler]) watches and commands. Commands are recorded in [commands], answers are scripted.
  */
 class FakeRuntime(val scheduler: TestScheduler = TestScheduler()) {
     /** The client under test, connected to this runtime. */
-    val client: HashsomeClient get() = TODO("WP1")
+    val client: Client get() = TODO("WP1")
 
     /** Every command the client sent: the entity, the name, and the args as JSON text. */
     val commands: MutableList<Triple<EntityRef, String, String?>> = ArrayList()

@@ -2,7 +2,7 @@ package dev.hashsome.headless
 
 import dev.hashsome.client.Cancel
 import dev.hashsome.client.EntityRef
-import dev.hashsome.client.HashsomeClient
+import dev.hashsome.client.Client
 import dev.hashsome.client.Scheduler
 import dev.hashsome.client.Snapshot
 import dev.hashsome.client.Store
@@ -12,7 +12,7 @@ import dev.hashsome.client.Store
  * Leaving the screen disposes the scope and all of it lets go, and nothing a disposed scope had
  * registered is called afterwards.
  */
-class Scope(val client: HashsomeClient, val scheduler: Scheduler) {
+class Scope(val client: Client, val scheduler: Scheduler) {
     /** Calls [fn] with the entity's state, at once when known and on every change, until disposed. */
     fun watch(ref: EntityRef, fn: (Snapshot) -> Unit): Cancel = TODO("WP2")
 

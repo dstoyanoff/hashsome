@@ -12,13 +12,13 @@ release workflow rewrites that line; never edit it by hand.
 Dependencies point down the table only (`kiosk` -> `ui` -> `headless` -> `client`; `testing` -> `client`). Gradle enforces it:
 a module's build file lists the one module under it and nothing else from this repo.
 
-| Module     | Artifact                | Holds                                                                                                                          | Depends on |
-| ---------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------- |
-| `client`   | `dev.hashsome:client`   | `Store`, `Scheduler`, `Transport` and `WsClient`, `HashsomeClient`, the typed entity models and their parsers, `Images`        | nothing    |
-| `headless` | `dev.hashsome:headless` | `Scope`, `EntityHandle` and one state holder per control (`LightControl`, `MediaPlayerControl`, ...), the theme schedule       | `client`   |
-| `ui`       | `dev.hashsome:ui`       | theme and density, icons, base views, layouts and the page DSL, components, the dashboard host and `DashboardActivity`         | `headless` |
-| `kiosk`    | `dev.hashsome:kiosk`    | device profiles, screen, presence, night mode, the foreground service, MQTT bridge to Home Assistant, `Settings` and its sheet | `ui`       |
-| `testing`  | `dev.hashsome:testing`  | `TestScheduler`, `FakeTransport`, `FakeRuntime`, JSON fixtures generated from `@hashsome/core`                                 | `client`   |
+| Module     | Artifact                | Holds                                                                                                                              | Depends on |
+| ---------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `client`   | `dev.hashsome:client`   | `Store`, `Scheduler`, `Transport` and `WsClient`, `Client` and `RemoteClient`, the typed entity models and their parsers, `Images` | nothing    |
+| `headless` | `dev.hashsome:headless` | `Scope`, `EntityHandle` and one state holder per control (`LightControl`, `MediaPlayerControl`, ...), the theme schedule           | `client`   |
+| `ui`       | `dev.hashsome:ui`       | theme and density, icons, base views, layouts and the page DSL, components, the dashboard host and `DashboardActivity`             | `headless` |
+| `kiosk`    | `dev.hashsome:kiosk`    | device profiles, screen, presence, night mode, the foreground service, MQTT bridge to Home Assistant, `Settings` and its sheet     | `ui`       |
+| `testing`  | `dev.hashsome:testing`  | `TestScheduler`, `FakeTransport`, `FakeRuntime`, JSON fixtures generated from `@hashsome/core`                                     | `client`   |
 
 `ui` never references `kiosk`. It exposes plug points on `HashsomeApp` (`ScreenPolicy`, `TouchListener`, `PageListener`,
 with defaults that do nothing) that `kiosk` implements, installed with `HashsomeApp.withKiosk(...)`.

@@ -92,43 +92,64 @@ sealed class Query<T>(val name: String) {
 }
 
 /**
- * The app's one connection to the runtime. Entities are watched, not polled; commands and
- * queries are answered once. Every callback is delivered through [scheduler].post, so callers
- * run on the main thread whatever thread the socket reads on.
- *
- * Rules the implementation keeps (see `ProtocolRules`): ping every 5 s; dead after 15 s of silence
- * once a pong was seen; reconnect with backoff 500/1000/2000/4000 ms; resubscribe on open; requests
- * in flight when the link drops fail with "Connection lost".
+ * What the headless layer and the UI need from a connection to the runtime (the native `Client` of
+ * packages/core/src/client.ts). Entities are watched, not polled; commands and queries are answered once.
+ * [RemoteClient] is the real one; `dev.hashsome.testing.FakeClient` is the in-memory one for tests.
+ * Every callback arrives on the main thread.
  */
-class HashsomeClient(
-    val server: ServerAddress,
-    private val transport: Transport.Factory = WsClient.Factory,
-    private val scheduler: Scheduler,
-) {
+interface Client {
     /** The socket to the runtime. */
-    val link: Store<LinkStatus> = Store(LinkStatus.Connecting)
+    val link: Store<LinkStatus>
 
     /** Each integration's own connection to its backend, by integration id, as the runtime last said. */
-    val integrations: Store<Map<String, ConnectionStatus>> = Store(emptyMap())
+    val integrations: Store<Map<String, ConnectionStatus>>
 
     /** Opens the link and keeps it open (reconnecting) until [close]. */
-    fun connect(): Unit = TODO("WP1")
+    fun connect()
 
     /** Closes the link for good. */
-    fun close(): Unit = TODO("WP1")
+    fun close()
 
     /**
      * Calls [fn] with the entity's state: at once when it is already known, then on every change.
      * Any number of watches on one [ref] share one subscription on the wire.
      */
-    fun watch(ref: EntityRef, fn: (Snapshot) -> Unit): Cancel = TODO("WP1")
+    fun watch(ref: EntityRef, fn: (Snapshot) -> Unit): Cancel
 
     /** Sends a command to the entity. [done] hears how it ended; cancelling only stops [done] from being called. */
-    fun command(ref: EntityRef, name: String, args: JSONObject? = null, done: ((Outcome) -> Unit)? = null): Cancel = TODO("WP1")
+    fun command(ref: EntityRef, name: String, args: JSONObject? = null, done: ((Outcome) -> Unit)? = null): Cancel
 
     /** [command] from the per-kind builders (`LightCommands.setBrightness(0.4)`); the same as the string form. */
     fun command(ref: EntityRef, command: Command, done: ((Outcome) -> Unit)? = null): Cancel = command(ref, command.name, command.args, done)
 
     /** Asks a question of the entity; [done] gets the parsed answer or the failure. */
-    fun <T> query(ref: EntityRef, query: Query<T>, done: (Result<T>) -> Unit): Cancel = TODO("WP1")
+    fun <T> query(ref: EntityRef, query: Query<T>, done: (Result<T>) -> Unit): Cancel
+}
+
+/**
+ * The [Client] that talks to a runtime over [transport]. Every callback is delivered through [scheduler].post, so
+ * callers run on the main thread whatever thread the socket reads on.
+ *
+ * Rules the implementation keeps (see `ProtocolRules`): ping every 5 s; dead after 15 s of silence
+ * once a pong was seen; reconnect with backoff 500/1000/2000/4000 ms; resubscribe on open; requests
+ * in flight when the link drops fail with "Connection lost".
+ */
+class RemoteClient(
+    val server: ServerAddress,
+    private val transport: Transport.Factory = WsClient.Factory,
+    private val scheduler: Scheduler,
+) : Client {
+    override val link: Store<LinkStatus> = Store(LinkStatus.Connecting)
+
+    override val integrations: Store<Map<String, ConnectionStatus>> = Store(emptyMap())
+
+    override fun connect(): Unit = TODO("WP1")
+
+    override fun close(): Unit = TODO("WP1")
+
+    override fun watch(ref: EntityRef, fn: (Snapshot) -> Unit): Cancel = TODO("WP1")
+
+    override fun command(ref: EntityRef, name: String, args: JSONObject?, done: ((Outcome) -> Unit)?): Cancel = TODO("WP1")
+
+    override fun <T> query(ref: EntityRef, query: Query<T>, done: (Result<T>) -> Unit): Cancel = TODO("WP1")
 }

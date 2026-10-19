@@ -5,7 +5,7 @@ import android.app.Application
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.WindowManager
-import dev.hashsome.client.HashsomeClient
+import dev.hashsome.client.Client
 import dev.hashsome.client.Scheduler
 import dev.hashsome.client.Store
 import dev.hashsome.headless.ThemeSchedule
@@ -124,7 +124,7 @@ object Hashsome {
 
     val app: HashsomeApp get() = config ?: error("Hashsome.install(...) was not called in Application.onCreate")
     val scheduler: Scheduler get() = TODO("WP3")
-    val client: HashsomeClient get() = TODO("WP3")
+    val client: Client get() = TODO("WP3")
 
     /** The resolved theme for the current mode; views read it when they draw. */
     val theme: Theme get() = TODO("WP3")
