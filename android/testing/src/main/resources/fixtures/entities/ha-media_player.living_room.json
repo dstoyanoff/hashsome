@@ -1,0 +1,47 @@
+{
+  "type": "entity",
+  "ref": "ha:media_player.living_room",
+  "entity": {
+    "kind": "mediaPlayer",
+    "name": "Living room",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": {
+      "state": "playing",
+      "attributes": {
+        "friendly_name": "Living room",
+        "media_title": "Blank Space",
+        "media_artist": "More More",
+        "volume_level": 0.4,
+        "media_position": 64,
+        "media_duration": 231,
+        "media_position_updated_at": "2026-03-01T12:00:00.000Z",
+        "shuffle": false,
+        "supported_features": 163967
+      }
+    },
+    "playback": "playing",
+    "muted": false,
+    "volume": 0.4,
+    "media": { "title": "Blank Space", "artist": "More More" },
+    "shuffle": false,
+    "position": 64,
+    "duration": 231,
+    "positionUpdatedAt": "2026-03-01T12:00:00.000Z",
+    "capabilities": {
+      "volume": true,
+      "mute": true,
+      "next": true,
+      "previous": true,
+      "browse": true,
+      "search": false,
+      "seek": true,
+      "shuffle": true,
+      "queue": false,
+      "transfer": false,
+      "group": false
+    },
+    "ref": "ha:media_player.living_room"
+  }
+}

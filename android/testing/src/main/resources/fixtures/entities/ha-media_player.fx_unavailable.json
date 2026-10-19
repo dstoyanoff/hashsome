@@ -1,0 +1,25 @@
+{
+  "type": "entity",
+  "ref": "ha:media_player.fx_unavailable",
+  "entity": {
+    "kind": "mediaPlayer",
+    "name": "Player gone",
+    "availability": "unavailable",
+    "playback": "idle",
+    "muted": false,
+    "capabilities": {
+      "volume": false,
+      "mute": true,
+      "next": true,
+      "previous": true,
+      "browse": false,
+      "search": false,
+      "seek": false,
+      "shuffle": false,
+      "queue": false,
+      "transfer": false,
+      "group": false
+    },
+    "ref": "ha:media_player.fx_unavailable"
+  }
+}

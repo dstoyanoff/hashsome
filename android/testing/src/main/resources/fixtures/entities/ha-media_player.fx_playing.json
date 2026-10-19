@@ -1,0 +1,39 @@
+{
+  "type": "entity",
+  "ref": "ha:media_player.fx_playing",
+  "entity": {
+    "kind": "mediaPlayer",
+    "name": "Playing",
+    "availability": "ready",
+    "playback": "playing",
+    "muted": false,
+    "media": {
+      "title": "Blank Space",
+      "artist": "Taylor Swift",
+      "album": "1989",
+      "artworkUrl": "/_hashsome/asset/ma?path=%2Fimageproxy%2Fcover.jpg"
+    },
+    "source": { "id": "al-1989", "title": "1989", "kind": "album" },
+    "position": 64,
+    "duration": 231,
+    "positionUpdatedAt": "2026-03-01T11:59:00.000Z",
+    "shuffle": true,
+    "volume": 0.4,
+    "group": { "leader": "ha:media_player.fx_playing", "members": ["ha:media_player.fx_paused"] },
+    "groupable": ["ha:media_player.fx_paused", "ha:media_player.fx_idle"],
+    "capabilities": {
+      "volume": true,
+      "mute": true,
+      "next": true,
+      "previous": true,
+      "browse": true,
+      "search": true,
+      "seek": true,
+      "shuffle": true,
+      "queue": true,
+      "transfer": true,
+      "group": true
+    },
+    "ref": "ha:media_player.fx_playing"
+  }
+}

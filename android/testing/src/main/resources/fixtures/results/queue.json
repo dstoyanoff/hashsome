@@ -1,0 +1,181 @@
+{
+  "type": "result",
+  "id": 6,
+  "ok": true,
+  "data": {
+    "items": [
+      {
+        "id": "q0-t-running",
+        "title": "Running Up That Hill",
+        "artist": "Kate Bush",
+        "artworkUrl": "https://picsum.photos/seed/t-running/400",
+        "duration": 170
+      },
+      {
+        "id": "q1-t-cloudbusting",
+        "title": "Cloudbusting",
+        "artist": "Kate Bush",
+        "artworkUrl": "https://picsum.photos/seed/t-cloudbusting/400",
+        "duration": 207
+      },
+      {
+        "id": "q2-t-blank-space",
+        "title": "Blank Space",
+        "artist": "Taylor Swift",
+        "artworkUrl": "https://picsum.photos/seed/t-blank-space/400",
+        "duration": 244,
+        "current": true
+      },
+      {
+        "id": "q3-t-dreams",
+        "title": "Dreams",
+        "artist": "Fleetwood Mac",
+        "artworkUrl": "https://picsum.photos/seed/t-dreams/400",
+        "duration": 191
+      },
+      {
+        "id": "q4-t-kids",
+        "title": "Kids",
+        "artist": "MGMT",
+        "artworkUrl": "https://picsum.photos/seed/t-kids/400",
+        "duration": 228
+      },
+      {
+        "id": "q5-t-style",
+        "title": "Style",
+        "artist": "Taylor Swift",
+        "artworkUrl": "https://picsum.photos/seed/t-style/400",
+        "duration": 175
+      },
+      {
+        "id": "q6-t-electric",
+        "title": "Electric Feel",
+        "artist": "MGMT",
+        "artworkUrl": "https://picsum.photos/seed/t-electric/400",
+        "duration": 212
+      },
+      {
+        "id": "q7-t-go-your-own-way",
+        "title": "Go Your Own Way",
+        "artist": "Fleetwood Mac",
+        "artworkUrl": "https://picsum.photos/seed/t-go-your-own-way/400",
+        "duration": 249
+      },
+      {
+        "id": "q8-t-borderline",
+        "title": "Borderline",
+        "artist": "Tame Impala",
+        "artworkUrl": "https://picsum.photos/seed/t-borderline/400",
+        "duration": 196
+      },
+      {
+        "id": "q9-t-let-it-happen",
+        "title": "Let It Happen",
+        "artist": "Tame Impala",
+        "artworkUrl": "https://picsum.photos/seed/t-let-it-happen/400",
+        "duration": 233
+      },
+      {
+        "id": "q10-t-get-lucky",
+        "title": "Get Lucky",
+        "artist": "Daft Punk",
+        "artworkUrl": "https://picsum.photos/seed/t-get-lucky/400",
+        "duration": 180
+      },
+      {
+        "id": "q11-t-instant-crush",
+        "title": "Instant Crush",
+        "artist": "Daft Punk",
+        "artworkUrl": "https://picsum.photos/seed/t-instant-crush/400",
+        "duration": 217
+      },
+      {
+        "id": "q12-t-cardigan",
+        "title": "Cardigan",
+        "artist": "Taylor Swift",
+        "artworkUrl": "https://picsum.photos/seed/t-cardigan/400",
+        "duration": 254
+      },
+      {
+        "id": "q13-t-august",
+        "title": "August",
+        "artist": "Taylor Swift",
+        "artworkUrl": "https://picsum.photos/seed/t-august/400",
+        "duration": 201
+      },
+      {
+        "id": "q14-t-running",
+        "title": "Running Up That Hill",
+        "artist": "Kate Bush",
+        "artworkUrl": "https://picsum.photos/seed/t-running/400",
+        "duration": 238
+      },
+      {
+        "id": "q15-t-cloudbusting",
+        "title": "Cloudbusting",
+        "artist": "Kate Bush",
+        "artworkUrl": "https://picsum.photos/seed/t-cloudbusting/400",
+        "duration": 185
+      },
+      {
+        "id": "q16-t-blank-space",
+        "title": "Blank Space",
+        "artist": "Taylor Swift",
+        "artworkUrl": "https://picsum.photos/seed/t-blank-space/400",
+        "duration": 222
+      },
+      {
+        "id": "q17-t-dreams",
+        "title": "Dreams",
+        "artist": "Fleetwood Mac",
+        "artworkUrl": "https://picsum.photos/seed/t-dreams/400",
+        "duration": 259
+      },
+      {
+        "id": "q18-t-kids",
+        "title": "Kids",
+        "artist": "MGMT",
+        "artworkUrl": "https://picsum.photos/seed/t-kids/400",
+        "duration": 206
+      },
+      {
+        "id": "q19-t-style",
+        "title": "Style",
+        "artist": "Taylor Swift",
+        "artworkUrl": "https://picsum.photos/seed/t-style/400",
+        "duration": 243
+      },
+      {
+        "id": "q20-t-electric",
+        "title": "Electric Feel",
+        "artist": "MGMT",
+        "artworkUrl": "https://picsum.photos/seed/t-electric/400",
+        "duration": 190
+      },
+      {
+        "id": "q21-t-go-your-own-way",
+        "title": "Go Your Own Way",
+        "artist": "Fleetwood Mac",
+        "artworkUrl": "https://picsum.photos/seed/t-go-your-own-way/400",
+        "duration": 227
+      },
+      {
+        "id": "q22-t-borderline",
+        "title": "Borderline",
+        "artist": "Tame Impala",
+        "artworkUrl": "https://picsum.photos/seed/t-borderline/400",
+        "duration": 174
+      },
+      {
+        "id": "q23-t-let-it-happen",
+        "title": "Let It Happen",
+        "artist": "Tame Impala",
+        "artworkUrl": "https://picsum.photos/seed/t-let-it-happen/400",
+        "duration": 211
+      }
+    ],
+    "total": 24,
+    "offset": 0,
+    "duration": 5112
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "type": "entity",
+  "ref": "ha:sensor.power",
+  "entity": {
+    "kind": "sensor",
+    "name": "Power",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": {
+      "state": "9",
+      "attributes": {
+        "friendly_name": "Power",
+        "device_class": "power",
+        "unit_of_measurement": "W"
+      }
+    },
+    "value": "9",
+    "numeric": 9,
+    "unit": "W",
+    "measurement": "power",
+    "ref": "ha:sensor.power"
+  }
+}

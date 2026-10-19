@@ -13,7 +13,10 @@ data class Command(val name: String, val args: JSONObject? = null)
 private fun command(name: String, vararg args: Pair<String, Any?>): Command {
     val json = JSONObject()
     // An absent optional argument is left out of the object, as the TS leaves the property out.
-    for ((key, value) in args) if (value != null) json.put(key, value)
+    // NaN and infinity are not JSON: `put` would throw, so a JSON null stands in and `Client.command` answers `Failed`.
+    for ((key, value) in args) {
+        if (value != null) json.put(key, if (value is Number && !value.toDouble().isFinite()) JSONObject.NULL else value)
+    }
     return Command(name, if (args.isEmpty()) null else json)
 }
 

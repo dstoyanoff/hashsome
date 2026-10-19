@@ -1,0 +1,13 @@
+{
+  "type": "entity",
+  "ref": "ha:vacuum.robot",
+  "entity": {
+    "kind": "action",
+    "name": "Robot vacuum",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": { "state": "docked", "attributes": { "friendly_name": "Robot vacuum" } },
+    "ref": "ha:vacuum.robot"
+  }
+}

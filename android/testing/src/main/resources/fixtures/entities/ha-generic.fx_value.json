@@ -1,0 +1,12 @@
+{
+  "type": "entity",
+  "ref": "ha:generic.fx_value",
+  "entity": {
+    "kind": "generic",
+    "name": "Mystery",
+    "availability": "ready",
+    "value": "42",
+    "unit": "units",
+    "ref": "ha:generic.fx_value"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "type": "result",
+  "id": 3,
+  "ok": true,
+  "data": {
+    "title": "1989",
+    "items": [
+      {
+        "id": "t-blank-space",
+        "title": "Blank Space",
+        "subtitle": "Taylor Swift",
+        "artworkUrl": "https://picsum.photos/seed/t-blank-space/400",
+        "duration": 181,
+        "kind": "track",
+        "playable": true,
+        "expandable": false
+      },
+      {
+        "id": "t-style",
+        "title": "Style",
+        "subtitle": "Taylor Swift",
+        "artworkUrl": "https://picsum.photos/seed/t-style/400",
+        "duration": 229,
+        "kind": "track",
+        "playable": true,
+        "expandable": false
+      }
+    ]
+  }
+}

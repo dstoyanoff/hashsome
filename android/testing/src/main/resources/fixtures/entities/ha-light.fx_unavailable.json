@@ -1,0 +1,12 @@
+{
+  "type": "entity",
+  "ref": "ha:light.fx_unavailable",
+  "entity": {
+    "kind": "light",
+    "name": "Gone light",
+    "availability": "unavailable",
+    "on": false,
+    "capabilities": { "brightness": false, "colorTemperature": false, "color": false },
+    "ref": "ha:light.fx_unavailable"
+  }
+}

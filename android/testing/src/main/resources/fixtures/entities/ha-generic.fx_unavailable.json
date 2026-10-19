@@ -1,0 +1,11 @@
+{
+  "type": "entity",
+  "ref": "ha:generic.fx_unavailable",
+  "entity": {
+    "kind": "generic",
+    "name": "Mystery gone",
+    "availability": "unavailable",
+    "value": "unavailable",
+    "ref": "ha:generic.fx_unavailable"
+  }
+}

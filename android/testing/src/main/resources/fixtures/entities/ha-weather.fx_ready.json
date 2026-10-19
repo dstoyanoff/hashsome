@@ -1,0 +1,24 @@
+{
+  "type": "entity",
+  "ref": "ha:weather.fx_ready",
+  "entity": {
+    "kind": "weather",
+    "name": "Home weather",
+    "availability": "ready",
+    "condition": "partlycloudy",
+    "temperature": 20,
+    "unit": "°C",
+    "windSpeed": 14,
+    "windBearing": 225,
+    "windUnit": "km/h",
+    "uvIndex": 3,
+    "cloudCoverage": 40,
+    "apparentTemperature": 18,
+    "pressure": 1015,
+    "pressureUnit": "hPa",
+    "precipitationUnit": "mm",
+    "forecasts": ["daily", "hourly"],
+    "humidity": 71,
+    "ref": "ha:weather.fx_ready"
+  }
+}

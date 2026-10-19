@@ -1,0 +1,23 @@
+{
+  "type": "entity",
+  "ref": "ha:light.dimmable",
+  "entity": {
+    "kind": "light",
+    "name": "Dimmable light",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": {
+      "state": "on",
+      "attributes": {
+        "friendly_name": "Dimmable light",
+        "supported_color_modes": ["brightness"],
+        "brightness": 153
+      }
+    },
+    "on": true,
+    "brightness": 0.6,
+    "capabilities": { "brightness": true, "colorTemperature": false, "color": false },
+    "ref": "ha:light.dimmable"
+  }
+}

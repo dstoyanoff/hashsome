@@ -20,6 +20,12 @@ a module's build file lists the one module under it and nothing else from this r
 | `kiosk`    | `dev.hashsome:kiosk`    | device profiles, screen, presence, night mode, the foreground service, MQTT bridge to Home Assistant, `Settings` and its sheet     | `ui`       |
 | `testing`  | `dev.hashsome:testing`  | `TestScheduler`, `FakeTransport`, `FakeRuntime`, JSON fixtures generated from `@hashsome/core`                                     | `client`   |
 
+`client` is tested on the JVM: its parsers against `testing`'s fixtures (the frames `@hashsome/core`'s mocks put on the wire,
+regenerated with `pnpm generate:fixtures`; CI fails when they drift), `WsClient` against a local socket, and `RemoteClient` against
+`FakeTransport`/`FakeRuntime` and `TestScheduler`. `RuntimeSmokeTest` talks to a real runtime and is skipped unless you name one:
+start `pnpm --filter @hashsome/example dev` (a mock backend, it sends one command to a mock light) and run
+`(cd android && ./gradlew :client:testDebugUnitTest --tests '*RuntimeSmokeTest' -Phashsome.smoke=localhost:3000)`.
+
 `ui` never references `kiosk`. It exposes plug points on `HashsomeApp` (`ScreenPolicy`, `TouchListener`, `PageListener`,
 with defaults that do nothing) that `kiosk` implements, installed with `HashsomeApp.withKiosk(...)`.
 

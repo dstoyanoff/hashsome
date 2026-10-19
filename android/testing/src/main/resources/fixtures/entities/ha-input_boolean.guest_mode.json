@@ -1,0 +1,14 @@
+{
+  "type": "entity",
+  "ref": "ha:input_boolean.guest_mode",
+  "entity": {
+    "kind": "switch",
+    "name": "Guest mode",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": { "state": "off", "attributes": { "friendly_name": "Guest mode" } },
+    "on": false,
+    "ref": "ha:input_boolean.guest_mode"
+  }
+}

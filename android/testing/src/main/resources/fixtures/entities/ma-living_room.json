@@ -1,0 +1,36 @@
+{
+  "type": "entity",
+  "ref": "ma:living_room",
+  "entity": {
+    "kind": "mediaPlayer",
+    "name": "Living room",
+    "availability": "ready",
+    "playback": "playing",
+    "muted": false,
+    "volume": 0.4,
+    "media": {
+      "title": "Blank Space",
+      "artist": "More More",
+      "album": "1989",
+      "artworkUrl": "https://picsum.photos/seed/aurora/400"
+    },
+    "position": 64,
+    "positionUpdatedAt": "2026-03-01T12:00:00.000Z",
+    "duration": 231,
+    "groupable": ["ma:kitchen", "ma:office"],
+    "capabilities": {
+      "volume": true,
+      "mute": true,
+      "next": true,
+      "previous": true,
+      "browse": true,
+      "search": true,
+      "seek": true,
+      "shuffle": true,
+      "queue": true,
+      "transfer": false,
+      "group": true
+    },
+    "ref": "ma:living_room"
+  }
+}

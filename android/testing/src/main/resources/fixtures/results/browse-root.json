@@ -1,0 +1,48 @@
+{
+  "type": "result",
+  "id": 1,
+  "ok": true,
+  "data": {
+    "items": [
+      {
+        "id": "recent",
+        "title": "Recently played",
+        "kind": "folder",
+        "playable": false,
+        "expandable": true
+      },
+      {
+        "id": "playlists",
+        "title": "Playlists",
+        "holds": "playlist",
+        "kind": "folder",
+        "playable": false,
+        "expandable": true
+      },
+      {
+        "id": "albums",
+        "title": "Albums",
+        "holds": "album",
+        "kind": "folder",
+        "playable": false,
+        "expandable": true
+      },
+      {
+        "id": "artists",
+        "title": "Artists",
+        "holds": "artist",
+        "kind": "folder",
+        "playable": false,
+        "expandable": true
+      },
+      {
+        "id": "radio",
+        "title": "Radio",
+        "holds": "radio",
+        "kind": "folder",
+        "playable": false,
+        "expandable": true
+      }
+    ]
+  }
+}

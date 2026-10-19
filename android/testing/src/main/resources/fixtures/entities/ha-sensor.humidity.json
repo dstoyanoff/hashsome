@@ -1,0 +1,24 @@
+{
+  "type": "entity",
+  "ref": "ha:sensor.humidity",
+  "entity": {
+    "kind": "sensor",
+    "name": "Humidity",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": {
+      "state": "52",
+      "attributes": {
+        "friendly_name": "Humidity",
+        "device_class": "humidity",
+        "unit_of_measurement": "%"
+      }
+    },
+    "value": "52",
+    "numeric": 52,
+    "unit": "%",
+    "measurement": "humidity",
+    "ref": "ha:sensor.humidity"
+  }
+}

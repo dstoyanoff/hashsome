@@ -1,0 +1,19 @@
+{
+  "type": "entity",
+  "ref": "ha:climate.fx_unavailable",
+  "entity": {
+    "kind": "climate",
+    "name": "Heater gone",
+    "availability": "unavailable",
+    "mode": "off",
+    "unit": "°C",
+    "capabilities": {
+      "modes": ["off", "heat"],
+      "presets": [],
+      "targetTemperature": false,
+      "step": 0.5,
+      "range": { "min": 5, "max": 35 }
+    },
+    "ref": "ha:climate.fx_unavailable"
+  }
+}

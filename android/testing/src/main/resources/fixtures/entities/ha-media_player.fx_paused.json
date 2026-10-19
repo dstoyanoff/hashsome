@@ -1,0 +1,30 @@
+{
+  "type": "entity",
+  "ref": "ha:media_player.fx_paused",
+  "entity": {
+    "kind": "mediaPlayer",
+    "name": "Paused",
+    "availability": "ready",
+    "playback": "paused",
+    "muted": true,
+    "media": { "title": "Dreams", "artist": "Fleetwood Mac" },
+    "position": 95,
+    "duration": 214,
+    "positionUpdatedAt": "2026-03-01T11:59:00.000Z",
+    "volume": 0.25,
+    "capabilities": {
+      "volume": true,
+      "mute": true,
+      "next": true,
+      "previous": true,
+      "browse": false,
+      "search": false,
+      "seek": true,
+      "shuffle": false,
+      "queue": false,
+      "transfer": false,
+      "group": false
+    },
+    "ref": "ha:media_player.fx_paused"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "type": "result",
+  "id": 5,
+  "ok": true,
+  "data": {
+    "title": "Results for “a”",
+    "items": [
+      {
+        "id": "al-1989",
+        "title": "1989",
+        "subtitle": "Taylor Swift",
+        "artworkUrl": "https://picsum.photos/seed/al-1989/400",
+        "kind": "album",
+        "playable": true,
+        "expandable": true
+      },
+      {
+        "id": "al-rumours",
+        "title": "Rumours",
+        "subtitle": "Fleetwood Mac",
+        "artworkUrl": "https://picsum.photos/seed/al-rumours/400",
+        "kind": "album",
+        "playable": true,
+        "expandable": true
+      },
+      {
+        "id": "al-oracular",
+        "title": "Oracular Spectacular",
+        "subtitle": "MGMT",
+        "artworkUrl": "https://picsum.photos/seed/al-oracular/400",
+        "kind": "album",
+        "playable": true,
+        "expandable": true
+      },
+      {
+        "id": "al-currents",
+        "title": "Currents",
+        "subtitle": "Tame Impala",
+        "artworkUrl": "https://picsum.photos/seed/al-currents/400",
+        "kind": "album",
+        "playable": true,
+        "expandable": true
+      },
+      {
+        "id": "al-ram",
+        "title": "Random Access Memories",
+        "subtitle": "Daft Punk",
+        "artworkUrl": "https://picsum.photos/seed/al-ram/400",
+        "kind": "album",
+        "playable": true,
+        "expandable": true
+      },
+      {
+        "id": "al-folklore",
+        "title": "Folklore",
+        "subtitle": "Taylor Swift",
+        "artworkUrl": "https://picsum.photos/seed/al-folklore/400",
+        "kind": "album",
+        "playable": true,
+        "expandable": true
+      },
+      {
+        "id": "al-hounds",
+        "title": "Hounds of Love",
+        "subtitle": "Kate Bush",
+        "artworkUrl": "https://picsum.photos/seed/al-hounds/400",
+        "kind": "album",
+        "playable": true,
+        "expandable": true
+      }
+    ]
+  }
+}

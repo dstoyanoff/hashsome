@@ -13,42 +13,42 @@ sealed class EntityKind<E : Entity>(val name: String) {
     abstract fun cast(entity: Entity): E?
 
     data object Light : EntityKind<LightEntity>("light") {
-        override fun parse(ref: EntityRef, json: JSONObject): LightEntity = TODO("WP1")
+        override fun parse(ref: EntityRef, json: JSONObject): LightEntity = parseLight(ref, json)
         override fun cast(entity: Entity): LightEntity? = entity as? LightEntity
     }
 
     data object Switch : EntityKind<SwitchEntity>("switch") {
-        override fun parse(ref: EntityRef, json: JSONObject): SwitchEntity = TODO("WP1")
+        override fun parse(ref: EntityRef, json: JSONObject): SwitchEntity = parseSwitch(ref, json)
         override fun cast(entity: Entity): SwitchEntity? = entity as? SwitchEntity
     }
 
     data object Climate : EntityKind<ClimateEntity>("climate") {
-        override fun parse(ref: EntityRef, json: JSONObject): ClimateEntity = TODO("WP1")
+        override fun parse(ref: EntityRef, json: JSONObject): ClimateEntity = parseClimate(ref, json)
         override fun cast(entity: Entity): ClimateEntity? = entity as? ClimateEntity
     }
 
     data object Action : EntityKind<ActionEntity>("action") {
-        override fun parse(ref: EntityRef, json: JSONObject): ActionEntity = TODO("WP1")
+        override fun parse(ref: EntityRef, json: JSONObject): ActionEntity = parseAction(ref, json)
         override fun cast(entity: Entity): ActionEntity? = entity as? ActionEntity
     }
 
     data object Sensor : EntityKind<SensorEntity>("sensor") {
-        override fun parse(ref: EntityRef, json: JSONObject): SensorEntity = TODO("WP1")
+        override fun parse(ref: EntityRef, json: JSONObject): SensorEntity = parseSensor(ref, json)
         override fun cast(entity: Entity): SensorEntity? = entity as? SensorEntity
     }
 
     data object Person : EntityKind<PersonEntity>("person") {
-        override fun parse(ref: EntityRef, json: JSONObject): PersonEntity = TODO("WP1")
+        override fun parse(ref: EntityRef, json: JSONObject): PersonEntity = parsePerson(ref, json)
         override fun cast(entity: Entity): PersonEntity? = entity as? PersonEntity
     }
 
     data object Weather : EntityKind<WeatherEntity>("weather") {
-        override fun parse(ref: EntityRef, json: JSONObject): WeatherEntity = TODO("WP1")
+        override fun parse(ref: EntityRef, json: JSONObject): WeatherEntity = parseWeather(ref, json)
         override fun cast(entity: Entity): WeatherEntity? = entity as? WeatherEntity
     }
 
     data object MediaPlayer : EntityKind<MediaPlayerEntity>("mediaPlayer") {
-        override fun parse(ref: EntityRef, json: JSONObject): MediaPlayerEntity = TODO("WP1")
+        override fun parse(ref: EntityRef, json: JSONObject): MediaPlayerEntity = parseMediaPlayer(ref, json)
         override fun cast(entity: Entity): MediaPlayerEntity? = entity as? MediaPlayerEntity
     }
 }
@@ -64,30 +64,30 @@ sealed class Query<T>(val name: String) {
 
     /** One level of a media library: the top when [path] is null, [search] results when it is set. */
     class Browse(val path: String? = null, val search: String? = null, val kind: BrowseKind? = null) : Query<BrowseResult>("browse") {
-        override fun args(): JSONObject? = TODO("WP1")
-        override fun parse(data: JSONObject?): BrowseResult = TODO("WP1")
+        override fun args(): JSONObject? = argsOf("path" to path, "search" to search, "kind" to kind?.wire)
+        override fun parse(data: JSONObject?): BrowseResult = parseBrowse(data)
     }
 
     /** A player's queue: [limit] items from a little before the current one (the runtime defaults to 30); [duration] also totals how long it all plays. */
     class Queue(val limit: Int? = null, val duration: Boolean? = null) : Query<QueueResult>("queue") {
-        override fun args(): JSONObject? = TODO("WP1")
-        override fun parse(data: JSONObject?): QueueResult = TODO("WP1")
+        override fun args(): JSONObject? = argsOf("limit" to limit, "duration" to duration)
+        override fun parse(data: JSONObject?): QueueResult = parseQueue(data)
     }
 
     class Forecast(val type: ForecastType) : Query<ForecastResult>("forecast") {
-        override fun args(): JSONObject? = TODO("WP1")
-        override fun parse(data: JSONObject?): ForecastResult = TODO("WP1")
+        override fun args(): JSONObject? = argsOf("type" to type.wire)
+        override fun parse(data: JSONObject?): ForecastResult = parseForecast(data, type)
     }
 
     class History(val range: HistoryRange, val bucket: HistoryBucket? = null) : Query<HistoryResult>("history") {
-        override fun args(): JSONObject? = TODO("WP1")
-        override fun parse(data: JSONObject?): HistoryResult = TODO("WP1")
+        override fun args(): JSONObject? = argsOf("range" to range.wire, "bucket" to bucket?.wire)
+        override fun parse(data: JSONObject?): HistoryResult = parseHistory(data)
     }
 
     /** The latest [limit] entries (the runtime defaults to 20). */
     class Logbook(val limit: Int? = null) : Query<LogbookResult>("logbook") {
-        override fun args(): JSONObject? = TODO("WP1")
-        override fun parse(data: JSONObject?): LogbookResult = TODO("WP1")
+        override fun args(): JSONObject? = argsOf("limit" to limit)
+        override fun parse(data: JSONObject?): LogbookResult = parseLogbook(data)
     }
 }
 
@@ -124,32 +124,4 @@ interface Client {
 
     /** Asks a question of the entity; [done] gets the parsed answer or the failure. */
     fun <T> query(ref: EntityRef, query: Query<T>, done: (Result<T>) -> Unit): Cancel
-}
-
-/**
- * The [Client] that talks to a runtime over [transport]. Every callback is delivered through [scheduler].post, so
- * callers run on the main thread whatever thread the socket reads on.
- *
- * Rules the implementation keeps (see `ProtocolRules`): ping every 5 s; dead after 15 s of silence
- * once a pong was seen; reconnect with backoff 500/1000/2000/4000 ms; resubscribe on open; requests
- * in flight when the link drops fail with "Connection lost".
- */
-class RemoteClient(
-    val server: ServerAddress,
-    private val transport: Transport.Factory = WsClient.Factory,
-    private val scheduler: Scheduler,
-) : Client {
-    override val link: Store<LinkStatus> = Store(LinkStatus.Connecting)
-
-    override val integrations: Store<Map<String, ConnectionStatus>> = Store(emptyMap())
-
-    override fun connect(): Unit = TODO("WP1")
-
-    override fun close(): Unit = TODO("WP1")
-
-    override fun watch(ref: EntityRef, fn: (Snapshot) -> Unit): Cancel = TODO("WP1")
-
-    override fun command(ref: EntityRef, name: String, args: JSONObject?, done: ((Outcome) -> Unit)?): Cancel = TODO("WP1")
-
-    override fun <T> query(ref: EntityRef, query: Query<T>, done: (Result<T>) -> Unit): Cancel = TODO("WP1")
 }

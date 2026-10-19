@@ -1,0 +1,36 @@
+{
+  "type": "entity",
+  "ref": "ma:kitchen",
+  "entity": {
+    "kind": "mediaPlayer",
+    "name": "Kitchen",
+    "availability": "ready",
+    "playback": "paused",
+    "muted": true,
+    "volume": 0.25,
+    "media": {
+      "title": "Dreams",
+      "artist": "Fleetwood Mac",
+      "artworkUrl": "https://picsum.photos/seed/dreams/400"
+    },
+    "shuffle": true,
+    "position": 95,
+    "positionUpdatedAt": "2026-03-01T12:00:00.000Z",
+    "duration": 214,
+    "groupable": ["ma:living_room", "ma:office"],
+    "capabilities": {
+      "volume": true,
+      "mute": true,
+      "next": true,
+      "previous": true,
+      "browse": true,
+      "search": true,
+      "seek": true,
+      "shuffle": true,
+      "queue": true,
+      "transfer": false,
+      "group": true
+    },
+    "ref": "ma:kitchen"
+  }
+}

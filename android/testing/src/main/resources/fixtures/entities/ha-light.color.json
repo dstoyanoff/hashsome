@@ -1,0 +1,25 @@
+{
+  "type": "entity",
+  "ref": "ha:light.color",
+  "entity": {
+    "kind": "light",
+    "name": "Color light",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": {
+      "state": "off",
+      "attributes": {
+        "friendly_name": "Color light",
+        "supported_color_modes": ["hs"],
+        "brightness": 255,
+        "hs_color": [280, 80]
+      }
+    },
+    "on": false,
+    "brightness": 1,
+    "color": { "mode": "color", "hue": 280, "saturation": 80 },
+    "capabilities": { "brightness": true, "colorTemperature": false, "color": true },
+    "ref": "ha:light.color"
+  }
+}
