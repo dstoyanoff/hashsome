@@ -28,6 +28,27 @@ private const val EXIT_MS = 250L
 private const val DISMISS_DISTANCE = 100f
 private const val DISMISS_VELOCITY = 0.5f
 
+/** Whether letting go of a pulled sheet dismisses it: far enough or fast enough (the web's `useSheetPull`; dp and dp per ms). */
+internal object SheetPull {
+    fun dismisses(offsetDp: Float, speedDpPerMs: Float): Boolean = offsetDp > DISMISS_DISTANCE || speedDpPerMs > DISMISS_VELOCITY
+}
+
+/** Lets the first of several calls through: an overlay is removed once however many things try (an exit animation and a rebuild). */
+internal class Once {
+    private var done = false
+
+    fun run(fn: () -> Unit): Boolean {
+        if (done) return false
+        done = true
+        fn()
+        return true
+    }
+
+    fun reset() {
+        done = false
+    }
+}
+
 /** The overlays open now, top last: the back button and a page change close them. */
 internal object Overlays {
     val open = ArrayList<Overlay>()
@@ -72,10 +93,12 @@ abstract class Overlay(context: Context) : BoundView(context) {
     }
 
     private var leaving = false
+    private val removal = Once()
 
     /** Puts the overlay over the activity's content. */
     protected fun attach() {
         leaving = false
+        removal.reset()
         removeAllViews()
         addView(scrim, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         // Whoever made the overlay may have added it to the window already (`addContentView`); else it goes over the content.
@@ -102,15 +125,19 @@ abstract class Overlay(context: Context) : BoundView(context) {
     /** Removes it at once, without an animation (a page change, a rebuilt theme). */
     internal fun dismissNow() {
         if (parent == null) return
+        // Whatever is still animating (the scrim, the panel) would call `remove` again when it ended.
         animate().cancel()
+        for (i in 0 until childCount) getChildAt(i).animate().cancel()
         remove()
     }
 
     private fun remove() {
-        (parent as? ViewGroup)?.removeView(this)
-        Overlays.open -= this
-        leaving = false
-        onDismissed?.invoke()
+        removal.run {
+            (parent as? ViewGroup)?.removeView(this)
+            Overlays.open -= this
+            leaving = false
+            onDismissed?.invoke()
+        }
     }
 
     override fun onDetachedFromWindow() {
@@ -168,7 +195,7 @@ fun overlayForScreen(context: Context): Overlay {
 internal class OverlayAction(context: Context, private val icon: Icon, private val onTap: () -> Unit) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
-    private val glyph = iconDrawable(icon)
+    private var glyph = iconDrawable(icon)
 
     init {
         isClickable = true
@@ -176,7 +203,9 @@ internal class OverlayAction(context: Context, private val icon: Icon, private v
 
     var shown: Icon = icon
         set(value) {
+            if (field == value) return
             field = value
+            glyph = iconDrawable(value)
             invalidate()
         }
 
@@ -189,11 +218,10 @@ internal class OverlayAction(context: Context, private val icon: Icon, private v
         rect.set(0f, 0f, width.toFloat(), height.toFloat())
         paint.color = t.palette.surfaceRaised
         canvas.drawRoundRect(rect, dp(t.radius.small), dp(t.radius.small), paint)
-        val drawable = if (shown == icon) glyph else iconDrawable(shown)
-        drawable.setTint(t.palette.text)
+        glyph.setTint(t.palette.text)
         val s = dp(7)
-        drawable.setBounds(width / 2 - s, height / 2 - s, width / 2 + s, height / 2 + s)
-        drawable.draw(canvas)
+        glyph.setBounds(width / 2 - s, height / 2 - s, width / 2 + s, height / 2 + s)
+        glyph.draw(canvas)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -210,7 +238,17 @@ internal class OverlayTitle(context: Context, private val name: CharSequence, pr
     private val glyph = icon?.let { iconDrawable(it) }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val w = if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED) dp(120) else MeasureSpec.getSize(widthMeasureSpec)
+        // As wide as what it says, so the buttons beside it keep their room; the row's growth gives it the rest.
+        val t = theme
+        heading.style(t, Role.Heading, t.palette.text)
+        secondary.style(t, Role.Secondary, t.palette.textMuted)
+        val lead = if (glyph != null) dp(34) + dp(10f) else 0f
+        val wanted = Math.ceil((lead + maxOf(heading.measureText(name, 0, name.length), sub?.let { secondary.measureText(it, 0, it.length) } ?: 0f)).toDouble()).toInt()
+        val w = when (MeasureSpec.getMode(widthMeasureSpec)) {
+            MeasureSpec.EXACTLY -> MeasureSpec.getSize(widthMeasureSpec)
+            MeasureSpec.AT_MOST -> minOf(wanted, MeasureSpec.getSize(widthMeasureSpec))
+            else -> wanted
+        }
         setMeasuredDimension(w, dp(34))
     }
 
@@ -259,6 +297,7 @@ open class Drawer(context: Context) : Overlay(context) {
     private var panel: ColumnLayout? = null
     private var expandButton: OverlayAction? = null
     private var width = 0
+    private var resizing: ValueAnimator? = null
 
     private fun targetWidth(): Int {
         val room = (resources.displayMetrics.widthPixels - 2 * dp(EDGE_INSET))
@@ -269,13 +308,14 @@ open class Drawer(context: Context) : Overlay(context) {
         val p = panel ?: return
         val to = targetWidth()
         val lp = p.layoutParams
+        resizing?.cancel()
         if (!animated || !Animation.full) {
             lp.width = to
             p.layoutParams = lp
             width = to
             return
         }
-        ValueAnimator.ofInt(lp.width, to).apply {
+        resizing = ValueAnimator.ofInt(lp.width, to).apply {
             duration = 320
             interpolator = PathInterpolator(0.2f, 0.8f, 0.2f, 1f)
             addUpdateListener {
@@ -306,7 +346,10 @@ open class Drawer(context: Context) : Overlay(context) {
         panel.addView(header(expand, closeButton()), FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             bottomMargin = Math.round(4 * u)
         })
-        panel.addView(content, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { grow = true })
+        panel.addView(content, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            grow = true
+            shrink = true
+        })
         width = targetWidth()
         addView(panel, LayoutParams(width, LayoutParams.MATCH_PARENT, Gravity.END or Gravity.TOP).apply {
             setMargins(dp(EDGE_INSET), dp(EDGE_INSET), dp(EDGE_INSET), dp(EDGE_INSET))
@@ -373,6 +416,7 @@ open class Sheet(context: Context) : Overlay(context) {
         panel.addView(handle, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         panel.addView(content, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             grow = true
+            shrink = true
             val side = Math.round(5 * u)
             // Clear of the home indicator a phone has.
             setMargins(side, 0, side, dp(20))
@@ -414,7 +458,7 @@ open class Sheet(context: Context) : Overlay(context) {
 
             MotionEvent.ACTION_UP -> {
                 val offset = maxOf(0f, event.rawY - pullStart)
-                if (offset > dp(DISMISS_DISTANCE) || pullSpeed > dp(DISMISS_VELOCITY)) dismiss() else springBack()
+                if (SheetPull.dismisses(offset / screenDensity, pullSpeed / screenDensity)) dismiss() else springBack()
             }
 
             MotionEvent.ACTION_CANCEL -> springBack()

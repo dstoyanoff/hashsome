@@ -48,6 +48,7 @@ private val constantStates = HashMap<Int, Drawable.ConstantState>()
 
 /** A fresh drawable of [icon]. The XML is read once (reading a vector drawable is slow on a Shelly display); every later one is a copy of it. */
 internal fun iconDrawable(icon: Icon): Drawable {
+    // Main thread only: the constant states are a plain map.
     val resources = Hashsome.appContext.resources
     val state = constantStates.getOrPut(icon.res) {
         @Suppress("DEPRECATION")
@@ -58,7 +59,15 @@ internal fun iconDrawable(icon: Icon): Drawable {
 
 private data class BitmapKey(val res: Int, val px: Int, val color: Int)
 
-private val bitmaps = HashMap<BitmapKey, Bitmap>()
+/** The drawn icons, bounded by what they weigh (4 MB): a theme that changes color leaves old ones behind. Main thread only. */
+private val bitmaps = object : android.util.LruCache<BitmapKey, Bitmap>(4 * 1024 * 1024) {
+    override fun sizeOf(key: BitmapKey, value: Bitmap): Int = value.byteCount
+}
+
+/** Forgets every drawn icon (the theme's colors changed). */
+internal fun clearIconCache() {
+    bitmaps.evictAll()
+}
 
 /**
  * [icon] drawn at [px] square in [color], cached by (icon, size, color). A vector drawable rasterises itself on its first draw,
@@ -68,7 +77,8 @@ private val bitmaps = HashMap<BitmapKey, Bitmap>()
 fun iconBitmap(icon: Icon, px: Int, color: Int): Bitmap {
     val colored = WeatherLook.isColored(icon.res)
     val key = BitmapKey(icon.res, px, if (colored && WeatherLook.plainOf(icon.res) == null) 0 else color)
-    return bitmaps.getOrPut(key) {
+    bitmaps.get(key)?.let { return it }
+    return run {
         val bitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         fun draw(icon: Icon, tint: Int?) {
@@ -79,7 +89,7 @@ fun iconBitmap(icon: Icon, px: Int, color: Int): Bitmap {
         }
         draw(icon, if (colored) null else color)
         WeatherLook.plainOf(icon.res)?.let { draw(it, color) }
-        bitmap
+        bitmap.also { bitmaps.put(key, it) }
     }
 }
 

@@ -20,6 +20,7 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
     private val pages = dashboard.pages
     private val home = pages.indexOfFirst { it.path == "" }.takeIf { it >= 0 } ?: 0
     private var index = -1
+    private var rebuilding = false
     private var scope: Scope? = null
     private var pageView: View? = null
     private var rail: NavRailView? = null
@@ -54,7 +55,11 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
 
     private fun rebuild() {
         Overlays.dismissAllNow()
+        // The icons were drawn in the colors of the theme that is gone.
+        clearIconCache()
+        rebuilding = true
         build(startAt = index)
+        rebuilding = false
     }
 
     /** Shows the page at [path]; nothing happens for a path no page has. */
@@ -96,7 +101,8 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
             layout.translationX = side * dp(PAGE_SLIDE)
             layout.animate().alpha(1f).translationX(0f).setDuration(PAGE_MS).setInterpolator(EASE_OUT).start()
         }
-        Hashsome.pageListener.onPage(dashboard.id, spec.path)
+        // A rebuild for a new theme shows the same page again: nobody navigated.
+        if (!rebuilding) Hashsome.pageListener.onPage(dashboard.id, spec.path)
         idle?.let { headless { it.arrivedAt(spec.path, i == home) } }
     }
 
@@ -142,7 +148,7 @@ private object Pager {
  * Calls into `headless` that have no body yet on a branch that does not have WP2 (`Scope.dispose`, `IdleReturn`): the host
  * runs without them rather than not at all. Removed when WP2 is merged.
  */
-private inline fun headless(block: () -> Unit) {
+internal inline fun headless(block: () -> Unit) {
     try {
         block()
     } catch (e: NotImplementedError) {

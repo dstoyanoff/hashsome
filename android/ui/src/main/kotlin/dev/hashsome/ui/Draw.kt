@@ -23,7 +23,7 @@ fun TextPaint.style(theme: Theme, role: Role, color: Int): TextPaint {
     val spec = theme.style(role)
     this.color = color
     typeface = theme.typefaces.forWeight(spec.weight)
-    textSize = sp(spec.size.toFloat())
+    textSize = textPx(spec.size.toFloat())
     letterSpacing = spec.letterSpacing
     return this
 }

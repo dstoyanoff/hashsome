@@ -728,9 +728,11 @@ open class ChipsView(context: Context) : View(context) {
         set(value) {
             field = value
             measureChips()
-            val first = lefts.firstOrNull() ?: 0f
+            // The pill stays on the chip that is current, not on the first.
+            val at = current.coerceIn(0, maxOf(0, lefts.size - 1))
+            val first = lefts.getOrNull(at) ?: 0f
             left.to(first, false)
-            right.to(first + (widths.firstOrNull() ?: 0f), false)
+            right.to(first + (widths.getOrNull(at) ?: 0f), false)
             requestLayout()
             invalidate()
         }

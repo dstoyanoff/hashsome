@@ -90,8 +90,8 @@ glyph set changes:
    that take the text color: white, so a tint recolors them), and the Kotlin table `WeatherLook.kt` (condition, glyph, colors,
    label). `iconBitmap` draws a colored glyph untinted, and its plain companion over it in the color it is asked for.
 
-Fonts: Inter Regular and SemiBold (`android/ui/src/main/assets/fonts`, OFL, see `android/NOTICE`). The 500 weight of the type scale
-maps to SemiBold until a Medium face is added. `HashsomeApp(font = ...)` takes any `FontSource` that returns a `FontSet`.
+Fonts: Inter Regular, Medium and SemiBold (`android/ui/src/main/assets/fonts`, OFL, see `android/NOTICE`; the Medium face is Latin
+only). `HashsomeApp(font = ...)` takes any `FontSource` that returns a `FontSet`.
 
 ## See also
 

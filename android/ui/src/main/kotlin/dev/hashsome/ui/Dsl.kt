@@ -148,7 +148,7 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
     }
 
     fun spacer(grow: Boolean = false) {
-        stack.last().addView(View(context), flex(grow = grow))
+        stack.last().addView(Spacer(context), flex(grow = grow))
     }
 
     /** Adds a view of your own. */

@@ -14,19 +14,20 @@ ShellyElevate
 
 Lucide
   https://lucide.dev
-  License: ISC License
+  License: ISC License, and the MIT License for the glyphs derived from the Feather project (https://github.com/feathericons/feather)
   Used by: ui (the glyphs of its own chrome: the SVGs in android/ui/icons, version 1.59.0, converted to vector drawables)
   Copyright (c) 2026 Lucide Icons and Contributors
   Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby
   granted, provided that the above copyright notice and this permission notice appear in all copies. The software is
-  provided "as is" and the author disclaims all warranties. The full text is in android/ui/icons/LICENSE.
+  provided "as is" and the author disclaims all warranties. Both licences, in full, are in android/ui/icons/LICENSE.
 
 Inter
   https://rsms.me/inter/
   License: SIL Open Font License 1.1
-  Used by: ui (bundled Regular and SemiBold, android/ui/src/main/assets/fonts; Medium is mapped to SemiBold until a Medium face is added)
-  Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)
-  Licensed under the SIL Open Font License, Version 1.1: https://openfontlicense.org
+  Used by: ui (bundled Regular, Medium and SemiBold in android/ui/src/main/assets/fonts; the Medium face is the Latin subset of
+  Inter 500 from @fontsource/inter 5.3.0, converted from WOFF to TrueType)
+  Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
+  Licensed under the SIL Open Font License, Version 1.1; the text is in android/ui/src/main/assets/fonts/OFL.txt
 
 Eclipse Paho MQTT Client
   https://eclipse.dev/paho/

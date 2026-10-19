@@ -24,6 +24,9 @@ open class FlexParams(width: Int, height: Int) : ViewGroup.MarginLayoutParams(wi
     var grow: Boolean = false
     var align: Align? = null
     var minHeightDp: Int = 0
+
+    /** Whether a child that [grow]s also gives way when the layout is too small for its children (a panel's scrolling content); else it keeps its content's size. */
+    var shrink: Boolean = false
 }
 
 private fun flexParamsOf(p: ViewGroup.LayoutParams): FlexParams {
@@ -96,12 +99,14 @@ open class GridLayout(context: Context, var columns: Int) : ViewGroup(context) {
         // Column edges are rounded cumulatively, so the cells differ by a pixel at most and the gaps do not drift.
         val cell = (inner - gapPx * (cols - 1)).toFloat() / cols
         fun edge(col: Int) = Math.round(col * (cell + gapPx))
-        val rows = (n + cols - 1) / cols
+        // A child that is gone takes no cell, as `display: none` takes none in a CSS grid.
+        val slot = GridSlots.of(BooleanArray(n) { getChildAt(it).visibility != GONE })
+        val rows = (slot.count { it >= 0 } + cols - 1) / cols
         val rowHeights = IntArray(rows)
         for (i in 0 until n) {
             val child = getChildAt(i)
             if (child.visibility == GONE) continue
-            val col = i % cols
+            val col = slot[i] % cols
             widths[i] = edge(col + 1) - gapPx - edge(col)
             lefts[i] = paddingLeft + edge(col)
             val lp = child.layoutParams as FlexParams
@@ -109,7 +114,7 @@ open class GridLayout(context: Context, var columns: Int) : ViewGroup(context) {
                 MeasureSpec.makeMeasureSpec(widths[i], MeasureSpec.EXACTLY),
                 MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
             )
-            rowHeights[i / cols] = maxOf(rowHeights[i / cols], child.measuredHeight, dp(lp.minHeightDp))
+            rowHeights[slot[i] / cols] = maxOf(rowHeights[slot[i] / cols], child.measuredHeight, dp(lp.minHeightDp))
         }
         var y = paddingTop
         val rowTops = IntArray(rows)
@@ -120,7 +125,7 @@ open class GridLayout(context: Context, var columns: Int) : ViewGroup(context) {
         for (i in 0 until n) {
             val child = getChildAt(i)
             if (child.visibility == GONE) continue
-            val r = i / cols
+            val r = slot[i] / cols
             tops[i] = rowTops[r]
             heights[i] = rowHeights[r]
             // A cell stretches to the row, as a CSS grid item does.
@@ -152,6 +157,14 @@ open class GridLayout(context: Context, var columns: Int) : ViewGroup(context) {
     override fun generateLayoutParams(attrs: AttributeSet?): LayoutParams = FlexParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
     override fun generateLayoutParams(p: LayoutParams): LayoutParams = flexParamsOf(p)
     override fun checkLayoutParams(p: LayoutParams?): Boolean = p is FlexParams
+}
+
+/** Which cell, counting from the first, each child of a grid takes: -1 for one that is not [visible] (it takes none). */
+internal object GridSlots {
+    fun of(visible: BooleanArray): IntArray {
+        var next = 0
+        return IntArray(visible.size) { if (visible[it]) next++ else -1 }
+    }
 }
 
 /** The per-child parameters of a [BoardLayout]: how many columns of the board it spans, and how many rows. */
@@ -255,7 +268,10 @@ open class BoardLayout(context: Context, val columns: Int = 12) : ViewGroup(cont
 
     override fun generateDefaultLayoutParams(): LayoutParams = CellParams(columns, RowSpan.Rows(1))
     override fun generateLayoutParams(attrs: AttributeSet?): LayoutParams = CellParams(columns, RowSpan.Rows(1))
-    override fun generateLayoutParams(p: LayoutParams): LayoutParams = CellParams(columns, RowSpan.Rows(1))
+    override fun generateLayoutParams(p: LayoutParams): LayoutParams =
+        CellParams(columns, RowSpan.Rows(1)).also { cell ->
+            if (p is MarginLayoutParams) cell.setMargins(p.leftMargin, p.topMargin, p.rightMargin, p.bottomMargin)
+        }
     override fun checkLayoutParams(p: LayoutParams?): Boolean = p is CellParams
 }
 
@@ -311,9 +327,10 @@ object FlexMath {
     /**
      * The main-axis sizes of children given their [basis] sizes, which of them [grow], the [available] space and the [gap]
      * between children. The space left over is shared equally among the growers (the remainder pixels to the first ones). If
-     * the children do not fit, only the growers give way, in proportion to their basis and never below nothing.
+     * the children do not fit, only the growers give way, in proportion to how much each has to give and never below its [min]
+     * (a grower that must not shrink, as the web board's `flex: 1 0 auto`, has its basis as its min).
      */
-    fun distribute(basis: IntArray, grow: BooleanArray, available: Int, gap: Int): IntArray {
+    fun distribute(basis: IntArray, grow: BooleanArray, available: Int, gap: Int, min: IntArray = IntArray(basis.size)): IntArray {
         val n = basis.size
         val sizes = basis.copyOf()
         val growers = (0 until n).count { grow[it] }
@@ -329,20 +346,23 @@ object FlexMath {
             }
         } else if (leftover < 0) {
             var deficit = -leftover
-            val room = (0 until n).filter { grow[it] }.sumOf { basis[it].coerceAtLeast(0) }
+            // How far each grower may give way: down to its [min], never below.
+            val give = IntArray(n) { if (grow[it]) (basis[it] - min[it]).coerceAtLeast(0) else 0 }
+            val room = give.sum()
             if (room > 0) {
                 val wanted = deficit
                 for (i in 0 until n) {
-                    if (!grow[i]) continue
-                    val cut = minOf(basis[i].coerceAtLeast(0), (wanted.toLong() * basis[i].coerceAtLeast(0) / room).toInt())
+                    if (give[i] == 0) continue
+                    val cut = minOf(give[i], (wanted.toLong() * give[i] / room).toInt())
                     sizes[i] -= cut
                     deficit -= cut
                 }
-                // What rounding left comes off the first growers that still have something.
+                // What rounding left comes off the first growers that still have something to give.
                 for (i in 0 until n) {
                     if (deficit <= 0) break
-                    if (!grow[i] || sizes[i] <= 0) continue
-                    val cut = minOf(sizes[i], deficit)
+                    val left = sizes[i] - min[i]
+                    if (give[i] == 0 || left <= 0) continue
+                    val cut = minOf(left, deficit)
                     sizes[i] -= cut
                     deficit -= cut
                 }
@@ -423,8 +443,13 @@ internal class FlexBox(private val vertical: Boolean) {
         }
 
         // A layout that wraps its content is the sum of its children, unless that is more than it may be (a sheet's height).
+        // A grower keeps at least its content, unless it says it shrinks.
+        val minSizes = IntArray(n) { i ->
+            val c = v.getChildAt(i)
+            if (c.visibility == View.GONE || c.flex().shrink) 0 else basis[i].coerceAtLeast(0)
+        }
         val overfull = mainMode == MeasureSpec.AT_MOST && basis.sum() + gapPx * maxOf(0, visibleCount - 1) > availMain
-        sizes = if (mainMode == MeasureSpec.EXACTLY || overfull) FlexMath.distribute(basis, grow, availMain, gapPx) else basis
+        sizes = if (mainMode == MeasureSpec.EXACTLY || overfull) FlexMath.distribute(basis, grow, availMain, gapPx, minSizes) else basis
         for (i in 0 until n) {
             val child = v.getChildAt(i)
             if (child.visibility == View.GONE || sizes[i] == basis[i]) continue

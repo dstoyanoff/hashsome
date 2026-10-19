@@ -3,7 +3,7 @@ package dev.hashsome.ui
 import android.graphics.Typeface
 
 // The theme model, mirroring packages/ui/src/theme (tokens.ts, density.ts, overrides.ts).
-// Colors are ARGB ints, lengths are dp, text sizes are sp. A component reads all of them from the resolved
+// Colors are ARGB ints, lengths and text sizes are dp (the web's px). A component reads all of them from the resolved
 // `Theme` when it draws and never holds a literal, so an override reaches every component.
 
 enum class ThemeMode { Light, Dark }
@@ -190,15 +190,14 @@ fun interface FontSource {
 }
 
 object Fonts {
-    /** The Inter Regular, Medium and SemiBold bundled in `ui`. Another font is a `FontSource` of the consumer's own. */
+    /** The Inter Regular, Medium (Latin only) and SemiBold bundled in `ui`. Another font is a `FontSource` of the consumer's own. */
     val Inter: FontSource = FontSource { context ->
         fun load(file: String): Typeface = try {
             Typeface.createFromAsset(context.assets, "fonts/$file")
         } catch (e: RuntimeException) {
             Typeface.SANS_SERIF
         }
-        // Medium (500) maps to SemiBold until a Medium face is bundled.
-        val semiBold = load("Inter-SemiBold.otf")
-        FontSet(load("Inter-Regular.otf"), semiBold, semiBold)
+        // The Medium face is the Latin subset of Inter 500 (`@fontsource/inter`), the others are the full families.
+        FontSet(load("Inter-Regular.otf"), load("Inter-Medium.ttf"), load("Inter-SemiBold.otf"))
     }
 }

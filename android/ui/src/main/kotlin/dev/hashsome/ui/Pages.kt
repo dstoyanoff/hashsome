@@ -67,5 +67,10 @@ internal class TopBarView(context: Context, private val title: String, private v
     }
 }
 
+/** The empty space of `spacer()`: no size of its own (a plain `View` takes all the room it is offered), so it only grows. */
+internal class Spacer(context: Context) : View(context) {
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) = setMeasuredDimension(0, 0)
+}
+
 /** The params a view gets as a direct child of a page. */
 internal fun pageParams(): ViewGroup.LayoutParams = FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)

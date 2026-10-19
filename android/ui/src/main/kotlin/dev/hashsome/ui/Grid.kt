@@ -14,6 +14,9 @@ const val TOP_ROW = 40
 /** The width of the page navigation rail, whose icons are centered in it. */
 const val NAV_RAIL = 64
 
+/** The height of the page navigation bar (`NavBar`), the rail along the bottom: the 44 dp buttons with 10 dp above and below. */
+const val NAV_BAR = 64
+
 /**
  * The vertical grid every card sits on. The module is the theme's spacing unit (a third of a space), so the gap between
  * cards is always 3 modules, and a tile and a header are whole numbers of them in either density.

@@ -10,6 +10,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import dev.hashsome.client.AndroidScheduler
+import dev.hashsome.client.Cancel
 import dev.hashsome.client.Client
 import dev.hashsome.client.RemoteClient
 import dev.hashsome.client.Scheduler
@@ -172,6 +173,19 @@ object Hashsome {
     private fun host(): ThemeHost =
         themeHost ?: ThemeHost(app, settings, client, scheduler, appContext).also { themeHost = it }
 
+    /**
+     * Drops the connection and makes a new one from `settings.server` (a changed address, the settings sheet's "reload"). The
+     * theme follows the new client and [themeChanged] ticks, so the dashboard host rebuilds its page on it.
+     */
+    fun reconnect() {
+        // `RemoteClient.close` has no body on a branch without WP1.
+        clientOrNull?.let { old -> headless { old.close() } }
+        clientOrNull = null
+        connected = false
+        themeHost?.rebind(client, scheduler)
+        connect()
+    }
+
     /** Opens the link to the runtime, once. */
     internal fun connect() {
         if (connected) return
@@ -218,7 +232,9 @@ internal class ThemeHost(
     scheduler: Scheduler,
     context: Context,
 ) {
-    private val controller = ThemeController(config.theme, Scope(client, scheduler))
+    private var scope = Scope(client, scheduler)
+    private var controller = ThemeController(config.theme, scope)
+    private var cancelDark: Cancel = controller.dark.listen { refresh() }
     private val fonts: FontSet by lazy { config.font.load(context) }
 
     /** Counts the mode changes. */
@@ -228,8 +244,18 @@ internal class ThemeHost(
         private set
 
     init {
-        controller.dark.listen { refresh() }
         settings.theme.listen { refresh() }
+    }
+
+    /** The client is another one (a reconnect): the schedule follows the new one, and the host rebuilds on it. */
+    fun rebind(client: Client, scheduler: Scheduler) {
+        cancelDark()
+        headless { scope.dispose() }
+        scope = Scope(client, scheduler)
+        controller = ThemeController(config.theme, scope)
+        cancelDark = controller.dark.listen { refresh() }
+        refresh()
+        changed.set(changed.value + 1)
     }
 
     private fun dark(): Boolean = when (settings.theme.value) {
