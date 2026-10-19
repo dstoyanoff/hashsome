@@ -326,14 +326,13 @@ export function uninstallCommands(device: Device, pkg: string, system: boolean =
     ),
     shell(device, 'sleep', '2'),
     // Once more after a further pause if the first attempt fails: the admin may not be gone yet.
-    // A system app cannot be uninstalled (only its /data update can): the copy in priv-app goes next.
+    // A system app cannot be uninstalled (only its /data update can): the copy in priv-app goes next (uninstallSystem).
     shell(
       device,
       'sh',
       '-c',
       `pm uninstall ${pkg} || (sleep 2 && pm uninstall ${pkg})${system ? ' || true' : ''}`,
     ),
-    ...(system ? systemRemoveCommands(device) : []),
   ];
 }
 
@@ -429,8 +428,11 @@ export interface SystemStages {
   /** Free space on /system, and whether (and which version of) the package is installed. */
   inspect: Command[];
 
-  /** Push the APK into priv-app. */
-  push: Command[];
+  /** Remount /system read-write; the writes; remount read-only; reboot. */
+  rw: Command;
+  write: Command[];
+  ro: Command;
+  reboot: Command;
 
   /** After the reboot: wait for the device, then the settings and permissions. */
   afterReboot: Command[];
@@ -439,6 +441,12 @@ export interface SystemStages {
   /** `dumpsys package <pkg> | grep flags`. */
   verify: Command;
 }
+
+const imageCommands = (device: Device): Command[] => [
+  connect(device),
+  shell(device, 'getprop', 'ro.build.type'),
+  shell(device, 'getprop', 'ro.debuggable'),
+];
 
 const rootAgain = (device: Device): Command[] => [
   adbOn(device, 'root'),
@@ -454,19 +462,15 @@ export function systemProvisionStages(
 ): SystemStages {
   assertSystemProfile(device);
   return {
-    image: [
-      connect(device),
-      shell(device, 'getprop', 'ro.build.type'),
-      shell(device, 'getprop', 'ro.debuggable'),
-    ],
+    image: imageCommands(device),
     root: rootAgain(device),
     inspect: [
       shell(device, 'df', '-k', '/system'),
       shell(device, 'pm', 'path', pkg),
       shellLine(device, `dumpsys package ${pkg} | grep versionCode`),
     ],
-    push: [
-      shellLine(device, REMOUNT_RW),
+    rw: shellLine(device, REMOUNT_RW),
+    write: [
       shell(device, 'mkdir', '-p', SYSTEM_DIR),
       adbOn(device, 'push', apk, SYSTEM_APK),
       shell(device, 'chmod', '755', SYSTEM_DIR),
@@ -476,26 +480,27 @@ export function systemProvisionStages(
         device,
         `if command -v restorecon >/dev/null 2>&1; then restorecon -R ${SYSTEM_DIR}; fi`,
       ),
-      shellLine(device, REMOUNT_RO),
-      // The package manager only learns of the app in the boot scan, so the permissions below wait for it.
-      adbOn(device, 'reboot'),
     ],
+    ro: shellLine(device, REMOUNT_RO),
+    // The package manager only learns of the app in the boot scan, so the permissions below wait for it.
+    reboot: adbOn(device, 'reboot'),
     afterReboot: [connect(device), adbOn(device, 'wait-for-device')],
     provision: provisionCommands(device, apk, pkg, home, false),
     verify: shellLine(device, `dumpsys package ${pkg} | grep flags`),
   };
 }
 
-/** The removal of the system copy, after the usual uninstall steps: remount, delete, remount read-only, reboot. */
-export function systemRemoveCommands(device: Device): Command[] {
+/** The removal of the system copy (adb root and the image check come before, the usual uninstall steps too): remount, delete, remount read-only, reboot. */
+export function systemRemoveStages(device: Device) {
   assertSystemProfile(device);
-  return [
-    ...rootAgain(device),
-    shellLine(device, REMOUNT_RW),
-    shell(device, 'rm', '-rf', SYSTEM_DIR),
-    shellLine(device, REMOUNT_RO),
-    adbOn(device, 'reboot'),
-  ];
+  return {
+    image: imageCommands(device),
+    root: rootAgain(device),
+    rw: shellLine(device, REMOUNT_RW),
+    write: [shell(device, 'rm', '-rf', SYSTEM_DIR)],
+    ro: shellLine(device, REMOUNT_RO),
+    reboot: adbOn(device, 'reboot'),
+  };
 }
 
 /** What a person has to do after `uninstall` on a device that had the app as its home screen: the previous home app is not known. */
@@ -516,6 +521,9 @@ const CAPTURED = new Set(['connect', 'root', 'shell']);
 export type Exec = (
   command: Command,
   cwd: string,
+
+  /** Give up on the command after this long (a hung adb); unset means no limit. */
+  timeoutMs?: number,
 ) => {
   status: number | null;
   error?: string | undefined;
@@ -524,7 +532,7 @@ export type Exec = (
   output?: string | undefined;
 };
 
-const spawnExec: Exec = ([program, ...rest], cwd) => {
+const spawnExec: Exec = ([program, ...rest], cwd, timeoutMs) => {
   // `adb connect` and `adb root` exit 0 even when they fail, and the shell commands' output decides the
   // system install's checks, so their output is read (and still shown).
   const capture = program === 'adb' && CAPTURED.has(adbVerb([program, ...rest]));
@@ -532,6 +540,7 @@ const spawnExec: Exec = ([program, ...rest], cwd) => {
     cwd,
     stdio: capture ? ['inherit', 'pipe', 'pipe'] : 'inherit',
     encoding: 'utf8',
+    ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
   });
 
   const output = capture ? `${result.stdout ?? ''}${result.stderr ?? ''}` : undefined;
@@ -623,22 +632,107 @@ function readOutput(command: Command, cwd: string, exec: Exec): string {
   return result.output ?? '';
 }
 
+const POLL_TIMEOUT_MS = 10_000;
+
 /** Polls until the device answers and says its boot is done (5 minutes at most). */
 function waitForBoot(device: Device, cwd: string, exec: Exec, sleep: Sleep): void {
   // The old boot can still answer for a moment after `adb reboot`.
   sleep(15_000);
   const deadline = Date.now() + 300_000;
+  let last = 'no answer yet';
   while (Date.now() < deadline) {
-    exec(connect(device), cwd);
-    const booted = exec(shell(device, 'getprop', 'sys.boot_completed'), cwd);
+    exec(connect(device), cwd, POLL_TIMEOUT_MS);
+    const booted = exec(shell(device, 'getprop', 'sys.boot_completed'), cwd, POLL_TIMEOUT_MS);
     if (booted.status === 0 && booted.output?.trim().endsWith('1')) {
       return;
     }
 
+    last = booted.error ?? `exit status ${booted.status}, output "${booted.output?.trim() ?? ''}"`;
     sleep(3000);
   }
 
-  throw new Error(`${device.id} did not finish booting within 5 minutes.`);
+  throw new Error(`${device.id} did not finish booting within 5 minutes (last: ${last}).`);
+}
+
+function printRoot(commands: Command[], cwd: string): void {
+  runCommands([commands[0]!], cwd, { dryRun: true });
+  console.log('# (2 s for adbd to restart)');
+  runCommands(commands.slice(1), cwd, { dryRun: true });
+}
+
+/** The image check and `adb root`, before anything on the device is touched: throws on a user build or when adbd will not run as root. */
+function requireRoot(
+  device: Device,
+  image: Command[],
+  rootSteps: Command[],
+  cwd: string,
+  exec: Exec,
+  sleep: Sleep,
+): void {
+  const [first, buildType, debuggable] = image;
+  runCommands([first!], cwd, { dryRun: false, exec });
+  if (!isRootable(readOutput(buildType!, cwd, exec), readOutput(debuggable!, cwd, exec))) {
+    throw new Error(
+      `${device.id}: this image has no adb root (ro.build.type is not userdebug and ro.debuggable is not 1); the X2i is a user build. Keep the normal install.`,
+    );
+  }
+
+  try {
+    runCommands([rootSteps[0]!], cwd, { dryRun: false, exec });
+    sleep(2000);
+    runCommands(rootSteps.slice(1), cwd, { dryRun: false, exec });
+  } catch (error) {
+    throw new Error(
+      `${device.id}: adb root failed, so /system cannot be written.\n${(error as Error).message}`,
+      { cause: error },
+    );
+  }
+}
+
+/** The writes to /system between the two remounts and the reboot; a failure puts /system back to read-only (best effort) before it is thrown. */
+function writeSystem(
+  stages: { rw: Command; write: Command[]; ro: Command; reboot: Command },
+  cwd: string,
+  exec: Exec,
+): void {
+  try {
+    runCommands([stages.rw, ...stages.write], cwd, { dryRun: false, exec });
+  } catch (error) {
+    try {
+      exec(stages.ro, cwd);
+    } catch {
+      // best effort: the original failure is the one to report
+    }
+
+    throw error;
+  }
+
+  runCommands([stages.ro, stages.reboot], cwd, { dryRun: false, exec });
+}
+
+/**
+ * uninstall --system for one device: the image check and adb root first (a user build fails before anything
+ * is removed), then the usual uninstall steps, then the copy in priv-app and a reboot.
+ */
+function uninstallSystem(
+  device: Device,
+  pkg: string,
+  opts: { dryRun: boolean; root: string; exec: Exec | undefined; sleep: Sleep },
+): void {
+  const { dryRun, root } = opts;
+  const stages = systemRemoveStages(device);
+  const usual = uninstallCommands(device, pkg, true);
+  if (dryRun) {
+    runCommands(stages.image, root, { dryRun });
+    printRoot(stages.root, root);
+    runCommands([...usual, stages.rw, ...stages.write, stages.ro, stages.reboot], root, { dryRun });
+    return;
+  }
+
+  const exec = opts.exec ?? spawnExec;
+  requireRoot(device, stages.image, stages.root, root, exec, opts.sleep);
+  runCommands(usual, root, { dryRun, exec });
+  writeSystem(stages, root, exec);
 }
 
 /**
@@ -658,35 +752,21 @@ function provisionSystem(
   const exec = opts.exec ?? spawnExec;
   const stages = systemProvisionStages(device, apk, pkg, home);
   if (dryRun) {
-    runCommands([...stages.image, ...stages.root, ...stages.inspect], root, { dryRun });
+    runCommands(stages.image, root, { dryRun });
+    printRoot(stages.root, root);
+    runCommands(stages.inspect, root, { dryRun });
     console.log(
-      `# if the /data copy has a lower versionCode than the APK: adb shell pm uninstall ${pkg}`,
+      `# if the /data copy has a lower versionCode than the APK: adb shell pm uninstall -k ${pkg} (-k keeps its data)`,
     );
 
-    runCommands([...stages.push, ...stages.afterReboot], root, { dryRun });
+    runCommands([stages.rw, ...stages.write, stages.ro, stages.reboot], root, { dryRun });
+    runCommands(stages.afterReboot, root, { dryRun });
     console.log('# (polls getprop sys.boot_completed until the device has booted)');
     runCommands([...stages.provision, stages.verify], root, { dryRun });
     return;
   }
 
-  const [, buildType, debuggable] = stages.image;
-  runCommands([stages.image[0]!], root, { dryRun, exec });
-  if (!isRootable(readOutput(buildType!, root, exec), readOutput(debuggable!, root, exec))) {
-    throw new Error(
-      `${device.id}: this image has no adb root (ro.build.type is not userdebug and ro.debuggable is not 1); the X2i is a user build. Keep the normal install.`,
-    );
-  }
-
-  try {
-    runCommands(stages.root, root, { dryRun, exec });
-  } catch (error) {
-    throw new Error(
-      `${device.id}: adb root failed, so /system cannot be written.\n${(error as Error).message}`,
-      {
-        cause: error,
-      },
-    );
-  }
+  requireRoot(device, stages.image, stages.root, root, exec, opts.sleep);
 
   const [df, pmPath, versions] = stages.inspect;
   const free = parseFreeKb(readOutput(df!, root, exec));
@@ -702,7 +782,7 @@ function provisionSystem(
     const pushed = apkVersionCode(apk);
 
     if (shouldUninstallDataCopy(installed, pushed)) {
-      runCommands([shell(device, 'pm', 'uninstall', pkg)], root, { dryRun, exec });
+      runCommands([shell(device, 'pm', 'uninstall', '-k', pkg)], root, { dryRun, exec });
     } else {
       console.log(
         `${device.id}: the /data copy (versionCode ${installed ?? 'unknown'}${pushed === undefined ? ', the APK is not read: no aapt under ANDROID_HOME/build-tools' : `, APK ${pushed}`}) stays; with the same signature it becomes an updated system app.`,
@@ -710,7 +790,7 @@ function provisionSystem(
     }
   }
 
-  runCommands(stages.push, root, { dryRun, exec });
+  writeSystem(stages, root, exec);
   waitForBoot(device, root, exec, opts.sleep);
   runCommands([...stages.afterReboot, ...stages.provision], root, { dryRun, exec });
 
@@ -810,9 +890,18 @@ export async function androidCommand(
         continue;
       }
 
+      if (sub === 'uninstall' && system) {
+        uninstallSystem(device, pkg, { dryRun, root, exec, sleep });
+        if (device.home === true) {
+          console.log(`${device.id}: ${HOME_NOTE}`);
+        }
+
+        continue;
+      }
+
       const plan =
         sub === 'uninstall'
-          ? uninstallCommands(device, pkg, system)
+          ? uninstallCommands(device, pkg)
           : sub === 'deploy'
             ? deployCommands(device, apk, pkg)
             : provisionCommands(device, apk, pkg, flags.has('home') || device.home === true);

@@ -13,7 +13,7 @@ import {
   parseVersionCode,
   shouldUninstallDataCopy,
   systemProvisionStages,
-  systemRemoveCommands,
+  systemRemoveStages,
   buildCommands,
   deployCommands,
   HOME_ALIAS,
@@ -285,7 +285,10 @@ describe('system install', () => {
       ...s.image,
       ...s.root,
       ...s.inspect,
-      ...s.push,
+      s.rw,
+      ...s.write,
+      s.ro,
+      s.reboot,
       ...s.afterReboot,
       ...s.provision,
       s.verify,
@@ -329,18 +332,16 @@ describe('system install', () => {
       '--system is for Shelly displays; a tablet keeps the normal install',
     );
 
-    expect(() => systemRemoveCommands(device())).toThrow('a tablet keeps the normal install');
+    expect(() => systemRemoveStages(device())).toThrow('a tablet keeps the normal install');
   });
 
-  test('uninstall --system removes the copy after the usual steps, and tolerates a system app', () => {
+  test('uninstall --system checks root first, removes the copy last, and tolerates a system app', () => {
     const lines = uninstallCommands(stargate, PKG, true).map(line);
-    expect(lines.findIndex((l) => l.includes('REMOVE_ADMIN'))).toBeLessThan(
-      lines.findIndex((l) => l.includes('rm -rf /system/priv-app/Hashsome')),
-    );
-
     expect(lines.find((l) => l.includes('pm uninstall'))).toContain('|| true');
-    expect(lines.at(-1)).toContain(' reboot');
-    expect(uninstallCommands(stargate, PKG).map(line).join('\n')).not.toContain('rm -rf');
+    expect(uninstallCommands(stargate, PKG).map(line).join('\n')).not.toContain('|| true');
+    const stages = systemRemoveStages(stargate);
+    expect(line(stages.write[0]!)).toContain('rm -rf /system/priv-app/Hashsome');
+    expect(line(stages.reboot)).toContain(' reboot');
   });
 
   test('the pre-checks read the image, the free space and the versions', () => {
@@ -480,6 +481,121 @@ describe('androidCommand (dry run)', () => {
     expect(
       seen.some((l) => l.includes(' root') || l.includes('remount') || l.includes('push')),
     ).toBe(false);
+  });
+
+  describe('provision --system against a mock device', () => {
+    const setup = (
+      devices: unknown = [{ id: 'x1', host: '1.1.1.1', profile: 'shelly-stargate' }],
+    ) => {
+      const root = project(devices);
+      mkdirSync(join(root, 'android/app/build/outputs/apk/release'), { recursive: true });
+      writeFileSync(join(root, 'android/app/build/outputs/apk/release/app-release.apk'), 'apk');
+      output();
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      return root;
+    };
+
+    const mock = (
+      opts: { buildType?: string; debuggable?: string; failOn?: string; flags?: string } = {},
+    ) => {
+      const seen: string[] = [];
+      const exec: Exec = (command) => {
+        const text = line(command);
+        seen.push(text);
+        if (opts.failOn && text.includes(opts.failOn)) {
+          return { status: 1, output: '' };
+        }
+
+        const out = text.includes('ro.build.type')
+          ? `${opts.buildType ?? 'userdebug'}\n`
+          : text.includes('ro.debuggable')
+            ? `${opts.debuggable ?? '1'}\n`
+            : text.includes('df -k')
+              ? 'Filesystem 1K-blocks Used Available Use% Mounted on\n/dev/x 1000000 800000 200000 80% /system\n'
+              : text.includes('sys.boot_completed')
+                ? '1\n'
+                : text.includes('grep flags')
+                  ? `${opts.flags ?? 'flags=[ SYSTEM HAS_CODE ]'}\n`
+                  : '';
+
+        return { status: 0, output: out };
+      };
+
+      return { seen, exec };
+    };
+
+    const sleeps: number[] = [];
+    const sleep = (ms: number) => void sleeps.push(ms);
+
+    test('happy path: image check and root first, writes, ro, reboot, then the permissions and the flag check', async () => {
+      const root = setup();
+      const { seen, exec } = mock();
+      await androidCommand(['provision', '--system'], root, exec, sleep);
+      const at = (needle: string) => seen.findIndex((l) => l.includes(needle));
+      expect(at('ro.build.type')).toBeLessThan(at('1.1.1.1:5555 root'));
+      expect(at('1.1.1.1:5555 root')).toBeLessThan(at('rw,remount'));
+      expect(at('rw,remount')).toBeLessThan(at(' push '));
+      expect(at(' push ')).toBeLessThan(at('ro,remount'));
+      expect(at('ro,remount')).toBeLessThan(at(' reboot'));
+      expect(at(' reboot')).toBeLessThan(at('appops set'));
+      expect(at('appops set')).toBeLessThan(at('grep flags'));
+      expect(seen.some((l) => l.includes(' install '))).toBe(false);
+      expect(sleeps).toContain(2000);
+    });
+
+    test('a push that fails still puts /system back to read-only, and does not reboot', async () => {
+      const root = setup();
+      const { seen, exec } = mock({ failOn: ' push ' });
+      await expect(androidCommand(['provision', '--system'], root, exec, sleep)).rejects.toThrow(
+        'failed for 1',
+      );
+
+      const after = seen.slice(seen.findIndex((l) => l.includes(' push ')));
+      expect(after.some((l) => l.includes('ro,remount'))).toBe(true);
+      expect(seen.some((l) => l.includes(' reboot'))).toBe(false);
+    });
+
+    test('a missing SYSTEM flag after the reboot fails the device', async () => {
+      const root = setup();
+      const { exec } = mock({ flags: 'flags=[ HAS_CODE ]' });
+      await expect(androidCommand(['provision', '--system'], root, exec, sleep)).rejects.toThrow(
+        'failed for 1',
+      );
+    });
+
+    test('uninstall --system on a user build fails before anything is removed', async () => {
+      const root = setup();
+      const { seen, exec } = mock({ buildType: 'user', debuggable: '0' });
+      await expect(androidCommand(['uninstall', '--system'], root, exec, sleep)).rejects.toThrow(
+        'failed for 1',
+      );
+
+      expect(
+        seen.some(
+          (l) => l.includes('REMOVE_ADMIN') || l.includes('pm uninstall') || l.includes('rm -rf'),
+        ),
+      ).toBe(false);
+    });
+
+    test('uninstall --system: a failed delete still goes back to read-only', async () => {
+      const root = setup();
+      const { seen, exec } = mock({ failOn: 'rm -rf' });
+      await expect(androidCommand(['uninstall', '--system'], root, exec, sleep)).rejects.toThrow(
+        'failed for 1',
+      );
+
+      expect(seen.findIndex((l) => l.includes('REMOVE_ADMIN'))).toBeGreaterThan(
+        seen.findIndex((l) => l.includes('1.1.1.1:5555 root')),
+      );
+
+      expect(
+        seen
+          .slice(seen.findIndex((l) => l.includes('rm -rf')))
+          .some((l) => l.includes('ro,remount')),
+      ).toBe(true);
+
+      expect(seen.some((l) => l.includes(' reboot'))).toBe(false);
+    });
   });
 
   test('--system only applies to provision and uninstall', async () => {
