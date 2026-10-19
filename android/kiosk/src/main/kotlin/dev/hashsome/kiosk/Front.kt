@@ -86,9 +86,10 @@ internal class BootGate(
 }
 
 /**
- * Keep-in-front stands down for [durationMs] after the user asked for the stock Shelly app, so it can be used. It ends early when
- * the dashboard is resumed again after having been left (it is still resumed right after [start], until the stock app covers it).
- * [clock] is `SystemClock.elapsedRealtime()`.
+ * Keep-in-front stands down after the user asked for the stock Shelly app, so it can be used. With [withButton] (the overlay
+ * permission is there) it holds until [end] is called (the floating "Back to dashboard" button) or the dashboard is resumed again
+ * after having been left, and [durationMs] is only a safety cap; without it [durationMs] is the whole pause. The dashboard is still
+ * resumed right after [start], until the stock app covers it. [onChange] hears every start and end. [clock] is `SystemClock.elapsedRealtime()`.
  */
 internal class FrontPause(private val clock: () -> Long, private val log: (String) -> Unit = {}) {
     @Volatile
@@ -99,11 +100,24 @@ internal class FrontPause(private val clock: () -> Long, private val log: (Strin
     @Volatile
     private var on = false
 
-    fun start(durationMs: Long) {
+    /** Whether a pause is on, without observing anything. */
+    val isOn: Boolean get() = on
+
+    /** Whether the current pause comes with the floating button. */
+    @Volatile
+    var withButton = false
+        private set
+
+    @Volatile
+    var onChange: (() -> Unit)? = null
+
+    fun start(durationMs: Long, withButton: Boolean = false) {
         until = clock() + durationMs
         left = false
         on = true
-        log("front: paused for ${durationMs / 1000} s (the stock app was opened)")
+        this.withButton = withButton
+        log("front: paused for up to ${durationMs / 1000} s (the stock app was opened${if (withButton) ", with the back button" else ""})")
+        onChange?.invoke()
     }
 
     /** Whether keep-in-front must hold off now; [dashboardResumed] is observed, so call it every tick. */
@@ -111,13 +125,17 @@ internal class FrontPause(private val clock: () -> Long, private val log: (Strin
         if (!on) return false
         if (!dashboardResumed) left = true
         if (dashboardResumed && left) return end("the dashboard is back")
-        if (clock() >= until) return end("the pause is over")
+        if (clock() >= until) return end(if (withButton) "the safety cap was reached" else "the pause is over")
         return true
     }
 
-    private fun end(why: String): Boolean {
+    /** Ends the pause now; false, always, so [active] can return it. */
+    fun end(why: String): Boolean {
+        if (!on) return false
         on = false
+        withButton = false
         log("front: resumed ($why)")
+        onChange?.invoke()
         return false
     }
 }
