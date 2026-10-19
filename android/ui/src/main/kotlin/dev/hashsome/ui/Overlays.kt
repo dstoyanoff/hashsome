@@ -160,7 +160,10 @@ abstract class Overlay(context: Context) : BoundView(context) {
     }
 
     /** The close button every panel has. */
-    protected fun closeButton(): View = OverlayAction(context, UiIcons.close) { dismiss() }
+    protected fun closeButton(): View = OverlayAction(context, UiIcons.close) {
+        android.util.Log.d("hashsome-drawer", "close button tapped")
+        dismiss()
+    }
 
     internal companion object {
         const val ACTION = 30
@@ -228,9 +231,17 @@ internal class OverlayAction(context: Context, private val icon: Icon, private v
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_UP && contains(event.x, event.y)) onTap()
+        // A tap that lands a finger's width off the 30 dp square (a fingertip is wider than the button) still counts.
+        if (event.actionMasked == MotionEvent.ACTION_UP && OverlayTap.counts(event.x, event.y, width.toFloat(), height.toFloat(), dp(OverlayTap.SLOP_DP))) onTap()
         return true
     }
+}
+
+/** Whether the end of a press at (x, y) on a [w] by [h] button is a tap on it: inside it, or within [slop] px of it. */
+internal object OverlayTap {
+    const val SLOP_DP = 8f
+
+    fun counts(x: Float, y: Float, w: Float, h: Float, slop: Float): Boolean = x >= -slop && y >= -slop && x <= w + slop && y <= h + slop
 }
 
 /** The title row's text: an optional glyph in a circle, a name, and a muted line under it. */
@@ -421,6 +432,8 @@ open class Sheet(context: Context) : Overlay(context) {
             setMargins(side, Math.round(2 * u), side, Math.round(3 * u))
         })
         handle.setOnTouchListener { _, event -> pull(event) }
+        // Above the content in touch order too, so that nothing the body lays out over the header's edge can take a tap meant for its buttons.
+        handle.translationZ = dp(1f)
         panel.addView(handle, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         panel.addView(content, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             grow = true

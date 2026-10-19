@@ -75,3 +75,13 @@ class PurePiecesTest {
         )
     }
 }
+
+class OverlayTapTest {
+    @org.junit.Test
+    fun `a tap on a button, or a fingertip's width off it, counts`() {
+        org.junit.Assert.assertTrue(OverlayTap.counts(15f, 15f, 45f, 45f, 12f))
+        org.junit.Assert.assertTrue(OverlayTap.counts(-10f, 50f, 45f, 45f, 12f))
+        org.junit.Assert.assertFalse(OverlayTap.counts(-13f, 20f, 45f, 45f, 12f))
+        org.junit.Assert.assertFalse(OverlayTap.counts(20f, 58f, 45f, 45f, 12f))
+    }
+}
