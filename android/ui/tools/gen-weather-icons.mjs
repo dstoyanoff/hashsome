@@ -38,7 +38,14 @@ const LOOK = [
   ['snowy-rainy', 'SnowyRainy', 'Sleet', 'cloud-snow', RAIN, { 0: CLOUD }],
   ['hail', 'Hail', 'Hail', 'cloud-hail', SNOW, { 0: CLOUD }],
   ['lightning', 'Lightning', 'Thunderstorm', 'cloud-lightning', SUN, { 0: CLOUD }],
-  ['lightning-rainy', 'LightningRainy', 'Thunderstorm with rain', 'cloud-lightning', SUN, { 0: CLOUD }],
+  [
+    'lightning-rainy',
+    'LightningRainy',
+    'Thunderstorm with rain',
+    'cloud-lightning',
+    SUN,
+    { 0: CLOUD },
+  ],
   ['windy', 'Windy', 'Windy', 'wind', null, {}],
   ['exceptional', 'Exceptional', 'Exceptional weather', 'triangle-alert', '#F2554A', {}],
   ['unknown', 'Unknown', 'Unknown', 'cloud', null, {}],
@@ -69,13 +76,16 @@ const vector = (paths) =>
     '',
   ].join('\n');
 
-const recolor = (line, hex) => line.replace(/android:strokeColor="[^"]*"/, `android:strokeColor="${hex.replace('#', '#FF')}"`);
+const recolor = (line, hex) =>
+  line.replace(/android:strokeColor="[^"]*"/, `android:strokeColor="${hex.replace('#', '#FF')}"`);
 
 const rows = [];
 for (const [wire, name, label, icon, color, parts] of LOOK) {
   const paths = pathsOf(icon);
   if (paths.length !== shapeCount(icon)) {
-    throw new Error(`${icon}: ${shapeCount(icon)} shapes in the SVG but ${paths.length} paths in the drawable`);
+    throw new Error(
+      `${icon}: ${shapeCount(icon)} shapes in the SVG but ${paths.length} paths in the drawable`,
+    );
   }
 
   const colored = [];
@@ -98,7 +108,16 @@ for (const [wire, name, label, icon, color, parts] of LOOK) {
     writeFileSync(join(drawables, `${base}_plain.xml`), vector(plain));
   }
 
-  rows.push({ wire, name, label, base, color, parts, hasColored: colored.length > 0, hasPlain: plain.length > 0 });
+  rows.push({
+    wire,
+    name,
+    label,
+    base,
+    color,
+    parts,
+    hasColored: colored.length > 0,
+    hasPlain: plain.length > 0,
+  });
 }
 
 const entry = (r) => {

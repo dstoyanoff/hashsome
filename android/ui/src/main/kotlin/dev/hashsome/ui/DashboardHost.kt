@@ -42,6 +42,9 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
         rail = shell.rail?.let { railPages ->
             NavRailView(activity, railPages).also { view ->
                 view.onSelect = { navigate(it) }
+                view.attention = shell.attention.mapNotNull { (path, level) ->
+                    railPages.indexOfFirst { it.path == path }.takeIf { it >= 0 }?.let { it to level }
+                }.toMap()
             }
         }
         if (pages.isNotEmpty()) show(startAt.coerceIn(0, pages.size - 1), animate = false, side = 0)

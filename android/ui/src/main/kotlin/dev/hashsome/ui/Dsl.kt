@@ -41,12 +41,18 @@ abstract class Dashboard(val id: String, val motion: Motion = Motion.Full, val i
 @HashsomeDsl
 class ShellScope internal constructor() {
     internal var rail: List<PageSpec>? = null
+    internal val attention = LinkedHashMap<String, Attention>()
     internal var topBarTitle: String? = null
     internal var switcher: List<DashboardOption> = emptyList()
 
     /** The page navigation down the left edge; the pages are padded for it. */
     fun navRail(pages: List<PageSpec>) {
         rail = pages
+    }
+
+    /** A dot on the rail item of the page at [path], for something on it that needs a look. */
+    fun attention(path: String, level: Attention) {
+        attention[path] = level
     }
 
     /** The top bar (WP4a for the Shelly pages, M2 for the tablets': title, switcher, scenes). */

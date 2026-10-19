@@ -67,6 +67,32 @@ checkout of this repo; one that wants the published libraries declares the GitHu
 
 An app's `versionCode` is `major*10000 + minor*100 + patch` of the version, so it grows with every release.
 
+## `ui`: icons and fonts
+
+`ui` draws its own chrome (close, transport, chevrons, search, the weather conditions) with glyphs it bundles; a dashboard's own
+icons are the consumer's (`hashsome android icons lucide`). Two generators produce what is checked in, and both are re-run when the
+glyph set changes:
+
+1. The chrome glyphs: `android/ui/icons/*.svg` are the lucide-static 1.59.0 files `ui` uses (ISC, `android/ui/icons/LICENSE`).
+   To change the set, install `lucide-static` somewhere outside the repo, copy the SVGs in, and from the repo root run
+
+   ```sh
+   node packages/runtime/bin/hashsome.ts android icons ui --dir android/ui/icons --out android/ui/src/main/res/drawable \
+     --kotlin android/ui/src/main/kotlin/dev/hashsome/ui/icons/Ui.kt --package dev.hashsome.ui --strict
+   ```
+
+   It writes `ic_ui_<name>.xml` (tintable) and `object Ui` (`dev.hashsome.ui.icons.Ui`); `UiIcons` in `Icons.kt` names the ones the
+   chrome uses.
+
+2. The weather conditions, drawn in several colors like the web's `CONDITION_LOOK` (a tinted drawable has one color):
+   `node android/ui/tools/gen-weather-icons.mjs`, after step 1. It reads the converted drawables and writes
+   `ic_weather_<condition>.xml` (the parts with a color of their own, baked in) and `ic_weather_<condition>_plain.xml` (the parts
+   that take the text color: white, so a tint recolors them), and the Kotlin table `WeatherLook.kt` (condition, glyph, colors,
+   label). `iconBitmap` draws a colored glyph untinted, and its plain companion over it in the color it is asked for.
+
+Fonts: Inter Regular and SemiBold (`android/ui/src/main/assets/fonts`, OFL, see `android/NOTICE`). The 500 weight of the type scale
+maps to SemiBold until a Medium face is added. `HashsomeApp(font = ...)` takes any `FontSource` that returns a `FontSet`.
+
 ## See also
 
 - [ARCHITECTURE.md](../ARCHITECTURE.md) "Native Android": the layers, the plug points, the protocol rules and how a consumer project is laid out; "Releasing" for how these artifacts are published.
