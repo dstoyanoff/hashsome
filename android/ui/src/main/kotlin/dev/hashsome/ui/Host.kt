@@ -221,6 +221,13 @@ internal object NoClient : Client {
         done(Result.failure(IllegalStateException("No server")))
         return {}
     }
+
+    override fun raw(integration: String, request: org.json.JSONObject, done: ((Result<org.json.JSONObject>) -> Unit)?): dev.hashsome.client.Cancel {
+        done?.invoke(Result.failure(IllegalStateException("No server")))
+        return {}
+    }
+
+    override fun reconnect(server: dev.hashsome.client.ServerAddress?) {}
 }
 
 /** Resolves the theme for the mode in force, and says when the mode changes: the schedule, or the choice in the settings. */

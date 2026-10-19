@@ -124,4 +124,17 @@ interface Client {
 
     /** Asks a question of the entity; [done] gets the parsed answer or the failure. */
     fun <T> query(ref: EntityRef, query: Query<T>, done: (Result<T>) -> Unit): Cancel
+
+    /**
+     * Sends [request] straight to [integration] (its own vocabulary: for Home Assistant a service call, see [HaRequests]); [done] gets
+     * the `data` of the answer (an empty object when there is none) or the failure. Waits for the link like [query].
+     */
+    fun raw(integration: String, request: JSONObject, done: ((Result<JSONObject>) -> Unit)? = null): Cancel
+
+    /**
+     * Drops the socket and opens a new one at once, at [server] when given, keeping every watch and store (subscriptions are sent again
+     * on open); requests in flight fail with "Connection lost" and [link] goes `Connecting`. A new address clears what the old runtime said
+     * (snapshots, [integrations]). Call it on the main thread, like every method.
+     */
+    fun reconnect(server: ServerAddress? = null)
 }

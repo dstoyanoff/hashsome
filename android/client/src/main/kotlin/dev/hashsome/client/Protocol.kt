@@ -60,8 +60,7 @@ object ProtocolRules {
 }
 
 /**
- * A message the app sends to the runtime's `/ws`, as in packages/core/src/protocol.ts. The TS `raw` message (a
- * request straight to an integration) is left out on purpose: the UI never sends it.
+ * A message the app sends to the runtime's `/ws`, as in packages/core/src/protocol.ts.
  */
 sealed interface ClientMessage {
     fun encode(): String {
@@ -74,6 +73,7 @@ sealed interface ClientMessage {
                 json.put("type", "command").put("id", m.id).put("ref", m.ref.value).put("command", m.command)
                 if (m.args != null) json.put("args", m.args)
             }
+            is Raw -> json.put("type", "raw").put("id", m.id).put("integration", m.integration).put("request", m.request)
             is Query -> {
                 json.put("type", "query").put("id", m.id).put("ref", m.ref.value).put("query", m.query)
                 if (m.args != null) json.put("args", m.args)
@@ -87,6 +87,7 @@ sealed interface ClientMessage {
     data class Unsubscribe(val ref: EntityRef) : ClientMessage
     data class Command(val id: Int, val ref: EntityRef, val command: String, val args: JSONObject?) : ClientMessage
     data class Query(val id: Int, val ref: EntityRef, val query: String, val args: JSONObject?) : ClientMessage
+    data class Raw(val id: Int, val integration: String, val request: JSONObject) : ClientMessage
 }
 
 /** A message the runtime sends. */

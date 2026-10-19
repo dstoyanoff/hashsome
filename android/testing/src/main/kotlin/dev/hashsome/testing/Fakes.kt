@@ -114,6 +114,9 @@ class FakeRuntime(val scheduler: TestScheduler = TestScheduler()) : Transport.Fa
     /** Every command the client sent: the entity, the name, and the args as JSON text. */
     val commands: MutableList<Triple<EntityRef, String, String?>> = ArrayList()
 
+    /** Every raw request the client sent: the integration and the request, answered with success and no data. */
+    val raws: MutableList<Pair<String, JSONObject>> = ArrayList()
+
     /** The entities that exist now, by ref. */
     val entities: Map<EntityRef, Entity> get() = store
 
@@ -214,6 +217,10 @@ class FakeRuntime(val scheduler: TestScheduler = TestScheduler()) : Transport.Fa
                 "unsubscribe" -> subscribed.remove(EntityRef(message.getString("ref")))
                 "command" -> command(message)
                 "query" -> query(message)
+                "raw" -> {
+                    raws += message.getString("integration") to message.getJSONObject("request")
+                    result(message.getInt("id"), null)
+                }
             }
         }
 

@@ -626,4 +626,216 @@ class RemoteClientTest {
         client.command(light, LightCommands.setBrightness(0.5))
         assertEquals(1, frames("command").size)
     }
+
+    // --- Raw requests -----------------------------------------------------------------------------------------------------
+
+    private val serviceCall = HaRequests.callService("light", "turn_on", listOf("light.x"), JSONObject().put("brightness", 5))
+
+    @Test
+    fun `a raw request is sent with the next id and answered with its data`() {
+        open()
+        var got: Result<JSONObject>? = null
+        client.raw("ha", serviceCall) { got = it }
+        val sent = frames("raw").single()
+        assertEquals("ha", sent.getString("integration"))
+        assertEquals("light", sent.getJSONObject("request").getString("domain"))
+        transport.receive(result(sent.getInt("id"), """{"a":1}"""))
+        assertNull(got)
+        scheduler.runCurrent()
+        assertEquals(1, got!!.getOrThrow().getInt("a"))
+    }
+
+    @Test
+    fun `a raw answer without data is an empty object, and an error is a failure`() {
+        open()
+        val got = ArrayList<Result<JSONObject>>()
+        client.raw("ha", serviceCall) { got += it }
+        client.raw("ha", serviceCall) { got += it }
+        val ids = frames("raw").map { it.getInt("id") }
+        transport.receive(result(ids[0]))
+        transport.receive(failure(ids[1], "boom"))
+        scheduler.runCurrent()
+        assertEquals(0, got[0].getOrThrow().length())
+        assertEquals("boom", got[1].exceptionOrNull()!!.message)
+    }
+
+    @Test
+    fun `a raw request in flight when the link drops fails, and one made before the link opens waits for it`() {
+        client.connect()
+        var waited: Result<JSONObject>? = null
+        client.raw("ha", serviceCall) { waited = it }
+        assertTrue(frames("raw").isEmpty())
+        transport.open()
+        scheduler.runCurrent()
+        assertEquals(1, frames("raw").size)
+        transport.drop()
+        scheduler.runCurrent()
+        assertEquals("Connection lost", waited!!.exceptionOrNull()!!.message)
+    }
+
+    @Test
+    fun `a raw request that waits too long fails, and a cancelled one is never delivered`() {
+        client.connect()
+        var late: Result<JSONObject>? = null
+        client.raw("ha", serviceCall) { late = it }
+        var cancelled: Result<JSONObject>? = null
+        client.raw("ha", serviceCall) { cancelled = it }()
+        scheduler.advance(RemoteClient.QUERY_WAIT_MS)
+        assertEquals("Not connected to runtime", late!!.exceptionOrNull()!!.message)
+        assertNull(cancelled)
+    }
+
+    @Test
+    fun `the Home Assistant service call has the keys its raw handler reads`() {
+        val full = HaRequests.callService("a", "b", listOf("x.y", "x.z"), JSONObject().put("k", 1))
+        assertEquals("a", full.getString("domain"))
+        assertEquals("b", full.getString("service"))
+        assertEquals("x.z", full.getJSONArray("entityIds").getString(1))
+        assertEquals(1, full.getJSONObject("data").getInt("k"))
+        val bare = HaRequests.callService("a", "b")
+        assertFalse(bare.has("entityIds"))
+        assertFalse(bare.has("data"))
+    }
+
+    // --- Reconnecting in place ----------------------------------------------------------------------------------------------
+
+    @Test
+    fun `reconnecting opens a new socket at once, keeping watchers, and fails what was in flight`() {
+        open()
+        val seen = ArrayList<Snapshot>()
+        client.watch(light) { seen += it }
+        transport.receive(lightFrame(true))
+        scheduler.runCurrent()
+        var outcome: Outcome? = null
+        client.command(light, "toggle") { outcome = it }
+        val first = transport
+        val links = ArrayList<LinkStatus>()
+        client.link.listen { links += it }
+        links.clear()
+
+        client.reconnect()
+        assertTrue(first.closedByClient)
+        assertEquals(2, factory.created.size)
+        assertEquals(listOf(LinkStatus.Connecting), links)
+        scheduler.runCurrent()
+        assertEquals(Outcome.Failed("Connection lost"), outcome)
+
+        transport.open()
+        scheduler.runCurrent()
+        assertEquals(LinkStatus.Open, client.link.value)
+        assertEquals(listOf("subscribe"), sentTypes())
+        seen.clear()
+        transport.receive(lightFrame(false))
+        scheduler.runCurrent()
+        assertEquals(listOf<Snapshot>(Snapshot.Present(lightEntity(false))), seen)
+        // No second reconnect from the old socket's closing, and no backoff pending.
+        scheduler.advance(10_000)
+        assertEquals(2, factory.created.size)
+    }
+
+    @Test
+    fun `reconnecting to another address switches it and resets the backoff`() {
+        open()
+        transport.drop()
+        scheduler.runCurrent()
+        scheduler.advance(500)
+        transport.drop()
+        scheduler.runCurrent()
+        val other = ServerAddress("http://other.test:4000")
+        client.reconnect(other)
+        assertEquals(other, client.server)
+        assertEquals("other.test", transport.target!!.first.host)
+        val count = factory.created.size
+        transport.drop()
+        scheduler.runCurrent()
+        scheduler.advance(500)
+        assertEquals("the first retry waits the first backoff again", count + 1, factory.created.size)
+    }
+
+    @Test
+    fun `reconnecting a client that was closed starts it again, and a query made meanwhile waits`() {
+        open()
+        client.close()
+        client.reconnect()
+        var got: Result<JSONObject>? = null
+        client.raw("ha", serviceCall) { got = it }
+        transport.open()
+        scheduler.runCurrent()
+        assertEquals(1, frames("raw").size)
+        assertNull(got)
+    }
+
+    @Test
+    fun `a new address forgets the old runtime's snapshots and statuses, the same address does not`() {
+        open()
+        val seen = ArrayList<Snapshot>()
+        client.watch(light) { seen += it }
+        transport.receive(lightFrame(true))
+        transport.receive("""{"type":"status","integration":"ha","status":"connected"}""")
+        scheduler.runCurrent()
+        client.reconnect(ServerAddress("http://runtime.test:3000"))
+        scheduler.runCurrent()
+        assertEquals(Snapshot.Present(lightEntity(true)), seen.last())
+        assertEquals(1, client.integrations.value.size)
+
+        client.reconnect(ServerAddress("http://other.test:1"))
+        scheduler.runCurrent()
+        assertEquals(Snapshot.Loading, seen.last())
+        assertTrue(client.integrations.value.isEmpty())
+        var late: Snapshot? = null
+        client.watch(light) { late = it }
+        scheduler.runCurrent()
+        assertEquals(Snapshot.Loading, late)
+    }
+
+    @Test
+    fun `a late message or close from the old transport after a reconnect does nothing`() {
+        open()
+        val old = transport
+        client.watch(light) {}
+        client.reconnect()
+        val fresh = transport
+        fresh.open()
+        scheduler.runCurrent()
+        val seen = ArrayList<Snapshot>()
+        client.watch(light) { seen += it }
+        scheduler.runCurrent()
+        seen.clear()
+        old.receive(lightFrame(true))
+        old.drop("late")
+        scheduler.runCurrent()
+        assertTrue(seen.isEmpty())
+        assertEquals(LinkStatus.Open, client.link.value)
+        assertEquals(2, factory.created.size)
+        scheduler.advance(10_000)
+        assertEquals(2, factory.created.size)
+    }
+
+    @Test
+    fun `after a reconnect the pong-gated dead rule still holds`() {
+        open()
+        client.reconnect()
+        transport.open()
+        scheduler.runCurrent()
+        // No pong was ever seen on the new socket: silence is not death.
+        scheduler.advance(ProtocolRules.DEAD_AFTER_MS + ProtocolRules.PING_MS * 2)
+        assertEquals(LinkStatus.Open, client.link.value)
+        // Once it answers, silence is.
+        transport.receive("""{"type":"pong"}""")
+        scheduler.runCurrent()
+        val before = factory.created.size
+        scheduler.advance(ProtocolRules.DEAD_AFTER_MS + ProtocolRules.PING_MS * 2)
+        assertTrue("the quiet socket is given up and a new one opened", transport.closedByClient || factory.created.size > before)
+        assertTrue(factory.created[before - 1].closedByClient)
+    }
+
+    @Test
+    fun `a raw request and a query share one id sequence`() {
+        open()
+        client.query(EntityRef("ma:p"), Query.Browse()) {}
+        client.raw("ha", serviceCall)
+        client.query(EntityRef("ma:p"), Query.Browse()) {}
+        val ids = transport.sent.map { JSONObject(it) }.filter { it.getString("type") != "ping" }.map { it.getInt("id") }
+        assertEquals(listOf(ids[0], ids[0] + 1, ids[0] + 2), ids)
+    }
 }

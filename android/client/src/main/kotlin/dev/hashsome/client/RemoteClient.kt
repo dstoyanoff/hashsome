@@ -17,10 +17,14 @@ import org.json.JSONObject
  * Everything below runs on the scheduler's thread. The transport's thread only decodes a frame and posts it.
  */
 class RemoteClient(
-    val server: ServerAddress,
+    server: ServerAddress,
     private val transport: Transport.Factory = WsClient.Factory,
     private val scheduler: Scheduler,
 ) : Client {
+    /** Where the runtime is; [reconnect] can change it. Read it on the scheduler's thread. */
+    var server: ServerAddress = server
+        private set
+
     /** Where problems worth a line go (an entity body that could not be read): `Log.e`, the one level the Shelly X1 shows. May be called from the transport's thread. */
     @Volatile var log: ((String) -> Unit)? = { android.util.Log.e("hashsome", it) }
 
@@ -55,7 +59,7 @@ class RemoteClient(
     private var isOpen = false
     private var stopped = true
     private var retry = 0
-    private var reconnect: Cancel = {}
+    private var retryTimer: Cancel = {}
     private var beat: Cancel = {}
     private var heard = 0L
     private var answers = false
@@ -75,8 +79,8 @@ class RemoteClient(
 
     override fun close() {
         stopped = true
-        reconnect()
-        reconnect = {}
+        retryTimer()
+        retryTimer = {}
         val t = current
         if (t != null) lost(t) else link.set(LinkStatus.Closed)
         giveUpWaiting("Connection closed")
@@ -123,10 +127,23 @@ class RemoteClient(
         )
     }
 
-    override fun <T> query(ref: EntityRef, query: Query<T>, done: (Result<T>) -> Unit): Cancel {
-        val answer = { data: JSONObject? -> done(runCatching { query.parse(data) }) }
-        val fail = { error: String -> done(Result.failure(IllegalStateException(error))) }
-        val send = { request({ id -> ClientMessage.Query(id, ref, query.name, query.args()) }, answer, fail) }
+    override fun <T> query(ref: EntityRef, query: Query<T>, done: (Result<T>) -> Unit): Cancel =
+        whenOpen(
+            build = { id -> ClientMessage.Query(id, ref, query.name, query.args()) },
+            answer = { data -> done(runCatching { query.parse(data) }) },
+            fail = { error -> done(Result.failure(IllegalStateException(error))) },
+        )
+
+    override fun raw(integration: String, request: JSONObject, done: ((Result<JSONObject>) -> Unit)?): Cancel =
+        whenOpen(
+            build = { id -> ClientMessage.Raw(id, integration, request) },
+            answer = { data -> done?.invoke(Result.success(data ?: JSONObject())) },
+            fail = { error -> done?.invoke(Result.failure(IllegalStateException(error))) },
+        )
+
+    /** Sends a request now when the link is open, else when it opens, giving up with "Not connected to runtime" after [QUERY_WAIT_MS] (at once when the client is closed). */
+    private fun whenOpen(build: (Int) -> ClientMessage, answer: (JSONObject?) -> Unit, fail: (String) -> Unit): Cancel {
+        val send = { request(build, answer, fail) }
         if (isOpen) return send()
         if (stopped) {
             val request = Pending({}, {})
@@ -152,6 +169,32 @@ class RemoteClient(
             waiter.timer()
             cancelRequest()
         }
+    }
+
+    /**
+     * Closes the current socket and opens a new one at once, to [server] when it is given, with the backoff reset. Watchers, subscriptions
+     * and stores stay: the subscriptions are sent again when the new socket opens. Requests in flight fail with "Connection lost"; queries
+     * not yet sent wait for the new socket. The link goes `Connecting` (not `Closed`). A client that was closed starts again.
+     * When the address changes, the known snapshots and integration statuses of the old runtime are forgotten (watchers see `Loading`).
+     * Like every method here, call it on the scheduler's thread.
+     */
+    override fun reconnect(server: ServerAddress?) {
+        if (server != null && server != this.server) {
+            // Nothing the old runtime said holds for the new one: watchers see Loading until it answers.
+            this.server = server
+            known.clear()
+            status.clear()
+            integrations.set(emptyMap())
+            for (list in watchers.values) for (watcher in list.toList()) watcher.emit(Snapshot.Loading)
+        } else if (server != null) {
+            this.server = server
+        }
+        retryTimer()
+        retryTimer = {}
+        retry = 0
+        stopped = false
+        val t = current
+        if (t != null) lost(t, restart = true) else open()
     }
 
     // --- The link ----------------------------------------------------------------------------------------------
@@ -210,7 +253,7 @@ class RemoteClient(
     }
 
     /** The connection is gone, closed or found dead: its requests fail and it is opened again after a pause. */
-    private fun lost(t: Transport) {
+    private fun lost(t: Transport, restart: Boolean = false) {
         if (current !== t) return
         current = null
         isOpen = false
@@ -226,10 +269,11 @@ class RemoteClient(
         scheduler.post {
             for (request in failed) if (!request.cancelled) request.onError("Connection lost")
         }
+        if (restart) return open()
         link.set(LinkStatus.Closed)
         if (stopped) return
         val wait = ProtocolRules.BACKOFF_MS[minOf(retry++, ProtocolRules.BACKOFF_MS.size - 1)]
-        reconnect = scheduler.after(wait) { if (!stopped && current == null) open() }
+        retryTimer = scheduler.after(wait) { if (!stopped && current == null) open() }
     }
 
     private fun giveUpWaiting(error: String) {

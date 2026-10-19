@@ -15,6 +15,7 @@ import dev.hashsome.client.MediaPlayerEntity
 import dev.hashsome.client.Outcome
 import dev.hashsome.client.PlaybackState
 import dev.hashsome.client.Query
+import dev.hashsome.client.ServerAddress
 import dev.hashsome.client.Snapshot
 import dev.hashsome.client.Store
 import dev.hashsome.client.SwitchEntity
@@ -41,6 +42,8 @@ import java.util.TimeZone
  *   ref; [query] parses it with the query's own `parse` and delivers `Result.success`, or `Result.failure` when none was
  *   registered or [failQuery] was set. [answerValue] and [answerWith] register an already parsed result instead, for a
  *   test that has no JSON to hand. Each ask is recorded in [queries] and answered after [queryDelayMs].
+ * - Raw requests: [raw] records each in [raws] and answers with [onRaw] (default an empty object).
+ * - [reconnect] sets the link to `Connecting` then `Open` and is recorded in [reconnects].
  * - [link] and [integrations] are plain settable stores, [connect] sets the link to `Open` and [close] to `Closed`.
  */
 class FakeClient(val scheduler: TestScheduler) : Client {
@@ -118,6 +121,31 @@ class FakeClient(val scheduler: TestScheduler) : Client {
     fun failQuery(error: String?) {
         queryError = error
     }
+
+    /** Called for each [raw] request with the integration and the request; its result is delivered. Starts as an empty object. */
+    var onRaw: ((String, JSONObject) -> Result<JSONObject>)? = { _, _ -> Result.success(JSONObject()) }
+
+    /** Every raw request sent: the integration and the request, oldest first. */
+    val raws: MutableList<Pair<String, JSONObject>> = ArrayList()
+
+    override fun raw(integration: String, request: JSONObject, done: ((Result<JSONObject>) -> Unit)?): Cancel {
+        raws += integration to request
+        var live = true
+        scheduler.post {
+            if (live) done?.invoke(onRaw?.invoke(integration, request) ?: Result.success(JSONObject()))
+        }
+        return { live = false }
+    }
+
+    /** A drop and an immediate reopen: the link goes `Connecting`, then `Open` (a new address is ignored); watchers and entities are kept. */
+    override fun reconnect(server: ServerAddress?) {
+        reconnects += server
+        link.set(LinkStatus.Connecting)
+        link.set(LinkStatus.Open)
+    }
+
+    /** Every [reconnect] made, with the address it was given (null for none). */
+    val reconnects: MutableList<ServerAddress?> = ArrayList()
 
     override fun connect() {
         link.set(LinkStatus.Open)

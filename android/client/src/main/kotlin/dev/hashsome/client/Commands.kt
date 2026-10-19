@@ -94,3 +94,17 @@ object MediaPlayerCommands {
     fun leaveGroup() = command("leaveGroup")
     fun takeOverGroup() = command("takeOverGroup")
 }
+
+/** Requests for [Client.raw] to the Home Assistant integration (id `ha`), as its `callRaw` reads them. */
+object HaRequests {
+    /**
+     * Calls the Home Assistant service [domain].[service]. [entityIds] are Home Assistant's own ids (`sensor.x`), not
+     * refs (`ha:sensor.x`); they become `target.entity_id` and are left out when empty. [data] is the service data, left out when null.
+     */
+    fun callService(domain: String, service: String, entityIds: List<String> = emptyList(), data: JSONObject? = null): JSONObject {
+        val json = JSONObject().put("domain", domain).put("service", service)
+        if (entityIds.isNotEmpty()) json.put("entityIds", JSONArray(entityIds))
+        if (data != null) json.put("data", data)
+        return json
+    }
+}
