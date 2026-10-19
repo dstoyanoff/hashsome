@@ -14,7 +14,7 @@
   "TaskTile": "native",
   "ConfirmDialog": "native",
   "EnergyChart": "planned",
-  "HistorySection": "planned",
+  "HistorySection": "native:HistorySectionView",
   "Icon": "web-only",
   "LightTile": "native",
   "ClimateTile": "native:ClimateTileView",
@@ -37,7 +37,7 @@
   "PresenceStack": "planned",
   "DateChip": "native",
   "Clock": "native",
-  "WeatherForecast": "planned",
+  "WeatherForecast": "native:WeatherForecastBody",
   "useThemeToggle": "planned",
   "HashsomeProvider": "planned",
   "useClient": "planned",
@@ -54,5 +54,8 @@
   "ToggleView": "native-only: a form control of the settings sheet (the web's debug menu uses its ChipRow instead)",
   "FormSelect": "native-only: a form control of the settings sheet (the web's debug menu uses its ChipRow instead)",
   "FormSlider": "native-only: a form control of the settings sheet (the web's debug menu uses its ChipRow instead)",
-  "FormField": "native-only: a form control of the settings sheet (the web's debug menu uses its ChipRow instead)"
+  "FormField": "native-only: a form control of the settings sheet (the web's debug menu uses its ChipRow instead)",
+  "DrawerHost": "native-only: the web's single EntityDrawer is internal to @hashsome/ui; this is its host (a drawer, or a sheet on a small screen) that a readout, a chip or a held tile opens",
+  "SeriesChartView": "native-only: the web's SeriesChart, SeriesSample and RangeSwitcher are internal to @hashsome/ui; this is the series chart with its range switcher",
+  "SensorDrawerBody": "native-only: the web's sensor drawer (SensorDetailBody and SensorHistory) is internal to SensorReadout; this is its body"
 }

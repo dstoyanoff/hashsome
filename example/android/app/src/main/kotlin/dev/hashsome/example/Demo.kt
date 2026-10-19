@@ -11,11 +11,15 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import dev.hashsome.client.EntityKind
+import dev.hashsome.client.EntityRef
 import dev.hashsome.client.Store
 import dev.hashsome.client.WeatherCondition
 import dev.hashsome.headless.EntityHandle
 import dev.hashsome.headless.HandleState
 import dev.hashsome.headless.LightControl
+import dev.hashsome.headless.LogbookControl
+import dev.hashsome.headless.SensorReading
 import dev.hashsome.ui.Align
 import dev.hashsome.ui.Attention
 import dev.hashsome.ui.BarView
@@ -23,6 +27,7 @@ import dev.hashsome.ui.ChipsView
 import dev.hashsome.ui.ClockFormat
 import dev.hashsome.ui.ColumnLayout
 import dev.hashsome.ui.Dashboard
+import dev.hashsome.ui.DrawerHost
 import dev.hashsome.ui.FlexParams
 import dev.hashsome.ui.FormHeading
 import dev.hashsome.ui.FormRow
@@ -30,6 +35,7 @@ import dev.hashsome.ui.FormSelect
 import dev.hashsome.ui.FormSlider
 import dev.hashsome.ui.ToggleView
 import dev.hashsome.ui.Hashsome
+import dev.hashsome.ui.HistorySectionView
 import dev.hashsome.ui.Justify
 import dev.hashsome.ui.LightTileView
 import dev.hashsome.ui.MarqueeText
@@ -39,6 +45,10 @@ import dev.hashsome.ui.RingView
 import dev.hashsome.ui.Role
 import dev.hashsome.ui.RoundButton
 import dev.hashsome.ui.RowSpan
+import dev.hashsome.ui.SensorDrawerBody
+import dev.hashsome.ui.SeriesChartView
+import dev.hashsome.ui.SeriesRange
+import dev.hashsome.ui.SeriesSample
 import dev.hashsome.ui.ShellScope
 import dev.hashsome.ui.Skeleton
 import dev.hashsome.ui.TaskInfo
@@ -59,6 +69,7 @@ object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
         page("tasks", "Tasks", Ui.wrench) { tasks() },
         page("music", "Music", Ui.music) { music() },
         page("more", "Weather", Ui.cloudSun) { weather() },
+        page("drawers", "Drawers", Ui.gauge) { drawers() },
     )
 
     /** A dot on the Tasks item that comes and goes, to see the rail follow a store. */
@@ -199,6 +210,52 @@ object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
             add(FormRow(context, "Brightness").control(FormSlider(context).also { it.value = 60 }, 200), 52)
             add(PlayerCard(context), 150)
             spacer(grow = true)
+        }
+    }
+
+    /**
+     * The entity drawers: tap a reading for a sensor's drawer (its value and safe range, battery, history), the weather chip for the forecast;
+     * below them the History section, a series chart in both layouts, and a drawer opened expandable.
+     */
+    private fun PageScope.drawers() {
+        column(gap = 3) {
+            header(left = { add(text("Drawers", Role.Title)) }, weather = "ha:weather.home")
+            add(text("Tap a reading or the weather chip", Role.Secondary, muted = true))
+            roomHeader("Sensors", Ui.thermometer) {
+                sensorReadout("ha:sensor.living_room_temperature", battery = "ha:sensor.living_room_temperature_battery")
+                sensorReadout("ha:sensor.living_room_humidity", battery = "ha:sensor.living_room_temperature_battery")
+                sensorReadout("ha:sensor.living_room_lamp_power", icon = Ui.gauge)
+                // No drawer: inline text, as a presence chip is.
+                sensorReadout("ha:sensor.temperature", drawer = false)
+            }
+            roomHeader("Weather", Ui.cloudSun) {
+                weatherChip("ha:weather.home")
+                weatherChip("ha:weather.home", drawer = false)
+            }
+            add(text("History section (folded until asked)", Role.Secondary, muted = true))
+            add(HistorySectionView(context, LogbookControl(EntityRef("ha:light.living_room_lamp"), scope), scope))
+            add(text("Series chart: sparkline, then with axes", Role.Secondary, muted = true))
+            add(SeriesChartView(context).also { it.samples = wave(); it.unit = "°C" })
+            add(SeriesChartView(context).also { it.samples = wave(); it.unit = "°C"; it.expanded = true; it.fitDomain = true; it.range = SeriesRange.Day })
+            row(gap = 3) {
+                add(text("A drawer opened expandable", Role.Body))
+                spacer(grow = true)
+                add(RoundButton(context, Ui.maximize2).also { b ->
+                    b.onClick = {
+                        val reading = SensorReading(handle("ha:sensor.living_room_temperature", EntityKind.Sensor), null, null)
+                        DrawerHost.open(context, scope, "Living room", "Temperature", Ui.thermometer, expandable = true) { ctx -> SensorDrawerBody(context, ctx, reading) }
+                    }
+                })
+            }
+        }
+    }
+
+    /** A day of readings every 15 minutes, a sine around 20 degrees. */
+    private fun wave(): List<SeriesSample> {
+        val now = System.currentTimeMillis()
+        return List(96) { i ->
+            val at = now - (95 - i) * 15 * 60_000L
+            SeriesSample(at, 20.0 + 3.0 * Math.sin(i / 96.0 * 2 * Math.PI) + 0.4 * Math.sin(i * 1.3))
         }
     }
 

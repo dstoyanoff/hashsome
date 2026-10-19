@@ -25,8 +25,34 @@ import dev.hashsome.client.Store
 // The base views every component is made of. All are `open`: a consumer can subclass one, or write its own view against
 // a headless control. All colors, radii and sizes are read from `Hashsome.theme` at draw time.
 
-/** How long a press has to last to count as a hold (the web's `HOLD_MS`). */
-const val HOLD_MS = 500L
+/** How long a press has to last to count as a hold on a tile: 800 ms, longer than the web's 500 (a user decision: a tap that lingers is not a hold). */
+const val HOLD_MS = 800L
+
+/** What a release of a press on a tile means. */
+enum class TileRelease { Tap, Hold, Drag, Nothing }
+
+/**
+ * Classifies the end of a press on a tile by how long it lasted: a tap is instant, [tapMs] at most (the moment the hold line starts);
+ * from there to [thresholdMs] is an abandoned hold, which does nothing; at [thresholdMs] it is a hold, which does nothing on release
+ * (the hold itself fired then, when the tile has one); a drag stays a drag. A press that wandered off its spot is nothing.
+ */
+object TileTouch {
+    /** How long a press has lasted before a tile shows that it is being timed as a hold: a tap never shows it (the status dot has its own, `TAP_MAX_MS`). */
+    const val SHOW_AFTER_MS = 250L
+
+    /** The fill of the hold line, 0..1, after [elapsedMs] of a press: nothing until [showAfterMs], then full at [holdMs]. */
+    fun progress(elapsedMs: Long, showAfterMs: Long = SHOW_AFTER_MS, holdMs: Long = HOLD_MS): Float =
+        if (elapsedMs <= showAfterMs || holdMs <= showAfterMs) 0f else ((elapsedMs - showAfterMs).toFloat() / (holdMs - showAfterMs)).coerceIn(0f, 1f)
+
+    fun release(elapsedMs: Long, dragged: Boolean, hasHold: Boolean, thresholdMs: Long = HOLD_MS, moved: Boolean = false, tapMs: Long = SHOW_AFTER_MS): TileRelease = when {
+        dragged -> TileRelease.Drag
+        elapsedMs >= thresholdMs -> if (hasHold) TileRelease.Hold else TileRelease.Nothing
+        // Between a tap and a hold: the hold line is on its way and the press is given up, which does nothing.
+        elapsedMs > tapMs -> TileRelease.Nothing
+        moved -> TileRelease.Nothing
+        else -> TileRelease.Tap
+    }
+}
 
 /** A finger that moves further than this many dp is dragging, not tapping. */
 private const val DRAG_THRESHOLD = 8f
@@ -125,6 +151,13 @@ open class TileView(context: Context) : ViewGroup(context) {
 
     var onClick: (() -> Unit)? = null
     var onHold: (() -> Unit)? = null
+
+    /**
+     * Called when the hold line starts (the press has outlasted a tap, [TileTouch.SHOW_AFTER_MS]): the moment to build what [onHold] will
+     * show, so that it appears as the hold completes. [onHoldCancel] follows if the press is given up before the hold fires.
+     */
+    var onHoldWarm: (() -> Unit)? = null
+    var onHoldCancel: (() -> Unit)? = null
     var onDrag: ((Float) -> Unit)? = null
     var onCommit: ((Float) -> Unit)? = null
 
@@ -155,12 +188,15 @@ open class TileView(context: Context) : ViewGroup(context) {
     private var downY = 0f
     private var dragWidth = 1f
     private var held = false
-    private var hold: ValueAnimator? = null
-    private var holdProgress = 0f
+    // The hold is timed against the clock at each frame, not by an animator: the line is full exactly when the hold fires.
+    private var pressAt = 0L
+    private var timing = false
+    private var warmed = false
     private val holdFire = Runnable {
         held = true
-        this.hold?.cancel()
-        holdProgress = 0f
+        timing = false
+        // What was made ready for the hold is used by it, not given up.
+        warmed = false
         invalidate()
         onHold?.invoke()
     }
@@ -303,35 +339,39 @@ open class TileView(context: Context) : ViewGroup(context) {
         if (shownSecondary.isNotEmpty()) canvas.drawTextCentered(shownSecondary, right - secondaryWidth, cy, secondaryPaint)
         canvas.drawTextCentered(shownTitle, left, cy, titlePaint)
 
+        val holdProgress = if (timing) TileTouch.progress(android.os.SystemClock.uptimeMillis() - pressAt) else 0f
         if (holdProgress > 0f) {
-            paint.color = if (filled && fill == null) 0x59000000 else 0x8CFFFFFF.toInt()
+            // The accent, or on a tile that is solid accent all over, what is on an accent.
+            paint.color = if (filled && fill == null) theme.palette.onAccent else theme.palette.accent
             canvas.drawRect(0f, h - dp(2f), w * holdProgress, h, paint)
         }
+        if (timing && holdProgress < 1f) postInvalidateOnAnimation()
         canvas.restore()
     }
 
-    private fun startHold() {
-        hold?.cancel()
-        if (!Animation.animates) return
-        hold = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = HOLD_MS
-            interpolator = LinearInterpolator()
-            addUpdateListener {
-                holdProgress = it.animatedValue as Float
-                invalidate()
-            }
-            start()
-        }
+    // A tap never shows the line: it appears only once the press has lasted as long as a tap can.
+    private val showHold = Runnable {
+        warmed = true
+        onHoldWarm?.invoke()
+        invalidate()
+    }
+
+    private fun startHold(downTime: Long) {
+        removeCallbacks(showHold)
+        pressAt = downTime
+        timing = Animation.animates
+        postDelayed(showHold, TileTouch.SHOW_AFTER_MS)
     }
 
     private fun stopHold() {
         removeCallbacks(holdFire)
-        hold?.cancel()
-        hold = null
-        if (holdProgress != 0f) {
-            holdProgress = 0f
-            invalidate()
+        removeCallbacks(showHold)
+        timing = false
+        if (warmed) {
+            warmed = false
+            onHoldCancel?.invoke()
         }
+        invalidate()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -347,7 +387,7 @@ open class TileView(context: Context) : ViewGroup(context) {
                 dragWidth = maxOf(1, width).toFloat()
                 if (onHold != null) {
                     postDelayed(holdFire, HOLD_MS)
-                    startHold()
+                    startHold(event.downTime)
                 }
                 return true
             }
@@ -375,10 +415,13 @@ open class TileView(context: Context) : ViewGroup(context) {
                     dragging = false
                     onCommit?.invoke((event.x / dragWidth).coerceIn(0f, 1f))
                     sync(animate = true)
-                } else if (held) {
+                } else {
+                    // Only a tap toggles: a press that lasted as long as a hold does nothing when it ends, with a hold set or not.
+                    val moved = Math.abs(event.x - downX) >= dp(12f) || Math.abs(event.y - downY) >= dp(12f)
+                    val threshold = if (onHold != null) HOLD_MS else android.view.ViewConfiguration.getLongPressTimeout().toLong()
+                    val release = if (held) TileRelease.Hold else TileTouch.release(event.eventTime - event.downTime, false, onHold != null, threshold, moved)
                     held = false
-                } else if (Math.abs(event.x - downX) < dp(12f) && Math.abs(event.y - downY) < dp(12f)) {
-                    onClick?.invoke()
+                    if (release == TileRelease.Tap) onClick?.invoke()
                 }
             }
 

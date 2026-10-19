@@ -75,3 +75,54 @@ class PurePiecesTest {
         )
     }
 }
+
+class OverlayTapTest {
+    @org.junit.Test
+    fun `a tap on a button, or a fingertip's width off it, counts`() {
+        org.junit.Assert.assertTrue(OverlayTap.counts(15f, 15f, 45f, 45f, 12f))
+        org.junit.Assert.assertTrue(OverlayTap.counts(-10f, 50f, 45f, 45f, 12f))
+        org.junit.Assert.assertFalse(OverlayTap.counts(-13f, 20f, 45f, 45f, 12f))
+        org.junit.Assert.assertFalse(OverlayTap.counts(20f, 58f, 45f, 45f, 12f))
+    }
+}
+
+class TouchDebugTest {
+    @org.junit.Test
+    fun `a gesture is called by what took it`() {
+        org.junit.Assert.assertEquals("tap", TouchDebug.classify(2f, tapped = true, pulled = false, downOnScroll = false))
+        org.junit.Assert.assertEquals("pull", TouchDebug.classify(80f, tapped = false, pulled = true, downOnScroll = false))
+        org.junit.Assert.assertEquals("scroll", TouchDebug.classify(30f, tapped = false, pulled = false, downOnScroll = true))
+        org.junit.Assert.assertEquals("ignored", TouchDebug.classify(3f, tapped = false, pulled = false, downOnScroll = true))
+        org.junit.Assert.assertEquals("ignored", TouchDebug.classify(40f, tapped = false, pulled = false, downOnScroll = false))
+    }
+
+    @org.junit.Test
+    fun `a number is written to a tenth`() {
+        org.junit.Assert.assertEquals("12.3", TouchDebug.fmt(12.34f))
+    }
+}
+
+class HitZoneTest {
+    @org.junit.Test
+    fun `a button's touch zone is a 48 dp square on its centre`() {
+        // A 30 dp button centred at (100, 100), in dp.
+        org.junit.Assert.assertTrue(HitZone.contains(100f, 100f, 48f, 123f, 77f))
+        // 6.7 dp to the right of a 30 dp square is inside the 9 dp the zone adds on each side.
+        org.junit.Assert.assertTrue(HitZone.contains(100f, 100f, 48f, 100f + 15f + 6.7f, 100f))
+        org.junit.Assert.assertFalse(HitZone.contains(100f, 100f, 48f, 125f, 100f))
+        org.junit.Assert.assertFalse(HitZone.contains(100f, 100f, 48f, 100f, 75f))
+    }
+
+    @org.junit.Test
+    fun `the zone and the tap slop agree on how far past the 30 dp square a press may be`() {
+        org.junit.Assert.assertEquals((HitZone.SIZE_DP - 30f) / 2, OverlayTap.SLOP_DP, 0f)
+    }
+
+    @org.junit.Test
+    fun `a pull starts only after the slop, up or down`() {
+        org.junit.Assert.assertFalse(PullStart.starts(0f, 24f))
+        org.junit.Assert.assertFalse(PullStart.starts(24f, 24f))
+        org.junit.Assert.assertTrue(PullStart.starts(25f, 24f))
+        org.junit.Assert.assertTrue(PullStart.starts(-30f, 24f))
+    }
+}

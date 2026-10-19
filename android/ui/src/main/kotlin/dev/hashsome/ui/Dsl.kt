@@ -7,6 +7,7 @@ import dev.hashsome.client.Entity
 import dev.hashsome.client.EntityKind
 import dev.hashsome.client.EntityRef
 import dev.hashsome.client.Store
+import dev.hashsome.client.WeatherCondition
 import dev.hashsome.headless.ClimateControl
 import dev.hashsome.headless.ConnectionHealth
 import dev.hashsome.headless.EntityHandle
@@ -201,9 +202,26 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         put(DateChip(context))
     }
 
-    /** The weather now: [ref] is a weather entity (`ha:weather.forecast_home`), or a plain temperature sensor, which gets a fixed sun. */
-    fun weatherChip(ref: String) {
-        put(WeatherChip(context, WeatherControl(handle(ref, EntityKind.Weather), scope), handle(ref, EntityKind.Sensor)))
+    /**
+     * The weather now: [ref] is a weather entity (`ha:weather.forecast_home`), or a plain temperature sensor, which gets a fixed sun. With
+     * [drawer] (the web's default) a tap on a weather entity whose source has a forecast opens the forecast in a drawer; `false` keeps the chip
+     * as only what it shows.
+     */
+    fun weatherChip(ref: String, drawer: Boolean = true) {
+        val control = WeatherControl(handle(ref, EntityKind.Weather), scope)
+        val chip = put(WeatherChip(context, control, handle(ref, EntityKind.Sensor)))
+        if (drawer) {
+            chip.onOpen = {
+                val weather = control.handle.entity
+                DrawerHost.open(
+                    context,
+                    scope,
+                    title = weather?.name ?: "Weather",
+                    kind = "Weather",
+                    icon = UiIcons.weather(weather?.condition ?: WeatherCondition.Unknown),
+                ) { ctx -> WeatherForecastBody(context, ctx, EntityRef(ref)) }
+            }
+        }
     }
 
     /** The time of day. [format] writes the hours as 24 or 12 (the web's `format="24h"`), or as the device's own setting ([ClockFormat.Auto]). */
@@ -220,15 +238,16 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
      * dot at the right, in one row of the top row's height. [marginBottom] is the space below it in dp, like `column`'s (negative takes
      * some back: the web's `mb={-3}` is 3 units = 12 dp, so `marginBottom = -12`; a board puts twice a page gap between its rows, and
      * that leaves the header as far from what is under it as from the top of the page). [clockFormat] is how the clock writes the hours.
+     * [weatherDrawer] is `weatherChip`'s `drawer`: whether the weather chip opens the forecast.
      */
-    fun header(left: (PageScope.() -> Unit)? = null, weather: String? = null, marginBottom: Int = 0, clockFormat: ClockFormat = ClockFormat.Auto) {
+    fun header(left: (PageScope.() -> Unit)? = null, weather: String? = null, marginBottom: Int = 0, clockFormat: ClockFormat = ClockFormat.Auto, weatherDrawer: Boolean = true) {
         val params = flex(minHeight = TOP_ROW)
         params.bottomMargin = dp(marginBottom)
         nest(RowLayout(context).also { it.gap = 3; it.align = Align.Center }, params) {
             left?.invoke(this)
             spacer(grow = true)
             dateChip()
-            if (weather != null) weatherChip(weather)
+            if (weather != null) weatherChip(weather, weatherDrawer)
             clock(clockFormat)
             systemStatus()
         }
@@ -271,11 +290,33 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
 
     /**
      * A reading of the sensor [ref], with the battery of [battery] when given; a value outside [safeRange] is flagged (humidity is held to
-     * 30..60 when none is given). [icon] is by what the sensor measures when null.
+     * 30..60 when none is given). [icon] is by what the sensor measures when null. With [drawer] (the web's default) a tap on a reading
+     * that is a number opens the sensor's drawer, named [name] (the sensor's own name when null): the reading now and whether it is in its
+     * safe range, the battery, and the history chart with the min and max of today, this week and this month; `false` keeps it inline text,
+     * e.g. for a presence chip.
      */
-    fun sensorReadout(ref: String, battery: String? = null, safeRange: ClosedFloatingPointRange<Double>? = null, icon: Icon? = null) {
+    fun sensorReadout(
+        ref: String,
+        battery: String? = null,
+        safeRange: ClosedFloatingPointRange<Double>? = null,
+        icon: Icon? = null,
+        name: String? = null,
+        drawer: Boolean = true,
+    ) {
         val reading = SensorReading(handle(ref, EntityKind.Sensor), battery?.let { handle(it, EntityKind.Sensor) }, safeRange)
-        put(SensorReadoutView(context, reading, icon))
+        val view = put(SensorReadoutView(context, reading, icon))
+        if (drawer) {
+            view.onOpen = {
+                val sensor = reading.handle.entity
+                DrawerHost.open(
+                    context,
+                    scope,
+                    title = name ?: sensor?.name ?: ref.substringAfter(':'),
+                    kind = SensorDrawerText.kind(sensor),
+                    icon = view.shownIcon,
+                ) { ctx -> SensorDrawerBody(context, ctx, reading) }
+            }
+        }
     }
 
     /** A light: tap to toggle, drag along the tile to dim. [icon] is a bulb, lit while on, when null. */

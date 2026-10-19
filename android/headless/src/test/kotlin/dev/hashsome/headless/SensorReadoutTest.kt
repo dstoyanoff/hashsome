@@ -134,6 +134,17 @@ class SensorReadoutTest {
     }
 
     @Test
+    fun `the drawer's verdict says whether the reading is within its range`() {
+        val control = reading(humidity("22"))
+        assertEquals(Verdict("Too low · safe range 30–60 %", true), control.verdict.value)
+        rig.client.set(ref("s"), humidity("45"))
+        rig.settle()
+        assertEquals(Verdict("Within the safe range (30–60 %)", false), control.verdict.value)
+        // No range, no verdict.
+        assertNull(reading(sensor(value = "5", unit = "W")).verdict.value)
+    }
+
+    @Test
     fun `a range with one end open says at least or at most`() {
         assertEquals("t is too low (safe range at least 10 W)", reading(sensor(value = "5", unit = "W"), range = 10.0..Double.POSITIVE_INFINITY).hint.value)
     }

@@ -21,6 +21,9 @@ class DebugSettings {
     /** Draws the module grid over the page. */
     val grid: Store<Boolean> = Store(false)
 
+    /** Logs the touches a drawer or sheet gets (tag `hashsome-touch`): `TouchDebug.enabled`. */
+    val touch: Store<Boolean> = Store(false)
+
     /** Reserved for frame-gap reports: nothing reads it yet, and the sheet does not show it. */
     val perf: Store<Boolean> = Store(false)
 }
@@ -123,6 +126,9 @@ object Settings : HostSettings {
         key("mqtt.base", mqtt.base, "hashsome", { it }, { it })
         flag("debug.grid", debug.grid, false)
         flag("debug.perf", debug.perf, false)
+        flag("debug.touch", debug.touch, false)
+        // The ui module only has the switch; the setting is what turns it.
+        debug.touch.listenNow { dev.hashsome.ui.TouchDebug.enabled = it }
         // Read after the profile override is in.
         flag("switcherEnabled", switcherEnabled, isGeneric())
         persisting = cancels

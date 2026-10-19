@@ -81,9 +81,24 @@ open class RoomHeaderView(context: Context, val title: String, val icon: Icon) :
 /**
  * A reading with its icon: "21.4 °C". A reading outside its safe range is red with a warning triangle; one that is not
  * there (loading, unavailable, not found) says so, dimmed. A battery that is low is flagged with its glyph (the web shows the battery only in the
- * sensor's panel).
+ * sensor's panel). With [onOpen] set, tapping a readout that has a numeric value calls it (the DSL's `sensorReadout` opens the sensor's drawer).
  */
 open class SensorReadoutView(context: Context, val reading: SensorReading, icon: Icon? = null) : BoundView(context) {
+    /** Called by a tap on a readout that has a number to show; the readout is not tappable while this is null. */
+    var onOpen: (() -> Unit)? = null
+        set(value) {
+            field = value
+            updateTappable()
+        }
+
+    /** The glyph in front now: [icon], or by what the sensor measures. */
+    val shownIcon: Icon
+        get() = icon ?: when (reading.handle.entity?.measurement) {
+            "temperature" -> Ui.thermometer
+            "humidity" -> Ui.droplet
+            else -> Ui.gauge
+        }
+
     /** The glyph in front; by what the sensor measures (a thermometer, a droplet, a gauge) when null. */
     var icon: Icon? = icon
         set(value) {
@@ -112,6 +127,7 @@ open class SensorReadoutView(context: Context, val reading: SensorReading, icon:
     private val battery = GlyphView(context, Ui.batteryLow, 16)
 
     init {
+        setOnClickListener { onOpen?.invoke() }
         row.gap = 1
         row.align = Align.Center
         row.addView(glyph, FlexParams(WRAP, WRAP))
@@ -133,11 +149,7 @@ open class SensorReadoutView(context: Context, val reading: SensorReading, icon:
         val ready = reading.handle.state.value is HandleState.Ready
         val flagged = ready && !r.inSafeRange
         val tone = if (flagged) p.danger else if (muted) p.textMuted else p.text
-        glyph.icon = icon ?: when (reading.handle.entity?.measurement) {
-            "temperature" -> Ui.thermometer
-            "humidity" -> Ui.droplet
-            else -> Ui.gauge
-        }
+        glyph.icon = shownIcon
         glyph.color = tone
         value.color = tone
         value.text = r.formatted
@@ -146,6 +158,12 @@ open class SensorReadoutView(context: Context, val reading: SensorReading, icon:
         battery.color = p.danger
         battery.visibility = if (showBattery && r.battery?.low == true) VISIBLE else GONE
         alpha = if (ready) 1f else 0.6f
+        updateTappable()
+    }
+
+    // The web opens the drawer only for a ready numeric reading.
+    private fun updateTappable() {
+        isClickable = onOpen != null && reading.handle.state.value is HandleState.Ready && reading.reading.value.value != null
     }
 }
 

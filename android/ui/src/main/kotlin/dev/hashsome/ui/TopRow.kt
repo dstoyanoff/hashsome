@@ -42,7 +42,8 @@ open class DateChip(context: Context) : BoundView(context) {
 /**
  * The weather now: a glyph for the sky, a whole-degree reading and, once the forecast has said, today's high and low. A weather
  * entity gives all of it; with [sensor] given, a plain temperature sensor (an outdoor one) gets a fixed sun and no range when the
- * ref is no weather entity. The forecast panel the web opens on a tap is not drawn.
+ * ref is no weather entity. With [onOpen] set, a tap on a weather entity whose source has a forecast calls it (the DSL's `weatherChip` opens
+ * the forecast drawer).
  */
 open class WeatherChip(context: Context, val control: WeatherControl, val sensor: EntityHandle<SensorEntity>? = null) : BoundView(context) {
     private val pill = PillView(context)
@@ -51,7 +52,15 @@ open class WeatherChip(context: Context, val control: WeatherControl, val sensor
     private val range = labelText(context, "", Role.Secondary, theme.palette.textMuted)
     private var asked = false
 
+    /** Called by a tap on a chip whose weather source has a forecast; the chip is not tappable while this is null. */
+    var onOpen: (() -> Unit)? = null
+        set(value) {
+            field = value
+            updateTappable()
+        }
+
     init {
+        setOnClickListener { onOpen?.invoke() }
         val wrap = ViewGroup.LayoutParams.WRAP_CONTENT
         pill.addView(sky, FlexParams(wrap, wrap))
         pill.addView(reading, FlexParams(wrap, wrap))
@@ -78,6 +87,7 @@ open class WeatherChip(context: Context, val control: WeatherControl, val sensor
             sky.color = p.warm
             this.reading.text = if (plain.state.value is HandleState.Ready && reading != null) "${roundHalfUp(reading)}°" else StatusLabels.of(plain.state.value) ?: "–"
             setRange(null)
+            updateTappable()
             return
         }
 
@@ -99,6 +109,12 @@ open class WeatherChip(context: Context, val control: WeatherControl, val sensor
                 null
             },
         )
+        updateTappable()
+    }
+
+    private fun updateTappable() {
+        val w = control.handle.entity
+        isClickable = onOpen != null && control.handle.state.value is HandleState.Ready && w?.temperature != null && w.forecasts.isNotEmpty()
     }
 
     private fun setRange(text: String?) {

@@ -183,3 +183,45 @@ class TileLogicTest {
         assertEquals("Overdue by 2 days", TaskText.line(TaskInfo(TaskState.DueSoon, at("2026-03-08T00:00:00Z")), now, us, utc))
     }
 }
+
+class TileTouchTest {
+    @Test
+    fun `the hold line shows nothing for a tap, then fills to the hold`() {
+        assertEquals(0f, TileTouch.progress(0), 0f)
+        assertEquals(0f, TileTouch.progress(250), 0f)
+        assertEquals(0.5f, TileTouch.progress(525), 1e-6f)
+        assertEquals(1f, TileTouch.progress(800), 0f)
+        assertEquals(1f, TileTouch.progress(1200), 0f)
+    }
+
+    @Test
+    fun `a short press is a tap`() {
+        assertEquals(TileRelease.Tap, TileTouch.release(120, dragged = false, hasHold = true))
+        assertEquals(TileRelease.Tap, TileTouch.release(250, dragged = false, hasHold = false))
+    }
+
+    @Test
+    fun `a press between a tap and a hold is given up and does nothing`() {
+        assertEquals(TileRelease.Nothing, TileTouch.release(251, dragged = false, hasHold = true))
+        assertEquals(TileRelease.Nothing, TileTouch.release(700, dragged = false, hasHold = true))
+        assertEquals(TileRelease.Nothing, TileTouch.release(799, dragged = false, hasHold = false))
+    }
+
+    @Test
+    fun `a press as long as a hold is a hold, and does nothing without one`() {
+        assertEquals(TileRelease.Hold, TileTouch.release(800, dragged = false, hasHold = true))
+        assertEquals(TileRelease.Nothing, TileTouch.release(900, dragged = false, hasHold = false))
+        assertEquals(TileRelease.Nothing, TileTouch.release(400, dragged = false, hasHold = false, thresholdMs = 400))
+    }
+
+    @Test
+    fun `a drag stays a drag whatever its length`() {
+        assertEquals(TileRelease.Drag, TileTouch.release(2000, dragged = true, hasHold = true))
+        assertEquals(TileRelease.Drag, TileTouch.release(50, dragged = true, hasHold = false))
+    }
+
+    @Test
+    fun `a press that wandered off is nothing`() {
+        assertEquals(TileRelease.Nothing, TileTouch.release(100, dragged = false, hasHold = false, moved = true))
+    }
+}

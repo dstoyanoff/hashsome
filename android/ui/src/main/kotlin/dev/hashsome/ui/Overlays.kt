@@ -78,6 +78,19 @@ abstract class Overlay(context: Context) : BoundView(context) {
 
     var onDismissed: (() -> Unit)? = null
 
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (!TouchDebug.enabled) return super.dispatchTouchEvent(event)
+        val over = TouchDebug.viewAt(this, event.x, event.y)
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) TouchDebug.began(event, over)
+        TouchDebug.log {
+            "${MotionEvent.actionToString(event.actionMasked)} at (${TouchDebug.fmt(event.rawX / screenDensity)}, ${TouchDebug.fmt(event.rawY / screenDensity)}) dp, " +
+                "pointers ${event.pointerCount}, t ${event.eventTime}, over ${TouchDebug.name(over)}"
+        }
+        val handled = super.dispatchTouchEvent(event)
+        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) TouchDebug.ended(event, over)
+        return handled
+    }
+
     /** The name in the title row (nothing when empty). */
     var title: CharSequence = ""
 
@@ -91,6 +104,7 @@ abstract class Overlay(context: Context) : BoundView(context) {
     protected val scrim = object : View(context) {
         override fun hasOverlappingRendering(): Boolean = false
     }.apply {
+        tag = "scrim"
         setBackgroundColor(SCRIM)
         setOnClickListener { dismiss() }
     }
@@ -160,7 +174,10 @@ abstract class Overlay(context: Context) : BoundView(context) {
     }
 
     /** The close button every panel has. */
-    protected fun closeButton(): View = OverlayAction(context, UiIcons.close) { dismiss() }
+    protected fun closeButton(): View = OverlayAction(context, UiIcons.close) {
+        TouchDebug.tapped()
+        dismiss()
+    }.also { it.tag = "close X" }
 
     internal companion object {
         const val ACTION = 30
@@ -199,6 +216,8 @@ internal class OverlayAction(context: Context, private val icon: Icon, private v
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
     private var glyph = iconDrawable(icon)
+    private var pressX = 0f
+    private var pressY = 0f
 
     init {
         isClickable = true
@@ -228,9 +247,77 @@ internal class OverlayAction(context: Context, private val icon: Icon, private v
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_UP && contains(event.x, event.y)) onTap()
+        // A tap that lands a finger's width off the 30 dp square (a fingertip is wider than the button) still counts.
+        val inside = contains(event.x, event.y)
+        val counts = OverlayTap.counts(event.x, event.y, width.toFloat(), height.toFloat(), dp(OverlayTap.SLOP_DP))
+        if (TouchDebug.enabled) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    pressX = event.x
+                    pressY = event.y
+                    TouchDebug.log { "X: DOWN at (${TouchDebug.fmt(event.x / screenDensity)}, ${TouchDebug.fmt(event.y / screenDensity)}) dp in its ${TouchDebug.fmt(width / screenDensity)} dp square" }
+                }
+                MotionEvent.ACTION_MOVE -> TouchDebug.log { "X: MOVE ${TouchDebug.fmt(Math.hypot((event.x - pressX).toDouble(), (event.y - pressY).toDouble()).toFloat() / screenDensity)} dp from DOWN, inside $inside" }
+                MotionEvent.ACTION_UP -> TouchDebug.log { "X: UP inside the square: $inside, within the ${OverlayTap.SLOP_DP.toInt()} dp slop: $counts -> ${if (counts) "tap" else "outside"}" }
+                MotionEvent.ACTION_CANCEL -> TouchDebug.log { "X: CANCEL (the parent took the gesture)" }
+            }
+        }
+        if (event.actionMasked == MotionEvent.ACTION_UP && counts) onTap()
         return true
     }
+}
+
+/** What the sheet's pull-to-dismiss does with a press: it starts only after [SLOP_DP] (or the platform's touch slop) of downward or upward movement. */
+internal object PullStart {
+    const val SLOP_DP = 8f
+
+    fun starts(dyPx: Float, slopPx: Float): Boolean = Math.abs(dyPx) > slopPx
+}
+
+/** The touch target of a small button: a [sizeDp] square centred on it (48 dp, the platform's minimum), however small the glyph is drawn. */
+internal object HitZone {
+    const val SIZE_DP = 48f
+
+    /** Whether (x, y) is in the square of side [size] centred on ([cx], [cy]). */
+    fun contains(cx: Float, cy: Float, size: Float, x: Float, y: Float): Boolean = Math.abs(x - cx) <= size / 2 && Math.abs(y - cy) <= size / 2
+}
+
+/**
+ * The sheet's handle (grip and title row). A press inside the enlarged touch zone of one of its [zones] (the close button's 48 dp square)
+ * is that button's, even where the pull-to-dismiss would otherwise have it; any other press is the pull's.
+ */
+internal class PullHandle(context: Context) : ColumnLayout(context) {
+    val zones = ArrayList<View>()
+    private var routed: View? = null
+    private val rect = android.graphics.Rect()
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            routed = zones.firstOrNull { zone ->
+                rect.set(0, 0, zone.width, zone.height)
+                offsetDescendantRectToMyCoords(zone, rect)
+                zone.visibility == VISIBLE && HitZone.contains(rect.exactCenterX(), rect.exactCenterY(), dp(HitZone.SIZE_DP).toFloat(), event.x, event.y)
+            }
+            routed?.let { TouchDebug.log { "handle: the press is in ${TouchDebug.name(it)}'s ${HitZone.SIZE_DP.toInt()} dp touch zone" } }
+        }
+
+        val target = routed ?: return super.dispatchTouchEvent(event)
+        rect.set(0, 0, target.width, target.height)
+        offsetDescendantRectToMyCoords(target, rect)
+        val moved = MotionEvent.obtain(event)
+        moved.offsetLocation(-rect.left.toFloat(), -rect.top.toFloat())
+        val handled = target.dispatchTouchEvent(moved)
+        moved.recycle()
+        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) routed = null
+        return handled
+    }
+}
+
+/** Whether the end of a press at (x, y) on a [w] by [h] button is a tap on it: inside it, or within [slop] px of it (its touch zone is wider than its drawing). */
+internal object OverlayTap {
+    const val SLOP_DP = 9f
+
+    fun counts(x: Float, y: Float, w: Float, h: Float, slop: Float): Boolean = x >= -slop && y >= -slop && x <= w + slop && y <= h + slop
 }
 
 /** The title row's text: an optional glyph in a circle, a name, and a muted line under it. */
@@ -295,7 +382,11 @@ open class Drawer(context: Context, val expandable: Boolean = false) : Overlay(c
             field = value
             expandButton?.shown = if (value) Ui.minimize2 else Ui.maximize2
             resize(animated = true)
+            onExpandedChanged?.invoke(value)
         }
+
+    /** Told when the panel is made wider or narrower again (what it holds lays itself out for the room it has). */
+    var onExpandedChanged: ((Boolean) -> Unit)? = null
 
     private var panel: ColumnLayout? = null
     private var expandButton: OverlayAction? = null
@@ -386,6 +477,8 @@ open class Sheet(context: Context) : Overlay(context) {
     var tall: Boolean = false
 
     private var panel: ColumnLayout? = null
+    private var pullTracking = false
+    private val pullSlop = maxOf(android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat(), dp(PullStart.SLOP_DP))
     private var pullStart = 0f
     private var pullLast = 0f
     private var pullAt = 0L
@@ -409,14 +502,19 @@ open class Sheet(context: Context) : Overlay(context) {
         }
         this.panel = panel
         // What is pulled to let it go: the grip and the title; the content under it scrolls on its own.
-        val handle = ColumnLayout(context)
+        val handle = PullHandle(context)
         handle.addView(Grip(context), FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(17)))
-        val title = header(closeButton())
+        val close = closeButton()
+        handle.zones += close
+        val title = header(close)
         handle.addView(title, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             val side = Math.round(5 * u)
             setMargins(side, Math.round(2 * u), side, Math.round(3 * u))
         })
+        handle.tag = "handle"
         handle.setOnTouchListener { _, event -> pull(event) }
+        // Above the content in touch order too, so that nothing the body lays out over the header's edge can take a tap meant for its buttons.
+        handle.translationZ = dp(1f)
         panel.addView(handle, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         panel.addView(content, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             grow = true
@@ -443,8 +541,13 @@ open class Sheet(context: Context) : Overlay(context) {
     /** The pull-down gesture of the web's `useSheetPull`: follows the finger down only, lets go past 100 dp or faster than 0.5 dp/ms, else springs back. */
     private fun pull(event: MotionEvent): Boolean {
         val p = panel ?: return false
+        if (TouchDebug.enabled && event.actionMasked != MotionEvent.ACTION_DOWN) {
+            TouchDebug.log { "pull: ${MotionEvent.actionToString(event.actionMasked)} dy ${TouchDebug.fmt((event.rawY - pullStart) / screenDensity)} dp, speed ${TouchDebug.fmt(pullSpeed / screenDensity)} dp/ms" }
+        }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                TouchDebug.log { "pull: press on the handle, tracking after ${TouchDebug.fmt(pullSlop / screenDensity)} dp of vertical movement; dismisses past 100 dp or 0.5 dp/ms" }
+                pullTracking = false
                 pullStart = event.rawY
                 pullLast = event.rawY
                 pullAt = event.eventTime
@@ -453,19 +556,35 @@ open class Sheet(context: Context) : Overlay(context) {
             }
 
             MotionEvent.ACTION_MOVE -> {
-                val elapsed = maxOf(1L, event.eventTime - pullAt)
-                pullSpeed = (event.rawY - pullLast) / elapsed
-                pullLast = event.rawY
-                pullAt = event.eventTime
-                p.translationY = maxOf(0f, event.rawY - pullStart)
+                // A press that has not gone down by the slop is still a press: it does nothing, and does not move the sheet.
+                if (!pullTracking && PullStart.starts(event.rawY - pullStart, pullSlop)) {
+                    pullTracking = true
+                    // The sheet follows from where the slop ended, so it does not jump.
+                    pullStart = event.rawY
+                    pullLast = event.rawY
+                    pullAt = event.eventTime
+                    TouchDebug.log { "pull: tracking starts" }
+                }
+                if (pullTracking) {
+                    val elapsed = maxOf(1L, event.eventTime - pullAt)
+                    pullSpeed = (event.rawY - pullLast) / elapsed
+                    pullLast = event.rawY
+                    pullAt = event.eventTime
+                    p.translationY = maxOf(0f, event.rawY - pullStart)
+                }
             }
 
-            MotionEvent.ACTION_UP -> {
+            MotionEvent.ACTION_UP -> if (!pullTracking) {
+                TouchDebug.log { "pull: UP without tracking: a press on the handle does nothing" }
+            } else {
                 val offset = maxOf(0f, event.rawY - pullStart)
-                if (SheetPull.dismisses(offset / screenDensity, pullSpeed / screenDensity)) dismiss() else springBack()
+                val gone = SheetPull.dismisses(offset / screenDensity, pullSpeed / screenDensity)
+                TouchDebug.log { "pull: UP offset ${TouchDebug.fmt(offset / screenDensity)} dp -> ${if (gone) "dismiss" else "spring back"}" }
+                if (offset > 0f) TouchDebug.pulled()
+                if (gone) dismiss() else springBack()
             }
 
-            MotionEvent.ACTION_CANCEL -> springBack()
+            MotionEvent.ACTION_CANCEL -> if (pullTracking) springBack()
         }
         return true
     }
