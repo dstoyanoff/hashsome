@@ -85,7 +85,10 @@ internal class BootGate(
 internal class FrontPause(private val clock: () -> Long, private val log: (String) -> Unit = {}) {
     @Volatile
     private var until = 0L
+    @Volatile
     private var left = false
+
+    @Volatile
     private var on = false
 
     fun start(durationMs: Long) {

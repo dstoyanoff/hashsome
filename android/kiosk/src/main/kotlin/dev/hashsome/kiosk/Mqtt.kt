@@ -45,7 +45,7 @@ interface KioskActions {
     /** Opens the stock Shelly app and pauses keep-in-front (Shelly profiles only, see [canOpenStockApp]). */
     fun openStockApp()
 
-    val canOpenStockApp: Boolean
+    val canOpenStockApp: Store<Boolean>
 
     /** Whether [restartDevice] has a way to work (probed once the service runs); false until then. */
     val canRestartDevice: Store<Boolean>
@@ -207,7 +207,7 @@ class MqttBridge(
             Component(
                 "open_stock_app", "button", "Open Shelly app", describe = { put("payload_press", "PRESS") },
                 command = { actions.openStockApp() },
-                offered = { actions.canOpenStockApp },
+                offered = { actions.canOpenStockApp.value },
             ),
             Component(
                 "restart_device", "button", "Restart device",
@@ -238,6 +238,8 @@ class MqttBridge(
         watching += state.lux.listen { if (connected) publishLux() }
         // The reboot probe finishes after the first discovery: announce the button then.
         watching += actions.canRestartDevice.listen { if (connected) publishDiscovery() }
+        // The profile (and so "Open Shelly app") is known once the service has built, and changes with profileOverride.
+        watching += actions.canOpenStockApp.listen { if (connected) publishDiscovery() }
         connectIfWanted()
     }
 

@@ -67,7 +67,7 @@ Each module publishes its `release` AAR with sources, under group `dev.hashsome`
 
 - **Restart app** (Connection group; MQTT button `restart_app`): schedules a one-shot alarm 1.5 s ahead that starts `KioskService` (the boot gate of a Shelly profile applies as to any start), then ends the process; the dashboard comes back with the service.
 - **Open Shelly app** (Connection group, Shelly profiles only; MQTT button `open_stock_app`): launches the stock app and pauses keep-in-front for `KioskConfig.stockAppPauseMs` (10 minutes), ending early when the dashboard is resumed again.
-- **Restart device** (Debug group, tap twice; MQTT button `restart_device`): shown only where a reboot is possible, probed once the service runs and again every 5 minutes until a way is found: the display's own Shelly RPC (`/rpc/Shelly.Reboot` on 127.0.0.1:80) on a Shelly profile, or `PowerManager.reboot` / the device-owner reboot where the app holds `REBOOT` or is device owner.
+- **Restart device** (Debug group, tap twice; MQTT button `restart_device`): shown only where a reboot is possible, probed once the service runs and again every 5 minutes until a way is found (once found it is not probed again; the reboot itself runs off the main thread): the display's own Shelly RPC (`/rpc/Shelly.Reboot` on 127.0.0.1:80) on a Shelly profile, or `PowerManager.reboot` / the device-owner reboot where the app holds `REBOOT` or is device owner.
 
 ## How `example/android` consumes it
 

@@ -57,7 +57,7 @@ class RestartTest {
         sched.runCurrent()
         assertTrue(r.canReboot())
         assertEquals(RebootPath.ShellyRpc, r.path)
-        assertTrue(r.rebootIfPossible())
+        r.rebootIfPossible()
         assertEquals(listOf("rpc"), backend.calls)
     }
 
@@ -67,13 +67,13 @@ class RestartTest {
         reboot(none).also { it.probe(shelly = false); sched.runCurrent() }.let {
             assertFalse(it.canReboot())
             assertNull(it.path)
-            assertFalse(it.rebootIfPossible())
+            it.rebootIfPossible()
             assertTrue(none.calls.isEmpty())
         }
         val owner = FakeBackend(local = true)
         reboot(owner).also { it.probe(shelly = false); sched.runCurrent() }.let {
             assertEquals(RebootPath.Local, it.path)
-            assertTrue(it.rebootIfPossible())
+            it.rebootIfPossible()
             assertEquals(listOf("local"), owner.calls)
         }
     }
@@ -91,7 +91,24 @@ class RestartTest {
         assertFalse(r.canReboot())
         sched.runCurrent()
         assertTrue(r.canReboot())
-        assertFalse(r.rebootIfPossible())
+        r.rebootIfPossible()
+    }
+
+    @Test
+    fun `the reboot never runs on the calling thread`() {
+        val threads = ArrayList<Thread>()
+        val backend = object : RebootBackend {
+            override fun canRebootLocal() = false
+            override fun shellyRpcAnswers() = true
+            override fun rebootLocal() = true
+            override fun rebootShellyRpc(): Boolean { threads += Thread.currentThread(); return true }
+        }
+        val r = Reboot(backend, { work -> Thread(work).also { it.start(); it.join() } }, sched)
+        r.probe(shelly = true)
+        sched.runCurrent()
+        r.rebootIfPossible()
+        assertEquals(1, threads.size)
+        assertTrue(threads[0] !== Thread.currentThread())
     }
 
     @Test

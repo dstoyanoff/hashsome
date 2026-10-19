@@ -110,6 +110,7 @@ class KioskService : Service() {
         closers += screen.state.listenNow { state.sleeping.set(it == ScreenState.Off) }
 
         Kiosk.probeReboot(this, profile)
+        closers += { Kiosk.releaseReboot() }
 
         val bridge = MqttBridge(Settings, state, Kiosk.actions, PahoMqttLink(sched), Hashsome.app.dashboards.map { it.id })
         bridge.scheduler = sched

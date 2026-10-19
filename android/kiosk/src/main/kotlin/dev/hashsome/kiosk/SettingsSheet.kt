@@ -138,7 +138,8 @@ private class SheetContent(
             button("Reload (reconnect)", primary = true) { actions.reload() },
             button("Restart app") { actions.restartApp() },
         )
-        if (actions.canOpenStockApp) buttons(button("Open Shelly app") { actions.openStockApp() })
+        val stock = buttons(button("Open Shelly app") { actions.openStockApp() })
+        binders += { actions.canOpenStockApp.listenNow { stock.visibility = if (it) View.VISIBLE else View.GONE } }
         buttons(
             button("Re-provision from the last broadcast") {
                 val last = Provisioning.decode(settings.lastProvision)

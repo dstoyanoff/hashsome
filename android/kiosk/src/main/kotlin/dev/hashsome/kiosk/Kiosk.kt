@@ -92,6 +92,9 @@ internal object Kiosk {
     /** [Reboot.available] of whichever [reboot] is current, as one store the sheet and the bridge can hold. */
     private val rebootAvailable = Store(false)
 
+    /** Whether "Open Shelly app" is offered: a Shelly profile is in use (read when the service builds, which a change of profile repeats). */
+    private val stockAppOffered = Store(false)
+
     val actions = object : KioskActions {
         override fun wake() {
             nightMode?.wake()
@@ -112,7 +115,7 @@ internal object Kiosk {
             reboot?.rebootIfPossible() ?: Log.w("kiosk", "reboot is not available")
         }
 
-        override val canOpenStockApp: Boolean get() = DeviceProfile.detect().settlesAtBoot
+        override val canOpenStockApp: Store<Boolean> = stockAppOffered
 
         override fun openStockApp() = openStockApp(Kiosk.activity?.get() ?: Kiosk.appContext)
 
@@ -130,8 +133,8 @@ internal object Kiosk {
 
     /** Probes the reboot paths of [profile]; the result lands in [KioskActions.canRestartDevice]. */
     fun probeReboot(context: Context, profile: DeviceProfile) {
-        rebootWatch?.invoke()
-        reboot?.close()
+        releaseReboot()
+        stockAppOffered.set(profile.settlesAtBoot)
         val r = Reboot(DeviceRebootBackend(context))
         rebootWatch = r.available.listenNow { rebootAvailable.set(it) }
         reboot = r
@@ -154,6 +157,14 @@ internal object Kiosk {
         } catch (e: Exception) {
             Log.w("kiosk", "could not open the stock app: ${e.message}")
         }
+    }
+
+    /** Stops probing and watching (the service is torn down or rebuilt). */
+    fun releaseReboot() {
+        rebootWatch?.invoke()
+        rebootWatch = null
+        reboot?.close()
+        reboot = null
     }
 
     /** Schedules the service's start and ends this process (see [AppRestarter]). */

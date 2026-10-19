@@ -78,15 +78,23 @@ internal class Reboot(
         else -> null
     }
 
-    /** Restarts the device by the path [probe] found; where there is none it only logs. True when a restart was asked for. */
-    fun rebootIfPossible(): Boolean {
-        val ok = when (path) {
-            RebootPath.Local -> backend.rebootLocal()
-            RebootPath.ShellyRpc -> backend.rebootShellyRpc()
-            null -> false
+    /**
+     * Restarts the device by the path [probe] found; where there is none it only logs. Returns at once: the call (a socket for the
+     * Shelly RPC, which Android forbids on the main thread) runs on the background thread.
+     */
+    fun rebootIfPossible() {
+        val chosen = path
+        if (chosen == null) {
+            Log.w("kiosk", "reboot is not available")
+            return
         }
-        if (!ok) Log.w("kiosk", "reboot is not available")
-        return ok
+        background {
+            val ok = when (chosen) {
+                RebootPath.Local -> backend.rebootLocal()
+                RebootPath.ShellyRpc -> backend.rebootShellyRpc()
+            }
+            if (!ok) Log.w("kiosk", "the reboot via ${chosen.name} was refused")
+        }
     }
 }
 
@@ -95,8 +103,7 @@ internal class DeviceRebootBackend(private val context: Context, private val hos
     private val admin get() = DeviceAdmin.component(context)
 
     private fun owner(): Boolean =
-        android.os.Build.VERSION.SDK_INT >= 24 &&
-            (context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager).isDeviceOwnerApp(context.packageName)
+        (context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager).isDeviceOwnerApp(context.packageName)
 
     override fun canRebootLocal(): Boolean =
         context.checkSelfPermission(REBOOT_PERMISSION) == PackageManager.PERMISSION_GRANTED || owner()
