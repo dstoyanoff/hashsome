@@ -331,10 +331,8 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         val view = put(LightTileView(context, control, label))
         view.icon = icon
         if (drawer) {
-            view.tile.onHold = {
-                DrawerHost.open(context, scope, title = label, kind = "Light", icon = icon ?: Ui.lightbulb) { drawerContext ->
-                    LightDrawerBody(context, control, drawerContext.scope, LogbookControl(control.handle, drawerContext.scope))
-                }
+            view.tile.opensDrawer(context, scope, title = { label }, kind = "Light", icon = { icon ?: Ui.lightbulb }) { drawerContext ->
+                LightDrawerBody(context, control, drawerContext.scope, LogbookControl(control.handle, drawerContext.scope))
             }
         }
     }
@@ -354,17 +352,15 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         val view = put(SwitchTileView(context, control, label))
         view.icon = icon
         if (DrawerGuard.energy(power, energy, drawer)) {
-            view.tile.onHold = {
-                DrawerHost.open(context, scope, title = label, kind = "Switch", icon = icon) { drawerContext ->
-                    EnergyDrawerBody(
-                        context,
-                        drawerContext.scope,
-                        power?.let { EntityHandle(drawerContext.scope, EntityRef(it), EntityKind.Sensor) },
-                        energy?.let { EntityHandle(drawerContext.scope, EntityRef(it), EntityKind.Sensor) },
-                        drawerContext.expanded,
-                        drawerContext::onExpandedChanged,
-                    )
-                }
+            view.tile.opensDrawer(context, scope, title = { label }, kind = "Switch", icon = { icon }) { drawerContext ->
+                EnergyDrawerBody(
+                    context,
+                    drawerContext.scope,
+                    power?.let { EntityHandle(drawerContext.scope, EntityRef(it), EntityKind.Sensor) },
+                    energy?.let { EntityHandle(drawerContext.scope, EntityRef(it), EntityKind.Sensor) },
+                    drawerContext.expanded,
+                    drawerContext::onExpandedChanged,
+                )
             }
         }
     }
