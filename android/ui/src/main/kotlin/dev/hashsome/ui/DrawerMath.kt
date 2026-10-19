@@ -130,3 +130,78 @@ object LightBars {
     /** One press of a step button moves the level by [delta], inside 0..100. */
     fun stepped(level: Int, delta: Int): Int = (level + delta).coerceIn(0, 100)
 }
+
+/** Whether a switch has a drawer to open: only when it has a power or an energy sensor to show (and the dashboard has not turned it off). */
+internal object DrawerGuard {
+    fun energy(power: String?, energy: String?, drawer: Boolean): Boolean = drawer && (power != null || energy != null)
+}
+
+/** A value a finger has moved to and not yet let go of: if the drawer goes away first it is committed, as the web commits on `pointercancel`. */
+internal class PendingCommit<T> {
+    private var held: T? = null
+
+    fun held(value: T) {
+        held = value
+    }
+
+    /** The finger let go (the value was committed already). */
+    fun clear() {
+        held = null
+    }
+
+    /** Commits what is still held, once. */
+    fun flush(commit: (T) -> Unit) {
+        val value = held ?: return
+        held = null
+        commit(value)
+    }
+}
+
+/**
+ * The press of a step button (the web's `StepButton`): a tap steps by [delta]; holding for [HOLD_MS] steps by [holdDelta] and repeats every
+ * [REPEAT_MS] until released, and a finger that leaves the button or is taken away stops it. [post] / [remove] schedule the repeat.
+ */
+internal class StepHold(
+    private val delta: Int,
+    private val holdDelta: Int,
+    private val onStep: (Int) -> Unit,
+    private val post: (Runnable, Long) -> Unit,
+    private val remove: (Runnable) -> Unit,
+) {
+    private var held = false
+    private var cancelled = false
+    private val repeat = object : Runnable {
+        override fun run() {
+            held = true
+            onStep(holdDelta)
+            post(this, REPEAT_MS)
+        }
+    }
+
+    fun down() {
+        held = false
+        cancelled = false
+        post(repeat, HOLD_MS)
+    }
+
+    /** The finger moved; off the button, the press is over. */
+    fun move(inside: Boolean) {
+        if (!inside) cancel()
+    }
+
+    fun up(inside: Boolean) {
+        remove(repeat)
+        if (!held && !cancelled && inside) onStep(delta)
+        held = false
+    }
+
+    fun cancel() {
+        cancelled = true
+        remove(repeat)
+    }
+
+    companion object {
+        const val HOLD_MS = 400L
+        const val REPEAT_MS = 400L
+    }
+}

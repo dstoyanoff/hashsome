@@ -43,9 +43,11 @@ open class LightDrawerBody(context: Context, val control: LightControl, scope: S
     private var colorOpen = false
     private var dragKelvin: Int? = null
     private var dragHue: Int? = null
-    private var lastBrightness = 0
-    private var lastKelvin = 0
-    private var lastHue = 0
+    private val heldBrightness = PendingCommit<Int>()
+    private val heldKelvin = PendingCommit<Int>()
+    private val heldHue = PendingCommit<Int>()
+    private var stopsRange: IntRange? = null
+    private var stops = IntArray(0)
 
     init {
         val u = unitPx()
@@ -67,18 +69,22 @@ open class LightDrawerBody(context: Context, val control: LightControl, scope: S
         line.addView(brightnessValue, FlexParams(WRAP, WRAP))
         brightness.addView(line, FlexParams(MATCH, WRAP))
         val barRow = RowLayout(context).also { it.gap = 2 }
-        barRow.addView(StepButtonView(context, Ui.minus, -1, ::step), FlexParams(dp(StepButtonView.SIZE), dp(StepButtonView.SIZE)))
+        barRow.addView(StepButtonView(context, Ui.minus, -1, "Decrease brightness", ::step), FlexParams(dp(StepButtonView.SIZE), dp(StepButtonView.SIZE)))
         barRow.addView(brightnessBar, FlexParams(0, dp(BAR_HEIGHT)).apply { weight = 1f })
-        barRow.addView(StepButtonView(context, Ui.plus, 1, ::step), FlexParams(dp(StepButtonView.SIZE), dp(StepButtonView.SIZE)))
+        barRow.addView(StepButtonView(context, Ui.plus, 1, "Increase brightness", ::step), FlexParams(dp(StepButtonView.SIZE), dp(StepButtonView.SIZE)))
         brightness.addView(barRow, FlexParams(MATCH, WRAP))
         vertical(brightness)
         column.addView(brightness, FlexParams(MATCH, WRAP))
         brightnessBar.onDrag = { f ->
-            lastBrightness = Math.floor(f * 100.0 + 0.5).toInt()
-            control.drag(lastBrightness)
+            val level = Math.floor(f * 100.0 + 0.5).toInt()
+            heldBrightness.held(level)
+            control.drag(level)
         }
-        brightnessBar.onCommit = { f -> control.commit(Math.floor(f * 100.0 + 0.5).toInt()) }
-        brightnessBar.onCancel = { control.commit(lastBrightness) }
+        brightnessBar.onCommit = { f ->
+            heldBrightness.clear()
+            control.commit(Math.floor(f * 100.0 + 0.5).toInt())
+        }
+        brightnessBar.onCancel = { heldBrightness.flush { control.commit(it) } }
 
         // Color: a card that folds, with the temperature and hue bars and the swatches.
         val toggle = RowLayout(context).also { it.justify = Justify.SpaceBetween }
@@ -121,34 +127,39 @@ open class LightDrawerBody(context: Context, val control: LightControl, scope: S
         column.addView(color, FlexParams(MATCH, WRAP))
 
         temperatureBar.onDrag = { f ->
-            lastKelvin = LightBars.kelvinAt(f, kelvinRange())
-            dragKelvin = lastKelvin
+            val kelvin = LightBars.kelvinAt(f, kelvinRange())
+            heldKelvin.held(kelvin)
+            dragKelvin = kelvin
             render()
         }
         temperatureBar.onCommit = { f ->
-            val kelvin = LightBars.kelvinAt(f, kelvinRange())
-            dragKelvin = kelvin
-            control.setKelvin(kelvin)
-            render()
+            heldKelvin.clear()
+            commitKelvin(LightBars.kelvinAt(f, kelvinRange()))
         }
-        temperatureBar.onCancel = {
-            dragKelvin = lastKelvin
-            control.setKelvin(lastKelvin)
-            render()
-        }
+        temperatureBar.onCancel = { heldKelvin.flush(::commitKelvin) }
         hueBar.onDrag = { f ->
-            lastHue = LightBars.hueAt(f)
-            dragHue = lastHue
+            val hue = LightBars.hueAt(f)
+            heldHue.held(hue)
+            dragHue = hue
             render()
         }
-        hueBar.onCommit = { f -> commitHue(LightBars.hueAt(f)) }
-        hueBar.onCancel = { commitHue(lastHue) }
+        hueBar.onCommit = { f ->
+            heldHue.clear()
+            commitHue(LightBars.hueAt(f))
+        }
+        hueBar.onCancel = { heldHue.flush(::commitHue) }
 
         if (history != null) column.addView(HistorySectionView(context, history, scope), FlexParams(MATCH, WRAP))
         addView(column, LayoutParams(MATCH, WRAP))
     }
 
     private fun kelvinRange() = LightBars.kelvinRange(control.handle.entity)
+
+    private fun commitKelvin(kelvin: Int) {
+        dragKelvin = kelvin
+        control.setKelvin(kelvin)
+        render()
+    }
 
     private fun commitHue(hue: Int) {
         dragHue = hue
@@ -158,6 +169,14 @@ open class LightDrawerBody(context: Context, val control: LightControl, scope: S
 
     private fun step(delta: Int) {
         control.commit(LightBars.stepped(control.shown.value, delta))
+    }
+
+    override fun onDetachedFromWindow() {
+        // A drawer dismissed with a finger still on a bar: what it had reached is committed, as the web commits on `pointercancel`.
+        heldBrightness.flush { control.commit(it) }
+        heldKelvin.flush { control.setKelvin(it) }
+        heldHue.flush { control.setHs(it.toDouble(), LightBars.saturationOf(control.handle.entity)) }
+        super.onDetachedFromWindow()
     }
 
     override fun onAttachedToWindow() {
@@ -198,7 +217,11 @@ open class LightDrawerBody(context: Context, val control: LightControl, scope: S
         val hueNow = LightBars.hueOf(light)
         if (dragHue == hueNow) dragHue = null
         temperature.visibility = if (temp) VISIBLE else GONE
-        temperatureBar.stops = LightBars.kelvinStops(range)
+        if (stopsRange != range) {
+            stopsRange = range
+            stops = LightBars.kelvinStops(range)
+        }
+        temperatureBar.stops = stops
         temperatureBar.fraction = LightBars.fractionOfKelvin(dragKelvin ?: kelvin, range)
         temperatureValue.text = "${dragKelvin ?: kelvin} K"
         hue.visibility = if (hs) VISIBLE else GONE

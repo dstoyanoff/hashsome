@@ -20,21 +20,14 @@ private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
 private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 
 /** Fine adjustment (the web's `StepButton`): a press nudges by [delta]; holding repeats in steps of [holdDelta] every 400 ms until released. */
-internal class StepButtonView(context: Context, private val icon: Icon, private val delta: Int, private val onStep: (Int) -> Unit) : View(context) {
-    var holdDelta: Int = delta * 10
+internal class StepButtonView(context: Context, private val icon: Icon, delta: Int, label: String, onStep: (Int) -> Unit) : View(context) {
     private val glyph = iconDrawable(icon)
     private val handler = Handler(Looper.getMainLooper())
-    private var held = false
-    private val repeat = object : Runnable {
-        override fun run() {
-            held = true
-            onStep(holdDelta)
-            handler.postDelayed(this, REPEAT_MS)
-        }
-    }
+    private val press = StepHold(delta, delta * 10, onStep, { r, ms -> handler.postDelayed(r, ms) }, { handler.removeCallbacks(it) })
 
     init {
         isClickable = true
+        contentDescription = label
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -50,31 +43,21 @@ internal class StepButtonView(context: Context, private val icon: Icon, private 
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                held = false
-                handler.postDelayed(repeat, HOLD_MS)
-            }
-
-            MotionEvent.ACTION_UP -> {
-                handler.removeCallbacks(repeat)
-                if (!held && contains(event.x, event.y)) onStep(delta)
-                held = false
-            }
-
-            MotionEvent.ACTION_CANCEL -> handler.removeCallbacks(repeat)
+            MotionEvent.ACTION_DOWN -> press.down()
+            MotionEvent.ACTION_MOVE -> press.move(contains(event.x, event.y))
+            MotionEvent.ACTION_UP -> press.up(contains(event.x, event.y))
+            MotionEvent.ACTION_CANCEL -> press.cancel()
         }
         return true
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        handler.removeCallbacks(repeat)
+        press.cancel()
     }
 
     companion object {
         const val SIZE = 36
-        const val HOLD_MS = 400L
-        const val REPEAT_MS = 400L
     }
 }
 
@@ -84,6 +67,7 @@ internal class PowerButtonView(context: Context, private val onToggle: () -> Uni
         set(value) {
             if (field == value) return
             field = value
+            contentDescription = if (value) "Turn off" else "Turn on"
             invalidate()
         }
 
@@ -92,6 +76,7 @@ internal class PowerButtonView(context: Context, private val onToggle: () -> Uni
 
     init {
         isClickable = true
+        contentDescription = "Turn on"
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -125,6 +110,8 @@ internal class PowerButtonView(context: Context, private val onToggle: () -> Uni
 internal class GradientBarView(context: Context) : BarView(context) {
     var stops: IntArray = IntArray(0)
         set(value) {
+            // Told on every render, most with the same colors: a new gradient only for other ones.
+            if (field.contentEquals(value)) return
             field = value
             shader = null
             invalidate()

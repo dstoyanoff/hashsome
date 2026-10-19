@@ -353,7 +353,7 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         val control = SwitchControl(handle(ref, EntityKind.Switch), power?.let { handle(it, EntityKind.Sensor) })
         val view = put(SwitchTileView(context, control, label))
         view.icon = icon
-        if (drawer && (power != null || energy != null)) {
+        if (DrawerGuard.energy(power, energy, drawer)) {
             view.tile.onHold = {
                 DrawerHost.open(context, scope, title = label, kind = "Switch", icon = icon) { drawerContext ->
                     EnergyDrawerBody(

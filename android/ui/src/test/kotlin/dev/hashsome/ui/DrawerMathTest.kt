@@ -171,4 +171,86 @@ class DrawerMathTest {
         assertNull(LightBars.colorOf(light()))
         assertArrayEquals(intArrayOf(0xFF, 0xFF, 0xFF), LightBars.colorOf(light(LightColor.Hs(0.0, 0.0, listOf(255, 255, 255))))!!.let { intArrayOf(it.r, it.g, it.b) })
     }
+
+    @Test
+    fun `a switch has a drawer only with a sensor to show`() {
+        assertEquals(false, DrawerGuard.energy(null, null, drawer = true))
+        assertEquals(true, DrawerGuard.energy("p", null, drawer = true))
+        assertEquals(true, DrawerGuard.energy(null, "e", drawer = true))
+        assertEquals(false, DrawerGuard.energy("p", "e", drawer = false))
+    }
+
+    @Test
+    fun `a value held when the drawer goes is committed once`() {
+        val held = PendingCommit<Int>()
+        val committed = ArrayList<Int>()
+        held.flush { committed += it }
+        assertEquals(emptyList<Int>(), committed)
+        held.held(30)
+        held.held(40)
+        held.flush { committed += it }
+        held.flush { committed += it }
+        assertEquals(listOf(40), committed)
+        held.held(50)
+        held.clear()
+        held.flush { committed += it }
+        assertEquals(listOf(40), committed)
+    }
+
+    private class Clock {
+        val queue = ArrayList<Pair<Long, Runnable>>()
+        var now = 0L
+        fun post(r: Runnable, ms: Long) { queue += (now + ms) to r }
+        fun remove(r: Runnable) { queue.removeAll { it.second === r } }
+        fun advance(ms: Long) {
+            val end = now + ms
+            while (true) {
+                val next = queue.filter { it.first <= end }.minByOrNull { it.first } ?: break
+                queue.remove(next)
+                now = next.first
+                next.second.run()
+            }
+            now = end
+        }
+    }
+
+    @Test
+    fun `a tap steps by one, a hold repeats by ten until released`() {
+        val clock = Clock()
+        val steps = ArrayList<Int>()
+        val press = StepHold(1, 10, { steps += it }, clock::post, clock::remove)
+        press.down()
+        clock.advance(100)
+        press.up(true)
+        assertEquals(listOf(1), steps)
+        steps.clear()
+        press.down()
+        clock.advance(1250)
+        assertEquals(listOf(10, 10, 10), steps)
+        press.up(true)
+        clock.advance(2000)
+        assertEquals(3, steps.size)
+    }
+
+    @Test
+    fun `a finger that leaves the button stops the repeat and its release steps nothing`() {
+        val clock = Clock()
+        val steps = ArrayList<Int>()
+        val press = StepHold(-1, -10, { steps += it }, clock::post, clock::remove)
+        press.down()
+        clock.advance(450)
+        assertEquals(listOf(-10), steps)
+        press.move(inside = false)
+        clock.advance(2000)
+        assertEquals(listOf(-10), steps)
+        press.up(inside = false)
+        // Leaving before the hold fires: no repeat and no tap either.
+        steps.clear()
+        press.down()
+        clock.advance(200)
+        press.move(inside = false)
+        clock.advance(1000)
+        press.up(inside = true)
+        assertEquals(emptyList<Int>(), steps)
+    }
 }

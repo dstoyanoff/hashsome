@@ -22,7 +22,7 @@ private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
  * week / this month from the daily growth of the [energy] counter, and the power over time. While the drawer is at its normal width the
  * chart is a bare sparkline of the last day; expanded it has its axes, a tooltip and the 1H / 1D / 1W / 1M range, the usage becomes
  * today / last 7 / last 30 days and the counter's reading is added as "Lifetime". [expanded] and [onExpanded] are the drawer's
- * ([DrawerContext.expanded], [DrawerContext.onExpandedChanged]). Nothing to show (no sensors and no samples) draws nothing.
+ * ([DrawerContext.expanded], [DrawerContext.onExpandedChanged]). Nothing to show (no sensors, no usage and no samples) draws nothing.
  */
 open class EnergyDrawerBody(
     context: Context,
@@ -43,8 +43,10 @@ open class EnergyDrawerBody(
 
     private var range = SeriesRange.Day
     private var expandedNow = expanded
-    private var powerHistory: HistoryControl? = null
-    private var powerListen: Cancel? = null
+    // What listens to the runtime lives from attaching to detaching; a range's history has a scope of its own, let go when another is picked.
+    private var live: Scope? = null
+    private var rangeScope: Scope? = null
+    private val cancels = ArrayList<Cancel>()
     private var usage: EnergyUsage? = null
     private var samples: List<SeriesSample> = emptyList()
     private var shownTiles: List<Pair<String, String>>? = null
@@ -64,15 +66,6 @@ open class EnergyDrawerBody(
             expandedNow = wide
             render()
         }
-        loadPower()
-        if (energy != null) {
-            val usageHistory = HistoryControl(energy, scope, HistoryRange.Month, HistoryBucket.Day)
-            val cancel = usageHistory.state.listenNow { state ->
-                usage = if (state is HistoryState.Ready) EnergyText.usageFromDaily(state.result.points, Hashsome.scheduler.wallMs()) else null
-                render()
-            }
-            onDetach(cancel)
-        }
     }
 
     private fun select(next: SeriesRange) {
@@ -82,12 +75,14 @@ open class EnergyDrawerBody(
     }
 
     private fun loadPower() {
-        powerListen?.invoke()
-        powerListen = null
+        rangeScope?.dispose()
+        rangeScope = null
         val handle = power ?: return
-        val control = HistoryControl(handle, scope, historyRange(range))
-        powerHistory = control
-        powerListen = control.state.listenNow { state ->
+        val owner = live ?: return
+        val own = owner.child()
+        rangeScope = own
+        val control = HistoryControl(handle, own, historyRange(range))
+        cancels += control.state.listenNow { state ->
             samples = if (state is HistoryState.Ready) {
                 state.result.points.mapNotNull { point -> Iso8601.parse(point.timestamp)?.let { SeriesSample(it, point.value) } }
             } else {
@@ -99,6 +94,16 @@ open class EnergyDrawerBody(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        val owner = scope.child()
+        live = owner
+        loadPower()
+        if (energy != null) {
+            val usageHistory = HistoryControl(energy, owner, HistoryRange.Month, HistoryBucket.Day)
+            cancels += usageHistory.state.listenNow { state ->
+                usage = if (state is HistoryState.Ready) EnergyText.usageFromDaily(state.result.points, Hashsome.scheduler.wallMs()) else null
+                render()
+            }
+        }
         power?.let { bind(it.state) { render() } }
         energy?.let { bind(it.state) { render() } }
         render()
@@ -106,11 +111,16 @@ open class EnergyDrawerBody(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        powerListen?.invoke()
-        powerListen = null
+        cancels.forEach { it() }
+        cancels.clear()
+        live?.dispose()
+        live = null
+        rangeScope = null
     }
 
     private fun render() {
+        // Nothing to say: no sensor, no usage and no samples.
+        column.visibility = if (power == null && energy == null && usage == null && samples.isEmpty()) GONE else VISIBLE
         val sensor = power?.takeIf { it.state.value is HandleState.Ready }?.entity
         val numeric = sensor?.numeric
         val shownUnit = sensor?.unit ?: unit
