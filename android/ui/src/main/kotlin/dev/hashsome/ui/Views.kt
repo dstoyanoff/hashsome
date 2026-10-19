@@ -37,6 +37,13 @@ enum class TileRelease { Tap, Hold, Drag, Nothing }
  * off its spot is nothing.
  */
 object TileTouch {
+    /** How long a press has lasted before a tile shows that it is being timed as a hold: a tap never shows it (the status dot's `TAP_MAX_MS`). */
+    const val SHOW_AFTER_MS = 400L
+
+    /** The fill of the hold line, 0..1, after [elapsedMs] of a press: nothing until [showAfterMs], then full at [holdMs]. */
+    fun progress(elapsedMs: Long, showAfterMs: Long = SHOW_AFTER_MS, holdMs: Long = HOLD_MS): Float =
+        if (elapsedMs <= showAfterMs || holdMs <= showAfterMs) 0f else ((elapsedMs - showAfterMs).toFloat() / (holdMs - showAfterMs)).coerceIn(0f, 1f)
+
     fun release(elapsedMs: Long, dragged: Boolean, hasHold: Boolean, thresholdMs: Long = HOLD_MS, moved: Boolean = false): TileRelease = when {
         dragged -> TileRelease.Drag
         elapsedMs >= thresholdMs -> if (hasHold) TileRelease.Hold else TileRelease.Nothing
@@ -327,11 +334,19 @@ open class TileView(context: Context) : ViewGroup(context) {
         canvas.restore()
     }
 
+    // A tap never shows the line: it appears only once the press has lasted as long as a tap can.
+    private val showHold = Runnable { animateHold() }
+
     private fun startHold() {
         hold?.cancel()
+        removeCallbacks(showHold)
         if (!Animation.animates) return
+        postDelayed(showHold, TileTouch.SHOW_AFTER_MS)
+    }
+
+    private fun animateHold() {
         hold = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = HOLD_MS
+            duration = HOLD_MS - TileTouch.SHOW_AFTER_MS
             interpolator = LinearInterpolator()
             addUpdateListener {
                 holdProgress = it.animatedValue as Float
@@ -343,6 +358,7 @@ open class TileView(context: Context) : ViewGroup(context) {
 
     private fun stopHold() {
         removeCallbacks(holdFire)
+        removeCallbacks(showHold)
         hold?.cancel()
         hold = null
         if (holdProgress != 0f) {

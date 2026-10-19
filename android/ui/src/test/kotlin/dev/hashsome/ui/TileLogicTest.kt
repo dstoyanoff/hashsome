@@ -186,6 +186,15 @@ class TileLogicTest {
 
 class TileTouchTest {
     @Test
+    fun `the hold line shows nothing for a tap, then fills to the hold`() {
+        assertEquals(0f, TileTouch.progress(0), 0f)
+        assertEquals(0f, TileTouch.progress(400), 0f)
+        assertEquals(0.5f, TileTouch.progress(450), 1e-6f)
+        assertEquals(1f, TileTouch.progress(500), 0f)
+        assertEquals(1f, TileTouch.progress(900), 0f)
+    }
+
+    @Test
     fun `a short press is a tap`() {
         assertEquals(TileRelease.Tap, TileTouch.release(120, dragged = false, hasHold = true))
         assertEquals(TileRelease.Tap, TileTouch.release(499, dragged = false, hasHold = false))
