@@ -46,8 +46,6 @@ data class KioskConfig(
     val bootSettleMs: Long = 30_000,
     /** Shelly profiles, after a boot: and at least this long must have passed since boot. */
     val bootMinMs: Long = 90_000,
-    /** Shelly profiles, after a boot, when installed as a system app (the stock app's force-stop skips those): only the top-stable time applies, with no minimum since boot. */
-    val bootSettleSystemMs: Long = 5_000,
     /** "Open Shelly app": keep-in-front stands down this long (ending early when the dashboard is resumed again). */
     val stockAppPauseMs: Long = 600_000,
 )
@@ -196,6 +194,10 @@ internal object Kiosk {
     @Volatile
     var bootGate: BootGate? = null
 
+    /** Installed as a system app (`FLAG_SYSTEM`, also an updated one): the stock app's force-stop hook skips it, so nothing waits for or avoids the stock app's start-up. */
+    @Volatile
+    var systemApp: Boolean = false
+
     /** The top activity the keep-in-front last saw, for the wake path. */
     @Volatile
     var lastTop: TopActivity = TopActivity.UNKNOWN
@@ -206,13 +208,13 @@ internal object Kiosk {
 
     /** Arms the gate once per process (the profile and the clock decide, see [shouldArmBootGate]). */
     fun armBootGateIfNeeded(context: Context, boot: Boolean) {
+        systemApp = context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0
         if (bootGate != null) return
         val elapsed = android.os.SystemClock.elapsedRealtime()
         if (!shouldArmBootGate(boot, elapsed, config.bootMinMs, DeviceProfile.detect().settlesAtBoot)) return
-        val system = context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0
         bootGate = BootGate(
             config.bootSettleMs, config.bootMinMs, { android.os.SystemClock.elapsedRealtime() },
-            systemApp = system, systemSettleMs = config.bootSettleSystemMs,
+            systemApp = systemApp,
         ) { Log.e("front", it) }
     }
 

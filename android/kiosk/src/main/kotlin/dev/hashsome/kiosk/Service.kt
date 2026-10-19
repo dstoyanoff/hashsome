@@ -242,6 +242,7 @@ internal class KeepInFront(private val context: Context, private val profile: De
         top = { topActivity() },
         dashboardResumed = { Kiosk.dashboardResumed },
         ownProcessVisible = { ownProcessVisible() },
+        overSplash = { Kiosk.systemApp },
         launch = {
             try {
                 context.startActivity(dashboardIntent(context, Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))

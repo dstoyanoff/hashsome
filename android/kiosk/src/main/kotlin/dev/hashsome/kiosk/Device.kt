@@ -235,7 +235,7 @@ internal class PanelScreen(private val context: Context, private val sysfs: Bool
             if (Kiosk.pause.active(Kiosk.dashboardResumed)) return
             // Already the resumed activity (the X1, whose "off" leaves the panel alive): a start would only re-resume the host.
             val top = Kiosk.lastTop
-            if (!FrontDecision.shouldLaunch(top.pkg, context.packageName, Kiosk.dashboardResumed, top.cls) { false }) return
+            if (!FrontDecision.shouldLaunch(top.pkg, context.packageName, Kiosk.dashboardResumed, top.cls, Kiosk.systemApp) { false }) return
             try {
                 context.startActivity(dashboardIntent(context, Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
             } catch (e: Exception) {
