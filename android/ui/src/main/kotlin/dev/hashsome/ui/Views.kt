@@ -339,6 +339,8 @@ open class TileView(context: Context) : ViewGroup(context) {
         if (!interactive) return false
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                downX = event.x
+                downY = event.y
                 held = false
                 dragging = false
                 // Measured once, here: a drag does not ask the view for its size on every move.
@@ -798,6 +800,7 @@ open class StatusDot(context: Context) : View(context) {
                 stopRing()
                 if (held) {
                     held = false
+                    isPressed = false
                     return true
                 }
             }
