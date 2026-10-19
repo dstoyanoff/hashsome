@@ -41,23 +41,23 @@ private fun rounded(color: Int, radiusDp: Float): GradientDrawable = GradientDra
 }
 
 /** Opens the player's library as a panel of its own over the page. */
-internal fun openLibrary(context: Context, control: MediaPlayerControl, label: String) {
-    openMediaOverlay(context, control.scope, "Library", label, Ui.library, full = true) { scope ->
+internal fun openLibrary(context: Context, control: MediaPlayerControl, label: String, prebuilt: Prebuilt? = null) {
+    openMediaOverlay(context, control.scope, "Library", label, Ui.library, full = true, prebuilt = prebuilt) { scope ->
         MediaBrowserView(context, MediaBrowserControl(control.handle, scope))
     }
 }
 
 /** Opens the player's queue as a panel of its own over the page. */
-internal fun openQueue(context: Context, control: MediaPlayerControl, label: String) {
-    openMediaOverlay(context, control.scope, "Queue", label, Ui.listMusic, full = true) { scope ->
+internal fun openQueue(context: Context, control: MediaPlayerControl, label: String, prebuilt: Prebuilt? = null) {
+    openMediaOverlay(context, control.scope, "Queue", label, Ui.listMusic, full = true, prebuilt = prebuilt) { scope ->
         MediaQueueView(context, QueueControl(control.handle, scope))
     }
 }
 
 /** Opens who plays together with the player as the side panel. */
-internal fun openSpeakers(context: Context, control: MediaPlayerControl, allow: List<EntityRef>, label: String) {
+internal fun openSpeakers(context: Context, control: MediaPlayerControl, allow: List<EntityRef>, label: String, prebuilt: Prebuilt? = null) {
     // The panel has a control of its own, so it does not depend on the view that opened it staying.
-    openMediaOverlay(context, control.scope, "Speakers", label, Ui.speaker, full = false) { scope ->
+    openMediaOverlay(context, control.scope, "Speakers", label, Ui.speaker, full = false, prebuilt = prebuilt) { scope ->
         MediaSpeakersView(context, SpeakersControl(control.handle, scope, allow))
     }
 }
@@ -499,26 +499,34 @@ open class MediaPlayerColumnView(
     private var queueKey: GlyphButton? = null
     private var pillView: SpeakersPillView? = null
     private var grouping: SpeakersControl? = null
+    private var libraryReady: Prebuilt? = null
+    private var queueReady: Prebuilt? = null
+    private var speakersReady: Prebuilt? = null
 
     private fun build() {
         removeAllViews()
         val t = theme
         val scope = control.scope.child()
         own = scope
+        if (overlays) {
+            libraryReady = Prebuilt(context, scope) { MediaBrowserView(context, MediaBrowserControl(control.handle, it)) }
+            queueReady = Prebuilt(context, scope) { MediaQueueView(context, QueueControl(control.handle, it)) }
+            speakersReady = Prebuilt(context, scope) { MediaSpeakersView(context, SpeakersControl(control.handle, it, speakers)) }
+        }
         val queue = QueueControl(control.handle, scope)
         grouping = null
         background = rounded(t.palette.surface, t.radius.card)
         val pad = Math.round(4 * unitPx())
         setPadding(pad, pad, pad, pad)
-        val pill = SpeakersPillView(context, compact = false) { openSpeakers(context, control, speakers, label) }.also { pillView = it }
+        val pill = SpeakersPillView(context, compact = false) { openSpeakers(context, control, speakers, label, speakersReady) }.also { pillView = it }
         val browse = GlyphButton(context, Ui.library).also {
             library = it
-            it.onClick = { if (overlays) openLibrary(context, control, label) else openPlayer(context, control, label, speakers) }
+            it.onClick = { if (overlays) openLibrary(context, control, label, libraryReady) else openPlayer(context, control, label, speakers) }
         }
         val queueButton = if (overlays) {
             GlyphButton(context, Ui.listMusic).also {
                 queueKey = it
-                it.onClick = { openQueue(context, control, label) }
+                it.onClick = { openQueue(context, control, label, queueReady) }
             }
         } else {
             null
@@ -543,6 +551,9 @@ open class MediaPlayerColumnView(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        libraryReady?.dispose()
+        queueReady?.dispose()
+        speakersReady?.dispose()
         own?.dispose()
         own = null
     }
@@ -558,6 +569,10 @@ open class MediaPlayerColumnView(
             own?.let { scope -> grouping = SpeakersControl(control.handle, scope, speakers).also { pillView?.use(it) } }
         }
         pillView?.visibility = if (canGroup) VISIBLE else GONE
+        // What the panels will hold is made after the page has settled.
+        if (ready && caps?.browse == true) libraryReady?.later()
+        if (ready && caps?.queue == true) queueReady?.later()
+        if (canGroup) speakersReady?.later()
     }
 }
 

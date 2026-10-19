@@ -194,6 +194,7 @@ open class MediaBrowserView(context: Context, val control: MediaBrowserControl) 
     private var items: List<BrowseItem> = emptyList()
     private var shownRows: List<BrowseItem>? = null
     private var summary: LabelView? = null
+    private var limit = 0
 
     init {
         header.addView(back, wrap().also { it.rightMargin = 0 })
@@ -215,7 +216,16 @@ open class MediaBrowserView(context: Context, val control: MediaBrowserControl) 
 
         back.onClick = { control.back() }
         search.onChange = { control.search(it) }
-        scroll.onNearEnd = { control.arrival.more() }
+        scroll.onNearEnd = {
+            // Not while the list is being laid out: the rows are added a moment later.
+            scroll.post {
+                if (limit < items.size) {
+                    limit += RowsArrival.MORE_ROWS
+                    control.arrival.more()
+                    fill()
+                }
+            }
+        }
     }
 
     override fun onAttachedToWindow() {
@@ -344,13 +354,18 @@ open class MediaBrowserView(context: Context, val control: MediaBrowserControl) 
         shownRows = null
         items = emptyList()
         summary = null
+        limit = 0
     }
 
     /** Adds the rows the arrival has let in. */
     private fun fill() {
         val s = control.state.value
         if (shownRows == null || s.loading || s.error != null) return
-        val visible = control.arrival.visible.value.coerceAtMost(items.size)
+        // The first screenful is the rows that fit (and one more); the rest come as the end is scrolled to.
+        val rowPitch = BrowseRow.rowHeight() + Math.round(unitPx())
+        val fit = if (scroll.height > 0) scroll.height / rowPitch + 2 else RowsArrival.FIRST_ROWS
+        if (limit < fit) limit = fit
+        val visible = control.arrival.visible.value.coerceAtMost(items.size).coerceAtMost(limit)
         val searching = s.search != null
         while (rows.size < visible) {
             val index = rows.size

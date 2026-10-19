@@ -1145,6 +1145,7 @@ internal fun openMediaOverlay(
     subtitle: String?,
     icon: Icon,
     full: Boolean,
+    prebuilt: Prebuilt? = null,
     build: (Scope) -> View,
 ) {
     val overlay = overlayForScreen(context)
@@ -1157,7 +1158,55 @@ internal fun openMediaOverlay(
         (overlay as? Sheet)?.tall = true
     }
     // What the panel holds listens to the runtime only while it is open.
-    val scope = owner.child()
-    overlay.onDismissed = { scope.dispose() }
-    overlay.show(build(scope))
+    val ready = prebuilt?.take()
+    val scope = ready?.first ?: owner.child()
+    overlay.onDismissed = {
+        scope.dispose()
+        // The next one is made while nobody is looking.
+        prebuilt?.later()
+    }
+    overlay.show(ready?.second ?: build(scope))
+}
+
+/**
+ * A panel's content made before it is asked for, so opening the panel is attaching it and animating it: the first frame of an open has no
+ * views to make. [take] hands it over once; [later] makes the next one after a pause.
+ */
+internal class Prebuilt(private val context: Context, private val owner: Scope, private val make: (Scope) -> View) {
+    private var scope: Scope? = null
+    private var view: View? = null
+    private var pending: Cancel? = null
+
+    fun prepare() {
+        if (view != null || owner.disposed) return
+        val s = owner.child()
+        val v = make(s)
+        // Measured once at about the size the panel gives it, so what is worked out from sizes is ready.
+        val m = context.resources.displayMetrics
+        val width = m.widthPixels - dp(40) - 2 * Math.round(5 * unitPx())
+        val height = m.heightPixels - dp(40) - dp(34) - 5 * Math.round(5 * unitPx())
+        v.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+        scope = s
+        view = v
+    }
+
+    fun take(): Pair<Scope, View>? {
+        val s = scope
+        val v = view
+        scope = null
+        view = null
+        return if (s != null && v != null) s to v else null
+    }
+
+    fun later() {
+        pending?.invoke()
+        pending = owner.after(600) { prepare() }
+    }
+
+    fun dispose() {
+        pending?.invoke()
+        scope?.dispose()
+        scope = null
+        view = null
+    }
 }
