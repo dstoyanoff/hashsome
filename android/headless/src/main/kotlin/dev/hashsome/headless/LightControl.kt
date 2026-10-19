@@ -4,7 +4,6 @@ import dev.hashsome.client.LightColor
 import dev.hashsome.client.LightCommands
 import dev.hashsome.client.LightEntity
 import dev.hashsome.client.Store
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** A color a light can be set to in one tap: a white temperature, or a hue and saturation. */
@@ -87,9 +86,10 @@ class LightControl(val handle: EntityHandle<LightEntity>) {
         // What the light is at, on a 0..100 scale: its brightness while on (all the way, if it cannot dim), nothing while off.
         val reported = if (isOn) (light?.brightness ?: 1.0) * 100 else 0.0
         val held = drag
-        if (held != null && abs(reported - held) < 0.5) drag = null
+        val level = Math.floor(reported + 0.5).toInt()
+        if (held != null && level == held) drag = null
         on.set(isOn)
-        shown.set(drag ?: reported.let { Math.floor(it + 0.5).toInt() })
+        shown.set(drag ?: level)
     }
 
     private companion object {

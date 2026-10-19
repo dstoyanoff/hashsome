@@ -5,7 +5,6 @@ import dev.hashsome.client.BrowseKind
 import dev.hashsome.client.Cancel
 import dev.hashsome.client.MediaPlayerCommands
 import dev.hashsome.client.MediaPlayerEntity
-import dev.hashsome.client.Outcome
 import dev.hashsome.client.PlayMode
 import dev.hashsome.client.Query
 import dev.hashsome.client.Store
@@ -40,6 +39,12 @@ data class BrowserState(
 class RowsArrival(private val scope: Scope) {
     val visible: Store<Int> = Store(0)
 
+    /**
+     * Whether a long list opens a row at a time. Off, the first screenful is shown at once (the web's `useAnimates`: where
+     * nothing moves there is no arriving to see); the view passes the dashboard's motion setting.
+     */
+    var stagger: Boolean = true
+
     private var total = 0
     private var timer: Cancel? = null
 
@@ -53,6 +58,11 @@ class RowsArrival(private val scope: Scope) {
             return
         }
 
+        if (!stagger) {
+            visible.set(Math.min(total, FIRST_ROWS))
+            return
+        }
+
         visible.set(OPENING_ROWS)
         val target = Math.min(total, FIRST_ROWS)
         timer = scope.every(STEP_MS) {
@@ -63,6 +73,20 @@ class RowsArrival(private val scope: Scope) {
                 timer = null
             }
         }
+    }
+
+    /**
+     * The same list now has [total] rows (it answered again). Rows already shown stay; a list that was empty (an error
+     * answered first) opens as a new one.
+     */
+    fun update(total: Int) {
+        if (visible.value == 0 || total <= WHOLE_ROWS) {
+            start(total)
+            return
+        }
+
+        this.total = total
+        if (visible.value > total) visible.set(total)
     }
 
     /** The end of the list is near: ten more rows. */
@@ -146,11 +170,12 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
         val listing: Answer?,
     )
 
-    private val presses = PressTracker(scope, handle)
+    private val presses = PressTracker.of(scope, handle)
     private var top: Answer? = null
     private var answer: Answer? = null
     private var text = ""
-    private var active = 0
+    // The open tab by its path, so it survives a top level that comes back in another order; the first until one is chosen.
+    private var activeTab: String? = null
 
     // The kind of thing a search is for, once one has been chosen; until then it is the open shelf's, or tracks.
     private var kindChoice: BrowseKind? = null
@@ -165,6 +190,7 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
     private var topInFlight: Cancel? = null
     private var topAsked = 0
     private var startedFor: String? = null
+    private var startedCount = 0
 
     init {
         loadTop()
@@ -175,9 +201,15 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
     }
 
     fun openTab(index: Int) {
-        val count = shown().tabs?.size ?: 0
-        if (index !in 0 until count) return
-        active = index
+        val tabs = shown().tabs ?: return
+        if (index !in tabs.indices) return
+        openTab(tabs[index].id)
+    }
+
+    /** Opens the tab whose path is [path] (a [BrowserTab.path]); ignored when there is none. */
+    fun openTab(path: String) {
+        if (shown().tabs?.any { it.id == path } != true) return
+        activeTab = path
         text = ""
         kindChoice = null
         levels.clear()
@@ -240,11 +272,7 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
 
         val limit = if (mode == PlayMode.Play || mode == PlayMode.Replace) PLAY_PENDING_MS else QUEUE_PENDING_MS
         presses.press("${mode.wire}:${item.id}", limit) { done ->
-            handle.command(MediaPlayerCommands.playMedia(item.id, mode, context = within?.id, shuffle = shuffle)) { outcome ->
-                // Added to or played from the library, the queue changes without the track changing.
-                if (outcome is Outcome.Ok) handle.ref?.let { QueueEpoch.bump(scope.client, it) }
-                done(outcome)
-            }
+            handle.command(MediaPlayerCommands.playMedia(item.id, mode, context = within?.id, shuffle = shuffle), done)
         }
     }
 
@@ -252,7 +280,7 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
 
     private fun shown(): Shown {
         val tabItems = top?.takeIf { it.error == null && isShelves(it.items) }?.items
-        val selected = if (tabItems != null) active.coerceIn(0, tabItems.size - 1) else 0
+        val selected = if (tabItems != null) Math.max(0, tabItems.indexOfFirst { it.id == activeTab }) else 0
         val needle = text.trim()
         val searching = needle.isNotEmpty()
         val here = levels.lastOrNull()
@@ -299,7 +327,12 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
             startedFor = null
         } else if (startedFor != s.key) {
             startedFor = s.key
+            startedCount = ranked.size
             arrival.start(ranked.size)
+        } else if (startedCount != ranked.size) {
+            // The same list answering again with another number of rows (an error, then the retry after a reconnect).
+            startedCount = ranked.size
+            arrival.update(ranked.size)
         }
     }
 

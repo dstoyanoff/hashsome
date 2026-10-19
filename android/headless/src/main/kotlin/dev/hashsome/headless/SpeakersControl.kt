@@ -40,7 +40,7 @@ class SpeakersControl(val handle: EntityHandle<MediaPlayerEntity>, val scope: Sc
     /** The group presses that are waiting or failed, by key (`group:add:<ref>`, `group:remove:<ref>`, `group:reset`, `group:handover`, `group:takeover`, `group:lead:<ref>`, `group:join:<ref>`). */
     val feedback: Store<Map<String, Feedback>> get() = presses.feedback
 
-    private val presses = PressTracker(scope, handle)
+    private val presses = PressTracker.of(scope, handle)
     private val watching = HashMap<EntityRef, Scope>()
     private val players = HashMap<EntityRef, MediaPlayerEntity?>()
 

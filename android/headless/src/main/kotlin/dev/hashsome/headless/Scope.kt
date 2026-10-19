@@ -100,11 +100,29 @@ class Scope(val client: Client, val scheduler: Scheduler) {
         return wrapped
     }
 
+    /** How many registrations are held now (for tests: a long-lived scope must not collect one per answer). */
+    internal val registered: Int get() = cancels.size
+
+    // Holds the cancel of a request until it is answered, then lets go of it.
+    private fun answered(start: (release: () -> Unit) -> Cancel): Cancel {
+        var held: Cancel = {}
+        var done = false
+        val inner = start {
+            done = true
+            cancels.remove(held)
+        }
+
+        if (done) return inner
+        held = register(inner)
+        return held
+    }
+
     /** A command whose outcome is dropped if this scope is disposed before it arrives. */
     internal fun command(ref: EntityRef, name: String, args: JSONObject?, done: ((Outcome) -> Unit)?): Cancel {
         if (disposed) return {}
-        if (done == null) return register(client.command(ref, name, args, null))
-        return register(client.command(ref, name, args) { if (!disposed) done(it) })
+        // Cancelling only stops `done` from being called, so with no `done` there is nothing to hold on to.
+        if (done == null) return client.command(ref, name, args, null)
+        return answered { release -> client.command(ref, name, args) { release(); if (!disposed) done(it) } }
     }
 
     internal fun command(ref: EntityRef, command: Command, done: ((Outcome) -> Unit)?): Cancel = command(ref, command.name, command.args, done)
@@ -112,7 +130,7 @@ class Scope(val client: Client, val scheduler: Scheduler) {
     /** A query whose answer is dropped if this scope is disposed before it arrives. */
     internal fun <T> query(ref: EntityRef, query: Query<T>, done: (Result<T>) -> Unit): Cancel {
         if (disposed) return {}
-        return register(client.query(ref, query) { if (!disposed) done(it) })
+        return answered { release -> client.query(ref, query) { release(); if (!disposed) done(it) } }
     }
 
     /**

@@ -85,13 +85,13 @@ class MediaProgressTest {
     // --- changed -----------------------------------------------------------------------------------------------
 
     @Test
-    fun `changed ticks once a second while the player is playing`() {
+    fun `changed ticks every half second while the player is playing`() {
         val c = control(playing())
         val seen = ArrayList<Long>()
         c.changed.listen { seen += it }
-        rig.scheduler.advance(3_500)
-        assertEquals(listOf(1_000L, 2_000L, 3_000L), seen.map { it - (seen.first() - 1_000) })
-        assertEquals(3, seen.size)
+        rig.scheduler.advance(1_700)
+        assertEquals(listOf(500L, 1_000L, 1_500L), seen)
+        assertEquals(500L, MediaPlayerControl.TICK_MS)
     }
 
     @Test
@@ -99,7 +99,7 @@ class MediaProgressTest {
         val c = control(playing())
         var ticks = 0
         c.changed.listen { ticks++ }
-        rig.scheduler.advance(2_000)
+        rig.scheduler.advance(1_000)
         assertEquals(2, ticks)
         rig.client.set(ref("room"), player(playback = PlaybackState.Paused, position = 12.0, duration = 100.0, positionUpdatedAt = noon))
         rig.settle()
@@ -107,7 +107,7 @@ class MediaProgressTest {
         assertEquals(2, ticks)
         rig.client.set(ref("room"), playing())
         rig.settle()
-        rig.scheduler.advance(1_000)
+        rig.scheduler.advance(500)
         assertEquals(3, ticks)
     }
 
@@ -120,7 +120,7 @@ class MediaProgressTest {
         assertEquals(0, ticks)
         rig.client.set(ref("room"), playing())
         rig.settle()
-        rig.scheduler.advance(1_000)
+        rig.scheduler.advance(500)
         assertEquals(1, ticks)
         rig.scope.dispose()
         rig.scheduler.advance(5_000)
@@ -169,6 +169,8 @@ class MediaProgressTest {
     @Test
     fun `a pause with no new track shows at once`() {
         val c = control(state(PlaybackState.Playing, "One"))
+        // The first track after loading opens the window too, as on the web: let it close.
+        rig.scheduler.advance(7_000)
         rig.client.set(ref("room"), state(PlaybackState.Paused, "One"))
         rig.settle()
         assertEquals(false, c.playing.value)
@@ -220,6 +222,28 @@ class MediaProgressTest {
         assertEquals(60.0, c.seek.shown.value!!, 0.01)
         rig.scheduler.advance(1_000)
         assertEquals(61.0, c.seek.shown.value!!, 0.01)
+    }
+
+    @Test
+    fun `a periodic report of the same position, stamped later, is not the answer to a seek`() {
+        val c = control(playing())
+        c.seek.commit(60.0)
+        rig.scheduler.advance(2_000)
+        rig.client.set(ref("room"), playing(at = "2026-06-01T12:00:02Z"))
+        rig.settle()
+        assertEquals(60.0, c.seek.shown.value!!, 0.0)
+    }
+
+    @Test
+    fun `the first track after loading opens the window in which a dip is held`() {
+        rig.client.set(ref("room"), state(PlaybackState.Playing, "One"))
+        val c = MediaPlayerControl(rig.handle(ref("room"), EntityKind.MediaPlayer), rig.scope)
+        rig.settle()
+        rig.client.set(ref("room"), state(PlaybackState.Idle, "One"))
+        rig.settle()
+        assertTrue(c.playing.value)
+        rig.scheduler.advance(800)
+        assertEquals(false, c.playing.value)
     }
 
     @Test

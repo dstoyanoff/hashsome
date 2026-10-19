@@ -33,9 +33,10 @@ import java.util.TimeZone
  *   after `runCurrent()` or `advance(...)`), and not after it is cancelled.
  * - Commands: every [command] is appended to [commands] as (ref, name, args) in order. [onCommand], when set, is called
  *   with it before the outcome is delivered and may call [set] to apply a simple state change (a toggle flipping `on`).
- *   It starts as [applyDefault] (light, switch, climate, action and media player, as `packages/core/src/mock.ts` does);
- *   set it to null for a runtime that never changes anything. The outcome is [Outcome.Ok], or the failure queued with
- *   [failNext] (a failed command changes nothing, so [onCommand] is not called for it); [done] gets it through the scheduler.
+ *   It starts as [applyDefault]; set it to null for a runtime that never changes anything. The outcome is [Outcome.Ok],
+ *   or the failure queued with [failNext], or, as `mock.ts` does, `Unknown entity` for a ref never [set] (or removed)
+ *   and `Unknown command` for a name the entity's kind does not have (while [strictCommands] is on). A failed command
+ *   changes nothing, so [onCommand] is not called for it; [done] gets the outcome through the scheduler.
  * - Queries: [answer] registers the JSON `data` to give for a query of that name (`browse`, `queue`, `forecast`...) on a
  *   ref; [query] parses it with the query's own `parse` and delivers `Result.success`, or `Result.failure` when none was
  *   registered or [failQuery] was set. [answerValue] and [answerWith] register an already parsed result instead, for a
@@ -71,6 +72,9 @@ class FakeClient(val scheduler: TestScheduler) : Client {
 
     /** How long a query takes to be answered, in scheduler ms. */
     var queryDelayMs: Long = 0
+
+    /** Whether a command to an entity that does not exist, or a name its kind does not have, fails as the runtime's mock does. */
+    var strictCommands: Boolean = true
 
     /** Called for each command before its outcome is delivered; apply a state change here with [set]. */
     var onCommand: ((EntityRef, String, JSONObject?) -> Unit)? = { ref, name, args -> applyDefault(ref, name, args) }
@@ -136,7 +140,8 @@ class FakeClient(val scheduler: TestScheduler) : Client {
 
     override fun command(ref: EntityRef, name: String, args: JSONObject?, done: ((Outcome) -> Unit)?): Cancel {
         commands += Triple(ref, name, args)
-        val failure = if (failures.isEmpty()) null else failures.removeAt(0)
+        val queued = if (failures.isEmpty()) null else failures.removeAt(0)
+        val failure = queued ?: if (strictCommands) rejection(ref, name) else null
         var live = true
         scheduler.post {
             if (failure == null) onCommand?.invoke(ref, name, args)
@@ -177,6 +182,23 @@ class FakeClient(val scheduler: TestScheduler) : Client {
         return { live = false }
     }
 
+    private fun rejection(ref: EntityRef, name: String): String? {
+        val entity = known[ref] ?: return "Unknown entity: $ref"
+        val names = when (entity) {
+            is LightEntity -> listOf("turnOn", "turnOff", "toggle", "setBrightness", "setColorTemperature", "setColor")
+            is SwitchEntity -> listOf("turnOn", "turnOff", "toggle")
+            is ClimateEntity -> listOf("setMode", "setTargetTemperature", "setPreset")
+            is ActionEntity -> listOf("trigger")
+            is MediaPlayerEntity -> listOf(
+                "play", "pause", "togglePlay", "next", "previous", "setVolume", "setMuted", "seek", "setShuffle", "playMedia",
+                "playQueueItem", "removeQueueItem", "moveQueueItem", "clearQueue", "setGroupMembers", "leaveGroup", "takeOverGroup",
+            )
+            else -> emptyList()
+        }
+
+        return if (name in names) null else "Unknown command: $name"
+    }
+
     private fun notify(ref: EntityRef, snapshot: Snapshot) {
         for (watcher in watchers[ref].orEmpty().toList()) {
             scheduler.post { if (watcher.live) watcher.fn(snapshot) }
@@ -185,7 +207,10 @@ class FakeClient(val scheduler: TestScheduler) : Client {
 
     /**
      * What `packages/core/src/mock.ts` does for a command, applied to the entity: a light or switch turns on and off,
-     * a brightness of 0 turns a light off, a player plays, pauses and seeks. The default [onCommand].
+     * a brightness of 0 turns a light off, a player plays, pauses, seeks and changes volume, mute and shuffle, a climate
+     * takes a mode, target and preset, an action stamps `lastTriggered`. Not applied (the entity is left as it is):
+     * `playMedia`, the queue and group commands, and `next`/`previous`; a test that needs them sets the state itself in
+     * [onCommand]. The default [onCommand].
      */
     fun applyDefault(ref: EntityRef, name: String, args: JSONObject?) {
         val entity = known[ref] ?: return

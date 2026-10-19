@@ -91,7 +91,8 @@ class SeekControl {
     private var owner: MediaPlayerControl? = null
     private var held: Double? = null
 
-    // What the player had reported when the seek was sent; a report that differs is the player answering it.
+    // What the player had reported when the seek was sent; a report with another position is the player answering it
+    // (the same position again, stamped later, is only a periodic report).
     private var reportedThen: Pair<Double?, String?>? = null
     private var idle: Cancel? = null
 
@@ -124,7 +125,7 @@ class SeekControl {
     internal fun refresh() {
         val control = owner
         val then = reportedThen
-        if (held != null && then != null && control != null && control.reported() != then) {
+        if (held != null && then != null && control != null && control.reported().first != then.first) {
             release()
             return
         }
@@ -197,7 +198,7 @@ class MediaPlayerControl(val handle: EntityHandle<MediaPlayerEntity>, val scope:
     /** The presses that are waiting for the player or failed, by key; changes whenever [feedbackFor] would answer differently. */
     val feedback: Store<Map<String, Feedback>> get() = presses.feedback
 
-    private val presses = PressTracker(scope, handle)
+    private val presses = PressTracker.of(scope, handle)
     private var ticker: Cancel? = null
 
     // For `playing`: the window after a track change in which a dip out of playing is held up, and the dip being held.
@@ -278,12 +279,6 @@ class MediaPlayerControl(val handle: EntityHandle<MediaPlayerEntity>, val scope:
     }
 
     private fun steady(player: MediaPlayerEntity?, isPlaying: Boolean) {
-        // Nothing to go by until the player is known: its first track is where it begins, not a change.
-        if (player == null && !trackSeen) {
-            playing.set(false)
-            return
-        }
-
         val title = player?.media?.title
         if (!trackSeen) {
             track = title
@@ -317,8 +312,8 @@ class MediaPlayerControl(val handle: EntityHandle<MediaPlayerEntity>, val scope:
     }
 
     companion object {
-        /** How often a playing player's progress is redrawn. */
-        const val TICK_MS = 1_000L
+        /** How often a playing player's progress is redrawn (the web's `useMediaPosition` interval). */
+        const val TICK_MS = 500L
 
         /** How long after a track changes the player may dip out of playing without the button showing it. */
         const val NEW_TRACK_MS = 6_000L

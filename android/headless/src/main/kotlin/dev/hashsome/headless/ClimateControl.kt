@@ -5,7 +5,12 @@ import dev.hashsome.client.ClimateEntity
 import dev.hashsome.client.ClimateMode
 import dev.hashsome.client.Store
 
-/** What a climate tile shows and does. M1 only draws its disabled state; the commands are here for M2. */
+/**
+ * What a climate tile shows and does. M1 only draws its disabled state; the commands are here for M2.
+ *
+ * TODO(M2, with the real ClimateTile): the held target while stepping, the step and range, the fallback modes, presets,
+ * humidity and the action, which `climate-tile.tsx` has and this subset does not.
+ */
 class ClimateControl(val handle: EntityHandle<ClimateEntity>) {
     val mode: Store<ClimateMode> = Store(ClimateMode.Off)
     val target: Store<Double?> = Store(null)
