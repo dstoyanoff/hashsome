@@ -4,6 +4,16 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   androidCommand,
+  hasRoomFor,
+  hasSystemFlag,
+  isDataInstall,
+  isRootable,
+  parseAaptVersionCode,
+  parseFreeKb,
+  parseVersionCode,
+  shouldUninstallDataCopy,
+  systemProvisionStages,
+  systemRemoveStages,
   buildCommands,
   deployCommands,
   HOME_ALIAS,
@@ -266,6 +276,104 @@ describe('runCommands', () => {
   });
 });
 
+describe('system install', () => {
+  const stargate = device({ profile: 'shelly-stargate', host: '10.1.1.60' });
+  const jenna = device({ profile: 'shelly-jenna', host: '10.1.1.61' });
+  const all = (d: Device) => {
+    const s = systemProvisionStages(d, APK, PKG);
+    return [
+      ...s.image,
+      ...s.root,
+      ...s.inspect,
+      s.rw,
+      ...s.write,
+      s.ro,
+      s.reboot,
+      ...s.afterReboot,
+      ...s.provision,
+      s.verify,
+    ].map(line);
+  };
+
+  test.each([stargate, jenna])('the steps for $profile, in order', (d) => {
+    const lines = all(d);
+    const s = d.host + ':5555';
+    const at = (needle: string) => lines.findIndex((l) => l.includes(needle));
+    expect(lines).toContain(`adb -s ${s} root`);
+    expect(lines).toContain(`adb -s ${s} wait-for-device`);
+    expect(
+      lines.some((l) => l.includes('mount -o rw,remount /system || mount -o rw,remount /')),
+    ).toBe(true);
+
+    expect(lines).toContain(`adb -s ${s} shell mkdir -p /system/priv-app/Hashsome`);
+    expect(lines).toContain(`adb -s ${s} push ${APK} /system/priv-app/Hashsome/Hashsome.apk`);
+    expect(lines).toContain(`adb -s ${s} shell chmod 755 /system/priv-app/Hashsome`);
+    expect(lines).toContain(`adb -s ${s} shell chmod 644 /system/priv-app/Hashsome/Hashsome.apk`);
+    expect(lines).toContain(
+      `adb -s ${s} shell chown root:root /system/priv-app/Hashsome /system/priv-app/Hashsome/Hashsome.apk`,
+    );
+
+    expect(lines.some((l) => l.includes('restorecon -R /system/priv-app/Hashsome'))).toBe(true);
+    // ro again before the reboot, the permissions only after it, and no plain install
+    expect(at('ro,remount')).toBeLessThan(at(' reboot'));
+    expect(at(' reboot')).toBeLessThan(at('appops set dev.hashsome.home WRITE_SETTINGS'));
+    expect(at('PROVISION')).toBeGreaterThan(at(' reboot'));
+    expect(lines.some((l) => l.includes(' install '))).toBe(false);
+    expect(lines.at(-1)).toContain('dumpsys package dev.hashsome.home | grep flags');
+  });
+
+  test('the Jenna still gets its admin and the stock app put out of the way, the Stargate no admin', () => {
+    expect(all(jenna).some((l) => l.includes('dpm set-active-admin'))).toBe(true);
+    expect(all(stargate).some((l) => l.includes('dpm set-active-admin'))).toBe(false);
+  });
+
+  test('a tablet keeps the normal install', () => {
+    expect(() => systemProvisionStages(device(), APK, PKG)).toThrow(
+      '--system is for Shelly displays; a tablet keeps the normal install',
+    );
+
+    expect(() => systemRemoveStages(device())).toThrow('a tablet keeps the normal install');
+  });
+
+  test('uninstall --system checks root first, removes the copy last, and tolerates a system app', () => {
+    const lines = uninstallCommands(stargate, PKG, true).map(line);
+    expect(lines.find((l) => l.includes('pm uninstall'))).toContain('|| true');
+    expect(uninstallCommands(stargate, PKG).map(line).join('\n')).not.toContain('|| true');
+    const stages = systemRemoveStages(stargate);
+    expect(line(stages.write[0]!)).toContain('rm -rf /system/priv-app/Hashsome');
+    expect(line(stages.reboot)).toContain(' reboot');
+  });
+
+  test('the pre-checks read the image, the free space and the versions', () => {
+    expect(isRootable('userdebug\n', '0')).toBe(true);
+    expect(isRootable('user', '1\r\n')).toBe(true);
+    expect(isRootable('user', '0')).toBe(false);
+    expect(isRootable('', '')).toBe(false);
+
+    const df =
+      'Filesystem           1K-blocks    Used Available Use% Mounted on\n/dev/block/mmcblk0p5    1032088  831420    200668  81% /system\n';
+
+    expect(parseFreeKb(df)).toBe(200668);
+    expect(parseFreeKb('df: /system: No such file')).toBeUndefined();
+    expect(hasRoomFor(10 * 1024 * 1024, 200668)).toBe(true);
+    expect(hasRoomFor(10 * 1024 * 1024, 11 * 1024 - 1)).toBe(false);
+    expect(hasRoomFor(10 * 1024 * 1024, 10 * 1024 + 1024)).toBe(true);
+
+    expect(parseVersionCode('    versionCode=7 minSdk=24 targetSdk=34')).toBe(7);
+    expect(parseVersionCode('Unable to find package')).toBeUndefined();
+    expect(parseAaptVersionCode("package: name='x' versionCode='12' versionName='0.4'")).toBe(12);
+    expect(isDataInstall('package:/data/app/dev.hashsome.home-1/base.apk')).toBe(true);
+    expect(isDataInstall('package:/system/priv-app/Hashsome/Hashsome.apk')).toBe(false);
+    expect(isDataInstall('')).toBe(false);
+    expect(hasSystemFlag('    flags=[ SYSTEM HAS_CODE ALLOW_CLEAR_USER_DATA ]')).toBe(true);
+    expect(hasSystemFlag('    flags=[ HAS_CODE ]')).toBe(false);
+    expect(shouldUninstallDataCopy(3, 4)).toBe(true);
+    expect(shouldUninstallDataCopy(4, 4)).toBe(false);
+    expect(shouldUninstallDataCopy(5, 4)).toBe(false);
+    expect(shouldUninstallDataCopy(3, undefined)).toBe(false);
+  });
+});
+
 describe('androidCommand (dry run)', () => {
   const dirs: string[] = [];
   afterEach(() => {
@@ -316,6 +424,185 @@ describe('androidCommand (dry run)', () => {
     expect(provisioned).not.toContain('1.1.1.1');
     expect(provisioned).toContain('cloud.shelly.stargate');
     expect(provisioned).toContain('HomeActivityAlias');
+  });
+
+  test('provision --system prints the whole plan in a dry run', async () => {
+    const root = project([
+      { id: 'x1', host: '1.1.1.1', profile: 'shelly-stargate' },
+      { id: 'x2i', host: '2.2.2.2', profile: 'shelly-jenna' },
+    ]);
+
+    const log = output();
+    await androidCommand(['provision', '--system', '--dry-run'], root);
+    const text = log.mock.calls.map((c) => c[0]).join('\n');
+    expect(text).toContain('# x1 (1.1.1.1:5555, shelly-stargate)');
+    expect(text).toContain('# x2i (2.2.2.2:5555, shelly-jenna)');
+    expect(text).toContain('$ adb -s 1.1.1.1:5555 root');
+    expect(text).toContain('/system/priv-app/Hashsome/Hashsome.apk');
+    expect(text).toContain('dumpsys package dev.hashsome.home | grep flags');
+  });
+
+  test('provision --system refuses a generic device, and says so', async () => {
+    const root = project([{ id: 'tab', host: '1.1.1.1', profile: 'generic' }]);
+    output();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(androidCommand(['provision', '--system', '--dry-run'], root)).rejects.toThrow(
+      'provision failed for 1 of 1 device(s): tab',
+    );
+
+    expect(error.mock.calls.join('\n')).toContain(
+      '--system is for Shelly displays; a tablet keeps the normal install',
+    );
+  });
+
+  test('provision --system refuses a user build before changing anything', async () => {
+    const root = project([{ id: 'x2i', host: '2.2.2.2', profile: 'shelly-jenna' }]);
+    mkdirSync(join(root, 'android/app/build/outputs/apk/release'), { recursive: true });
+    writeFileSync(join(root, 'android/app/build/outputs/apk/release/app-release.apk'), 'apk');
+    output();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const seen: string[] = [];
+    const exec: Exec = (command) => {
+      seen.push(line(command));
+      const last = command.at(-1) ?? '';
+      return {
+        status: 0,
+        output:
+          last === 'ro.build.type' ? 'user\n' : last === 'ro.debuggable' ? '0\n' : 'connected',
+      };
+    };
+
+    await expect(androidCommand(['provision', '--system'], root, exec)).rejects.toThrow(
+      'failed for 1',
+    );
+
+    expect(error.mock.calls.join('\n')).toContain('no adb root');
+    expect(error.mock.calls.join('\n')).toContain('user build');
+    expect(
+      seen.some((l) => l.includes(' root') || l.includes('remount') || l.includes('push')),
+    ).toBe(false);
+  });
+
+  describe('provision --system against a mock device', () => {
+    const setup = (
+      devices: unknown = [{ id: 'x1', host: '1.1.1.1', profile: 'shelly-stargate' }],
+    ) => {
+      const root = project(devices);
+      mkdirSync(join(root, 'android/app/build/outputs/apk/release'), { recursive: true });
+      writeFileSync(join(root, 'android/app/build/outputs/apk/release/app-release.apk'), 'apk');
+      output();
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      return root;
+    };
+
+    const mock = (
+      opts: { buildType?: string; debuggable?: string; failOn?: string; flags?: string } = {},
+    ) => {
+      const seen: string[] = [];
+      const exec: Exec = (command) => {
+        const text = line(command);
+        seen.push(text);
+        if (opts.failOn && text.includes(opts.failOn)) {
+          return { status: 1, output: '' };
+        }
+
+        const out = text.includes('ro.build.type')
+          ? `${opts.buildType ?? 'userdebug'}\n`
+          : text.includes('ro.debuggable')
+            ? `${opts.debuggable ?? '1'}\n`
+            : text.includes('df -k')
+              ? 'Filesystem 1K-blocks Used Available Use% Mounted on\n/dev/x 1000000 800000 200000 80% /system\n'
+              : text.includes('sys.boot_completed')
+                ? '1\n'
+                : text.includes('grep flags')
+                  ? `${opts.flags ?? 'flags=[ SYSTEM HAS_CODE ]'}\n`
+                  : '';
+
+        return { status: 0, output: out };
+      };
+
+      return { seen, exec };
+    };
+
+    const sleeps: number[] = [];
+    const sleep = (ms: number) => void sleeps.push(ms);
+
+    test('happy path: image check and root first, writes, ro, reboot, then the permissions and the flag check', async () => {
+      const root = setup();
+      const { seen, exec } = mock();
+      await androidCommand(['provision', '--system'], root, exec, sleep);
+      const at = (needle: string) => seen.findIndex((l) => l.includes(needle));
+      expect(at('ro.build.type')).toBeLessThan(at('1.1.1.1:5555 root'));
+      expect(at('1.1.1.1:5555 root')).toBeLessThan(at('rw,remount'));
+      expect(at('rw,remount')).toBeLessThan(at(' push '));
+      expect(at(' push ')).toBeLessThan(at('ro,remount'));
+      expect(at('ro,remount')).toBeLessThan(at(' reboot'));
+      expect(at(' reboot')).toBeLessThan(at('appops set'));
+      expect(at('appops set')).toBeLessThan(at('grep flags'));
+      expect(seen.some((l) => l.includes(' install '))).toBe(false);
+      expect(sleeps).toContain(2000);
+    });
+
+    test('a push that fails still puts /system back to read-only, and does not reboot', async () => {
+      const root = setup();
+      const { seen, exec } = mock({ failOn: ' push ' });
+      await expect(androidCommand(['provision', '--system'], root, exec, sleep)).rejects.toThrow(
+        'failed for 1',
+      );
+
+      const after = seen.slice(seen.findIndex((l) => l.includes(' push ')));
+      expect(after.some((l) => l.includes('ro,remount'))).toBe(true);
+      expect(seen.some((l) => l.includes(' reboot'))).toBe(false);
+    });
+
+    test('a missing SYSTEM flag after the reboot fails the device', async () => {
+      const root = setup();
+      const { exec } = mock({ flags: 'flags=[ HAS_CODE ]' });
+      await expect(androidCommand(['provision', '--system'], root, exec, sleep)).rejects.toThrow(
+        'failed for 1',
+      );
+    });
+
+    test('uninstall --system on a user build fails before anything is removed', async () => {
+      const root = setup();
+      const { seen, exec } = mock({ buildType: 'user', debuggable: '0' });
+      await expect(androidCommand(['uninstall', '--system'], root, exec, sleep)).rejects.toThrow(
+        'failed for 1',
+      );
+
+      expect(
+        seen.some(
+          (l) => l.includes('REMOVE_ADMIN') || l.includes('pm uninstall') || l.includes('rm -rf'),
+        ),
+      ).toBe(false);
+    });
+
+    test('uninstall --system: a failed delete still goes back to read-only', async () => {
+      const root = setup();
+      const { seen, exec } = mock({ failOn: 'rm -rf' });
+      await expect(androidCommand(['uninstall', '--system'], root, exec, sleep)).rejects.toThrow(
+        'failed for 1',
+      );
+
+      expect(seen.findIndex((l) => l.includes('REMOVE_ADMIN'))).toBeGreaterThan(
+        seen.findIndex((l) => l.includes('1.1.1.1:5555 root')),
+      );
+
+      expect(
+        seen
+          .slice(seen.findIndex((l) => l.includes('rm -rf')))
+          .some((l) => l.includes('ro,remount')),
+      ).toBe(true);
+
+      expect(seen.some((l) => l.includes(' reboot'))).toBe(false);
+    });
+  });
+
+  test('--system only applies to provision and uninstall', async () => {
+    const root = project([{ id: 'a', host: '1.1.1.1', profile: 'shelly-stargate' }]);
+    await expect(androidCommand(['deploy', '--system', '--dry-run'], root)).rejects.toThrow(
+      '--system only applies',
+    );
   });
 
   test('uninstall needs no APK, honours --device, and reminds about the home app only for a home device', async () => {

@@ -69,6 +69,20 @@ Each module publishes its `release` AAR with sources, under group `dev.hashsome`
 - **Open Shelly app** (Connection group, Shelly profiles only; MQTT button `open_stock_app`): launches the stock app and pauses keep-in-front for `KioskConfig.stockAppPauseMs` (10 minutes), ending early when the dashboard is resumed again.
 - **Restart device** (Debug group, tap twice; MQTT button `restart_device`): shown only where a reboot is possible, probed once the service runs and again every 5 minutes until a way is found (once found it is not probed again; the reboot itself runs off the main thread): the display's own Shelly RPC (`/rpc/Shelly.Reboot` on 127.0.0.1:80) on a Shelly profile, or `PowerManager.reboot` / the device-owner reboot where the app holds `REBOOT` or is device owner.
 
+## System install on Shelly displays (X1)
+
+On the Shelly Wall Display X1 (Android 7, a **userdebug** image: `ro.debuggable=1`, `adb root` works) the stock Shelly app force-stops every non-system app at each boot (its shutdown hook, `SHELLY APPLICATION SHUTDOWN COMPLETED`), so the app only survives a reboot as a **system app**. This is optional and for Shelly profiles only; a plain tablet keeps the normal install. The X2i is a user build, with no adb root, and cannot do it.
+
+```sh
+hashsome android provision --system --device bathroom-small [--home] [--dry-run]
+```
+
+It checks the image (`ro.build.type` userdebug or `ro.debuggable` 1), runs `adb root` (and connects again, adbd restarts), checks that `/system` has the APK's size plus 1 MB free, then: remounts `/system` read-write (`mount -o rw,remount /system || mount -o rw,remount /`), `mkdir -p /system/priv-app/Hashsome`, pushes the APK to `/system/priv-app/Hashsome/Hashsome.apk`, `chmod 755` the directory and `644` the APK, `chown root:root`, `restorecon -R` where available, remounts read-only and reboots. The permissions, battery whitelist, device admin and settings broadcast follow after the reboot (the package manager only knows a priv-app after the boot scan), then `dumpsys package <pkg> | grep flags` is printed and must show `SYSTEM`. The procedure is ShellyElevate's `install-privapp.sh` (Apache-2.0, see NOTICE).
+
+- If the app is already installed in `/data/app` with the same signature, it becomes an _updated system app_. A `/data` copy with a lower `versionCode` than the pushed APK is uninstalled first with `pm uninstall -k`, which keeps its data (the APK's version is read with `aapt` from `$ANDROID_HOME/build-tools`; without it the copy stays and the boot scan sorts it out).
+- One-time: nothing is recorded in `devices.json`. Later updates are a plain `hashsome android deploy` (`adb install -r` keeps the system flag).
+- Undo: `hashsome android uninstall --system --device bathroom-small` does the usual uninstall (the `pm uninstall` of a pure system app fails and is tolerated), after the same image and `adb root` check as provision (so a user build fails before anything is removed), remounts read-write, `rm -rf /system/priv-app/Hashsome`, remount read-only and reboot.
+
 ## How `example/android` consumes it
 
 `example/android` is its own Gradle build, like a consumer's repo. Its `settings.gradle.kts` has

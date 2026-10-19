@@ -10,7 +10,11 @@ ShellyElevate
   Device knowledge and code adapted from it for the Shelly Wall Displays: the backlight sysfs paths, the
   Settings.System brightness handling, the auto-brightness ramp, keeping the app in front through UsageStats,
   the MQTT discovery builder and the appops used when provisioning. Each adapted file names it in its header
-  (kiosk: AutoBrightness.kt, Device.kt, Presence.kt, Mqtt.kt, Service.kt).
+  (kiosk: AutoBrightness.kt, Device.kt, Presence.kt, Mqtt.kt, Service.kt). Also the procedure of its
+  tools/install-privapp.sh for installing the app as a system app (adb root, remount /system read-write,
+  a directory in /system/priv-app, push, chmod/chown and the SELinux label, remount read-only, reboot, and its
+  checks for "cannot run as root" and for free space), reimplemented in Node as `hashsome android provision
+  --system` (packages/runtime/src/cli/android.ts).
   Copyright the ShellyElevate authors (RapierXbox and contributors). Licensed under the Apache License,
   Version 2.0; you may obtain a copy at https://www.apache.org/licenses/LICENSE-2.0. The adapted code is
   rewritten in Kotlin and changed (the proximity polarity of the X2i, the backlight and device-admin handling,
