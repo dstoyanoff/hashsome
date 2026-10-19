@@ -1,0 +1,30 @@
+Hashsome Android libraries
+==========================
+
+This product includes work from the following projects.
+
+ShellyElevate
+  https://github.com/RapierXbox/ShellyElevate
+  License: Apache License 2.0
+  Used by: kiosk (arrives with the kiosk work package)
+  Device knowledge and code adapted from it for the Shelly Wall Displays: the backlight sysfs paths, the
+  Settings.System brightness handling, the auto-brightness ramp, keeping the app in front through UsageStats,
+  the MQTT discovery builder and the appops used when provisioning. Each adapted file names it in its header.
+  [Copyright holders and the full license text are added here when the first adapted file lands.]
+
+Lucide
+  https://lucide.dev
+  License: ISC License
+  Used by: ui (the glyphs of its own chrome, generated into vector drawables at library build time)
+  [Copyright line and license text are added here when the icons are generated.]
+
+Inter
+  https://rsms.me/inter/
+  License: SIL Open Font License 1.1
+  Used by: ui (bundled Regular, Medium and SemiBold)
+  [Copyright line and license text are added here when the font files are bundled.]
+
+Eclipse Paho MQTT Client
+  https://eclipse.dev/paho/
+  License: Eclipse Public License 2.0 / Eclipse Distribution License 1.0
+  Used by: kiosk (a dependency, not bundled source)

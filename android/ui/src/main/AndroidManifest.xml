@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- Whether it is exported, and its MAIN/LAUNCHER filter, are the consumer's to say in its own manifest (kiosk adds the HOME one). -->
+        <activity
+            android:name="dev.hashsome.ui.DashboardActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+    </application>
+</manifest>
