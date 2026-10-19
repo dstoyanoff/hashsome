@@ -46,3 +46,13 @@ class StatusDotTargetTest {
         assertEquals(false, StatusDotHold.withinArea(32f + 18f + 49f, 16f, 32f, 32f, 12f, 12f, 18f, 12f, 48f))
     }
 }
+
+class StatusDotReleaseTest {
+    @Test
+    fun `only a plain tap clicks`() {
+        assertEquals(StatusDotHold.Release.Tap, StatusDotHold.release(fired = false, gaveUp = false))
+        assertEquals(StatusDotHold.Release.Held, StatusDotHold.release(fired = true, gaveUp = false))
+        assertEquals(StatusDotHold.Release.Cancelled, StatusDotHold.release(fired = false, gaveUp = true))
+        assertEquals(StatusDotHold.Release.Held, StatusDotHold.release(fired = true, gaveUp = true))
+    }
+}

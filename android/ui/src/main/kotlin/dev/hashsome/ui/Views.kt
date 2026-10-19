@@ -757,6 +757,12 @@ object StatusDotHold {
         return intArrayOf(before, after)
     }
 
+    /** What a release means: a [Held] hold (swallowed), a hold given up by leaving the area ([Cancelled]), or a plain [Tap]. */
+    enum class Release { Tap, Held, Cancelled }
+
+    /** [fired]: the hold's time ran out (the timer fired, or the finger lifted after the full time); [gaveUp]: the finger left the area. */
+    fun release(fired: Boolean, gaveUp: Boolean): Release = if (fired) Release.Held else if (gaveUp) Release.Cancelled else Release.Tap
+
     /** Ms held at [now] by a press that began at [start] (both uptime clock). */
     fun elapsed(now: Long, start: Long): Long = maxOf(0L, now - start)
 
@@ -813,31 +819,42 @@ open class StatusDot(context: Context) : View(context) {
         setOnClickListener { Hashsome.touchListener.onStatusDotTap() }
     }
 
+    // The dot decides its own click (the touch target over it only forwards): a tap clicks, a held or given-up press never does.
+    private var gaveUp = false
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 held = false
+                gaveUp = false
+                isPressed = true
                 startRing(Hashsome.touchListener.statusDotHoldMs)
             }
             // Drift inside the expanded area changes nothing; leaving it gives the hold up for good.
             MotionEvent.ACTION_MOVE ->
-                if (holding && !StatusDotHold.withinArea(event.x, event.y, width.toFloat(), height.toFloat(), reachL.toFloat(), reachT.toFloat(), reachR.toFloat(), reachB.toFloat(), dp(StatusDotHold.MARGIN_DP).toFloat())) stopRing()
+                if (!gaveUp && !held && !StatusDotHold.withinArea(event.x, event.y, width.toFloat(), height.toFloat(), reachL.toFloat(), reachT.toFloat(), reachR.toFloat(), reachB.toFloat(), dp(StatusDotHold.MARGIN_DP).toFloat())) {
+                    gaveUp = true
+                    stopRing()
+                    isPressed = false
+                }
             MotionEvent.ACTION_UP -> {
                 // Lifted after the full time but before the timer ran: the hold counts, and the release is swallowed.
                 if (holding && StatusDotHold.completed(StatusDotHold.elapsed(android.os.SystemClock.uptimeMillis(), holdStart), holdMs)) fire.run()
                 stopRing()
-                if (held) {
-                    held = false
-                    isPressed = false
-                    return true
-                }
+                val release = StatusDotHold.release(held, gaveUp)
+                held = false
+                gaveUp = false
+                isPressed = false
+                if (release == StatusDotHold.Release.Tap) performClick()
             }
             MotionEvent.ACTION_CANCEL -> {
                 stopRing()
                 held = false
+                gaveUp = false
+                isPressed = false
             }
         }
-        return super.onTouchEvent(event)
+        return true
     }
 
     // Timed from the uptime clock, not a ValueAnimator: a zero animator scale (common on kiosks) would end an animator at once.
