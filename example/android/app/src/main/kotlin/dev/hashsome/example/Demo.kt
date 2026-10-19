@@ -24,6 +24,11 @@ import dev.hashsome.ui.ClockFormat
 import dev.hashsome.ui.ColumnLayout
 import dev.hashsome.ui.Dashboard
 import dev.hashsome.ui.FlexParams
+import dev.hashsome.ui.FormHeading
+import dev.hashsome.ui.FormRow
+import dev.hashsome.ui.FormSelect
+import dev.hashsome.ui.FormSlider
+import dev.hashsome.ui.ToggleView
 import dev.hashsome.ui.Hashsome
 import dev.hashsome.ui.Justify
 import dev.hashsome.ui.LightTileView
@@ -187,6 +192,11 @@ object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
                 add(RoundButton(context, UiIcons.shuffle).also { it.active = true })
                 add(RoundButton(context, UiIcons.close))
             }
+            add(text("Form controls: heading, toggle, dropdown, slider", Role.Secondary, muted = true))
+            add(FormHeading(context, "Screen"), 40)
+            add(FormRow(context, "Auto brightness").control(ToggleView(context).also { it.checked = true }), 52)
+            add(FormRow(context, "Dashboard").control(FormSelect(context).also { it.options = listOf("demo", "media"); it.selected = "demo" }, 200), 52)
+            add(FormRow(context, "Brightness").control(FormSlider(context).also { it.value = 60 }, 200), 52)
             add(PlayerCard(context), 150)
             spacer(grow = true)
         }

@@ -46,6 +46,8 @@ android {
 }
 
 dependencies {
-    // The example is a plain dashboard app: no kiosk behaviour, so `ui` alone.
+    // The example is a plain dashboard app: no kiosk behaviour (`withKiosk` is not installed), so `ui` alone, plus `kiosk` only to open
+    // its settings sheet for a look (`--es settings true`, see DemoLaunch).
     implementation(libs.hashsome.ui)
+    implementation(libs.hashsome.kiosk)
 }

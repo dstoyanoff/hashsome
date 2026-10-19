@@ -48,5 +48,11 @@
   "useReconnects": "planned",
   "useIntegrationStatus": "planned",
   "useIntegrationStatuses": "planned",
-  "useCallRaw": "planned"
+  "useCallRaw": "planned",
+  "FormHeading": "native-only: a form control of the settings sheet (the web's debug menu uses its ChipRow instead)",
+  "FormRow": "native-only: a form control of the settings sheet (the web's debug menu uses its ChipRow instead)",
+  "ToggleView": "native-only: a form control of the settings sheet (the web's debug menu uses its ChipRow instead)",
+  "FormSelect": "native-only: a form control of the settings sheet (the web's debug menu uses its ChipRow instead)",
+  "FormSlider": "native-only: a form control of the settings sheet (the web's debug menu uses its ChipRow instead)",
+  "FormField": "native-only: a form control of the settings sheet (the web's debug menu uses its ChipRow instead)"
 }

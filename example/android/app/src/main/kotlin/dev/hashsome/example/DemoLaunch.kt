@@ -4,10 +4,13 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
+import dev.hashsome.kiosk.Settings
+import dev.hashsome.kiosk.showSettingsSheet
 import dev.hashsome.ui.Hashsome
+import dev.hashsome.ui.ThemeChoice
 
 /**
- * Takes `--es server host:port` and `--es dashboard <id>` (and `--ez perf true` for the frame-gap beacon) from the intent that starts the app, and keeps them for the next start, as a kiosk
+ * Takes `--es settings true` (opens the kiosk's settings sheet over the page, with `--es theme light|dark|auto` to show it in a theme), `--es server host:port` and `--es dashboard <id>` (and `--ez perf true` for the frame-gap beacon) from the intent that starts the app, and keeps them for the next start, as a kiosk
  * is provisioned: the example is a plain app with no kiosk module, so this stands in for it.
  */
 object DemoLaunch {
@@ -33,6 +36,7 @@ object DemoLaunch {
                 val intent = activity.intent
                 intent?.getStringExtra("server")?.let { prefs.edit().putString("server", it).apply() }
                 intent?.getStringExtra("dashboard")?.let { prefs.edit().putString("dashboard", it).apply() }
+                if (intent?.getStringExtra("settings") == "true" && debuggable(activity)) showSettings(activity)
                 if (intent?.hasExtra("perf") == true) prefs.edit().putBoolean("perf", intent.getBooleanExtra("perf", false)).apply()
                 prefs.getString("server", null)?.let { Hashsome.settings.server.set(it) }
                 prefs.getString("dashboard", null)?.let { Hashsome.settings.dashboard.set(it) }
@@ -45,5 +49,15 @@ object DemoLaunch {
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
             override fun onActivityDestroyed(activity: Activity) {}
         })
+    }
+
+    private fun debuggable(context: Context) = context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
+
+    /** The kiosk's settings sheet, for looking at it (debuggable builds only, as the provision receiver above): its `Settings` are loaded (this app has no `withKiosk`) and the sheet opens once the page is up. */
+    private fun showSettings(activity: Activity) {
+        val intent = activity.intent
+        Settings.init(activity.applicationContext)
+        intent.getStringExtra("theme")?.let { name -> ThemeChoice.values().firstOrNull { it.name.equals(name, true) }?.let { Settings.theme.set(it) } }
+        activity.window.decorView.postDelayed({ showSettingsSheet(activity) }, 1500)
     }
 }
