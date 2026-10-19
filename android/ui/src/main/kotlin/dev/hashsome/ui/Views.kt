@@ -757,11 +757,15 @@ object StatusDotHold {
         return intArrayOf(before, after)
     }
 
-    /** What a release means: a [Held] hold (swallowed), a hold given up by leaving the area ([Cancelled]), or a plain [Tap]. */
-    enum class Release { Tap, Held, Cancelled }
+    /** The longest press, in ms, that still counts as a tap (the health popover); a longer one released early is an abandoned hold. */
+    const val TAP_MAX_MS = 400L
 
-    /** [fired]: the hold's time ran out (the timer fired, or the finger lifted after the full time); [gaveUp]: the finger left the area. */
-    fun release(fired: Boolean, gaveUp: Boolean): Release = if (fired) Release.Held else if (gaveUp) Release.Cancelled else Release.Tap
+    /** What a release means: a [Held] hold (swallowed), a hold given up by leaving the area ([Cancelled]), a press too long for a tap but released before the hold ran out ([Abandoned]), or a plain [Tap]. */
+    enum class Release { Tap, Abandoned, Held, Cancelled }
+
+    /** [fired]: the hold's time ran out; [gaveUp]: the finger left the area; [elapsedMs]: DOWN to release. Only a press of at most [TAP_MAX_MS] is a [Release.Tap]. */
+    fun release(fired: Boolean, gaveUp: Boolean, elapsedMs: Long): Release =
+        if (fired) Release.Held else if (gaveUp) Release.Cancelled else if (elapsedMs > TAP_MAX_MS) Release.Abandoned else Release.Tap
 
     /** Ms held at [now] by a press that began at [start] (both uptime clock). */
     fun elapsed(now: Long, start: Long): Long = maxOf(0L, now - start)
@@ -821,6 +825,7 @@ open class StatusDot(context: Context) : View(context) {
 
     // The dot decides its own click (the touch target over it only forwards): a tap clicks, a held or given-up press never does.
     private var gaveUp = false
+    private var downAt = 0L
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
@@ -828,6 +833,7 @@ open class StatusDot(context: Context) : View(context) {
                 held = false
                 gaveUp = false
                 isPressed = true
+                downAt = android.os.SystemClock.uptimeMillis()
                 startRing(Hashsome.touchListener.statusDotHoldMs)
             }
             // Drift inside the expanded area changes nothing; leaving it gives the hold up for good.
@@ -841,7 +847,7 @@ open class StatusDot(context: Context) : View(context) {
                 // Lifted after the full time but before the timer ran: the hold counts, and the release is swallowed.
                 if (holding && StatusDotHold.completed(StatusDotHold.elapsed(android.os.SystemClock.uptimeMillis(), holdStart), holdMs)) fire.run()
                 stopRing()
-                val release = StatusDotHold.release(held, gaveUp)
+                val release = StatusDotHold.release(held, gaveUp, StatusDotHold.elapsed(android.os.SystemClock.uptimeMillis(), downAt))
                 held = false
                 gaveUp = false
                 isPressed = false

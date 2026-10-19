@@ -49,10 +49,18 @@ class StatusDotTargetTest {
 
 class StatusDotReleaseTest {
     @Test
-    fun `only a plain tap clicks`() {
-        assertEquals(StatusDotHold.Release.Tap, StatusDotHold.release(fired = false, gaveUp = false))
-        assertEquals(StatusDotHold.Release.Held, StatusDotHold.release(fired = true, gaveUp = false))
-        assertEquals(StatusDotHold.Release.Cancelled, StatusDotHold.release(fired = false, gaveUp = true))
-        assertEquals(StatusDotHold.Release.Held, StatusDotHold.release(fired = true, gaveUp = true))
+    fun `only a press of at most 400 ms clicks`() {
+        assertEquals(StatusDotHold.Release.Tap, StatusDotHold.release(fired = false, gaveUp = false, elapsedMs = 399))
+        assertEquals(StatusDotHold.Release.Tap, StatusDotHold.release(fired = false, gaveUp = false, elapsedMs = 400))
+        assertEquals(StatusDotHold.Release.Abandoned, StatusDotHold.release(fired = false, gaveUp = false, elapsedMs = 401))
+        assertEquals(StatusDotHold.Release.Abandoned, StatusDotHold.release(fired = false, gaveUp = false, elapsedMs = 2_000))
+    }
+
+    @Test
+    fun `a held or given-up press never clicks, however short`() {
+        assertEquals(StatusDotHold.Release.Held, StatusDotHold.release(fired = true, gaveUp = false, elapsedMs = 5_000))
+        assertEquals(StatusDotHold.Release.Held, StatusDotHold.release(fired = true, gaveUp = true, elapsedMs = 5_000))
+        assertEquals(StatusDotHold.Release.Cancelled, StatusDotHold.release(fired = false, gaveUp = true, elapsedMs = 100))
+        assertEquals(StatusDotHold.Release.Cancelled, StatusDotHold.release(fired = false, gaveUp = true, elapsedMs = 3_000))
     }
 }
