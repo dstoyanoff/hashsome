@@ -1,0 +1,13 @@
+{
+  "type": "entity",
+  "ref": "ha:script.shower",
+  "entity": {
+    "kind": "action",
+    "name": "Shower",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": { "state": "off", "attributes": { "friendly_name": "Shower" } },
+    "ref": "ha:script.shower"
+  }
+}

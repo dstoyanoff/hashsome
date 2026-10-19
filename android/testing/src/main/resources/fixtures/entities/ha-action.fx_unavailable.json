@@ -1,0 +1,10 @@
+{
+  "type": "entity",
+  "ref": "ha:action.fx_unavailable",
+  "entity": {
+    "kind": "action",
+    "name": "Script gone",
+    "availability": "unavailable",
+    "ref": "ha:action.fx_unavailable"
+  }
+}

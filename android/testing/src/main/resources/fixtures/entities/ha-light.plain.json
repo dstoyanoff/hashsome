@@ -1,0 +1,18 @@
+{
+  "type": "entity",
+  "ref": "ha:light.plain",
+  "entity": {
+    "kind": "light",
+    "name": "Lamp",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": {
+      "state": "on",
+      "attributes": { "friendly_name": "Lamp", "supported_color_modes": ["onoff"] }
+    },
+    "on": true,
+    "capabilities": { "brightness": false, "colorTemperature": false, "color": false },
+    "ref": "ha:light.plain"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "type": "entity",
+  "ref": "ha:vacuum.future",
+  "entity": {
+    "ref": "ha:vacuum.future",
+    "kind": "vacuum",
+    "name": "Robot from the future",
+    "availability": "ready",
+    "value": "docked",
+    "unit": "state",
+    "battery": 80
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "type": "entity",
+  "ref": "ha:sensor.fx_unavailable",
+  "entity": {
+    "kind": "sensor",
+    "name": "Sensor gone",
+    "availability": "unavailable",
+    "value": "unavailable",
+    "ref": "ha:sensor.fx_unavailable"
+  }
+}

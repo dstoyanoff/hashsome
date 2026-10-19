@@ -1,0 +1,15 @@
+{
+  "type": "entity",
+  "ref": "ha:person.alex",
+  "entity": {
+    "kind": "person",
+    "name": "Alex",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": { "state": "not_home", "attributes": { "friendly_name": "Alex" } },
+    "location": "not_home",
+    "home": false,
+    "ref": "ha:person.alex"
+  }
+}

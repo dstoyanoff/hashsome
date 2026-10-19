@@ -1,0 +1,35 @@
+{
+  "type": "entity",
+  "ref": "ha:climate.thermostat",
+  "entity": {
+    "kind": "climate",
+    "name": "Thermostat",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": {
+      "state": "off",
+      "attributes": {
+        "friendly_name": "Thermostat",
+        "hvac_modes": ["off", "heat", "cool", "auto"],
+        "temperature": 21.5,
+        "current_temperature": 18.8,
+        "preset_modes": ["home", "away"],
+        "preset_mode": "home"
+      }
+    },
+    "mode": "off",
+    "targetTemperature": 21.5,
+    "currentTemperature": 18.8,
+    "unit": "°C",
+    "preset": "home",
+    "capabilities": {
+      "modes": ["off", "heat", "cool", "auto"],
+      "presets": ["home", "away"],
+      "targetTemperature": true,
+      "step": 0.5,
+      "range": { "min": 5, "max": 35 }
+    },
+    "ref": "ha:climate.thermostat"
+  }
+}

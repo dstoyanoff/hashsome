@@ -1,0 +1,15 @@
+{
+  "type": "entity",
+  "ref": "ha:person.dan",
+  "entity": {
+    "kind": "person",
+    "name": "Dan",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": { "state": "home", "attributes": { "friendly_name": "Dan" } },
+    "location": "home",
+    "home": true,
+    "ref": "ha:person.dan"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "type": "entity",
+  "ref": "ma:garage",
+  "entity": {
+    "kind": "mediaPlayer",
+    "name": "Garage",
+    "availability": "unavailable",
+    "playback": "off",
+    "muted": false,
+    "capabilities": {
+      "volume": false,
+      "mute": false,
+      "next": true,
+      "previous": true,
+      "browse": true,
+      "search": true,
+      "seek": true,
+      "shuffle": true,
+      "queue": true,
+      "transfer": false,
+      "group": false
+    },
+    "ref": "ma:garage"
+  }
+}

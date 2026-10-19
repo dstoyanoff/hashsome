@@ -1,0 +1,96 @@
+{
+  "type": "result",
+  "id": 15,
+  "ok": true,
+  "data": {
+    "entries": [
+      {
+        "id": "light.plain@1772355600000",
+        "message": "turned on",
+        "timestamp": "2026-03-01T09:00:00.000Z",
+        "change": "on",
+        "actor": "Bedtime",
+        "actorKind": "automation"
+      },
+      {
+        "id": "light.plain@1772343660000",
+        "message": "turned off",
+        "timestamp": "2026-03-01T05:41:00.000Z",
+        "change": "off",
+        "actor": "Alex"
+      },
+      {
+        "id": "light.plain@1772331720000",
+        "message": "turned on",
+        "timestamp": "2026-03-01T02:22:00.000Z",
+        "change": "on",
+        "actor": "Sunrise",
+        "actorKind": "automation"
+      },
+      {
+        "id": "light.plain@1772322780000",
+        "message": "turned off",
+        "timestamp": "2026-02-28T23:53:00.000Z",
+        "change": "off"
+      },
+      {
+        "id": "light.plain@1772310840000",
+        "message": "turned on",
+        "timestamp": "2026-02-28T20:34:00.000Z",
+        "change": "on",
+        "actor": "Dan"
+      },
+      {
+        "id": "light.plain@1772298900000",
+        "message": "turned off",
+        "timestamp": "2026-02-28T17:15:00.000Z",
+        "change": "off",
+        "actor": "Bedtime",
+        "actorKind": "automation"
+      },
+      {
+        "id": "light.plain@1772289960000",
+        "message": "turned on",
+        "timestamp": "2026-02-28T14:46:00.000Z",
+        "change": "on",
+        "actor": "Alex"
+      },
+      {
+        "id": "light.plain@1772278020000",
+        "message": "turned off",
+        "timestamp": "2026-02-28T11:27:00.000Z",
+        "change": "off",
+        "actor": "Sunrise",
+        "actorKind": "automation"
+      },
+      {
+        "id": "light.plain@1772269080000",
+        "message": "became unavailable",
+        "timestamp": "2026-02-28T08:58:00.000Z",
+        "change": "availability"
+      },
+      {
+        "id": "light.plain@1772257140000",
+        "message": "turned on",
+        "timestamp": "2026-02-28T05:39:00.000Z",
+        "change": "on",
+        "actor": "Dan"
+      },
+      {
+        "id": "light.plain@1772245200000",
+        "message": "turned off",
+        "timestamp": "2026-02-28T02:20:00.000Z",
+        "change": "off",
+        "actor": "Bedtime",
+        "actorKind": "automation"
+      },
+      {
+        "id": "light.plain@1772236260000",
+        "message": "turned on",
+        "timestamp": "2026-02-27T23:51:00.000Z",
+        "change": "on",
+        "actor": "Alex"
+      }
+    ]
+  }
+}

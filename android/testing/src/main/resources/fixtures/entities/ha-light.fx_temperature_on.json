@@ -1,0 +1,19 @@
+{
+  "type": "entity",
+  "ref": "ha:light.fx_temperature_on",
+  "entity": {
+    "kind": "light",
+    "name": "Warm white",
+    "availability": "ready",
+    "on": true,
+    "brightness": 0.8,
+    "color": { "mode": "temperature", "kelvin": 2700 },
+    "capabilities": {
+      "brightness": true,
+      "colorTemperature": true,
+      "color": false,
+      "kelvinRange": { "min": 2000, "max": 6500 }
+    },
+    "ref": "ha:light.fx_temperature_on"
+  }
+}

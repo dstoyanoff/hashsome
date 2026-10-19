@@ -1,0 +1,15 @@
+{
+  "type": "entity",
+  "ref": "ha:light.unavailable",
+  "entity": {
+    "kind": "light",
+    "name": "Unplugged light",
+    "availability": "unavailable",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": { "state": "unavailable", "attributes": { "friendly_name": "Unplugged light" } },
+    "on": false,
+    "capabilities": { "brightness": false, "colorTemperature": false, "color": false },
+    "ref": "ha:light.unavailable"
+  }
+}

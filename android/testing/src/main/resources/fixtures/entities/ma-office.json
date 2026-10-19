@@ -1,0 +1,27 @@
+{
+  "type": "entity",
+  "ref": "ma:office",
+  "entity": {
+    "kind": "mediaPlayer",
+    "name": "Office",
+    "availability": "ready",
+    "playback": "idle",
+    "muted": false,
+    "volume": 0.15,
+    "groupable": ["ma:living_room", "ma:kitchen"],
+    "capabilities": {
+      "volume": true,
+      "mute": true,
+      "next": true,
+      "previous": true,
+      "browse": true,
+      "search": true,
+      "seek": true,
+      "shuffle": true,
+      "queue": true,
+      "transfer": false,
+      "group": true
+    },
+    "ref": "ma:office"
+  }
+}

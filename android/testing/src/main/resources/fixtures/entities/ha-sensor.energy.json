@@ -1,0 +1,24 @@
+{
+  "type": "entity",
+  "ref": "ha:sensor.energy",
+  "entity": {
+    "kind": "sensor",
+    "name": "Energy",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": {
+      "state": "84.3",
+      "attributes": {
+        "friendly_name": "Energy",
+        "device_class": "energy",
+        "unit_of_measurement": "kWh"
+      }
+    },
+    "value": "84.3",
+    "numeric": 84.3,
+    "unit": "kWh",
+    "measurement": "energy",
+    "ref": "ha:sensor.energy"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "type": "entity",
+  "ref": "ha:light.tunable",
+  "entity": {
+    "kind": "light",
+    "name": "Tunable white",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": {
+      "state": "on",
+      "attributes": {
+        "friendly_name": "Tunable white",
+        "supported_color_modes": ["color_temp"],
+        "color_mode": "color_temp",
+        "brightness": 255,
+        "color_temp_kelvin": 2700,
+        "min_color_temp_kelvin": 2000,
+        "max_color_temp_kelvin": 6500
+      }
+    },
+    "on": true,
+    "brightness": 1,
+    "color": { "mode": "temperature", "kelvin": 2700 },
+    "capabilities": {
+      "brightness": true,
+      "colorTemperature": true,
+      "color": false,
+      "kelvinRange": { "min": 2000, "max": 6500 }
+    },
+    "ref": "ha:light.tunable"
+  }
+}

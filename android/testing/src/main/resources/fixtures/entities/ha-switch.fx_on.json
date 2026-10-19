@@ -1,0 +1,12 @@
+{
+  "type": "entity",
+  "ref": "ha:switch.fx_on",
+  "entity": {
+    "kind": "switch",
+    "name": "Plug on",
+    "availability": "ready",
+    "on": true,
+    "lastChanged": "2026-03-01T11:59:00.000Z",
+    "ref": "ha:switch.fx_on"
+  }
+}
