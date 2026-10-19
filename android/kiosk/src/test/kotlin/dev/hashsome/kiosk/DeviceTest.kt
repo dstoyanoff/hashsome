@@ -51,14 +51,10 @@ class DeviceTest {
     }
 
     @Test
-    fun `five taps within two seconds open the sheet, and the count starts over`() {
-        val taps = ArrayDeque<Long>()
-        assertFalse((0L..3L).any { KioskTouchListener.fiveTaps(taps, it * 400) })
-        assertTrue(KioskTouchListener.fiveTaps(taps, 1_600))
-        assertFalse(KioskTouchListener.fiveTaps(taps, 1_700))
-        // Five taps spread over three seconds do not.
-        val slow = ArrayDeque<Long>()
-        assertFalse((0L..4L).any { KioskTouchListener.fiveTaps(slow, it * 750) })
+    @Suppress("DEPRECATION")
+    fun `the status dot hold is the default gesture and the old name still resolves to it`() {
+        assertEquals(Gesture.HoldStatusDot(5_000), KioskConfig().settingsGesture)
+        assertEquals(Gesture.HoldStatusDot(), Gesture.FiveTapsOnStatusDot)
     }
 
     @Test

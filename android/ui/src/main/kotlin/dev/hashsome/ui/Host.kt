@@ -52,6 +52,12 @@ interface TouchListener {
     /** The status dot of the top row was tapped. */
     fun onStatusDotTap() {}
 
+    /** The status dot was pressed and held for [statusDotHoldMs] without moving; the tap (and the health popover) does not follow. */
+    fun onStatusDotHold() {}
+
+    /** How long the status dot is held before [onStatusDotHold]. */
+    val statusDotHoldMs: Long get() = StatusDotHold.DEFAULT_MS
+
     companion object None : TouchListener
 }
 

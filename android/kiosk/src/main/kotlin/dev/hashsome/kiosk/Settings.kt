@@ -51,6 +51,9 @@ object Settings : HostSettings {
     /** Percent, 0..100: where auto-brightness settles in the dark. */
     val minBrightness: Store<Int> = Store(8)
 
+    /** The last level (0..255) auto-brightness wrote, so a restart lights the panel at it until the light sensor reports (the X1's reports only on change). */
+    val lastAutoLevel: Store<Int?> = Store(null)
+
     /** Night mode on or off. Only Home Assistant and the settings sheet change it; the app never does. */
     val night: Store<Boolean> = Store(false)
     val nightIdleMs: Store<Long> = Store(120_000)
@@ -105,6 +108,7 @@ object Settings : HostSettings {
         number("brightness", brightness, 100)
         flag("autoBrightness", autoBrightness, defaults.autoBrightness)
         number("minBrightness", minBrightness, defaults.minBrightness)
+        key("lastAutoLevel", lastAutoLevel, null, { it?.toString() }, { it.toIntOrNull() })
         flag("night", night, false)
         key("nightIdleMs", nightIdleMs, defaults.nightIdleMs, { it.toString() }, { it.toLongOrNull() })
         flag("mqtt.enabled", mqtt.enabled, false)

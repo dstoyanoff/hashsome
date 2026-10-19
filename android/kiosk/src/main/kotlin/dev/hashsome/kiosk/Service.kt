@@ -161,7 +161,7 @@ internal class Rebuilder(settings: Settings, private val build: () -> () -> Unit
  */
 internal class BrightnessControl(private val settings: Settings, private val presence: Presence, private val screen: Screen) {
     internal var scheduler: Scheduler? = null
-    private val auto = AutoBrightness(presence.lux, screen, settings.minBrightness)
+    private val auto = AutoBrightness(presence.lux, screen, settings.minBrightness, settings.lastAutoLevel)
     private val cancels = ArrayList<Cancel>()
 
     fun start() {
@@ -210,6 +210,19 @@ internal class LinkBinder(private val state: KioskState) {
     }
 }
 
+/** Whether the dashboard has to be started to be in front. Starting it when it already is only makes the host re-resume (and, on a bad day, rebuild). */
+internal object FrontDecision {
+    /**
+     * [dashboardResumed]: our activity is the resumed one, so nothing is in front of it and no launch is needed. Otherwise [top] (the
+     * package of the last activity moved to the foreground, null when unknown) decides, and without it [ownProcessVisible].
+     */
+    fun shouldLaunch(top: String?, ownPackage: String, dashboardResumed: Boolean, ownProcessVisible: () -> Boolean): Boolean {
+        if (dashboardResumed) return false
+        val front = if (top != null) top == ownPackage else ownProcessVisible()
+        return !front
+    }
+}
+
 /**
  * Checks every 2 s whether the dashboard is the app in front and relaunches it if not (the stock Shelly app pops up over
  * ours now and then). Through `UsageStatsManager` when `GET_USAGE_STATS` was granted (`appops set ... GET_USAGE_STATS allow`),
@@ -221,15 +234,14 @@ internal class KeepInFront(private val context: Context) {
     private var lastLaunch = Long.MIN_VALUE / 2
 
     fun check() {
-        val top = topPackage()
-        val front = if (top != null) top == context.packageName else ownProcessVisible()
-        if (front) return
+        val top = if (Kiosk.dashboardResumed) null else topPackage()
+        if (!FrontDecision.shouldLaunch(top, context.packageName, Kiosk.dashboardResumed) { ownProcessVisible() }) return
         val now = android.os.SystemClock.elapsedRealtime()
         if (now - lastLaunch < RELAUNCH_COOLDOWN_MS) return
         lastLaunch = now
         Log.i("front", "top is ${top ?: "unknown"}, bringing the dashboard back")
         try {
-            context.startActivity(dashboardIntent(context, Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+            context.startActivity(dashboardIntent(context, Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
         } catch (e: Exception) {
             Log.w("front", "could not relaunch: ${e.message}")
         }

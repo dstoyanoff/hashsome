@@ -36,6 +36,12 @@ interface Screen {
     fun brightness(level: Int)
     fun off()
     fun wake()
+
+    /**
+     * Whether the panel is lit although we switched it off: something else wrote the backlight (the stock Shelly app can). Only the
+     * X1's sysfs backlight can say; the others report their screen-on broadcast through [state] and answer false.
+     */
+    fun litByOthers(): Boolean = false
 }
 
 /** A kind of device, and how to drive its screen and its presence sensor. */
@@ -157,6 +163,15 @@ internal class PanelScreen(private val context: Context, private val sysfs: Bool
         bringToFront(context)
     }
 
+    override fun litByOthers(): Boolean {
+        if (node == null || state.value != ScreenState.Off) return false
+        return try {
+            (node.readText().trim().toIntOrNull() ?: 0) > 0
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     private fun isInteractive(): Boolean = power.isInteractive
 
     private fun write(level: Int) {
@@ -209,8 +224,10 @@ internal class PanelScreen(private val context: Context, private val sysfs: Bool
 
         /** Brings the dashboard to the front (the wake of the X2i; needs the overlay appop on Android 10+ when started from the service). */
         fun bringToFront(context: Context) {
+            // Already the resumed activity (the X1, whose "off" leaves the panel alive): a start would only re-resume the host.
+            if (!FrontDecision.shouldLaunch(null, context.packageName, Kiosk.dashboardResumed) { false }) return
             try {
-                context.startActivity(dashboardIntent(context, Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+                context.startActivity(dashboardIntent(context, Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
             } catch (e: Exception) {
                 Log.w("screen", "could not bring the dashboard to the front: ${e.message}")
             }

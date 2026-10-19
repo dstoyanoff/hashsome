@@ -19,8 +19,12 @@ import kotlin.math.roundToInt
  * reading (the sensor's relative noise at high light). A reading outside the band must then hold for 3 s before the
  * brightness fades to it over 1 s, so a passing shadow does not move the backlight. The first reading is applied at once.
  * Nothing is written while the screen is off; when it comes on, the brightness it should have is applied at once.
+ *
+ * The X1's light sensor reports on change only, so after a start no reading may come for minutes. If none has arrived within
+ * [INITIAL_GRACE_MS] (and whenever the screen comes on with none known), the level this app last wrote ([lastLevel]) is applied,
+ * or else the minimum; the first real reading then takes over as usual.
  */
-class AutoBrightness(private val lux: Store<Float?>, private val screen: Screen, private val min: Store<Int>) {
+class AutoBrightness(private val lux: Store<Float?>, private val screen: Screen, private val min: Store<Int>, private val lastLevel: Store<Int?> = Store(null)) {
     /** Tests give theirs; in the app it is the main looper's. */
     internal var scheduler: Scheduler? = null
 
@@ -28,6 +32,7 @@ class AutoBrightness(private val lux: Store<Float?>, private val screen: Screen,
     private val cancels = ArrayList<Cancel>()
     private var settle: Cancel? = null
     private var fade: Cancel? = null
+    private var grace: Cancel? = null
 
     /** The lux the current target was computed from. */
     private var acted: Float? = null
@@ -42,8 +47,14 @@ class AutoBrightness(private val lux: Store<Float?>, private val screen: Screen,
         cancels += lux.listenNow { value -> if (value != null) onLux(sched, value) }
         cancels += min.listen { acted?.let { applyNow(sched, target(it)) } }
         cancels += screen.state.listen { state ->
-            if (state == ScreenState.On) acted?.let { applyNow(sched, target(it)) } else cancelTimers()
+            if (state == ScreenState.On) {
+                val known = acted
+                if (known != null) applyNow(sched, target(known)) else applyInitial(sched)
+            } else {
+                cancelTimers()
+            }
         }
+        if (acted == null) grace = sched.after(INITIAL_GRACE_MS) { grace = null; if (acted == null) applyInitial(sched) }
     }
 
     fun stop() {
@@ -53,6 +64,11 @@ class AutoBrightness(private val lux: Store<Float?>, private val screen: Screen,
         cancelTimers()
         acted = null
         shown = null
+    }
+
+    /** No reading yet: the last level written, or the minimum. */
+    private fun applyInitial(sched: Scheduler) {
+        applyNow(sched, lastLevel.value?.coerceIn(0, 255) ?: screen.panelLevel(min.value))
     }
 
     private fun onLux(sched: Scheduler, value: Float) {
@@ -103,13 +119,14 @@ class AutoBrightness(private val lux: Store<Float?>, private val screen: Screen,
                 fade = null
                 write(to)
             } else {
-                write(from + ((to - from) * step / steps.toFloat()).roundToInt())
+                write(from + ((to - from) * step / steps.toFloat()).roundToInt(), remember = false)
             }
         }
     }
 
-    private fun write(level: Int) {
+    private fun write(level: Int, remember: Boolean = true) {
         shown = level
+        if (remember) lastLevel.set(level)
         screen.brightness(level)
     }
 
@@ -118,6 +135,8 @@ class AutoBrightness(private val lux: Store<Float?>, private val screen: Screen,
         settle = null
         fade?.invoke()
         fade = null
+        grace?.invoke()
+        grace = null
     }
 
     /** The brightness for [lux]: ShellyElevate's ramp, linear from the minimum at 30 lx to 255 at 500 lx. */
@@ -125,6 +144,7 @@ class AutoBrightness(private val lux: Store<Float?>, private val screen: Screen,
 
     internal companion object {
         const val SETTLE_MS = 3_000L
+        const val INITIAL_GRACE_MS = 500L
         const val FADE_MS = 1_000L
         private const val FRAME_MS = 50L
         private const val MIN_ANIMATION_STEP = 2

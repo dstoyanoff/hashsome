@@ -31,6 +31,7 @@ class NightMode(private val settings: Settings, private val presence: Presence, 
     /** A sleep asked for in day mode: the screen is off on purpose although the mode is [NightState.Day]. */
     private var dayAsleep = false
     private var idle: Cancel? = null
+    private var resync: Cancel? = null
     private val cancels = ArrayList<Cancel>()
 
     init {
@@ -41,6 +42,15 @@ class NightMode(private val settings: Settings, private val presence: Presence, 
         cancels += presence.touches.listen { activity() }
         cancels += presence.near.listen { if (it) activity() }
         cancels += screen.state.listen { onScreen(it) }
+        // Someone else lit the panel while we think it is dark (the stock app writes the X1's backlight): that is a wake. Only while asleep.
+        cancels += state.listen { now ->
+            if (now == NightState.NightAsleep) {
+                if (resync == null) resync = scheduler.every(RESYNC_MS) { if (screen.litByOthers()) wake() }
+            } else {
+                resync?.invoke()
+                resync = null
+            }
+        }
         onNightChanged(settings.night.value)
     }
 
@@ -67,6 +77,8 @@ class NightMode(private val settings: Settings, private val presence: Presence, 
         cancels.clear()
         idle?.invoke()
         idle = null
+        resync?.invoke()
+        resync = null
     }
 
     private fun onNightChanged(night: Boolean) {
@@ -120,5 +132,9 @@ class NightMode(private val settings: Settings, private val presence: Presence, 
                 screen.off()
             }
         }
+    }
+
+    private companion object {
+        const val RESYNC_MS = 2_000L
     }
 }

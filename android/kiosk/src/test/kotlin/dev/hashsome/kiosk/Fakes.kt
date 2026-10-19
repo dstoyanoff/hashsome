@@ -12,6 +12,10 @@ internal class FakeScreen(var truly: Boolean = true) : Screen {
     var offs = 0
     var wakes = 0
 
+    /** What [litByOthers] answers: someone else raised the backlight. */
+    var lit = false
+    override fun litByOthers() = lit && state.value == ScreenState.Off
+
     override fun brightness(level: Int) {
         if (state.value == ScreenState.On) writes += level
     }
@@ -23,6 +27,7 @@ internal class FakeScreen(var truly: Boolean = true) : Screen {
 
     override fun wake() {
         wakes++
+        lit = false
         state.set(ScreenState.On)
     }
 }
