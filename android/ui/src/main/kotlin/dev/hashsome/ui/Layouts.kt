@@ -52,6 +52,12 @@ private fun flexParamsOf(p: ViewGroup.LayoutParams): FlexParams {
  * with `grow` sharing what is left. The measuring is the pure `FlexMath`, unit-tested without a device.
  */
 open class ColumnLayout(context: Context) : ViewGroup(context) {
+    // The web's `overflow: visible`: a child with a negative margin (a header pulled up by `mb={-3}`) is drawn past its box, not clipped to it.
+    // A view's drawing is clipped to its box by its parent's `clipChildren`, so every layout that holds such children turns it off.
+    init {
+        clipChildren = false
+    }
+
     var gap: Int = 0
     var align: Align = Align.Stretch
     var justify: Justify = Justify.Start
@@ -73,6 +79,12 @@ open class ColumnLayout(context: Context) : ViewGroup(context) {
 
 /** Lays its children out left to right; see [ColumnLayout]. */
 open class RowLayout(context: Context) : ViewGroup(context) {
+    // The web's `overflow: visible`: a child with a negative margin (a header pulled up by `mb={-3}`) is drawn past its box, not clipped to it.
+    // A view's drawing is clipped to its box by its parent's `clipChildren`, so every layout that holds such children turns it off.
+    init {
+        clipChildren = false
+    }
+
     var gap: Int = 0
     var align: Align = Align.Center
     var justify: Justify = Justify.Start
@@ -94,6 +106,12 @@ open class RowLayout(context: Context) : ViewGroup(context) {
 
 /** [columns] equal columns; children fill cells in order, rows as tall as their tallest child. */
 open class GridLayout(context: Context, var columns: Int) : ViewGroup(context) {
+    // The web's `overflow: visible`: a child with a negative margin (a header pulled up by `mb={-3}`) is drawn past its box, not clipped to it.
+    // A view's drawing is clipped to its box by its parent's `clipChildren`, so every layout that holds such children turns it off.
+    init {
+        clipChildren = false
+    }
+
     var gap: Int = 0
     private var lefts = IntArray(0)
     private var tops = IntArray(0)
@@ -187,6 +205,12 @@ class CellParams(val cols: Int, val rows: RowSpan) : FlexParams(ViewGroup.Layout
  * fills takes the height the rows and the board give it without sizing them (the web's `contain: size`).
  */
 open class BoardLayout(context: Context, val columns: Int = 12) : ViewGroup(context) {
+    // The web's `overflow: visible`: a child with a negative margin (a header pulled up by `mb={-3}`) is drawn past its box, not clipped to it.
+    // A view's drawing is clipped to its box by its parent's `clipChildren`, so every layout that holds such children turns it off.
+    init {
+        clipChildren = false
+    }
+
     var gap: Int = 0
     private var lefts = IntArray(0)
     private var tops = IntArray(0)
