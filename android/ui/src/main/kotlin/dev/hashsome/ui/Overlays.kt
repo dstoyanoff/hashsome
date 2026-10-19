@@ -267,9 +267,55 @@ internal class OverlayAction(context: Context, private val icon: Icon, private v
     }
 }
 
-/** Whether the end of a press at (x, y) on a [w] by [h] button is a tap on it: inside it, or within [slop] px of it. */
-internal object OverlayTap {
+/** What the sheet's pull-to-dismiss does with a press: it starts only after [SLOP_DP] (or the platform's touch slop) of downward or upward movement. */
+internal object PullStart {
     const val SLOP_DP = 8f
+
+    fun starts(dyPx: Float, slopPx: Float): Boolean = Math.abs(dyPx) > slopPx
+}
+
+/** The touch target of a small button: a [sizeDp] square centred on it (48 dp, the platform's minimum), however small the glyph is drawn. */
+internal object HitZone {
+    const val SIZE_DP = 48f
+
+    /** Whether (x, y) is in the square of side [size] centred on ([cx], [cy]). */
+    fun contains(cx: Float, cy: Float, size: Float, x: Float, y: Float): Boolean = Math.abs(x - cx) <= size / 2 && Math.abs(y - cy) <= size / 2
+}
+
+/**
+ * The sheet's handle (grip and title row). A press inside the enlarged touch zone of one of its [zones] (the close button's 48 dp square)
+ * is that button's, even where the pull-to-dismiss would otherwise have it; any other press is the pull's.
+ */
+internal class PullHandle(context: Context) : ColumnLayout(context) {
+    val zones = ArrayList<View>()
+    private var routed: View? = null
+    private val rect = android.graphics.Rect()
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            routed = zones.firstOrNull { zone ->
+                rect.set(0, 0, zone.width, zone.height)
+                offsetDescendantRectToMyCoords(zone, rect)
+                zone.visibility == VISIBLE && HitZone.contains(rect.exactCenterX(), rect.exactCenterY(), dp(HitZone.SIZE_DP).toFloat(), event.x, event.y)
+            }
+            routed?.let { TouchDebug.log { "handle: the press is in ${TouchDebug.name(it)}'s ${HitZone.SIZE_DP.toInt()} dp touch zone" } }
+        }
+
+        val target = routed ?: return super.dispatchTouchEvent(event)
+        rect.set(0, 0, target.width, target.height)
+        offsetDescendantRectToMyCoords(target, rect)
+        val moved = MotionEvent.obtain(event)
+        moved.offsetLocation(-rect.left.toFloat(), -rect.top.toFloat())
+        val handled = target.dispatchTouchEvent(moved)
+        moved.recycle()
+        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) routed = null
+        return handled
+    }
+}
+
+/** Whether the end of a press at (x, y) on a [w] by [h] button is a tap on it: inside it, or within [slop] px of it (its touch zone is wider than its drawing). */
+internal object OverlayTap {
+    const val SLOP_DP = 9f
 
     fun counts(x: Float, y: Float, w: Float, h: Float, slop: Float): Boolean = x >= -slop && y >= -slop && x <= w + slop && y <= h + slop
 }
@@ -431,6 +477,8 @@ open class Sheet(context: Context) : Overlay(context) {
     var tall: Boolean = false
 
     private var panel: ColumnLayout? = null
+    private var pullTracking = false
+    private val pullSlop = maxOf(android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat(), dp(PullStart.SLOP_DP))
     private var pullStart = 0f
     private var pullLast = 0f
     private var pullAt = 0L
@@ -454,9 +502,11 @@ open class Sheet(context: Context) : Overlay(context) {
         }
         this.panel = panel
         // What is pulled to let it go: the grip and the title; the content under it scrolls on its own.
-        val handle = ColumnLayout(context)
+        val handle = PullHandle(context)
         handle.addView(Grip(context), FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(17)))
-        val title = header(closeButton())
+        val close = closeButton()
+        handle.zones += close
+        val title = header(close)
         handle.addView(title, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             val side = Math.round(5 * u)
             setMargins(side, Math.round(2 * u), side, Math.round(3 * u))
@@ -496,7 +546,8 @@ open class Sheet(context: Context) : Overlay(context) {
         }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                TouchDebug.log { "pull: tracking starts (no slop: the sheet follows the finger from the first pixel; dismisses past 100 dp or 0.5 dp/ms)" }
+                TouchDebug.log { "pull: press on the handle, tracking after ${TouchDebug.fmt(pullSlop / screenDensity)} dp of vertical movement; dismisses past 100 dp or 0.5 dp/ms" }
+                pullTracking = false
                 pullStart = event.rawY
                 pullLast = event.rawY
                 pullAt = event.eventTime
@@ -505,14 +556,27 @@ open class Sheet(context: Context) : Overlay(context) {
             }
 
             MotionEvent.ACTION_MOVE -> {
-                val elapsed = maxOf(1L, event.eventTime - pullAt)
-                pullSpeed = (event.rawY - pullLast) / elapsed
-                pullLast = event.rawY
-                pullAt = event.eventTime
-                p.translationY = maxOf(0f, event.rawY - pullStart)
+                // A press that has not gone down by the slop is still a press: it does nothing, and does not move the sheet.
+                if (!pullTracking && PullStart.starts(event.rawY - pullStart, pullSlop)) {
+                    pullTracking = true
+                    // The sheet follows from where the slop ended, so it does not jump.
+                    pullStart = event.rawY
+                    pullLast = event.rawY
+                    pullAt = event.eventTime
+                    TouchDebug.log { "pull: tracking starts" }
+                }
+                if (pullTracking) {
+                    val elapsed = maxOf(1L, event.eventTime - pullAt)
+                    pullSpeed = (event.rawY - pullLast) / elapsed
+                    pullLast = event.rawY
+                    pullAt = event.eventTime
+                    p.translationY = maxOf(0f, event.rawY - pullStart)
+                }
             }
 
-            MotionEvent.ACTION_UP -> {
+            MotionEvent.ACTION_UP -> if (!pullTracking) {
+                TouchDebug.log { "pull: UP without tracking: a press on the handle does nothing" }
+            } else {
                 val offset = maxOf(0f, event.rawY - pullStart)
                 val gone = SheetPull.dismisses(offset / screenDensity, pullSpeed / screenDensity)
                 TouchDebug.log { "pull: UP offset ${TouchDebug.fmt(offset / screenDensity)} dp -> ${if (gone) "dismiss" else "spring back"}" }
@@ -520,7 +584,7 @@ open class Sheet(context: Context) : Overlay(context) {
                 if (gone) dismiss() else springBack()
             }
 
-            MotionEvent.ACTION_CANCEL -> springBack()
+            MotionEvent.ACTION_CANCEL -> if (pullTracking) springBack()
         }
         return true
     }
