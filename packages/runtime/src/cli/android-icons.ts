@@ -18,6 +18,8 @@ Options:
                        with several packs, a folder: <file> is then the folder)
   --package <name>     The app's package (default: \`namespace\` in android/app/build.gradle.kts).
                        The object is declared in <name>.icons and imports <name>.R
+  --strict             Exit 1 if any icon was skipped (an SVG feature the converter does not support:
+                       transform, style, opacity, non-round caps/joins, other elements)
   --dry-run            Show what would be written, change nothing
 
 Examples:
@@ -138,6 +140,27 @@ function styleOf(attrs: Record<string, string>, inherited: Style): Style {
   };
 }
 
+/** Attributes that would change how the icon looks and that the converter does not apply: better to skip the icon than to draw it wrong. */
+const UNSUPPORTED = ['transform', 'style', 'opacity', 'fill-opacity', 'stroke-opacity'];
+
+function assertSupported(attrs: Record<string, string>): void {
+  for (const name of UNSUPPORTED) {
+    if (name in attrs && !(name.endsWith('opacity') && attrs[name]?.trim() === '1')) {
+      throw new Error(`unsupported attribute ${name}`);
+    }
+  }
+
+  // Strokes are always drawn round, as the drawable's one look.
+  for (const [name, round] of [
+    ['stroke-linecap', 'round'],
+    ['stroke-linejoin', 'round'],
+  ] as const) {
+    if (name in attrs && attrs[name]!.trim() !== round) {
+      throw new Error(`unsupported attribute ${name}="${attrs[name]}" (only round)`);
+    }
+  }
+}
+
 /** Reads the viewBox and the drawable shapes of an SVG, with fill and stroke inherited down `<g>`s. Throws on an element it cannot convert. */
 export function parseSvg(text: string): ParsedSvg {
   const body = text.replace(/<!--[\s\S]*?-->/g, '').replace(/<\?[\s\S]*?\?>/g, '');
@@ -156,6 +179,7 @@ export function parseSvg(text: string): ParsedSvg {
     }
 
     const attrs = attributes(rest);
+    assertSupported(attrs);
     const style = styleOf(attrs, stack.at(-1) ?? {});
     if (tag === 'svg') {
       const numbers = (attrs.viewBox ?? '')
@@ -235,6 +259,7 @@ export function toPathData(tag: string, a: Record<string, string>): string {
 
     case 'rect': {
       const [x, y, w, h] = [num(a.x), num(a.y), num(a.width), num(a.height)];
+      // rx and ry differ in an SVG rect; the corners here are circular, using rx (else ry), never throwing.
       const r = Math.min(num(a.rx ?? a.ry), w / 2, h / 2);
       return r > 0
         ? `M${fmt(x + r)} ${fmt(y)}h${fmt(w - 2 * r)}a${fmt(r)} ${fmt(r)} 0 0 1 ${fmt(r)} ${fmt(r)}v${fmt(h - 2 * r)}a${fmt(r)} ${fmt(r)} 0 0 1 ${fmt(-r)} ${fmt(r)}h${fmt(-(w - 2 * r))}a${fmt(r)} ${fmt(r)} 0 0 1 ${fmt(-r)} ${fmt(-r)}v${fmt(-(h - 2 * r))}a${fmt(r)} ${fmt(r)} 0 0 1 ${fmt(r)} ${fmt(-r)}z`
@@ -430,6 +455,7 @@ export function convertPack(pack: string, sources: SvgSource[], appPackage: stri
   const files: Record<string, string> = {};
   const skipped: string[] = [];
   const seen = new Map<string, string>();
+  const properties = new Map<string, string>();
 
   for (const { name, file } of sources.toSorted((a, b) => a.name.localeCompare(b.name))) {
     const clash = seen.get(name);
@@ -438,6 +464,15 @@ export function convertPack(pack: string, sources: SvgSource[], appPackage: stri
     }
 
     seen.set(name, file);
+    const property = camelCase(name);
+    const same = properties.get(property);
+    if (same) {
+      throw new Error(
+        `${file} and ${same} both become the Kotlin property ${property}; rename one`,
+      );
+    }
+
+    properties.set(property, file);
     try {
       files[`ic_${prefix}_${name}.xml`] = svgToVectorDrawable(readFileSync(file, 'utf8'));
     } catch (error) {
@@ -473,7 +508,7 @@ export function iconsCommand(args: string[], root: string = resolve(process.cwd(
     flags,
   } = parseFlags(args, {
     values: ['dir', 'out', 'kotlin', 'package'],
-    flags: ['dry-run'],
+    flags: ['dry-run', 'strict'],
   });
 
   if (packs.length === 0) {
@@ -498,6 +533,7 @@ export function iconsCommand(args: string[], root: string = resolve(process.cwd(
   const out = resolve(root, values.out ?? 'android/app/src/main/res/drawable');
   const dryRun = flags.has('dry-run');
   let total = 0;
+  let skipped = 0;
 
   for (const pack of packs) {
     const result = convertPack(
@@ -533,12 +569,17 @@ export function iconsCommand(args: string[], root: string = resolve(process.cwd(
     }
 
     total += result.bytes;
+    skipped += result.skipped.length;
     console.log(
       `${pack}: ${Object.keys(result.files).length} icons, ${kb(result.bytes)} -> ${out}\n  ${packObjectName(pack)} -> ${kotlinFile}`,
     );
   }
 
   console.log(
-    dryRun ? `Dry run, nothing written (${kb(total)} in all).` : `Wrote ${kb(total)} in all.`,
+    `${dryRun ? `Dry run, nothing written (${kb(total)} in all)` : `Wrote ${kb(total)} in all`}; ${skipped} skipped.`,
   );
+
+  if (flags.has('strict') && skipped > 0) {
+    throw new Error(`${skipped} icon(s) skipped and --strict is set.`);
+  }
 }

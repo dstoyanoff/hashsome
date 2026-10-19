@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   bumpVersionCatalog,
+  catalogVersion,
   describeChanges,
   hashsomeDependencies,
   otherPackageManager,
@@ -109,6 +110,14 @@ hashsome-ui = { module = "dev.hashsome:ui", version.ref = "hashsome" }
     expect(bumpVersionCatalog('[versions]\nagp = "8.7.0"\n', '1.0.0').changed).toBe(false);
     const elsewhere = '[bundles]\nhashsome = "0.1.0"\n';
     expect(bumpVersionCatalog(elsewhere, '1.0.0')).toEqual({ text: elsewhere, changed: false });
+  });
+
+  test('reads and rewrites a single-quoted version too, and catalogVersion tells absent from present', () => {
+    const text = "[versions]\nhashsome = '0.1.0'\n";
+    expect(bumpVersionCatalog(text, '0.2.0').text).toBe("[versions]\nhashsome = '0.2.0'\n");
+    expect(catalogVersion(text)).toBe('0.1.0');
+    expect(catalogVersion('[versions]\nagp = "8"\n')).toBeUndefined();
+    expect(catalogVersion('[libraries]\nhashsome = "1"\n')).toBeUndefined();
   });
 
   test('leaves a longer key like hashsome-extra alone', () => {

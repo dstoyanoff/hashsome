@@ -22,6 +22,7 @@ devices.json (project root):
      "dashboard": "bathroom", "server": "http://10.1.1.2:3000", "mqtt": "mqtt://10.1.1.2",
      "home": true }]
   profile: shelly-stargate | shelly-jenna | generic. dashboard, server, mqtt and home are optional.
+  host is ip or ip:port (port 5555 if omitted); IPv6 is not supported.
 `;
 
 export const PROFILES = ['shelly-stargate', 'shelly-jenna', 'generic'] as const;
@@ -29,6 +30,8 @@ export type Profile = (typeof PROFILES)[number];
 
 export interface Device {
   id: string;
+
+  /** `ip` or `ip:port` (5555 if omitted). IPv6 is not supported. */
   host: string;
   profile: Profile;
   dashboard?: string;
@@ -107,7 +110,7 @@ function applicationId(root: string): string {
 
 const OPTIONAL_STRINGS = ['dashboard', 'server', 'mqtt'] as const;
 
-/** Checks the parsed devices.json and returns it typed. Every problem names the device and the field. */
+/** Checks the parsed devices.json and returns it typed. Every problem names the device and the field. `host` is `ip[:port]` (default port 5555); IPv6 is not supported. */
 export function validateDevices(json: unknown): Device[] {
   if (!Array.isArray(json)) {
     throw new Error('devices.json must be an array of devices.');
@@ -197,7 +200,7 @@ export function shellQuote(word: string): string {
   return /^[\w@%+=:,./-]+$/.test(word) ? word : `'${word.replace(/'/g, `'\\''`)}'`;
 }
 
-/** The adb serial for a device: its host on the default port, unless the host names one. */
+/** The adb serial for a device: `host` is `ip[:port]`, on port 5555 unless it names one (IPv6 is not supported). */
 export const serialOf = (device: Device) =>
   device.host.includes(':') ? device.host : `${device.host}:5555`;
 
@@ -209,8 +212,8 @@ const shell = (device: Device, ...words: string[]): Command => [
   words.map(shellQuote).join(' '),
 ];
 
-/** `./gradlew -p android assembleRelease`. */
-export const buildCommands = (): Command[] => [['./gradlew', '-p', 'android', 'assembleRelease']];
+/** `./gradlew assembleRelease`, run inside `android/` (the wrapper lives there, in the monorepo and in a consumer alike). */
+export const buildCommands = (): Command[] => [['./gradlew', 'assembleRelease']];
 
 const connect = (device: Device): Command => ['adb', 'connect', serialOf(device)];
 const install = (device: Device, apk: string): Command => [
@@ -223,7 +226,7 @@ const install = (device: Device, apk: string): Command => [
   apk,
 ];
 
-/** The settings broadcast: only the extras the device sets. Addressed to the app (-p) so Android 8+ delivers it to the manifest receiver. */
+/** The settings broadcast: only the extras the device sets. Addressed to the app (-p) so Android 8+ delivers it to the manifest receiver; `--include-stopped-packages` because a freshly installed app is in the stopped state. */
 function provisionBroadcast(device: Device, pkg: string): Command {
   const extras = [
     ['server', device.server],
@@ -233,7 +236,17 @@ function provisionBroadcast(device: Device, pkg: string): Command {
     ['mqtt', device.mqtt],
   ].flatMap(([key, value]) => (value ? ['--es', key!, value] : []));
 
-  return shell(device, 'am', 'broadcast', '-a', PROVISION_ACTION, '-p', pkg, ...extras);
+  return shell(
+    device,
+    'am',
+    'broadcast',
+    '--include-stopped-packages',
+    '-a',
+    PROVISION_ACTION,
+    '-p',
+    pkg,
+    ...extras,
+  );
 }
 
 const start = (device: Device, pkg: string): Command =>
@@ -284,8 +297,10 @@ export function provisionCommands(
 
 // --- Running ---
 
-const show = (command: Command) =>
-  `$ ${command.map((word) => (/\s/.test(word) ? `"${word}"` : word)).join(' ')}`;
+/** A command as a line you can paste into a shell (each word single-quoted when it needs it, so `adb shell '<string>'` survives). */
+const show = (command: Command) => `$ ${command.map(shellQuote).join(' ')}`;
+
+const CONNECT_FAILED = /failed to connect|cannot connect|unable to connect/i;
 
 export type Exec = (
   command: Command,
@@ -293,12 +308,28 @@ export type Exec = (
 ) => {
   status: number | null;
   error?: string | undefined;
+
+  /** What the command printed, for the commands whose output decides if they worked (`adb connect`). */
+  output?: string | undefined;
 };
 
 const spawnExec: Exec = ([program, ...rest], cwd) => {
-  const result = spawnSync(program!, rest, { cwd, stdio: 'inherit' });
+  // `adb connect` exits 0 even when it cannot connect, so its output is read (and still shown).
+  const capture = program === 'adb' && rest[0] === 'connect';
+  const result = spawnSync(program!, rest, {
+    cwd,
+    stdio: capture ? ['inherit', 'pipe', 'pipe'] : 'inherit',
+    encoding: 'utf8',
+  });
+
+  const output = capture ? `${result.stdout ?? ''}${result.stderr ?? ''}` : undefined;
+  if (output) {
+    process.stdout.write(output);
+  }
+
   return {
     status: result.status,
+    output,
     error: result.error?.message.includes('ENOENT')
       ? `${program} is not installed or not on the PATH`
       : result.error?.message,
@@ -318,9 +349,9 @@ export function runCommands(
     }
 
     const result = (options.exec ?? spawnExec)(command, cwd);
-    if (result.error || result.status !== 0) {
+    if (result.error || result.status !== 0 || CONNECT_FAILED.test(result.output ?? '')) {
       throw new Error(
-        `Failed: ${show(command)}\n${result.error ?? `exit status ${result.status}`}. Nothing after it was run.`,
+        `Failed: ${show(command)}\n${result.error ?? (result.status === 0 ? result.output?.trim() : `exit status ${result.status}`)}. Nothing after it was run.`,
       );
     }
   }
@@ -365,9 +396,20 @@ export async function androidCommand(
     throw new Error('--home only applies to provision.');
   }
 
+  if (values.device !== undefined && sub === 'build') {
+    throw new Error('--device does not apply to build (one APK serves every device).');
+  }
+
   const dryRun = flags.has('dry-run');
   if (sub === 'build') {
-    runCommands(buildCommands(), root, { dryRun, exec });
+    const android = join(root, 'android');
+    if (!dryRun && !existsSync(join(android, 'gradlew'))) {
+      throw new Error(
+        `No Gradle wrapper at ${join(android, 'gradlew')}. Run this from your project.`,
+      );
+    }
+
+    runCommands(buildCommands(), android, { dryRun, exec });
     console.log(`\nAPK: ${APK}`);
     return;
   }
@@ -379,6 +421,8 @@ export async function androidCommand(
     throw new Error(`No APK at ${APK}. Run \`hashsome android build\` first.`);
   }
 
+  // A device that fails stops there; the others still get their turn.
+  const failed: string[] = [];
   for (const device of devices) {
     console.log(`\n# ${device.id} (${serialOf(device)}, ${device.profile})`);
     const plan =
@@ -386,6 +430,17 @@ export async function androidCommand(
         ? deployCommands(device, apk, pkg)
         : provisionCommands(device, apk, pkg, flags.has('home') || device.home === true);
 
-    runCommands(plan, root, { dryRun, exec });
+    try {
+      runCommands(plan, root, { dryRun, exec });
+    } catch (error) {
+      console.error((error as Error).message);
+      failed.push(device.id);
+    }
+  }
+
+  if (failed.length > 0) {
+    throw new Error(
+      `${sub} failed for ${failed.length} of ${devices.length} device(s): ${failed.join(', ')}`,
+    );
   }
 }

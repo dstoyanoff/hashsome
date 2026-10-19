@@ -116,7 +116,7 @@ describe('shellQuote', () => {
 
 describe('buildCommands', () => {
   test('is the gradle assemble', () => {
-    expect(buildCommands().map(line)).toEqual(['./gradlew -p android assembleRelease']);
+    expect(buildCommands().map(line)).toEqual(['./gradlew assembleRelease']);
   });
 });
 
@@ -135,7 +135,7 @@ describe('deployCommands', () => {
     expect(commands).toEqual([
       'adb connect 10.1.1.50:5555',
       `adb -s 10.1.1.50:5555 install -r -d ${APK}`,
-      `adb -s 10.1.1.50:5555 shell am broadcast -a dev.hashsome.PROVISION -p ${PKG} --es server http://10.1.1.2:3000 --es dashboard bathroom-small --es device bathroom --es profile generic --es mqtt mqtt://10.1.1.2`,
+      `adb -s 10.1.1.50:5555 shell am broadcast --include-stopped-packages -a dev.hashsome.PROVISION -p ${PKG} --es server http://10.1.1.2:3000 --es dashboard bathroom-small --es device bathroom --es profile generic --es mqtt mqtt://10.1.1.2`,
       `adb -s 10.1.1.50:5555 shell am start -n ${PKG}/dev.hashsome.ui.DashboardActivity`,
     ]);
   });
@@ -144,7 +144,7 @@ describe('deployCommands', () => {
     const commands = deployCommands(device({ host: '10.1.1.9:5556' }), APK, PKG).map(line);
     expect(commands[0]).toBe('adb connect 10.1.1.9:5556');
     expect(commands[2]).toBe(
-      `adb -s 10.1.1.9:5556 shell am broadcast -a dev.hashsome.PROVISION -p ${PKG} --es device bathroom --es profile generic`,
+      `adb -s 10.1.1.9:5556 shell am broadcast --include-stopped-packages -a dev.hashsome.PROVISION -p ${PKG} --es device bathroom --es profile generic`,
     );
   });
 
@@ -169,7 +169,7 @@ describe('provisionCommands', () => {
       `appops set ${PKG} GET_USAGE_STATS allow`,
       `dumpsys deviceidle whitelist +${PKG}`,
       `dpm set-active-admin ${PKG}/dev.hashsome.kiosk.HashsomeDeviceAdmin`,
-      `am broadcast -a dev.hashsome.PROVISION -p ${PKG} --es device bathroom --es profile generic`,
+      `am broadcast --include-stopped-packages -a dev.hashsome.PROVISION -p ${PKG} --es device bathroom --es profile generic`,
       `am start -n ${PKG}/dev.hashsome.ui.DashboardActivity`,
     ]);
   });
@@ -217,7 +217,15 @@ describe('runCommands', () => {
     );
 
     expect(exec).not.toHaveBeenCalled();
-    expect(log.mock.calls.map((c) => c[0])).toEqual(['$ adb devices', '$ echo "a b"']);
+    expect(log.mock.calls.map((c) => c[0])).toEqual(['$ adb devices', "$ echo 'a b'"]);
+  });
+
+  test('echoes a device shell command single-quoted, so it can be pasted', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    runCommands(deployCommands(device(), APK, PKG).slice(3), '/', { dryRun: true });
+    expect(log.mock.calls[0]![0]).toBe(
+      `$ adb -s 10.1.1.50:5555 shell 'am start -n ${PKG}/dev.hashsome.ui.DashboardActivity'`,
+    );
   });
 
   test('stops at the first failure and names the command', () => {
@@ -272,7 +280,7 @@ describe('androidCommand (dry run)', () => {
     const log = output();
     await androidCommand(['build', '--dry-run'], '/nowhere');
     const text = log.mock.calls.map((c) => c[0]).join('\n');
-    expect(text).toContain('$ ./gradlew -p android assembleRelease');
+    expect(text).toContain('$ ./gradlew assembleRelease');
     expect(text).toContain('android/app/build/outputs/apk/release/app-release.apk');
   });
 
@@ -294,6 +302,62 @@ describe('androidCommand (dry run)', () => {
     expect(provisioned).not.toContain('1.1.1.1');
     expect(provisioned).toContain('cloud.shelly.stargate');
     expect(provisioned).toContain('HomeAlias');
+  });
+
+  test('build runs the wrapper inside android/, and needs it there', async () => {
+    output();
+    const root = project([]);
+    const exec = vi.fn<Exec>().mockReturnValue({ status: 0 });
+    await expect(androidCommand(['build'], root, exec)).rejects.toThrow(
+      join(root, 'android', 'gradlew'),
+    );
+
+    writeFileSync(join(root, 'android/gradlew'), '');
+    await androidCommand(['build'], root, exec);
+    expect(exec).toHaveBeenCalledWith(['./gradlew', 'assembleRelease'], join(root, 'android'));
+  });
+
+  test('--device is rejected for build', async () => {
+    output();
+    await expect(androidCommand(['build', '--device', 'a', '--dry-run'], '/x')).rejects.toThrow(
+      '--device does not apply to build',
+    );
+  });
+
+  test('a failing device does not stop the others; the summary names it', async () => {
+    output();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const root = project([
+      { id: 'a', host: '1.1.1.1', profile: 'generic' },
+      { id: 'b', host: '2.2.2.2', profile: 'generic' },
+    ]);
+
+    mkdirSync(join(root, 'android/app/build/outputs/apk/release'), { recursive: true });
+    writeFileSync(join(root, 'android/app/build/outputs/apk/release/app-release.apk'), '');
+    const exec = vi.fn<Exec>((command) => ({ status: command.includes('1.1.1.1:5555') ? 1 : 0 }));
+
+    await expect(androidCommand(['deploy'], root, exec)).rejects.toThrow(
+      'deploy failed for 1 of 2 device(s): a',
+    );
+
+    // a stops at its first command (the connect); b runs all four.
+    const ran = exec.mock.calls.map((c) => c[0].join(' '));
+    expect(ran.filter((c) => c.includes('1.1.1.1'))).toHaveLength(1);
+    expect(ran.filter((c) => c.includes('2.2.2.2'))).toHaveLength(4);
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('Failed:'));
+  });
+
+  test('adb connect that prints "failed to connect" is a failure even at exit 0', () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const exec = vi
+      .fn<Exec>()
+      .mockReturnValue({ status: 0, output: 'failed to connect to 1.1.1.1:5555' });
+
+    expect(() =>
+      runCommands([['adb', 'connect', '1.1.1.1:5555'], ['next']], '/', { dryRun: false, exec }),
+    ).toThrow('failed to connect');
+
+    expect(exec).toHaveBeenCalledTimes(1);
   });
 
   test('says so for an unknown device, a bad devices.json, a missing id and --home elsewhere', async () => {

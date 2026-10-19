@@ -139,6 +139,60 @@ describe('svgToVectorDrawable', () => {
   });
 });
 
+describe('unsupported SVG features', () => {
+  const svg = (root: string, shape = '<path d="M0 0L1 1"/>') =>
+    `<svg viewBox="0 0 24 24" ${root}>${shape}</svg>`;
+
+  test.each([
+    ['transform on a shape', svg('', '<path transform="rotate(45)" d="M0 0"/>'), 'transform'],
+    ['transform on a group', svg('', '<g transform="scale(2)"><path d="M0 0"/></g>'), 'transform'],
+    ['style', svg('', '<path style="fill:red" d="M0 0"/>'), 'style'],
+    ['opacity', svg('opacity="0.5"'), 'opacity'],
+    ['fill-opacity', svg('', '<path fill-opacity=".4" d="M0 0"/>'), 'fill-opacity'],
+    ['stroke-opacity', svg('', '<path stroke-opacity=".4" d="M0 0"/>'), 'stroke-opacity'],
+    ['square caps', svg('stroke-linecap="square"'), 'stroke-linecap'],
+    ['bevel joins', svg('', '<path stroke-linejoin="bevel" d="M0 0"/>'), 'stroke-linejoin'],
+  ])('%s is refused', (_label, text, name) => {
+    expect(() => svgToVectorDrawable(text)).toThrow(`unsupported attribute ${name}`);
+  });
+
+  test('round caps and joins and opacity 1 are fine', () => {
+    expect(() =>
+      svgToVectorDrawable(svg('stroke-linecap="round" stroke-linejoin="round" opacity="1"')),
+    ).not.toThrow();
+  });
+
+  test('--strict turns a skipped icon into a failure, and the summary counts it', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'icons-'));
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      writeFileSync(join(dir, 'bad.svg'), svg('', '<path transform="x" d="M0 0"/>'));
+      writeFileSync(join(dir, 'good.svg'), fixture('polyline.svg'));
+      const args = ['p', '--dir', dir, '--package', 'com.x', '--dry-run'];
+      iconsCommand(args, dir);
+      expect(log.mock.calls.at(-1)![0]).toContain('1 skipped');
+      expect(() => iconsCommand([...args, '--strict'], dir)).toThrow('--strict');
+    } finally {
+      vi.restoreAllMocks();
+      rmSync(dir, { recursive: true });
+    }
+  });
+
+  test('names that differ as files but collide as Kotlin properties are an error', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'icons-'));
+    try {
+      writeFileSync(join(dir, 'x_1.svg'), fixture('polyline.svg'));
+      writeFileSync(join(dir, 'x1.svg'), fixture('polyline.svg'));
+      expect(() => convertPack('p', sourcesFor('p', '/', dir), 'com.x')).toThrow(
+        'Kotlin property x1',
+      );
+    } finally {
+      rmSync(dir, { recursive: true });
+    }
+  });
+});
+
 describe('renderKotlin', () => {
   test('one val per icon, in the app package', () => {
     const kotlin = renderKotlin(

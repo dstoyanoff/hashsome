@@ -95,6 +95,27 @@ export function describeChanges(before: ProjectPackage, after: ProjectPackage): 
 
 const read = (file: string): ProjectPackage => JSON.parse(readFileSync(file, 'utf8'));
 
+/** `hashsome = "x"` (or 'x') as a line of the catalog; group 1 is the key and `=`, group 2 the quote. */
+const HASHSOME_LINE = /^(\s*hashsome\s*=\s*)(["'])[^"']*\2/;
+
+/** The `hashsome` version under `[versions]`, if the catalog has one. */
+export function catalogVersion(text: string): string | undefined {
+  let inVersions = false;
+  for (const line of text.split('\n')) {
+    const section = /^\s*\[([^\]]+)\]/.exec(line)?.[1];
+    if (section !== undefined) {
+      inVersions = section.trim() === 'versions';
+    } else if (inVersions) {
+      const match = /^\s*hashsome\s*=\s*(["'])([^"']*)\1/.exec(line);
+      if (match) {
+        return match[2];
+      }
+    }
+  }
+
+  return undefined;
+}
+
 /** Sets `hashsome = "<version>"` under `[versions]` in a Gradle version catalog, leaving every other line alone. `changed` is false when the line is absent or already there. */
 export function bumpVersionCatalog(
   text: string,
@@ -108,7 +129,7 @@ export function bumpVersionCatalog(
       return line;
     }
 
-    return inVersions ? line.replace(/^(\s*hashsome\s*=\s*")[^"]*(")/, `$1${version}$2`) : line;
+    return inVersions ? line.replace(HASHSOME_LINE, `$1$2${version}$2`) : line;
   });
 
   const next = lines.join('\n');
@@ -145,12 +166,18 @@ export function syncVersionCatalog(root: string, dryRun: boolean): void {
     return;
   }
 
-  const { text, changed } = bumpVersionCatalog(readFileSync(file, 'utf8'), version);
+  const current = readFileSync(file, 'utf8');
+  if (catalogVersion(current) === undefined) {
+    console.log(`No hashsome version under [versions] in ${CATALOG}, left it as it is.`);
+    return;
+  }
+
+  const { text, changed } = bumpVersionCatalog(current, version);
   if (changed) {
     writeFileSync(file, text);
     console.log(`Set hashsome = "${version}" in ${CATALOG}`);
   } else {
-    console.log(`${CATALOG} already at ${version} (or has no hashsome version).`);
+    console.log(`${CATALOG} already at ${version}.`);
   }
 }
 
