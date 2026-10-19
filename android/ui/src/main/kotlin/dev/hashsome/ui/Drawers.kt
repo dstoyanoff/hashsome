@@ -115,8 +115,11 @@ open class RaisedCard(context: Context, private val padX: Float = 4f, private va
     }
 }
 
-/** One line of text in a role, aligned [align] in the width it is given, ellipsized when it does not fit. A fixed [widthDp] gives the column of a table its width. */
-open class AlignedText(context: Context, text: CharSequence = "", var role: Role = Role.Body, var color: Int? = null, var align: Paint.Align = Paint.Align.LEFT, private val widthDp: Int? = null) : View(context) {
+/**
+ * One line of text in a role, aligned [align] in the width it is given, ellipsized when it does not fit ([ellipsize] false lets it run over the
+ * edge, which the parent shows when it does not clip its children). A fixed [widthDp] gives the column of a table its width.
+ */
+open class AlignedText(context: Context, text: CharSequence = "", var role: Role = Role.Body, var color: Int? = null, var align: Paint.Align = Paint.Align.LEFT, private val widthDp: Int? = null, private val ellipsize: Boolean = true) : View(context) {
     var text: CharSequence = text
         set(value) {
             if (field == value) return
@@ -143,7 +146,7 @@ open class AlignedText(context: Context, text: CharSequence = "", var role: Role
     override fun onDraw(canvas: Canvas) {
         val t = theme
         paint.style(t, role, color ?: t.palette.text)
-        val fitted = TextUtils.ellipsize(text, paint, width.toFloat(), TextUtils.TruncateAt.END)
+        val fitted = if (ellipsize) TextUtils.ellipsize(text, paint, width.toFloat(), TextUtils.TruncateAt.END) else text
         val x = when (align) {
             Paint.Align.RIGHT -> width.toFloat()
             Paint.Align.CENTER -> width / 2f

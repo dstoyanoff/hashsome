@@ -623,6 +623,14 @@ fails if it imports `android.*`, so it keeps running on a plain JVM; lint runs w
 the view binds to it. That is also what makes the logic testable on the JVM with `FakeClient` and
 `TestScheduler`. A component is added in that order (see `android-component`).
 
+**Drawers.** An entity's drawer is `DrawerHost.open(...)`: the shared panel over the page (a drawer at the
+side on a wide screen, a sheet from the bottom on a small one, one at a time) holding a body built for one
+entity, with a scope of its own that is disposed when it closes. A sensor readout and the weather chip open
+theirs on a tap (`sensorReadout(..., drawer = true)`, `weatherChip(ref, drawer = true)`), a tile on a hold
+(`TileView.onHold`). The data comes from `HistoryControl` and `LogbookControl` (the web's `useEntityHistory` and
+`useEntityLogbook`, with the same freshness rules), and charts are `SeriesChartView`, which does its layout when
+the data or the size changes and only draws in `onDraw` (the arithmetic is `ChartMath`).
+
 **Must-nots.** No AndroidX, no coroutines, no kotlinx.serialization in any library: state is
 `Store<T>` read on the main thread, JSON is `org.json`. Only API 24-safe platform calls (the
 libraries support minSdk 24, and the JDK surface is that of API 24: no `java.time`). No reflection;

@@ -281,3 +281,28 @@ object ForecastText {
         }
     }
 }
+
+/** The words of an entity's recent activity (the web's `history-section.tsx`). */
+object ActivityText {
+    private const val MINUTE = 60_000L
+    private const val HOUR = 60 * MINUTE
+    private const val DAY = 24 * HOUR
+
+    /** How long ago, in the coarsest unit that fits: `Just now`, `5m ago`, `2h ago`, `3d ago`. */
+    fun relativeTime(atMs: Long, nowMs: Long): String {
+        val diff = nowMs - atMs
+        return when {
+            diff < MINUTE -> "Just now"
+            diff < HOUR -> "${Math.round(diff.toDouble() / MINUTE)}m ago"
+            diff < DAY -> "${Math.round(diff.toDouble() / HOUR)}h ago"
+            else -> "${Math.round(diff.toDouble() / DAY)}d ago"
+        }
+    }
+
+    /** The first letters of the first two words of a name, in capitals: `Dana Scully` is `DS`. */
+    fun initials(name: String): String =
+        name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.take(2).joinToString("") { it.substring(0, 1).uppercase(java.util.Locale.ROOT) }
+
+    /** A message that nobody caused starts with a capital (`turned on` after a name, `Turned on` alone). */
+    fun capitalize(message: String): String = if (message.isEmpty()) message else message.substring(0, 1).uppercase(java.util.Locale.ROOT) + message.substring(1)
+}

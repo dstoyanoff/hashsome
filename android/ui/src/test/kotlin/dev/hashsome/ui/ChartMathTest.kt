@@ -194,4 +194,25 @@ class ChartMathTest {
         assertEquals("Tomorrow", ForecastText.dayName(at(2026, 3, 12, 0), now, "Thursday", utc))
         assertEquals("Friday", ForecastText.dayName(at(2026, 3, 13, 0), now, "Friday", utc))
     }
+
+    @Test
+    fun `how long ago is said in the coarsest unit that fits`() {
+        val now = 10 * ChartMath.DAY_MS
+        assertEquals("Just now", ActivityText.relativeTime(now - 59_999, now))
+        assertEquals("1m ago", ActivityText.relativeTime(now - 60_000, now))
+        assertEquals("59m ago", ActivityText.relativeTime(now - 59 * 60_000, now))
+        assertEquals("2h ago", ActivityText.relativeTime(now - 2 * 3_600_000L, now))
+        assertEquals("1d ago", ActivityText.relativeTime(now - ChartMath.DAY_MS, now))
+        assertEquals("3d ago", ActivityText.relativeTime(now - 3 * ChartMath.DAY_MS, now))
+    }
+
+    @Test
+    fun `initials are the first two words`() {
+        assertEquals("DS", ActivityText.initials("Dana Scully"))
+        assertEquals("D", ActivityText.initials("  dana "))
+        assertEquals("AB", ActivityText.initials("Ann Bee Cee"))
+        assertEquals("", ActivityText.initials("  "))
+        assertEquals("Turned on", ActivityText.capitalize("turned on"))
+        assertEquals("", ActivityText.capitalize(""))
+    }
 }

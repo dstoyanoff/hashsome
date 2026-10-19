@@ -6,52 +6,52 @@ Statuses: `native` (a Kotlin counterpart exists; `native:<Name>` when it is name
 
 ## Entity components
 
-| Web                 | Kind      | Status  | Native type / notes |
-| ------------------- | --------- | ------- | ------------------- |
-| `LightTile`         | component | native  |                     |
-| `ClimateTile`       | component | native  | `ClimateTileView`   |
-| `SensorReadout`     | component | native  |                     |
-| `ActionButton`      | component | planned |                     |
-| `SceneButton`       | component | planned |                     |
-| `MediaPlayerBar`    | component | native  |                     |
-| `MediaPlayerColumn` | component | native  |                     |
-| `ListTabs`          | component | native  |                     |
-| `MediaPlayerFull`   | component | native  |                     |
-| `MediaBrowser`      | component | native  |                     |
-| `MediaQueue`        | component | native  |                     |
-| `MediaSpeakers`     | component | native  |                     |
-| `NavRail`           | component | native  |                     |
-| `NavDock`           | component | planned |                     |
-| `NavBar`            | component | planned |                     |
-| `TopBar`            | component | planned |                     |
-| `SystemStatus`      | component | native  |                     |
-| `WeatherChip`       | component | native  |                     |
-| `PresenceStack`     | component | planned |                     |
-| `DateChip`          | component | native  |                     |
-| `Clock`             | component | native  |                     |
-| `WeatherForecast`   | component | planned |                     |
+| Web                 | Kind      | Status  | Native type / notes   |
+| ------------------- | --------- | ------- | --------------------- |
+| `LightTile`         | component | native  |                       |
+| `ClimateTile`       | component | native  | `ClimateTileView`     |
+| `SensorReadout`     | component | native  |                       |
+| `ActionButton`      | component | planned |                       |
+| `SceneButton`       | component | planned |                       |
+| `MediaPlayerBar`    | component | native  |                       |
+| `MediaPlayerColumn` | component | native  |                       |
+| `ListTabs`          | component | native  |                       |
+| `MediaPlayerFull`   | component | native  |                       |
+| `MediaBrowser`      | component | native  |                       |
+| `MediaQueue`        | component | native  |                       |
+| `MediaSpeakers`     | component | native  |                       |
+| `NavRail`           | component | native  |                       |
+| `NavDock`           | component | planned |                       |
+| `NavBar`            | component | planned |                       |
+| `TopBar`            | component | planned |                       |
+| `SystemStatus`      | component | native  |                       |
+| `WeatherChip`       | component | native  |                       |
+| `PresenceStack`     | component | planned |                       |
+| `DateChip`          | component | native  |                       |
+| `Clock`             | component | native  |                       |
+| `WeatherForecast`   | component | native  | `WeatherForecastBody` |
 
 ## Layout
 
-| Web                | Kind      | Status   | Native type / notes |
-| ------------------ | --------- | -------- | ------------------- |
-| `Grid`             | component | planned  |                     |
-| `AnimatedNumber`   | component | planned  |                     |
-| `Board`            | component | planned  |                     |
-| `Cell`             | component | planned  |                     |
-| `TopRow`           | component | native   |                     |
-| `Page`             | component | web-only |                     |
-| `AnimatedOutlet`   | component | web-only |                     |
-| `Motion`           | component | web-only |                     |
-| `RoomHeader`       | component | native   |                     |
-| `Tile`             | component | native   |                     |
-| `IconButton`       | component | planned  |                     |
-| `TaskTile`         | component | native   |                     |
-| `ConfirmDialog`    | component | native   |                     |
-| `EnergyChart`      | component | planned  |                     |
-| `HistorySection`   | component | planned  |                     |
-| `Icon`             | component | web-only |                     |
-| `HashsomeProvider` | component | planned  |                     |
+| Web                | Kind      | Status   | Native type / notes  |
+| ------------------ | --------- | -------- | -------------------- |
+| `Grid`             | component | planned  |                      |
+| `AnimatedNumber`   | component | planned  |                      |
+| `Board`            | component | planned  |                      |
+| `Cell`             | component | planned  |                      |
+| `TopRow`           | component | native   |                      |
+| `Page`             | component | web-only |                      |
+| `AnimatedOutlet`   | component | web-only |                      |
+| `Motion`           | component | web-only |                      |
+| `RoomHeader`       | component | native   |                      |
+| `Tile`             | component | native   |                      |
+| `IconButton`       | component | planned  |                      |
+| `TaskTile`         | component | native   |                      |
+| `ConfirmDialog`    | component | native   |                      |
+| `EnergyChart`      | component | planned  |                      |
+| `HistorySection`   | component | native   | `HistorySectionView` |
+| `Icon`             | component | web-only |                      |
+| `HashsomeProvider` | component | planned  |                      |
 
 ## Hooks
 
@@ -71,11 +71,14 @@ Statuses: `native` (a Kotlin counterpart exists; `native:<Name>` when it is name
 
 ## Native only
 
-| Native        | Reason                                                                               |
-| ------------- | ------------------------------------------------------------------------------------ |
-| `FormHeading` | a form control of the settings sheet (the web's debug menu uses its ChipRow instead) |
-| `FormRow`     | a form control of the settings sheet (the web's debug menu uses its ChipRow instead) |
-| `ToggleView`  | a form control of the settings sheet (the web's debug menu uses its ChipRow instead) |
-| `FormSelect`  | a form control of the settings sheet (the web's debug menu uses its ChipRow instead) |
-| `FormSlider`  | a form control of the settings sheet (the web's debug menu uses its ChipRow instead) |
-| `FormField`   | a form control of the settings sheet (the web's debug menu uses its ChipRow instead) |
+| Native             | Reason                                                                                                                                                           |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FormHeading`      | a form control of the settings sheet (the web's debug menu uses its ChipRow instead)                                                                             |
+| `FormRow`          | a form control of the settings sheet (the web's debug menu uses its ChipRow instead)                                                                             |
+| `ToggleView`       | a form control of the settings sheet (the web's debug menu uses its ChipRow instead)                                                                             |
+| `FormSelect`       | a form control of the settings sheet (the web's debug menu uses its ChipRow instead)                                                                             |
+| `FormSlider`       | a form control of the settings sheet (the web's debug menu uses its ChipRow instead)                                                                             |
+| `FormField`        | a form control of the settings sheet (the web's debug menu uses its ChipRow instead)                                                                             |
+| `DrawerHost`       | the web's single EntityDrawer is internal to @hashsome/ui; this is its host (a drawer, or a sheet on a small screen) that a readout, a chip or a held tile opens |
+| `SeriesChartView`  | the web's SeriesChart, SeriesSample and RangeSwitcher are internal to @hashsome/ui; this is the series chart with its range switcher                             |
+| `SensorDrawerBody` | the web's sensor drawer (SensorDetailBody and SensorHistory) is internal to SensorReadout; this is its body                                                      |
