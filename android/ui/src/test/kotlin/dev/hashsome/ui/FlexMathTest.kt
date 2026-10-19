@@ -44,6 +44,15 @@ class FlexMathTest {
     }
 
     @Test
+    fun `a gap is left only between the children that are shown`() {
+        // Four children, one of them gone (basis 0): two gaps of 4, not three.
+        assertArrayEquals(
+            intArrayOf(10, 62, 0, 20),
+            FlexMath.distribute(intArrayOf(10, 0, 0, 20), booleanArrayOf(false, true, false, false), 100, 4, gaps = 2),
+        )
+    }
+
+    @Test
     fun `no children`() {
         assertArrayEquals(intArrayOf(), distribute(intArrayOf(), booleanArrayOf(), 100))
     }

@@ -664,6 +664,11 @@ internal class PillButton(context: Context, icon: Icon?, label: String?, private
             invalidate()
         }
 
+    /** No fill at rest, as the web's text-only `.clear`: the raised surface shows only while it is pressed (its `:hover`). */
+    var flat = false
+
+    private var held = false
+
     /** The words in the muted color. */
     var muted = false
         set(value) {
@@ -757,7 +762,7 @@ internal class PillButton(context: Context, icon: Icon?, label: String?, private
         paint.style = Paint.Style.FILL
         paint.color = if (primary) t.palette.accent else t.palette.surfaceRaised
         rect.set(0f, 0f, w, h)
-        canvas.drawRoundRect(rect, h / 2, h / 2, paint)
+        if (!flat || held) canvas.drawRoundRect(rect, h / 2, h / 2, paint)
         val words = label.orEmpty()
         val ink = when {
             primary -> t.palette.accentText
@@ -809,13 +814,20 @@ internal class PillButton(context: Context, icon: Icon?, label: String?, private
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> if (isEnabled) squeeze(0.94f)
+            MotionEvent.ACTION_DOWN -> if (isEnabled) {
+                squeeze(0.94f)
+                if (flat) { held = true; invalidate() }
+            }
             MotionEvent.ACTION_UP -> {
                 squeeze(1f)
+                if (held) { held = false; invalidate() }
                 if (isEnabled && contains(event.x, event.y)) onClick?.invoke()
             }
 
-            MotionEvent.ACTION_CANCEL -> squeeze(1f)
+            MotionEvent.ACTION_CANCEL -> {
+                squeeze(1f)
+                if (held) { held = false; invalidate() }
+            }
         }
         return true
     }

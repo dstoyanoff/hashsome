@@ -237,6 +237,36 @@ class MediaQueueTest {
     }
 
     @Test
+    fun `Clear says when the player has answered, ok or not, and reads again 400 ms after an ok`() {
+        val q = queue()
+        val answers = ArrayList<Boolean>()
+        q.clear { answers += it }
+        rig.settle()
+        assertEquals(listOf(true), answers)
+        rig.scheduler.advance(400)
+        rig.settle()
+        assertEquals(2, asks.size)
+
+        rig.client.failNext("nope")
+        q.clear { answers += it }
+        rig.settle()
+        assertEquals(listOf(true, false), answers)
+        rig.scheduler.advance(1_000)
+        assertEquals(2, asks.size)
+    }
+
+    @Test
+    fun `taking a track out says whether the player took it`() {
+        val q = queue()
+        val answers = ArrayList<Boolean>()
+        q.remove(tracks[0]) { answers += it }
+        rig.client.failNext("nope")
+        q.remove(tracks[1]) { answers += it }
+        rig.settle()
+        assertEquals(listOf(true, false), answers)
+    }
+
+    @Test
     fun `a track is moved by the number of places`() {
         val q = queue()
         q.move(tracks[2], -2)

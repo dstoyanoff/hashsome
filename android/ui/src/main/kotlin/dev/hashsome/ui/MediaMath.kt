@@ -218,6 +218,26 @@ object QueueDrag {
     }
 }
 
+/** A queue row leaving (or coming back, when the player refused): it fades and gives up its height, ease-out, in [MS] ms. */
+object RowCollapse {
+    const val MS = 160L
+
+    /** Ease-out (cubic) of [t], 0..1. */
+    fun eased(t: Float): Float {
+        val r = 1f - t.coerceIn(0f, 1f)
+        return 1f - r * r * r
+    }
+
+    /** Where a collapse that went from [from] toward [to] is [elapsed] ms in: 0 is a whole row, 1 is gone. */
+    fun at(from: Float, to: Float, elapsed: Long, ms: Long = MS): Float = from + (to - from) * eased(elapsed.toFloat() / ms)
+
+    /** The height (or margin) of a row of [full] px that has collapsed [p] of the way. */
+    fun size(full: Int, p: Float): Int = Math.round(full * (1f - p.coerceIn(0f, 1f)))
+
+    /** The fade of a row that is [base] opaque. */
+    fun alpha(base: Float, p: Float): Float = base * (1f - p.coerceIn(0f, 1f))
+}
+
 /**
  * Which item a player is being asked to play, by title, so its bar can say "Loading <title>…" while the player takes many
  * seconds to start an album. The press tracker knows the item's id only; the library that made the press remembers its title.
