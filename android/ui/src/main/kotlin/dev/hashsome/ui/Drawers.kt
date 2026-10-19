@@ -63,6 +63,7 @@ object DrawerHost {
         scrolls: Boolean = true,
         build: (DrawerContext) -> View,
     ) {
+        val began = android.os.SystemClock.uptimeMillis()
         current?.dismissNow()
         val overlay = overlayForScreen(context, expandable)
         overlay.title = title
@@ -85,7 +86,10 @@ object DrawerHost {
             throw e
         }
         current = overlay
+        val built = android.os.SystemClock.uptimeMillis()
         overlay.show(if (scrolls) scrolled(context, body) else body)
+        // Where the time of an open goes, for a display that feels slow: making the body, then putting the panel up (its first layout and animation follow).
+        android.util.Log.d("hashsome-drawer", "open \"$title\": body built in ${built - began} ms, panel shown in ${android.os.SystemClock.uptimeMillis() - built} ms")
     }
 
     private fun scrolled(context: Context, body: View): View = ScrollView(context).also {

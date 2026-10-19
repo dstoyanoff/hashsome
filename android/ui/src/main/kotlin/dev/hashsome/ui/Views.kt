@@ -32,9 +32,9 @@ const val HOLD_MS = 800L
 enum class TileRelease { Tap, Hold, Drag, Nothing }
 
 /**
- * Classifies the end of a press on a tile by how long it lasted: shorter than [thresholdMs] and still is a tap; longer is a hold, which
- * does nothing on release (the hold itself fired at the threshold, when the tile has one); a drag stays a drag. A press that wandered
- * off its spot is nothing.
+ * Classifies the end of a press on a tile by how long it lasted: a tap is instant, [tapMs] at most (the moment the hold line starts);
+ * from there to [thresholdMs] is an abandoned hold, which does nothing; at [thresholdMs] it is a hold, which does nothing on release
+ * (the hold itself fired then, when the tile has one); a drag stays a drag. A press that wandered off its spot is nothing.
  */
 object TileTouch {
     /** How long a press has lasted before a tile shows that it is being timed as a hold: a tap never shows it (the status dot has its own, `TAP_MAX_MS`). */
@@ -44,9 +44,11 @@ object TileTouch {
     fun progress(elapsedMs: Long, showAfterMs: Long = SHOW_AFTER_MS, holdMs: Long = HOLD_MS): Float =
         if (elapsedMs <= showAfterMs || holdMs <= showAfterMs) 0f else ((elapsedMs - showAfterMs).toFloat() / (holdMs - showAfterMs)).coerceIn(0f, 1f)
 
-    fun release(elapsedMs: Long, dragged: Boolean, hasHold: Boolean, thresholdMs: Long = HOLD_MS, moved: Boolean = false): TileRelease = when {
+    fun release(elapsedMs: Long, dragged: Boolean, hasHold: Boolean, thresholdMs: Long = HOLD_MS, moved: Boolean = false, tapMs: Long = SHOW_AFTER_MS): TileRelease = when {
         dragged -> TileRelease.Drag
         elapsedMs >= thresholdMs -> if (hasHold) TileRelease.Hold else TileRelease.Nothing
+        // Between a tap and a hold: the hold line is on its way and the press is given up, which does nothing.
+        elapsedMs > tapMs -> TileRelease.Nothing
         moved -> TileRelease.Nothing
         else -> TileRelease.Tap
     }
@@ -328,7 +330,8 @@ open class TileView(context: Context) : ViewGroup(context) {
         canvas.drawTextCentered(shownTitle, left, cy, titlePaint)
 
         if (holdProgress > 0f) {
-            paint.color = if (filled && fill == null) 0x59000000 else 0x8CFFFFFF.toInt()
+            // The accent, or on a tile that is solid accent all over, what is on an accent.
+            paint.color = if (filled && fill == null) theme.palette.onAccent else theme.palette.accent
             canvas.drawRect(0f, h - dp(2f), w * holdProgress, h, paint)
         }
         canvas.restore()

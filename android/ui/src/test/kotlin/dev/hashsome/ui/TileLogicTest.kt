@@ -197,7 +197,14 @@ class TileTouchTest {
     @Test
     fun `a short press is a tap`() {
         assertEquals(TileRelease.Tap, TileTouch.release(120, dragged = false, hasHold = true))
-        assertEquals(TileRelease.Tap, TileTouch.release(499, dragged = false, hasHold = false))
+        assertEquals(TileRelease.Tap, TileTouch.release(250, dragged = false, hasHold = false))
+    }
+
+    @Test
+    fun `a press between a tap and a hold is given up and does nothing`() {
+        assertEquals(TileRelease.Nothing, TileTouch.release(251, dragged = false, hasHold = true))
+        assertEquals(TileRelease.Nothing, TileTouch.release(700, dragged = false, hasHold = true))
+        assertEquals(TileRelease.Nothing, TileTouch.release(799, dragged = false, hasHold = false))
     }
 
     @Test
