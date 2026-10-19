@@ -21,4 +21,11 @@ class StatusDotHoldTest {
         assertFalse(StatusDotHold.withinSlop(4f, 4f, 5f))
         assertTrue(StatusDotHold.withinSlop(0f, 0f, 0f))
     }
+
+    @Test
+    fun `elapsed time is measured from the down and never negative`() {
+        assertEquals(1_200L, StatusDotHold.elapsed(11_200, 10_000))
+        assertEquals(0L, StatusDotHold.elapsed(9_000, 10_000))
+        assertTrue(StatusDotHold.completed(StatusDotHold.elapsed(15_000, 10_000), 5_000))
+    }
 }

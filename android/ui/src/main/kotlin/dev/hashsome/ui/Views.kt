@@ -720,6 +720,9 @@ object StatusDotHold {
     /** How far the finger may drift, in px, before the hold is given up (the platform's touch slop). */
     fun withinSlop(dx: Float, dy: Float, slop: Float): Boolean = dx * dx + dy * dy <= slop * slop
 
+    /** Ms held at [now] by a press that began at [start] (both uptime clock). */
+    fun elapsed(now: Long, start: Long): Long = maxOf(0L, now - start)
+
     /** The fill of the ring, 0..1, after [elapsedMs] of a hold of [holdMs]. */
     fun progress(elapsedMs: Long, holdMs: Long): Float = if (holdMs <= 0) 1f else (elapsedMs.toFloat() / holdMs).coerceIn(0f, 1f)
 
@@ -759,7 +762,6 @@ open class StatusDot(context: Context) : View(context) {
     private val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat()
     private var downX = 0f
     private var downY = 0f
-    private var ring: ValueAnimator? = null
     private var ringProgress = 0f
     private var held = false
 
@@ -792,30 +794,31 @@ open class StatusDot(context: Context) : View(context) {
         return super.onTouchEvent(event)
     }
 
-    private fun startRing(holdMs: Long) {
+    // Timed from the uptime clock, not a ValueAnimator: a zero animator scale (common on kiosks) would end an animator at once.
+    private var holdStart = 0L
+    private var holdMs = 0L
+    private var holding = false
+    private val fire = Runnable {
+        if (!holding) return@Runnable
+        holding = false
+        held = true
+        ringProgress = 0f
+        invalidate()
+        Hashsome.touchListener.onStatusDotHold()
+    }
+
+    private fun startRing(ms: Long) {
         stopRing()
-        ring = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = holdMs
-            interpolator = LinearInterpolator()
-            addUpdateListener {
-                ringProgress = StatusDotHold.progress(it.currentPlayTime, holdMs)
-                invalidate()
-                if (StatusDotHold.completed(it.currentPlayTime, holdMs) && !held) {
-                    held = true
-                    ring = null
-                    cancel()
-                    ringProgress = 0f
-                    invalidate()
-                    Hashsome.touchListener.onStatusDotHold()
-                }
-            }
-            start()
-        }
+        holdMs = ms
+        holdStart = android.os.SystemClock.uptimeMillis()
+        holding = true
+        postDelayed(fire, ms)
+        postInvalidateOnAnimation()
     }
 
     private fun stopRing() {
-        ring?.cancel()
-        ring = null
+        holding = false
+        removeCallbacks(fire)
         if (ringProgress != 0f) {
             ringProgress = 0f
             invalidate()
@@ -835,6 +838,10 @@ open class StatusDot(context: Context) : View(context) {
         canvas.drawCircle(c, c, dp(10f), paint)
         paint.color = tone.value
         canvas.drawCircle(c, c, dp(6f), paint)
+        if (holding) {
+            ringProgress = StatusDotHold.progress(StatusDotHold.elapsed(android.os.SystemClock.uptimeMillis(), holdStart), holdMs)
+            postInvalidateOnAnimation()
+        }
         if (ringProgress > 0f) {
             val r = dp(14f)
             paint.style = Paint.Style.STROKE
