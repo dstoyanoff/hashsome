@@ -10,7 +10,8 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import dev.hashsome.headless.ActionControl
+import dev.hashsome.client.Entity
+import dev.hashsome.client.Store
 import dev.hashsome.headless.ClimateControl
 import dev.hashsome.headless.HandleState
 import dev.hashsome.headless.LightControl
@@ -265,9 +266,10 @@ open class ClimateTileView(context: Context, val control: ClimateControl, val la
 /**
  * A recurring task: its name and where it stands ("Due in 2 days", warm when soon, red when overdue). A tap asks whether it is done,
  * with the day it was done on (today, or an earlier one); only a confirmation completes it. Set [info] to what the task knows
- * about itself, and [onComplete] to what completing does (else the action is triggered, which cannot carry the day).
+ * about itself, and [onComplete] to what completing does. [status] is the state of the thing behind the task, of whatever kind it is
+ * (`EntityStatus.watch`): anything but ready shows why instead and disables the tile; null is always ready.
  */
-open class TaskTileView(context: Context, val control: ActionControl, val label: String) : BoundView(context) {
+open class TaskTileView(context: Context, val status: Store<HandleState<Entity>>?, val label: String) : BoundView(context) {
     val tile: TileView = hostTile()
 
     var icon: Icon = Ui.wrench
@@ -283,7 +285,7 @@ open class TaskTileView(context: Context, val control: ActionControl, val label:
         }
 
     /** Where [info] comes from, when it changes (the dashboard works it out); followed while the tile is shown. */
-    var infoSource: dev.hashsome.client.Store<TaskInfo>? = null
+    var infoSource: Store<TaskInfo>? = null
 
     /**
      * What completing does: called with the day it was done on (epoch ms) when the question is confirmed; call `finish(null)` when it
@@ -307,7 +309,7 @@ open class TaskTileView(context: Context, val control: ActionControl, val label:
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        bind(control.handle.state) { render() }
+        status?.let { bind(it) { render() } }
         infoSource?.let { source -> bind(source) { info = it } }
         minuteTicks(::onDetach) {
             now = it
@@ -322,16 +324,16 @@ open class TaskTileView(context: Context, val control: ActionControl, val label:
     }
 
     private fun render() {
-        val state = control.handle.state.value
+        val state = status?.value
         val p = theme.palette
-        tile.disabled = state !is HandleState.Ready
+        tile.disabled = state != null && state !is HandleState.Ready
         tile.icon = icon
         tile.secondaryTone = when (info.state) {
             TaskState.Ok -> p.textMuted
             TaskState.DueSoon -> p.warm
             TaskState.Overdue -> p.danger
         }
-        tile.secondary = StatusLabels.of(state) ?: TaskText.line(info, if (now == 0L) Hashsome.scheduler.wallMs() else now)
+        tile.secondary = state?.let { StatusLabels.of(it) } ?: TaskText.line(info, if (now == 0L) Hashsome.scheduler.wallMs() else now)
     }
 
     private fun ask() {
@@ -340,7 +342,7 @@ open class TaskTileView(context: Context, val control: ActionControl, val label:
         val stepper = DayStepperView(context, shown)
         val ask = ConfirmDialogView(context)
         ask.title = "Mark “$label” as done?"
-        val last = info.lastDoneAt ?: dev.hashsome.client.Iso8601.parse(control.handle.entity?.lastTriggered)
+        val last = info.lastDoneAt ?: dev.hashsome.client.Iso8601.parse(((status?.value as? HandleState.Ready)?.entity as? dev.hashsome.client.ActionEntity)?.lastTriggered)
         ask.description = last?.let { "Last done ${TaskText.short(it, shown)}." }
         ask.confirmLabel = "Mark as done"
         ask.body = stepper

@@ -7,10 +7,13 @@ import android.graphics.RectF
 import android.view.View
 import dev.hashsome.client.Cancel
 
-// Small pieces the components are put together from. Internal: a consumer composes components, not these.
+// Small pieces the components are put together from. `GlyphView` and `PillView` are public for a dashboard's own composites; the rest are internal.
 
-/** A glyph of [sizeDp] in [color], drawn as a cached bitmap (a weather glyph with colors of its own ignores [color]). */
-internal class GlyphView(context: Context, icon: Icon? = null, sizeDp: Int = 16) : View(context) {
+/**
+ * A glyph of [sizeDp] dp in [color] (the theme's text color until set), drawn as a cached bitmap; a weather glyph with colors of its
+ * own ignores [color]. It is square, [sizeDp] on both sides, whatever it is laid out with. Set [icon] to change what it shows.
+ */
+open class GlyphView(context: Context, icon: Icon? = null, sizeDp: Int = 16) : View(context) {
     var icon: Icon? = icon
         set(value) {
             if (field == value) return
@@ -64,8 +67,11 @@ internal class HairlineView(context: Context) : View(context) {
     }
 }
 
-/** A row in the surface color with a hairline border and fully round ends: the web's top bar chip. */
-internal class PillView(context: Context) : RowLayout(context) {
+/**
+ * A row in the surface color with a hairline border and fully round ends: the web's top bar chip. It pads itself (2.5 units
+ * above and below, 3.5 at the sides) and spaces its children by 2 units; add the glyph and text of a chip to it with `addView`.
+ */
+open class PillView(context: Context) : RowLayout(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
 

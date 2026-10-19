@@ -1,6 +1,10 @@
 package dev.hashsome.ui
 
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import android.view.View.MeasureSpec
@@ -27,6 +31,13 @@ open class FlexParams(width: Int, height: Int) : ViewGroup.MarginLayoutParams(wi
 
     /** Whether a child that [grow]s also gives way when the layout is too small for its children (a panel's scrolling content); else it keeps its content's size. */
     var shrink: Boolean = false
+
+    /**
+     * The web's `flex: <weight> 1 0`: the child's size on the main axis is [weight] parts of what the other children leave, whatever
+     * its content (basis 0, it grows by its weight and gives way when short). Two cards of weights 1 and 1.4 split their row 1 : 1.4.
+     * Children without a weight keep their content and share what is left equally, as a weight of 1 would. Null: not weighted.
+     */
+    var weight: Float? = null
 }
 
 private fun flexParamsOf(p: ViewGroup.LayoutParams): FlexParams {
@@ -330,19 +341,58 @@ object FlexMath {
      * the children do not fit, only the growers give way, in proportion to how much each has to give and never below its [min]
      * (a grower that must not shrink, as the web board's `flex: 1 0 auto`, has its basis as its min).
      */
-    fun distribute(basis: IntArray, grow: BooleanArray, available: Int, gap: Int, min: IntArray = IntArray(basis.size)): IntArray {
+    fun distribute(
+        basis: IntArray,
+        grow: BooleanArray,
+        available: Int,
+        gap: Int,
+        min: IntArray = IntArray(basis.size),
+        weight: FloatArray? = null,
+    ): IntArray {
         val n = basis.size
         val sizes = basis.copyOf()
         val growers = (0 until n).count { grow[it] }
         if (n == 0 || growers == 0) return sizes
         val leftover = available - basis.sum() - gap * (n - 1)
         if (leftover > 0) {
-            val share = leftover / growers
-            var extra = leftover % growers
-            for (i in 0 until n) {
-                if (!grow[i]) continue
-                sizes[i] += share + if (extra > 0) 1 else 0
-                if (extra > 0) extra--
+            // Each grower takes its weight's part of what is left; one that would end below its min is held at the min and the
+            // rest share what remains (the web's frozen items). Whole pixels, the remainder to the first growers.
+            val w = FloatArray(n) { if (grow[it]) (weight?.get(it)?.takeIf { x -> x > 0f } ?: 1f) else 0f }
+            val frozen = BooleanArray(n)
+            var pool = leftover
+            while (true) {
+                val total = (0 until n).sumOf { if (grow[it] && !frozen[it]) w[it].toDouble() else 0.0 }
+                var again = false
+                if (total > 0) {
+                    for (i in 0 until n) {
+                        if (!grow[i] || frozen[i]) continue
+                        if (basis[i] + pool * w[i] / total < min[i]) {
+                            frozen[i] = true
+                            sizes[i] = min[i]
+                            pool -= min[i] - basis[i]
+                            again = true
+                            break
+                        }
+                    }
+                }
+                if (!again) break
+            }
+            val total = (0 until n).sumOf { if (grow[it] && !frozen[it]) w[it].toDouble() else 0.0 }
+            if (total > 0 && pool > 0) {
+                var given = 0
+                for (i in 0 until n) {
+                    if (!grow[i] || frozen[i]) continue
+                    val part = Math.floor(pool * w[i] / total + 1e-9).toInt()
+                    sizes[i] += part
+                    given += part
+                }
+                var extra = pool - given
+                for (i in 0 until n) {
+                    if (extra <= 0) break
+                    if (!grow[i] || frozen[i]) continue
+                    sizes[i]++
+                    extra--
+                }
             }
         } else if (leftover < 0) {
             var deficit = -leftover
@@ -405,6 +455,7 @@ internal class FlexBox(private val vertical: Boolean) {
 
         val basis = IntArray(n)
         val grow = BooleanArray(n)
+        val weights = FloatArray(n)
         crosses = IntArray(n)
         var crossMax = 0
         var visibleCount = 0
@@ -435,8 +486,11 @@ internal class FlexBox(private val vertical: Boolean) {
             measureChild(child, ms, mmode, cs, cm)
             val minMain = if (vertical) dp(lp.minHeightDp) else 0
             if (minMain > child.mainMeasured()) measureChild(child, minMain, MeasureSpec.EXACTLY, cs, cm)
-            basis[i] = child.mainMeasured() + mm
-            grow[i] = lp.grow || lp.mainDim() == ViewGroup.LayoutParams.MATCH_PARENT
+            val weight = lp.weight
+            // A weighted child is only as large as its share: its content does not count, only its margins and its minimum.
+            basis[i] = if (weight != null) mm else child.mainMeasured() + mm
+            grow[i] = weight != null || lp.grow || lp.mainDim() == ViewGroup.LayoutParams.MATCH_PARENT
+            if (weight != null) weights[i] = weight
             val crossNeeded = maxOf(child.crossMeasured(), if (!vertical) dp(lp.minHeightDp) else 0)
             crosses[i] = crossNeeded
             crossMax = maxOf(crossMax, crossNeeded + mc)
@@ -446,10 +500,16 @@ internal class FlexBox(private val vertical: Boolean) {
         // A grower keeps at least its content, unless it says it shrinks.
         val minSizes = IntArray(n) { i ->
             val c = v.getChildAt(i)
-            if (c.visibility == View.GONE || c.flex().shrink) 0 else basis[i].coerceAtLeast(0)
+            val lp = c.flex()
+            when {
+                c.visibility == View.GONE -> 0
+                lp.weight != null -> if (vertical) dp(lp.minHeightDp) + lp.mainMargins() else lp.mainMargins()
+                lp.shrink -> 0
+                else -> basis[i].coerceAtLeast(0)
+            }
         }
         val overfull = mainMode == MeasureSpec.AT_MOST && basis.sum() + gapPx * maxOf(0, visibleCount - 1) > availMain
-        sizes = if (mainMode == MeasureSpec.EXACTLY || overfull) FlexMath.distribute(basis, grow, availMain, gapPx, minSizes) else basis
+        sizes = if (mainMode == MeasureSpec.EXACTLY || overfull) FlexMath.distribute(basis, grow, availMain, gapPx, minSizes, weights) else basis
         for (i in 0 until n) {
             val child = v.getChildAt(i)
             if (child.visibility == View.GONE || sizes[i] == basis[i]) continue
@@ -539,3 +599,47 @@ internal class FlexBox(private val vertical: Boolean) {
     }
 }
 
+
+/**
+ * The card pages put their lists and players in: the web's `Flex background="surface" radius="card" p={3}`. A [ColumnLayout] that
+ * draws the theme's surface color with the card radius, pads itself 3 spacing units, and clips what it holds to its corners
+ * (`overflow: hidden`). No border and no shadow, as on the web.
+ */
+open class SurfaceView(context: Context) : ColumnLayout(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val rect = RectF()
+    private val clip = Path()
+
+    init {
+        setWillNotDraw(false)
+        // The unit is the theme's; a theme change builds the page again, so the card is made again with it.
+        val pad = Math.round(PADDING_UNITS * unitPx())
+        setPadding(pad, pad, pad, pad)
+    }
+
+    private fun shape() {
+        val r = minOf(dp(theme.radius.card), minOf(width, height) / 2f)
+        rect.set(0f, 0f, width.toFloat(), height.toFloat())
+        clip.reset()
+        clip.addRoundRect(rect, r, r, Path.Direction.CW)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        shape()
+        paint.color = theme.palette.surface
+        canvas.drawPath(clip, paint)
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        shape()
+        canvas.save()
+        canvas.clipPath(clip)
+        super.dispatchDraw(canvas)
+        canvas.restore()
+    }
+
+    companion object {
+        /** The card's padding, in spacing units (the web's `p={3}`). */
+        const val PADDING_UNITS = 3
+    }
+}

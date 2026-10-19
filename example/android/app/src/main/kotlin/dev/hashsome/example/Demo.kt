@@ -20,6 +20,7 @@ import dev.hashsome.ui.Align
 import dev.hashsome.ui.Attention
 import dev.hashsome.ui.BarView
 import dev.hashsome.ui.ChipsView
+import dev.hashsome.ui.ClockFormat
 import dev.hashsome.ui.ColumnLayout
 import dev.hashsome.ui.Dashboard
 import dev.hashsome.ui.FlexParams
@@ -118,7 +119,7 @@ object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
 
     private fun PageScope.tasks() {
         column(gap = 3) {
-            header(left = { add(text("Tasks", Role.Title)) })
+            header(left = { add(text("Tasks", Role.Title)) }, clockFormat = ClockFormat.H24)
             val now = System.currentTimeMillis()
             val day = 86_400_000L
             // What the dashboard does with the day it was done on; the demo only says it went through.
@@ -127,6 +128,13 @@ object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
             taskTile("ha:scene.movie_night", "Due soon", onComplete = done, info = Store(TaskInfo(TaskState.DueSoon, now + 2 * day, now - 20 * day)))
             taskTile("ha:scene.movie_night", "Overdue", onComplete = done, info = Store(TaskInfo(TaskState.Overdue, now - 3 * day, now - 40 * day)))
             taskTile("ha:scene.does_not_exist", "Missing", onComplete = done)
+            // The status of a sensor-kind entity (the mock's temperature sensor, as a binary_sensor is): ready, so not disabled.
+            taskTile("ha:sensor.living_room_temperature", "Over a sensor", onComplete = done, info = Store(TaskInfo(TaskState.Ok, now + 9 * day, now - 5 * day)))
+            // The card the pages put lists and players in.
+            surface(gap = 2) {
+                add(text("A surface", Role.BodyStrong))
+                add(text("Surface color, card radius, 3 units of padding"))
+            }
             listTabs(
                 listOf("Library", "Queue"),
                 listOf({ add(text("The library surface")) }, { add(text("The queue surface")) }),

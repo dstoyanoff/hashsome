@@ -1,6 +1,11 @@
 package dev.hashsome.ui
 
 import dev.hashsome.client.Availability
+import dev.hashsome.client.Entity
+import dev.hashsome.client.EntityRef
+import dev.hashsome.client.Snapshot
+import dev.hashsome.client.Store
+import dev.hashsome.headless.Scope
 import dev.hashsome.client.ForecastPoint
 import dev.hashsome.client.Iso8601
 import dev.hashsome.headless.HandleState
@@ -19,6 +24,31 @@ object StatusLabels {
         HandleState.Unsupported -> "Unsupported"
         is HandleState.Unavailable -> if (state.entity?.availability == Availability.Unknown) "Unknown" else "Unavailable"
         is HandleState.Ready -> null
+    }
+}
+
+/**
+ * The status of an entity of any kind, as the web's `status?: EntityStatus` of a tile: ready, unavailable (or not reported on yet),
+ * missing or loading, from whatever entity is there. A component that only needs to say why it is disabled takes this instead of a
+ * handle of one kind, so a `binary_sensor` (the sensor kind) or a `calendar` is as good as an action.
+ */
+object EntityStatus {
+    /** What [snapshot] means for a component: never [HandleState.Unsupported], since no kind is asked for. */
+    fun of(snapshot: Snapshot): HandleState<Entity> = when (snapshot) {
+        Snapshot.Loading -> HandleState.Loading
+        Snapshot.Missing -> HandleState.Missing
+        is Snapshot.Present ->
+            if (snapshot.entity.availability == Availability.Ready) HandleState.Ready(snapshot.entity) else HandleState.Unavailable(snapshot.entity)
+    }
+
+    /**
+     * The status of [ref] while [scope] lives. A null [ref] is [HandleState.Missing], as for a handle: a component for which no ref means
+     * "always ready" (`taskTile`) passes no store at all instead.
+     */
+    fun watch(scope: Scope, ref: String?): Store<HandleState<Entity>> {
+        val store = Store<HandleState<Entity>>(if (ref == null) HandleState.Missing else HandleState.Loading)
+        if (ref != null) scope.watch(EntityRef(ref)) { store.set(of(it)) }
+        return store
     }
 }
 

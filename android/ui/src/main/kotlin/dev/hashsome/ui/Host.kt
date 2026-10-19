@@ -116,7 +116,8 @@ class InMemoryHostSettings(server: String? = null) : HostSettings {
 object Hashsome {
     private var config: HashsomeApp? = null
     private var schedulerOrNull: Scheduler? = null
-    private var clientOrNull: Client? = null
+    private var clientOrNull: HostClient? = null
+    private var appScopeOrNull: Scope? = null
     private var themeHost: ThemeHost? = null
     private var connected = false
 
@@ -141,6 +142,8 @@ object Hashsome {
         appContext = app
         schedulerOrNull = null
         clientOrNull = null
+        appScopeOrNull?.dispose()
+        appScopeOrNull = null
         themeHost = null
         connected = false
         screenPolicy = config.screenPolicy
@@ -156,13 +159,28 @@ object Hashsome {
 
     /**
      * The connection to the runtime at `settings.server`; a stand-in that answers every watch with a missing entity while no
-     * server is provisioned. It connects when the dashboard activity starts ([connect]), not before.
+     * server is provisioned. It connects when the dashboard activity starts ([connect]), not before. It is one object for the life of
+     * the process: [reconnect] changes where it points, never which client it is, so a watch, a store or a listener on it (the status
+     * dot, the settings sheet's integrations) keeps working across a reload or a new address.
      */
-    val client: Client
-        get() = clientOrNull ?: run {
+    val client: Client get() = hostClient()
+
+    private fun hostClient(): HostClient =
+        clientOrNull ?: run {
             val server = settings.server.value
-            (if (server == null) NoClient else RemoteClient(ServerAddress(server), scheduler = scheduler)).also { clientOrNull = it }
+            HostClient(NoClient, server?.let { ServerAddress(it) }) { RemoteClient(it, scheduler = scheduler) }.also { clientOrNull = it }
         }
+
+    /**
+     * A scope that lives as long as the process, on the same [client]: what a page's scope is not. Put cross-page watches here (a rail
+     * item's attention dot that watches entities whichever page is open, a store a dashboard object keeps current); they survive page
+     * changes and [reconnect], which keeps the watches and sends their subscriptions again. Do not put what belongs to a page here: a
+     * tile's handle, a control, a timer for a view, a drawer's scope. Those are made through the page's own scope (`PageScope.scope`
+     * and its children), which is disposed when the page goes, and anything registered here instead is never let go of, so the
+     * subscription stays and the callbacks keep the views they close over in memory.
+     */
+    val appScope: Scope
+        get() = appScopeOrNull ?: Scope(client, scheduler).also { appScopeOrNull = it }
 
     /** The resolved theme for the current mode; views read it when they draw. */
     val theme: Theme get() = host().theme
@@ -174,15 +192,20 @@ object Hashsome {
         themeHost ?: ThemeHost(app, settings, client, scheduler, appContext).also { themeHost = it }
 
     /**
-     * Drops the connection and makes a new one from `settings.server` (a changed address, the settings sheet's "reload"). The
-     * theme follows the new client and [themeChanged] ticks, so the dashboard host rebuilds its page on it.
+     * Opens the connection again at `settings.server` (a changed address, the settings sheet's "reload"), in place: it is the same
+     * [client] with its watches, stores and listeners, which are sent to the runtime again when the link opens; requests in flight
+     * fail with "Connection lost". [themeChanged] ticks, so the dashboard host rebuilds its page. Safe to call from any thread: off
+     * the main thread it is posted to the scheduler, as every client call runs there.
      */
     fun reconnect() {
-        clientOrNull?.close()
-        clientOrNull = null
-        connected = false
-        themeHost?.rebind(client, scheduler)
-        connect()
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            scheduler.post { reconnect() }
+            return
+        }
+
+        connected = true
+        hostClient().point(settings.server.value?.let { ServerAddress(it) })
+        themeHost?.reloaded()
     }
 
     /** Opens the link to the runtime, once. */
@@ -230,6 +253,101 @@ internal object NoClient : Client {
     override fun reconnect(server: dev.hashsome.client.ServerAddress?) {}
 }
 
+/**
+ * The one client of the process: it forwards to [NoClient] or a real one and can be pointed elsewhere without anyone holding it
+ * noticing. Watches are kept here, so the first server being provisioned (a stand-in until then) re-sends them to the real client;
+ * a real client that is only re-pointed does that itself ([Client.reconnect]).
+ */
+internal class HostClient(private val none: Client, initial: ServerAddress?, private val make: (ServerAddress) -> Client) : Client {
+    private class Watch(val ref: dev.hashsome.client.EntityRef, val fn: (dev.hashsome.client.Snapshot) -> Unit) {
+        var cancel: Cancel = {}
+    }
+
+    private var inner: Client = initial?.let(make) ?: none
+    private var wanted = false
+    private val watches = ArrayList<Watch>()
+    private var followLink: Cancel = {}
+    private var followIntegrations: Cancel = {}
+
+    override val link: Store<dev.hashsome.client.LinkStatus> = Store(inner.link.value)
+    override val integrations: Store<Map<String, dev.hashsome.client.ConnectionStatus>> = Store(inner.integrations.value)
+
+    init {
+        follow()
+    }
+
+    private fun follow() {
+        followLink = inner.link.listenNow { link.set(it) }
+        followIntegrations = inner.integrations.listenNow { integrations.set(it) }
+    }
+
+    private fun swap(next: Client) {
+        val old = inner
+        followLink()
+        followIntegrations()
+        inner = next
+        follow()
+        for (watch in watches.toList()) {
+            watch.cancel()
+            watch.cancel = next.watch(watch.ref, watch.fn)
+        }
+
+        if (wanted) next.connect()
+        old.close()
+    }
+
+    /**
+     * Points the client at [address] and has it connected: a real client is reconnected in place (a new address, or the same one
+     * again), the stand-in is replaced by a real one that takes over the watches. Null goes back to the stand-in.
+     */
+    fun point(address: ServerAddress?) {
+        wanted = true
+        when {
+            address == null -> if (inner !== none) swap(none)
+            inner === none -> swap(make(address))
+            else -> inner.reconnect(address)
+        }
+    }
+
+    override fun connect() {
+        wanted = true
+        inner.connect()
+    }
+
+    override fun close() {
+        wanted = false
+        inner.close()
+    }
+
+    override fun reconnect(server: ServerAddress?) {
+        // No address: the one it has, which is nothing to do for the stand-in. Either way it is connecting from now on.
+        wanted = true
+        if (server != null) point(server) else inner.reconnect(null)
+    }
+
+    override fun watch(ref: dev.hashsome.client.EntityRef, fn: (dev.hashsome.client.Snapshot) -> Unit): Cancel {
+        val watch = Watch(ref, fn)
+        watches += watch
+        watch.cancel = inner.watch(ref, fn)
+        return {
+            if (watches.remove(watch)) watch.cancel()
+        }
+    }
+
+    override fun command(
+        ref: dev.hashsome.client.EntityRef,
+        name: String,
+        args: org.json.JSONObject?,
+        done: ((dev.hashsome.client.Outcome) -> Unit)?,
+    ): Cancel = inner.command(ref, name, args, done)
+
+    override fun <T> query(ref: dev.hashsome.client.EntityRef, query: dev.hashsome.client.Query<T>, done: (Result<T>) -> Unit): Cancel =
+        inner.query(ref, query, done)
+
+    override fun raw(integration: String, request: org.json.JSONObject, done: ((Result<org.json.JSONObject>) -> Unit)?): Cancel =
+        inner.raw(integration, request, done)
+}
+
 /** Resolves the theme for the mode in force, and says when the mode changes: the schedule, or the choice in the settings. */
 internal class ThemeHost(
     private val config: HashsomeApp,
@@ -238,9 +356,8 @@ internal class ThemeHost(
     scheduler: Scheduler,
     context: Context,
 ) {
-    private var scope = Scope(client, scheduler)
-    private var controller = ThemeController(config.theme, scope)
-    private var cancelDark: Cancel = controller.dark.listen { refresh() }
+    private val scope = Scope(client, scheduler)
+    private val controller = ThemeController(config.theme, scope)
     private val fonts: FontSet by lazy { config.font.load(context) }
 
     /** Counts the mode changes. */
@@ -250,16 +367,14 @@ internal class ThemeHost(
         private set
 
     init {
+        controller.dark.listen { refresh() }
         settings.theme.listen { refresh() }
     }
 
-    /** The client is another one (a reconnect): the schedule follows the new one, and the host rebuilds on it. */
-    fun rebind(client: Client, scheduler: Scheduler) {
-        cancelDark()
-        scope.dispose()
-        scope = Scope(client, scheduler)
-        controller = ThemeController(config.theme, scope)
-        cancelDark = controller.dark.listen { refresh() }
+    /**
+     * The connection was reopened: the schedule keeps watching through the same client, so only the host's page needs building again.
+     */
+    fun reloaded() {
         refresh()
         changed.set(changed.value + 1)
     }
