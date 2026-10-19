@@ -86,7 +86,7 @@ object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
 
     private fun PageScope.room() {
         column(gap = 3) {
-            header(left = { add(text("Living room", Role.Title)) }, weather = "ha:weather.home")
+            header(weather = "ha:weather.home")
             roomHeader("Living room", Ui.house) {
                 sensorReadout("ha:sensor.living_room_temperature", battery = "ha:sensor.living_room_temperature_battery")
                 // 64% is outside the 30..60 a humidity sensor is held to.
