@@ -90,7 +90,7 @@ object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
             roomHeader("Living room", Ui.house) {
                 sensorReadout("ha:sensor.living_room_temperature", battery = "ha:sensor.living_room_temperature_battery")
                 // 64% is outside the 30..60 a humidity sensor is held to.
-                sensorReadout("ha:sensor.living_room_humidity")
+                sensorReadout("ha:sensor.living_room_humidity", battery = "ha:sensor.living_room_temperature_battery")
             }
             grid(2) {
                 lightTile("ha:light.living_room_lamp", "On, no dimming")

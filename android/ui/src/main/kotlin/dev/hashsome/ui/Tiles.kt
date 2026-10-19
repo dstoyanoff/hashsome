@@ -58,6 +58,21 @@ open class RoomHeaderView(context: Context, val title: String, val icon: Icon) :
             super.onViewAdded(child)
             (child as? SensorReadoutView)?.muted = true
             if (childCount > 1) (child.layoutParams as? FlexParams)?.leftMargin = Math.round(4.5f * unitPx())
+            shareBatteries()
+        }
+
+        override fun onViewRemoved(child: View) {
+            super.onViewRemoved(child)
+            shareBatteries()
+        }
+
+        /** Readouts side by side that report the same battery show its warning once, after the last of them. */
+        private fun shareBatteries() {
+            val readouts = (0 until childCount).mapNotNull { getChildAt(it) as? SensorReadoutView }
+            readouts.forEachIndexed { i, readout ->
+                val ref = readout.reading.battery?.ref
+                readout.showBattery = ref == null || readouts.getOrNull(i + 1)?.reading?.battery?.ref != ref
+            }
         }
     }
 }
@@ -82,6 +97,13 @@ open class SensorReadoutView(context: Context, val reading: SensorReading, icon:
             render()
         }
 
+    /** Whether a low battery is flagged by this readout (a room header shows a shared battery once, after the last readout that has it). */
+    var showBattery: Boolean = true
+        set(value) {
+            field = value
+            render()
+        }
+
     private val row = RowLayout(context)
     private val glyph = GlyphView(context, null, 16)
     private val value = labelText(context, "", Role.Body)
@@ -91,11 +113,10 @@ open class SensorReadoutView(context: Context, val reading: SensorReading, icon:
     init {
         row.gap = 1
         row.align = Align.Center
-        // The low battery leads its own reading.
-        row.addView(battery, FlexParams(WRAP, WRAP))
         row.addView(glyph, FlexParams(WRAP, WRAP))
         row.addView(value, FlexParams(WRAP, WRAP))
         row.addView(warning, FlexParams(WRAP, WRAP))
+        row.addView(battery, FlexParams(WRAP, WRAP))
         addView(row, LayoutParams(WRAP, WRAP))
     }
 
@@ -122,7 +143,7 @@ open class SensorReadoutView(context: Context, val reading: SensorReading, icon:
         warning.color = tone
         warning.visibility = if (flagged) VISIBLE else GONE
         battery.color = p.danger
-        battery.visibility = if (r.battery?.low == true) VISIBLE else GONE
+        battery.visibility = if (showBattery && r.battery?.low == true) VISIBLE else GONE
         alpha = if (ready) 1f else 0.6f
     }
 }
