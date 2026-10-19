@@ -20,13 +20,10 @@ import java.lang.ref.WeakReference
 // What makes a display a kiosk: it stays in front, dims and sleeps on its own terms, and is a Home Assistant device.
 // `kiosk` depends on `ui` and implements the plug points `ui` exposes on `HashsomeApp`; `ui` never imports this module.
 
-/** How the settings sheet is opened. Both gestures are always available; this picks the primary one the docs and the sheet's hint name. */
+/** How the settings sheet is opened. (Provisioning also opens it with `am start --es settings true`.) */
 sealed interface Gesture {
-    /** The status dot pressed and held still for [ms] (5 s). Falls back to [TwoFingerHold] on pages without a top row. */
+    /** The status dot pressed and held still for [ms] (5 s): the only gesture, so a page needs a top row with the status dot. */
     data class HoldStatusDot(val ms: Long = 5_000) : Gesture
-
-    /** Two fingers held anywhere for 2 s. */
-    data object TwoFingerHold : Gesture
 
     companion object {
         /** The gesture before the status dot's hold replaced the five taps (they did not work: the popover's scrim took the taps after the first). */
@@ -162,12 +159,10 @@ internal class KioskScreenPolicy(private val next: ScreenPolicy) : ScreenPolicy 
 }
 
 /**
- * Feeds touches to [Presence], and opens the settings sheet by either gesture: the status dot held for 5 s, or two
- * fingers held for 2 s. [next] is the consumer's listener, which also hears everything.
+ * Feeds touches to [Presence], and opens the settings sheet when the status dot is held for 5 s. [next] is the consumer's
+ * listener, which also hears everything.
  */
 internal class KioskTouchListener(private val next: TouchListener, private val scheduler: Scheduler) : TouchListener {
-    private var hold: (() -> Unit)? = null
-
     /** The finger that put down while the panel was asleep woke it; the rest of that gesture is swallowed too, so no tile under it is pressed. */
     private var wakeGesture = false
 
@@ -175,18 +170,6 @@ internal class KioskTouchListener(private val next: TouchListener, private val s
         val consumedByNext = next.onTouch(event)
         if (event.actionMasked == MotionEvent.ACTION_DOWN) wakeGesture = Kiosk.nightMode?.asleep == true
         Kiosk.presence?.onTouch(event)
-        when (event.actionMasked) {
-            MotionEvent.ACTION_POINTER_DOWN -> if (event.pointerCount == 2) {
-                hold?.invoke()
-                hold = scheduler.after(HOLD_MS) {
-                    hold = null
-                    openSheet()
-                }
-            } else {
-                cancelHold()
-            }
-            MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> cancelHold()
-        }
         val swallow = wakeGesture
         if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) wakeGesture = false
         return swallow || consumedByNext
@@ -202,17 +185,8 @@ internal class KioskTouchListener(private val next: TouchListener, private val s
 
     override val statusDotHoldMs: Long get() = (Kiosk.config.settingsGesture as? Gesture.HoldStatusDot)?.ms ?: next.statusDotHoldMs
 
-    private fun cancelHold() {
-        hold?.invoke()
-        hold = null
-    }
-
     private fun openSheet() {
         Kiosk.activity?.get()?.let { SettingsHost.open(it) }
-    }
-
-    companion object {
-        const val HOLD_MS = 2_000L
     }
 }
 
