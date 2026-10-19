@@ -119,9 +119,19 @@ internal object Kiosk {
     @Volatile
     var bootGate: BootGate? = null
 
-    /** Called for the boot receiver's start. Arms once per process. */
-    fun armBootGate() {
+    /** The top activity the keep-in-front last saw, for the wake path. */
+    @Volatile
+    var lastTop: TopActivity = TopActivity.UNKNOWN
+
+    /** Whether a start arms the boot gate: the boot receiver's, or any inside [minMs] of boot, on a profile that waits for the stock app. */
+    internal fun shouldArmBootGate(boot: Boolean, elapsedMs: Long, minMs: Long, settles: Boolean): Boolean =
+        settles && (boot || elapsedMs < minMs)
+
+    /** Arms the gate once per process (the profile and the clock decide, see [shouldArmBootGate]). */
+    fun armBootGateIfNeeded(boot: Boolean) {
         if (bootGate != null) return
+        val elapsed = android.os.SystemClock.elapsedRealtime()
+        if (!shouldArmBootGate(boot, elapsed, config.bootMinMs, DeviceProfile.detect().settlesAtBoot)) return
         bootGate = BootGate(config.bootSettleMs, config.bootMinMs, { android.os.SystemClock.elapsedRealtime() }) { Log.e("front", it) }
     }
 

@@ -36,7 +36,8 @@ class KioskService : Service() {
         // Within five seconds of startForegroundService, whatever else happens.
         startInForeground()
         // The boot receiver's start: the gate must hold from here (the process may already be up, started by Application.onCreate).
-        if (intent?.getBooleanExtra(Kiosk.EXTRA_BOOT, false) == true) Kiosk.armBootGate()
+        // Also a restart inside the settle window (watchdog, crash, the stock app's force-stop) is gated, not only the receiver's start.
+        Kiosk.armBootGateIfNeeded(intent?.getBooleanExtra(Kiosk.EXTRA_BOOT, false) == true)
         if (rebuilder == null) {
             // The displays are mains-powered: the CPU stays up while the panel is dark, so the idle timer, the MQTT keep-alive and the
             // proximity sensor's events are never starved (spike S2b left proximity-while-dark open; this removes the doubt about timers).
@@ -227,7 +228,7 @@ internal class LinkBinder(private val state: KioskState) {
  * otherwise by our own process importance: with a visible activity it is FOREGROUND, with only the service it is above that.
  */
 internal class KeepInFront(private val context: Context, private val profile: DeviceProfile) {
-    private var lastTop = TopActivity.UNKNOWN
+    private val tracker = TopTracker({ android.os.SystemClock.elapsedRealtime() })
     private var lastQueryEnd = 0L
 
     private val keeper = FrontKeeper(
@@ -258,22 +259,22 @@ internal class KeepInFront(private val context: Context, private val profile: De
 
     @Suppress("DEPRECATION")
     private fun topActivity(): TopActivity {
-        if (!usageAllowed()) return TopActivity.UNKNOWN
+        if (!usageAllowed()) return TopActivity.UNKNOWN.also { Kiosk.lastTop = it }
         val usage = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val now = System.currentTimeMillis()
         val from = if (lastQueryEnd == 0L) now - INITIAL_WINDOW_MS else lastQueryEnd - OVERLAP_MS
         val events = try {
             usage.queryEvents(from, now)
         } catch (e: SecurityException) {
-            return TopActivity.UNKNOWN
+            return TopActivity.UNKNOWN.also { Kiosk.lastTop = it }
         }
         val event = UsageEvents.Event()
         while (events != null && events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) lastTop = TopActivity(event.packageName, event.className)
+            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) tracker.moved(event.packageName, event.className)
         }
         lastQueryEnd = now
-        return lastTop
+        return tracker.current().also { Kiosk.lastTop = it }
     }
 
     private fun ownProcessVisible(): Boolean {

@@ -106,3 +106,52 @@ class FrontKeeperTest {
         assertEquals(0, launches)
     }
 }
+
+class BootArmingTest {
+    @Test
+    fun `a start inside the settle window arms the gate on a Shelly profile, a later one does not`() {
+        assertTrue(Kiosk.shouldArmBootGate(boot = false, elapsedMs = 20_000, minMs = 90_000, settles = true))
+        assertTrue(Kiosk.shouldArmBootGate(boot = true, elapsedMs = 200_000, minMs = 90_000, settles = true))
+        assertFalse(Kiosk.shouldArmBootGate(boot = false, elapsedMs = 100_000, minMs = 90_000, settles = true))
+        assertFalse(Kiosk.shouldArmBootGate(boot = true, elapsedMs = 20_000, minMs = 90_000, settles = false))
+    }
+}
+
+class TopTrackerTest {
+    private val sched = TestScheduler()
+    private val tracker = TopTracker({ sched.now() })
+    private val cls = "cloud.shelly.stargate.activities.SplashActivity"
+
+    @Test
+    fun `a splash is dropped after three minutes as the last event`() {
+        tracker.moved("cloud.shelly.stargate", cls)
+        sched.advance(180_000)
+        assertEquals(cls, tracker.current().cls)
+        sched.advance(1)
+        assertEquals(null, tracker.current().cls)
+        assertEquals("cloud.shelly.stargate", tracker.current().pkg)
+    }
+
+    @Test
+    fun `the same event replayed does not restart the timer`() {
+        tracker.moved("cloud.shelly.stargate", cls)
+        sched.advance(100_000)
+        tracker.moved("cloud.shelly.stargate", cls)
+        sched.advance(81_000)
+        assertEquals(null, tracker.current().cls)
+    }
+}
+
+class UnknownTopTest {
+    @Test
+    fun `without usage access the gate opens on time alone`() {
+        val sched = TestScheduler()
+        val g = BootGate(30_000, 90_000, { sched.now() })
+        sched.advance(10_000)
+        assertFalse(g.admit(TopActivity.UNKNOWN))
+        sched.advance(79_999)
+        assertFalse(g.admit(TopActivity.UNKNOWN))
+        sched.advance(1)
+        assertTrue(g.admit(TopActivity.UNKNOWN))
+    }
+}

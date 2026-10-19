@@ -229,8 +229,11 @@ internal class PanelScreen(private val context: Context, private val sysfs: Bool
 
         /** Brings the dashboard to the front (the wake of the X2i; needs the overlay appop on Android 10+ when started from the service). */
         fun bringToFront(context: Context) {
+            // After a boot the stock app is still starting: the wake path waits for the gate too.
+            if (Kiosk.bootGate?.open == false) return
             // Already the resumed activity (the X1, whose "off" leaves the panel alive): a start would only re-resume the host.
-            if (!FrontDecision.shouldLaunch(null, context.packageName, Kiosk.dashboardResumed) { false }) return
+            val top = Kiosk.lastTop
+            if (!FrontDecision.shouldLaunch(top.pkg, context.packageName, Kiosk.dashboardResumed, top.cls) { false }) return
             try {
                 context.startActivity(dashboardIntent(context, Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))
             } catch (e: Exception) {

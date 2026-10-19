@@ -110,3 +110,22 @@ internal class FrontKeeper(
         const val RELAUNCH_COOLDOWN_MS = 4_000L
     }
 }
+
+/**
+ * The last activity moved to the foreground, with a cap: a stock Splash that has been the last event for more than [staleMs] is
+ * reported without its class, so a Splash that never gets a successor cannot hold the dashboard back for ever.
+ */
+internal class TopTracker(private val clock: () -> Long, private val staleMs: Long = 180_000) {
+    private var last = TopActivity.UNKNOWN
+    private var since = 0L
+
+    fun moved(pkg: String?, cls: String?) {
+        val next = TopActivity(pkg, cls)
+        if (next == last) return
+        last = next
+        since = clock()
+    }
+
+    fun current(): TopActivity =
+        if (FrontDecision.isStockSplash(last.pkg, last.cls) && clock() - since > staleMs) TopActivity(last.pkg, null) else last
+}
