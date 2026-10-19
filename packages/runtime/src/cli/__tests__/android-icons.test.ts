@@ -179,14 +179,31 @@ describe('unsupported SVG features', () => {
     }
   });
 
-  test('names that differ as files but collide as Kotlin properties are an error', () => {
+  test('names that collide as Kotlin properties: the first wins, the other is skipped and reported', () => {
     const dir = mkdtempSync(join(tmpdir(), 'icons-'));
     try {
       writeFileSync(join(dir, 'x_1.svg'), fixture('polyline.svg'));
       writeFileSync(join(dir, 'x1.svg'), fixture('polyline.svg'));
-      expect(() => convertPack('p', sourcesFor('p', '/', dir), 'com.x')).toThrow(
-        'Kotlin property x1',
-      );
+      const result = convertPack('p', sourcesFor('p', '/', dir), 'com.x');
+      expect(Object.keys(result.files)).toEqual(['ic_p_x_1.xml']);
+      expect(result.kotlin.match(/val x1 /g)).toHaveLength(1);
+      expect(result.skipped).toHaveLength(1);
+      expect(result.skipped[0]).toContain('Kotlin property x1');
+    } finally {
+      rmSync(dir, { recursive: true });
+    }
+  });
+});
+
+describe('colliding names when the first fails', () => {
+  test('the second takes the name', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'icons-'));
+    try {
+      writeFileSync(join(dir, 'x_1.svg'), '<svg viewBox="0 0 24 24"><text/></svg>');
+      writeFileSync(join(dir, 'x1.svg'), fixture('polyline.svg'));
+      const result = convertPack('p', sourcesFor('p', '/', dir), 'com.x');
+      expect(Object.keys(result.files)).toEqual(['ic_p_x1.xml']);
+      expect(result.skipped).toHaveLength(1);
     } finally {
       rmSync(dir, { recursive: true });
     }

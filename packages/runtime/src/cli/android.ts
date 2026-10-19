@@ -50,7 +50,7 @@ const PROVISION_ACTION = 'dev.hashsome.PROVISION';
 const REMOVE_ADMIN_ACTION = 'dev.hashsome.REMOVE_ADMIN';
 const ACTIVITY = 'dev.hashsome.ui.DashboardActivity';
 const ADMIN = 'dev.hashsome.kiosk.HashsomeDeviceAdmin';
-const HOME_ALIAS = 'dev.hashsome.kiosk.HomeAlias';
+export const HOME_ALIAS = 'dev.hashsome.kiosk.HomeActivityAlias';
 const SHELLY = 'cloud.shelly.stargate';
 
 export type Command = string[];

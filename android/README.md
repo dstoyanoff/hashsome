@@ -71,6 +71,8 @@ group and name, whatever version the catalog names. It is the same mechanism a c
 checkout of this repo; one that wants the published libraries declares the GitHub Packages repository instead and pins
 `hashsome` in its `gradle/libs.versions.toml`.
 
+The libraries cannot declare `usesCleartextTraffic`, so a consumer whose runtime is plain `http://` sets `android:usesCleartextTraffic="true"` on the `<application>` in its own manifest.
+
 An app's `versionCode` is `major*10000 + minor*100 + patch` of the version, so it grows with every release.
 
 ## `ui`: icons and fonts
