@@ -1,18 +1,21 @@
 package dev.hashsome.kiosk
 
+import android.app.Activity
 import android.app.Application
-import android.app.Service
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.app.admin.DeviceAdminReceiver
-import android.os.IBinder
+import android.content.pm.PackageManager
+import android.view.MotionEvent
+import android.view.WindowManager
 import dev.hashsome.client.Scheduler
 import dev.hashsome.client.Store
 import dev.hashsome.ui.AppExtension
 import dev.hashsome.ui.Hashsome
 import dev.hashsome.ui.HashsomeApp
+import dev.hashsome.ui.PageListener
+import dev.hashsome.ui.ScreenPolicy
 import dev.hashsome.ui.TouchListener
+import java.lang.ref.WeakReference
 
 // What makes a display a kiosk: it stays in front, dims and sleeps on its own terms, and is a Home Assistant device.
 // `kiosk` depends on `ui` and implements the plug points `ui` exposes on `HashsomeApp`; `ui` never imports this module.
@@ -33,6 +36,7 @@ enum class Gesture {
 data class KioskConfig(
     val nightIdleMs: Long = 120_000,
     val autoBrightness: Boolean = true,
+    /** Percent of the panel's range. */
     val minBrightness: Int = 8,
     val settingsGesture: Gesture = Gesture.FiveTapsOnStatusDot,
 )
@@ -50,131 +54,186 @@ fun HashsomeApp.withKiosk(config: KioskConfig = KioskConfig()): HashsomeApp = co
 class KioskExtension(val config: KioskConfig) : AppExtension {
     override fun install(app: Application, hashsome: Hashsome) {
         Settings.init(app, config)
-        TODO("WP5")
+        Kiosk.config = config
+        // The kiosk's plug points sit in front of the consumer's, which keep working.
+        hashsome.screenPolicy = KioskScreenPolicy(hashsome.screenPolicy)
+        hashsome.touchListener = KioskTouchListener(hashsome.touchListener, mainScheduler())
+        hashsome.pageListener = KioskPageListener(hashsome.pageListener)
+        GridOverlay.install()
+        Kiosk.startService(app)
     }
 }
 
-// ---- Device ---------------------------------------------------------------------------------------------------------
+/** What the parts of the kiosk share while the process lives: the state Home Assistant sees, and the parts [KioskService] owns while it runs. */
+internal object Kiosk {
+    var config = KioskConfig()
+    var presence: Presence? = null
+    var screen: Screen? = null
+    var nightMode: NightMode? = null
 
-enum class ScreenState { On, Off }
+    val state = KioskState(
+        lux = Store(null),
+        occupied = Store(false),
+        sleeping = Store(false),
+        page = Store(""),
+        link = Store("Not connected"),
+    )
 
-/** The panel of one kind of device. */
-interface Screen {
-    /** Whether [off] switches the panel itself off (true) or only blacks it and zeroes the backlight (false). */
-    val canTrulyOff: Boolean
-    val state: Store<ScreenState>
+    val actions = object : KioskActions {
+        override fun wake() {
+            nightMode?.wake()
+        }
 
-    /** 0..255. */
-    fun brightness(level: Int)
-    fun off()
-    fun wake()
+        override fun sleep() {
+            nightMode?.sleep()
+        }
+
+        override fun reload() {
+            // A new connection from Settings.server; the host rebuilds its page on it.
+            Hashsome.reconnect()
+        }
+
+        override fun rebootIfPossible() {
+            // No display gives the app a shell, and nothing offers this to Home Assistant (see MqttBridge).
+            Log.w("kiosk", "reboot is not available")
+        }
+    }
+
+    /** The dashboard activity that is showing, for the sheet and the cover. */
+    var activity: WeakReference<Activity>? = null
+
+    /** Starts the foreground service. Called from `Application.onCreate`, the boot receiver and provisioning. */
+    fun startService(context: Context) {
+        val intent = Intent(context, KioskService::class.java)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent) else context.startService(intent)
+        } catch (e: Exception) {
+            // Android 12+ refuses a foreground service started from the background; the next launch or boot tries again.
+            Log.w("kiosk", "could not start the service: ${e.message}")
+        }
+    }
 }
 
-/** A kind of device, and how to drive its screen and its presence sensor. */
-sealed interface DeviceProfile {
-    val id: String
-
-    /** Whether this profile needs the device-admin permission for its screen-off (`lockNow()`). */
-    val needsDeviceAdmin: Boolean
-
-    fun screen(context: Context): Screen
-    fun presence(context: Context, scheduler: Scheduler): Presence
-
-    /** Shelly Wall Display X1 ("Stargate", Android 7): sysfs backlight, off = 0, a touch wakes it. */
-    data object ShellyStargate : DeviceProfile {
-        override val id = "shelly-stargate"
-        override val needsDeviceAdmin = false
-        override fun screen(context: Context): Screen = TODO("WP5")
-        override fun presence(context: Context, scheduler: Scheduler): Presence = TODO("WP5")
+/** Keeps the screen on while the dashboard shows, and tells the kiosk which activity that is. [next] is the consumer's policy, which also runs. */
+internal class KioskScreenPolicy(private val next: ScreenPolicy) : ScreenPolicy {
+    override fun attach(activity: Activity) {
+        activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        next.attach(activity)
+        shown(activity)
     }
 
-    /** Shelly Wall Display X2i ("Jenna", Android 11): `Settings.System` brightness; off = `lockNow()` if admin, else 0 plus a black cover; wakes by wake lock. */
-    data object ShellyJenna : DeviceProfile {
-        override val id = "shelly-jenna"
-        override val needsDeviceAdmin = true
-        override fun screen(context: Context): Screen = TODO("WP5")
-        override fun presence(context: Context, scheduler: Scheduler): Presence = TODO("WP5")
+    override fun onResume(activity: Activity) {
+        next.onResume(activity)
+        shown(activity)
     }
 
-    /** Any other tablet or phone: `Settings.System` brightness; off = `lockNow()` if admin, else a black cover; may be the HOME app. */
-    data object Generic : DeviceProfile {
-        override val id = "generic"
-        override val needsDeviceAdmin = true
-        override fun screen(context: Context): Screen = TODO("WP5")
-        override fun presence(context: Context, scheduler: Scheduler): Presence = TODO("WP5")
+    override fun onPause(activity: Activity) {
+        next.onPause(activity)
+    }
+
+    private fun shown(activity: Activity) {
+        Kiosk.activity = WeakReference(activity)
+        Cover.attach(activity)
+        GridOverlay.attach(activity)
+        // `am start --es settings true` (provisioning). A running singleTask activity only sees it in onNewIntent, so
+        // this relies on the dashboard keeping that intent as its own (setIntent).
+        val intent = activity.intent
+        if (intent?.getStringExtra(EXTRA_SETTINGS) == "true") {
+            intent.removeExtra(EXTRA_SETTINGS)
+            activity.window.decorView.post { SettingsHost.open(activity) }
+        }
     }
 
     companion object {
-        /** The profile of this device from `Build.DEVICE`/`MODEL`, unless `Settings.profileOverride` names one. */
-        fun detect(): DeviceProfile = TODO("WP5")
-
-        fun byId(id: String): DeviceProfile? = listOf(ShellyStargate, ShellyJenna, Generic).firstOrNull { it.id == id }
+        const val EXTRA_SETTINGS = "settings"
     }
 }
 
-/** Follows the ambient light to a brightness: [min] at 30 lx or less up to 255 at 500 lx or more, with hysteresis, animated. */
-class AutoBrightness(private val lux: Store<Float?>, private val screen: Screen, private val min: Store<Int>) {
-    fun start(): Unit = TODO("WP5")
-    fun stop(): Unit = TODO("WP5")
-}
-
-/** Proximity and ambient light. It is also a [TouchListener]: a touch counts as presence. */
-class Presence(context: Context, scheduler: Scheduler) : TouchListener {
-    val near: Store<Boolean> = Store(false)
-    val lux: Store<Float?> = Store(null)
-
-    override fun onTouch(event: android.view.MotionEvent): Boolean = TODO("WP5")
-}
-
-sealed interface NightState {
-    /** Night mode is off: the screen stays on. */
-    data object Day : NightState
-
-    /** Night mode is on and someone is here: the screen is on until [until] (a `Scheduler.now()` time) without a touch or proximity. */
-    data class NightAwake(val until: Long) : NightState
-
-    /** Night mode is on and the screen is off. */
-    data object NightAsleep : NightState
-}
-
 /**
- * Follows `Settings.night` and never flips it itself (no schedule, no sun). While night: off after `Settings.nightIdleMs`
- * without a touch or proximity, woken by either. While day: always on.
+ * Feeds touches to [Presence], and opens the settings sheet by either gesture: five taps on the status dot within 2 s, or two
+ * fingers held for 2 s. [next] is the consumer's listener, which also hears everything.
  */
-class NightMode(settings: Settings, presence: Presence, screen: Screen, scheduler: Scheduler) {
-    val state: Store<NightState> = Store(NightState.Day)
+internal class KioskTouchListener(private val next: TouchListener, private val scheduler: Scheduler) : TouchListener {
+    private val taps = ArrayDeque<Long>()
+    private var hold: (() -> Unit)? = null
 
-    fun wake(): Unit = TODO("WP5")
-    fun sleep(): Unit = TODO("WP5")
+    /** The finger that put down while the panel was asleep woke it; the rest of that gesture is swallowed too, so no tile under it is pressed. */
+    private var wakeGesture = false
+
+    override fun onTouch(event: MotionEvent): Boolean {
+        val consumedByNext = next.onTouch(event)
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) wakeGesture = Kiosk.nightMode?.asleep == true
+        Kiosk.presence?.onTouch(event)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_POINTER_DOWN -> if (event.pointerCount == 2) {
+                hold?.invoke()
+                hold = scheduler.after(HOLD_MS) {
+                    hold = null
+                    openSheet()
+                }
+            } else {
+                cancelHold()
+            }
+            MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> cancelHold()
+        }
+        val swallow = wakeGesture
+        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) wakeGesture = false
+        return swallow || consumedByNext
+    }
+
+    override fun onStatusDotTap() {
+        next.onStatusDotTap()
+        val opens = fiveTaps(taps, scheduler.now())
+        Log.i("touch", "status dot tapped (${taps.size} in a row)${if (opens) ": opening the settings" else ""}")
+        if (opens) openSheet()
+    }
+
+    private fun cancelHold() {
+        hold?.invoke()
+        hold = null
+    }
+
+    private fun openSheet() {
+        Kiosk.activity?.get()?.let { SettingsHost.open(it) }
+    }
+
+    companion object {
+        const val HOLD_MS = 2_000L
+        const val TAPS = 5
+        const val TAPS_WINDOW_MS = 2_000L
+
+        /** Records a tap at [now] and says whether it is the fifth within [TAPS_WINDOW_MS]; the count starts over after it. */
+        internal fun fiveTaps(taps: ArrayDeque<Long>, now: Long): Boolean {
+            taps.addLast(now)
+            while (taps.size > TAPS) taps.removeFirst()
+            if (taps.size == TAPS && now - taps.first() <= TAPS_WINDOW_MS) {
+                taps.clear()
+                return true
+            }
+            return false
+        }
+    }
 }
 
-// ---- Android components ---------------------------------------------------------------------------------------------
-
-/** Foreground service: keeps the dashboard in front (checks every 2 s through UsageStatsManager and relaunches it) and owns presence, night mode, auto brightness and the MQTT bridge. */
-class KioskService : Service() {
-    override fun onBind(intent: Intent?): IBinder? = null
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = TODO("WP5")
+internal class KioskPageListener(private val next: PageListener) : PageListener {
+    override fun onPage(dashboardId: String, path: String) {
+        next.onPage(dashboardId, path)
+        Kiosk.state.page.set(if (path.isEmpty()) dashboardId else "$dashboardId/$path")
+    }
 }
-
-/** Starts [KioskService] after a reboot. */
-class BootReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent): Unit = TODO("WP5")
-}
-
-/** Writes the extras of a `dev.hashsome.PROVISION` broadcast (server, dashboard, device, profile, mqtt) into `Settings` and restarts the service. */
-class ProvisionReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent): Unit = TODO("WP5")
-}
-
-/** Device admin with one policy, `force-lock`, so a screen can be truly switched off where the device has no device owner of ours. */
-class HashsomeDeviceAdmin : DeviceAdminReceiver()
 
 /** The HOME `activity-alias` (declared disabled in the manifest), for a plain tablet where the app can be the launcher. */
 object HomeAlias {
     /** The `activity-alias` of the manifest. */
     const val COMPONENT = "dev.hashsome.kiosk.HomeActivityAlias"
 
-    fun isEnabled(context: Context): Boolean = TODO("WP5")
-    fun setEnabled(context: Context, enabled: Boolean): Unit = TODO("WP5")
-}
+    private fun component(context: Context) = android.content.ComponentName(context.packageName, COMPONENT)
 
+    fun isEnabled(context: Context): Boolean =
+        context.packageManager.getComponentEnabledSetting(component(context)) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+
+    fun setEnabled(context: Context, enabled: Boolean) {
+        val state = if (enabled) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        context.packageManager.setComponentEnabledSetting(component(context), state, PackageManager.DONT_KILL_APP)
+    }
+}
