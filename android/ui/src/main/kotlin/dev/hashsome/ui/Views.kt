@@ -839,15 +839,7 @@ open class ChipsView(context: Context) : View(context) {
     }
 }
 
-/** One row of a library list: artwork, title, subtitle, and the actions the item allows. Its content API arrives with the media components. */
-open class BrowseRow(context: Context) : View(context) {
-    override fun onDraw(canvas: Canvas): Unit = TODO("WP4b")
-}
-
-/** One row of a queue: artwork, title, artist, a marker on the current track. Its content API arrives with the media components. */
-open class QueueRow(context: Context) : View(context) {
-    override fun onDraw(canvas: Canvas): Unit = TODO("WP4b")
-}
+// BrowseRow and QueueRow are in MediaRows.kt.
 
 /** One line of text that scrolls sideways when it does not fit (in full motion; elsewhere it ends in an ellipsis). */
 open class MarqueeText(context: Context) : View(context) {

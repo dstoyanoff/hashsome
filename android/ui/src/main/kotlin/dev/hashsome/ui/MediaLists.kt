@@ -1,0 +1,669 @@
+package dev.hashsome.ui
+
+import android.animation.ValueAnimator
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
+import android.text.TextPaint
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import dev.hashsome.client.AssetSize
+import dev.hashsome.client.BrowseItem
+import dev.hashsome.client.BrowseKind
+import dev.hashsome.client.Cancel
+import dev.hashsome.client.MediaPlayerCommands
+import dev.hashsome.client.MediaPlayerEntity
+import dev.hashsome.client.PlayMode
+import dev.hashsome.client.PlaybackState
+import dev.hashsome.client.QueueItem
+import dev.hashsome.headless.BrowserState
+import dev.hashsome.headless.MediaBrowserControl
+import dev.hashsome.headless.QueueControl
+import dev.hashsome.headless.QueueState
+import dev.hashsome.headless.RowsArrival
+import dev.hashsome.ui.icons.Ui
+
+// The lists a player opens: its library, its queue and its speakers. Each is a view over a headless control made for as long as
+// the panel is open (`openMediaOverlay` gives it a scope of its own), so a panel nobody opened asks the runtime for nothing.
+
+private fun wrap() = FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+private fun across() = FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+private fun room() = FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).also {
+    it.grow = true
+    it.shrink = true
+}
+
+/** A heading with a muted count after it on the same line: `Queue · 12 tracks · 48 min`. */
+internal class HeadingLine(context: Context) : View(context) {
+    var heading: String = ""
+        set(value) {
+            field = value
+            requestLayout()
+            invalidate()
+        }
+
+    var count: String = ""
+        set(value) {
+            field = value
+            requestLayout()
+            invalidate()
+        }
+
+    private val big = TextPaint(Paint.ANTI_ALIAS_FLAG)
+    private val small = TextPaint(Paint.ANTI_ALIAS_FLAG)
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val t = theme
+        big.style(t, Role.Heading, 0)
+        small.style(t, Role.Secondary, 0)
+        val wide = Math.ceil((big.measureText(heading) + small.measureText(count)).toDouble()).toInt()
+        val w = when (MeasureSpec.getMode(widthMeasureSpec)) {
+            MeasureSpec.EXACTLY -> MeasureSpec.getSize(widthMeasureSpec)
+            MeasureSpec.AT_MOST -> minOf(wide, MeasureSpec.getSize(widthMeasureSpec))
+            else -> wide
+        }
+        val line = Math.ceil((big.textSize * (t.style(Role.Heading).lineHeight ?: 1.3f)).toDouble()).toInt()
+        setMeasuredDimension(w, line)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val t = theme
+        big.style(t, Role.Heading, t.palette.text)
+        small.style(t, Role.Secondary, t.palette.textMuted)
+        val baseline = height / 2f - (big.ascent() + big.descent()) / 2
+        canvas.drawText(heading, 0f, baseline, big)
+        canvas.drawText(count, big.measureText(heading), baseline, small)
+    }
+}
+
+/** Placeholders shaped like the rows that are coming, in the room they take, so nothing moves when they arrive. */
+internal class SkeletonList(context: Context, private val rows: Int = 6) : View(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val rect = RectF()
+    private var pulse: ValueAnimator? = null
+    private var shade = 0.1f
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val u = unitPx()
+        val row = dp(BrowseRow.PICTURE) + Math.round(3 * u)
+        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), rows * row + (rows - 1) * Math.round(u))
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (Animation.full) {
+            pulse = ValueAnimator.ofFloat(0.04f, 0.14f).apply {
+                duration = 700
+                repeatCount = ValueAnimator.INFINITE
+                repeatMode = ValueAnimator.REVERSE
+                interpolator = EASE
+                addUpdateListener {
+                    shade = it.animatedValue as Float
+                    invalidate()
+                }
+                start()
+            }
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        pulse?.cancel()
+        pulse = null
+    }
+
+    private fun block(canvas: Canvas, l: Float, t: Float, r: Float, b: Float, radius: Float) {
+        val p = theme.palette
+        rect.set(l, t, r, b)
+        paint.color = p.surfaceRaised
+        canvas.drawRoundRect(rect, radius, radius, paint)
+        paint.color = withAlpha(p.text, shade)
+        canvas.drawRoundRect(rect, radius, radius, paint)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val u = unitPx()
+        val side = dp(BrowseRow.PICTURE).toFloat()
+        val row = side + 3 * u
+        val small = dp(theme.radius.small)
+        for (i in 0 until rows) {
+            val top = i * (row + u)
+            val x = 2 * u
+            block(canvas, x, top + 1.5f * u, x + side, top + 1.5f * u + side, small)
+            val textX = x + side + 3 * u
+            val room = width - textX - 2 * u
+            val middle = top + row / 2
+            block(canvas, textX, middle - dp(14f) - 0.75f * u, textX + room * 0.6f, middle - 0.75f * u, small / 2)
+            block(canvas, textX, middle + 0.75f * u, textX + room * 0.35f, middle + 0.75f * u + dp(12f), small / 2)
+        }
+    }
+}
+
+/** A line of text where a list would be (an error, nothing found). */
+internal fun message(context: Context, text: String, tone: Tone = Tone.Muted): LabelView =
+    LabelView(context, Role.Body, tone).also { it.text = text }
+
+/** Whether the item is what the player plays or plays from: its title is lit and its button is the player's play/pause (`activeOf`). */
+internal fun isActive(item: BrowseItem, player: MediaPlayerEntity?): Boolean {
+    if (player == null) return false
+    if (player.source != null && item.id == player.source!!.id) return true
+    val media = player.media
+    return item.kind == BrowseKind.Track && media?.title != null && item.title == media.title &&
+        (item.subtitle == null || media.artist == null || item.subtitle == media.artist)
+}
+
+/**
+ * A player's library: its shelves as tabs, a search with the kinds of thing to search for, and the rows of what is open, which arrive a row
+ * at a time. Tap a folder to open it, a track to play it, or the play button of an album or playlist to play all of it; opened, the
+ * chosen tab is the way back (and so is a swipe to the right), and Play, Shuffle and Add to queue act on the whole.
+ */
+open class MediaBrowserView(context: Context, val control: MediaBrowserControl) : BoundView(context) {
+    private val column = ColumnLayout(context).also { it.gap = 3 }
+    private val header = RowLayout(context).also { it.gap = 2 }
+    private val back = GlyphButton(context, Ui.arrowLeft, 16f).also { it.sizeDp = 28 }
+    private val heading = LabelView(context, Role.Heading)
+    private val search = SearchBar(context)
+    private val tabsRow = RowLayout(context).also { it.gap = 3 }
+    private val chips = ChipRowView(context)
+    private val actions = RowLayout(context).also { it.gap = 2 }
+    private val area = FrameLayout(context)
+    private val scroll = LibraryScroll(context)
+    private val host = LinearLayout(context).also { it.orientation = LinearLayout.VERTICAL }
+    private val skeleton = SkeletonList(context)
+    private val note = FrameLayout(context)
+    private val rows = ArrayList<BrowseRow>()
+    private val pictures = ArrayList<ArtworkSlot>()
+    private var items: List<BrowseItem> = emptyList()
+    private var shownRows: List<BrowseItem>? = null
+    private var summary: LabelView? = null
+
+    init {
+        header.addView(back, wrap().also { it.rightMargin = 0 })
+        header.addView(heading, wrap().also { it.grow = true })
+        header.addView(actions, wrap())
+        tabsRow.addView(chips, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(ChipRowView.CHIP_HEIGHT)).also {
+            it.grow = true
+            it.shrink = true
+        })
+        scroll.addView(host, FrameLayout.LayoutParams(-1, -2))
+        area.addView(scroll, FrameLayout.LayoutParams(-1, -1))
+        area.addView(skeleton, FrameLayout.LayoutParams(-1, -2))
+        area.addView(note, FrameLayout.LayoutParams(-1, -2))
+        column.addView(header, across())
+        column.addView(search, across())
+        column.addView(tabsRow, across())
+        column.addView(area, room())
+        addView(column, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+
+        back.onClick = { control.back() }
+        search.onChange = { control.search(it) }
+        scroll.onNearEnd = { control.arrival.more() }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // Where nothing moves there is no arriving to see (the web's `useAnimates`).
+        control.arrival.stagger = Animation.animates
+        val redraw: (Any?) -> Unit = { render() }
+        onDetach(control.state.listen(redraw))
+        onDetach(control.handle.state.listen { updateRows() })
+        onDetach(control.feedback.listen { updateRows() })
+        onDetach(control.arrival.visible.listen { fill() })
+        render()
+        onDetach {
+            pictures.forEach { it.stop() }
+        }
+    }
+
+    private fun queueable(): Boolean = control.handle.entity?.capabilities?.queue == true
+
+    private fun render() {
+        val s = control.state.value
+        val caps = control.handle.entity?.capabilities
+        val inside = s.stack.isNotEmpty() && s.search == null
+        val tabs = s.tabs.isNotEmpty()
+
+        header.visibility = if (tabs) GONE else VISIBLE
+        back.visibility = if (s.stack.isNotEmpty()) VISIBLE else GONE
+        heading.text = s.stack.lastOrNull()?.title ?: "Library"
+        search.visibility = if (caps?.search == true) VISIBLE else GONE
+        // What the field shows follows the library: opening something or going back clears it.
+        val typed = search.input.text.toString()
+        if (s.search == null && typed.isNotBlank()) search.setText("") else if (s.search != null && typed != s.search) search.setText(s.search!!)
+
+        tabsRow.visibility = if (tabs) VISIBLE else GONE
+        if (tabs) {
+            if (s.search != null && s.kinds.isNotEmpty()) {
+                chips.chips = s.kinds.map { ChipRowView.Chip(MediaFormat.kindLabel(it)) }
+                chips.current = s.kinds.indexOf(s.kind).coerceAtLeast(0)
+                chips.onSelect = { i -> s.kinds.getOrNull(i)?.let { control.search(s.search, it) } }
+            } else {
+                // Inside a shelf the chosen tab becomes the way back, so nothing is added to the layout and nothing below it moves.
+                chips.chips = s.tabs.mapIndexed { i, tab ->
+                    if (i == s.active && inside) ChipRowView.Chip(s.stack.last().title, Ui.arrowLeft) else ChipRowView.Chip(tab.title)
+                }
+                chips.current = s.active
+                chips.onSelect = { i -> if (i == s.active && inside) control.back() else control.openTab(i) }
+            }
+        }
+
+        // What can be done with the whole album, playlist or artist that is open sits at the end of the row of tabs (or of the heading).
+        setActions(if (inside) s.stack.last().item else null)
+        scroll.onSwipeBack = if (inside || s.stack.isNotEmpty()) ({ control.back(); Unit }) else null
+        content(s)
+    }
+
+    private fun setActions(opened: BrowseItem?) {
+        actions.removeAllViews()
+        if (opened == null || !opened.playable) return
+        val pill = { icon: Icon, label: String, primary: Boolean, run: () -> Unit ->
+            PillButton(context, icon, null, Role.Body).also {
+                it.contentDescription = label
+                it.heightDp = ChipRowView.CHIP_HEIGHT
+                it.padUnits = 3f
+                it.primary = primary
+                it.onClick = run
+            }
+        }
+        // Playing it replaces the queue, as in Spotify.
+        actions.addView(pill(UiIcons.play, "Play", true) { play(opened) }, wrap())
+        if (queueable()) {
+            actions.addView(pill(UiIcons.shuffle, "Shuffle", false) { play(opened, shuffle = true) }, wrap())
+            actions.addView(pill(Ui.listPlus, "Add to queue", false) { control.play(opened, PlayMode.Add) }, wrap())
+        }
+    }
+
+    private fun play(item: BrowseItem, shuffle: Boolean? = null) {
+        PlayRequests.note(control.handle.ref, item.id, item.title)
+        control.play(item, PlayMode.Replace, shuffle)
+    }
+
+    /** What is below the tabs: the placeholders, a message, or the rows. */
+    private fun content(s: BrowserState) {
+        val error = s.error
+        skeleton.visibility = GONE
+        note.visibility = GONE
+        scroll.visibility = GONE
+        when {
+            error != null -> {
+                note.removeAllViews()
+                note.addView(message(context, error, Tone.Danger), FrameLayout.LayoutParams(-1, -2))
+                note.visibility = VISIBLE
+                clearRows()
+            }
+
+            s.loading -> {
+                skeleton.visibility = VISIBLE
+                clearRows()
+            }
+
+            s.rows.isEmpty() -> {
+                note.removeAllViews()
+                note.addView(message(context, if (s.search != null) "Nothing found." else "Nothing here."), FrameLayout.LayoutParams(-1, -2))
+                note.visibility = VISIBLE
+                clearRows()
+            }
+
+            else -> {
+                scroll.visibility = VISIBLE
+                if (shownRows != s.rows) {
+                    // Another list: it arrives as new rows, from the top.
+                    clearRows()
+                    shownRows = s.rows
+                    items = s.rows
+                    scroll.scrollTo(0, 0)
+                }
+                fill()
+            }
+        }
+    }
+
+    private fun clearRows() {
+        host.removeAllViews()
+        rows.clear()
+        pictures.forEach { it.stop() }
+        pictures.clear()
+        shownRows = null
+        items = emptyList()
+        summary = null
+    }
+
+    /** Adds the rows the arrival has let in. */
+    private fun fill() {
+        val s = control.state.value
+        if (shownRows == null || s.loading || s.error != null) return
+        val visible = control.arrival.visible.value.coerceAtMost(items.size)
+        val searching = s.search != null
+        while (rows.size < visible) {
+            val index = rows.size
+            val row = BrowseRow(context)
+            val slot = ArtworkSlot(AssetSize.Small, { dp(BrowseRow.PICTURE) }) { row.picture = it }
+            rows += row
+            pictures += slot
+            wire(row, items[index])
+            bindRow(index)
+            host.addView(row, LinearLayout.LayoutParams(-1, BrowseRow.rowHeight()).also { if (index > 0) it.topMargin = Math.round(unitPx()) })
+            // A row comes in sliding from the right, the ones after the first starting a little later (not while searching).
+            row.arrive(0)
+            if (searching) row.alpha = 1f
+        }
+        // What is in what is open, at the end of its list: a line above the rows would push them down on opening.
+        if (s.stack.isNotEmpty() && s.search == null && rows.size >= items.size) {
+            if (summary == null) {
+                summary = LabelView(context, Role.Secondary, Tone.Muted).also {
+                    it.text = MediaFormat.summary(items)
+                    host.addView(it, LinearLayout.LayoutParams(-1, -2).also { p -> p.topMargin = Math.round(2 * unitPx()) })
+                }
+            }
+        }
+    }
+
+    private fun wire(row: BrowseRow, item: BrowseItem) {
+        row.onOpen = { control.open(item) }
+        row.onPlay = { play(item) }
+        row.onToggle = { control.handle.command(MediaPlayerCommands.togglePlay()) }
+        row.onNext = { control.play(item, PlayMode.Next) }
+        row.onAdd = { control.play(item, PlayMode.Add) }
+    }
+
+    private fun bindRow(index: Int) {
+        val item = items.getOrNull(index) ?: return
+        val player = control.handle.entity
+        rows[index].bind(item, queueable(), isActive(item, player), player?.playback == PlaybackState.Playing, control.feedback.value)
+        pictures[index].set(item.artworkUrl)
+    }
+
+    private fun updateRows() {
+        for (i in rows.indices) bindRow(i)
+        // The actions of the open item depend on the player having a queue.
+        val s = control.state.value
+        if (s.stack.isNotEmpty() && s.search == null) setActions(s.stack.last().item)
+    }
+}
+
+/**
+ * A player's queue: the tracks that have just played (dimmed), the one playing, and what comes next, in a list that scrolls. Tap a track
+ * to jump to it, the cross takes it out, and Clear takes out everything after the track playing, which carries on. What comes next is put
+ * in another order by dragging a track by its handle.
+ */
+open class MediaQueueView(context: Context, val control: QueueControl) : BoundView(context) {
+    private val column = ColumnLayout(context).also { it.gap = 2 }
+    private val head = RowLayout(context).also { it.gap = 2 }
+    private val heading = HeadingLine(context)
+    private val source = LabelView(context, Role.Secondary, Tone.Muted)
+    private val clear = PillButton(context, Ui.trash2, "Clear", Role.Label).also {
+        it.heightDp = 32
+        it.padUnits = 2.5f
+        it.gapUnits = 1f
+        it.muted = true
+    }
+    private val area = FrameLayout(context)
+    private val scroll = LibraryScroll(context)
+    private val host = LinearLayout(context).also { it.orientation = LinearLayout.VERTICAL }
+    private val skeleton = SkeletonList(context)
+    private val note = FrameLayout(context)
+    private val arrival = RowsArrival(control.scope.child()).also { it.stagger = false }
+    private val rows = ArrayList<QueueRow>()
+    private val pictures = ArrayList<ArtworkSlot>()
+    private var tail: LabelView? = null
+
+    // The state the rows show, split into what has played (and the track playing) and what comes next.
+    private var shown: QueueState? = null
+    private var leading: List<QueueItem> = emptyList()
+    private var upcoming: List<QueueItem> = emptyList()
+    private var clearing = false
+    private var clearTimer: Cancel? = null
+
+    // The order of what comes next after a drag, until the queue read afterwards replaces it.
+    private var draft: List<String>? = null
+    private var draftOf: QueueState? = null
+    private var draftTimer: Cancel? = null
+    private var dragging = false
+    private var deferred = false
+    private var dragFrom = 0
+    private var dragTarget = 0
+
+    init {
+        val titles = ColumnLayout(context)
+        titles.addView(heading, wrap())
+        titles.addView(source, wrap())
+        head.addView(titles, wrap().also { it.grow = true; it.shrink = true })
+        head.addView(clear, wrap())
+        scroll.addView(host, FrameLayout.LayoutParams(-1, -2))
+        area.addView(scroll, FrameLayout.LayoutParams(-1, -1))
+        area.addView(skeleton, FrameLayout.LayoutParams(-1, -2))
+        area.addView(note, FrameLayout.LayoutParams(-1, -2))
+        column.addView(head, across())
+        column.addView(area, room())
+        addView(column, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        heading.heading = "Queue"
+        clear.onClick = {
+            clearing = true
+            control.clear()
+            clearTimer?.invoke()
+            clearTimer = control.scope.after(CLEAR_MS) {
+                clearing = false
+                render()
+            }
+            render()
+        }
+        scroll.onNearEnd = { arrival.more() }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        val redraw: (Any?) -> Unit = {
+            if (dragging) deferred = true else render()
+        }
+        onDetach(control.state.listen { state ->
+            // A queue read afterwards replaces the order a drag put it in, and ends the wait of Clear.
+            if (state !== draftOf) draft = null
+            clearing = false
+            redraw(state)
+        })
+        onDetach(control.handle.state.listen(redraw))
+        onDetach(arrival.visible.listen { if (!dragging) layoutRows() })
+        render()
+        onDetach {
+            pictures.forEach { it.stop() }
+            clearTimer?.invoke()
+            draftTimer?.invoke()
+        }
+    }
+
+    private fun render() {
+        val state = control.state.value
+        val player = control.handle.entity
+        val ready = control.handle.state.value is dev.hashsome.headless.HandleState.Ready
+        val hasQueue = player?.capabilities?.queue == true
+        shown = state
+        skeleton.visibility = GONE
+        note.visibility = GONE
+        scroll.visibility = GONE
+        head.visibility = if (ready && hasQueue) VISIBLE else GONE
+        when {
+            !ready -> say(mediaStatusLabel(control.handle.state.value).orEmpty())
+            !hasQueue -> say("This player has no queue.")
+            state.loading && state.items.isEmpty() -> skeleton.visibility = VISIBLE
+            state.items.isEmpty() -> {
+                heading.count = MediaFormat.queueCount(state.total, state.duration)
+                say("Nothing is queued. Play or add something from the library.")
+            }
+
+            else -> {
+                heading.count = MediaFormat.queueCount(state.total, state.duration)
+                val line = player?.source?.let { MediaFormat.source(it) }
+                source.text = line.orEmpty()
+                source.visibility = if (line == null) GONE else VISIBLE
+                clear.visibility = if (state.total > 0) VISIBLE else GONE
+                clear.isEnabled = !clearing
+                clear.pending = clearing
+                scroll.visibility = VISIBLE
+                split(state)
+                layoutRows()
+            }
+        }
+    }
+
+    private fun say(text: String) {
+        note.removeAllViews()
+        note.addView(message(context, text), FrameLayout.LayoutParams(-1, -2))
+        note.visibility = VISIBLE
+    }
+
+    /** The tracks up to and with the one playing, and what comes next (in the order a drag put it in, while that stands). */
+    private fun split(state: QueueState) {
+        val at = state.items.indexOfFirst { it.current }
+        val firstUpcoming = if (at == -1) state.items.size else at + 1
+        leading = state.items.subList(0, firstUpcoming)
+        val next = state.items.subList(firstUpcoming, state.items.size)
+        val order = draft
+        val byId = next.associateBy { it.id }
+        upcoming = if (order != null && draftOf === state && order.size == next.size && order.all { it in byId }) order.map { byId.getValue(it) } else next
+        arrival.update(upcoming.size)
+    }
+
+    /** The player has stopped on the last track and its position is at the end: it is over, not playing. */
+    private fun finished(state: QueueState): Boolean {
+        val player = control.handle.entity ?: return false
+        val stopped = (player.playback == PlaybackState.Idle || player.playback == PlaybackState.Off) &&
+            player.position != null && player.duration != null && player.position!! >= player.duration!! - 2
+        val at = state.items.indexOfFirst { it.current }
+        return stopped && at != -1 && at == state.items.size - 1 && state.offset + state.items.size == state.total
+    }
+
+    private fun layoutRows() {
+        val state = shown ?: return
+        val over = finished(state)
+        val visible = arrival.visible.value.coerceAtMost(upcoming.size)
+        val count = leading.size + visible
+        // Rows are kept and bound again, so a queue that changes under a finger does not rebuild the list.
+        while (rows.size < count) {
+            val row = QueueRow(context)
+            val slot = ArtworkSlot(AssetSize.Small, { dp(QueueRow.PICTURE) }) { row.picture = it }
+            rows += row
+            pictures += slot
+            host.addView(row, LinearLayout.LayoutParams(-1, dp(QueueRow.ROW)).also {
+                if (rows.size > 1) it.topMargin = Math.round(dp(theme.density.space) / 6f)
+            })
+        }
+        while (rows.size > count) {
+            host.removeViewAt(rows.size - 1)
+            rows.removeAt(rows.size - 1)
+            pictures.removeAt(pictures.size - 1).stop()
+        }
+        for (i in 0 until count) {
+            val isLeading = i < leading.size
+            val item = if (isLeading) leading[i] else upcoming[i - leading.size]
+            val row = rows[i]
+            val at = leading.indexOfLast { it.current }
+            val current = isLeading && item.current && !over
+            row.bind(item, playing = current, reorderable = !isLeading)
+            row.alpha = when {
+                !isLeading -> if (clearing) 0.5f else 1f
+                // Played, and the track that was playing once it is over.
+                i < at || (over && item.current) || (at == -1) -> 0.5f
+                else -> 1f
+            }
+            row.translationY = 0f
+            row.lifted = false
+            pictures[i].set(item.artworkUrl)
+            row.onPlay = { control.play(item) }
+            row.onRemove = { control.remove(item) }
+            if (!isLeading) wireDrag(row, item, i - leading.size)
+            else {
+                row.onDragStart = null
+                row.onDragMove = null
+                row.onDragEnd = null
+            }
+        }
+        // What is out of sight, said at the end of the list.
+        tail?.let { host.removeView(it) }
+        tail = null
+        val hidden = Math.max(0, state.total - state.offset - state.items.size)
+        if (hidden > 0 && visible >= upcoming.size) {
+            tail = LabelView(context, Role.Secondary, Tone.Muted).also {
+                it.text = "and ${"%,d".format(hidden)} more"
+                host.addView(it, LinearLayout.LayoutParams(-1, -2).also { p ->
+                    p.topMargin = Math.round(2 * unitPx())
+                    p.bottomMargin = Math.round(2 * unitPx())
+                })
+            }
+        }
+    }
+
+    private fun pitch(): Float = (dp(QueueRow.ROW) + Math.round(dp(theme.density.space) / 6f)).toFloat()
+
+    /** Dragging a row by its handle: it follows the finger, the rows it passes give way, and where it is let go is where it goes. */
+    private fun wireDrag(row: QueueRow, item: QueueItem, from: Int) {
+        val first = leading.size
+        val last = arrival.visible.value.coerceAtMost(upcoming.size) - 1
+        row.onDragStart = {
+            dragging = true
+            dragFrom = from
+            dragTarget = from
+            row.lifted = true
+            row.elevation = dp(6f)
+            row.bringToFront()
+            host.requestLayout()
+        }
+        row.onDragMove = { dy ->
+            row.translationY = dy
+            val target = QueueDrag.target(from, dy, pitch(), last)
+            if (target != dragTarget) {
+                dragTarget = target
+                for (j in 0..last) {
+                    if (j == from) continue
+                    val other = rows.getOrNull(first + j) ?: continue
+                    val goal = QueueDrag.shift(j, from, target) * pitch()
+                    if (other.translationY != goal) {
+                        if (Animation.full) other.animate().translationY(goal).setDuration(150).start() else other.translationY = goal
+                    }
+                }
+            }
+        }
+        row.onDragEnd = { dy, cancelled ->
+            dragging = false
+            row.elevation = 0f
+            row.lifted = false
+            rows.forEach {
+                it.animate().cancel()
+                it.translationY = 0f
+            }
+            val target = if (cancelled) from else QueueDrag.target(from, dy, pitch(), last)
+            if (target != from) drop(item, from, target)
+            else if (deferred) render()
+            deferred = false
+        }
+    }
+
+    /** Puts the track where it was dragged to: shown at once, and sent as how many places it moved. */
+    private fun drop(item: QueueItem, from: Int, to: Int) {
+        val state = shown ?: return
+        val visibleIds = upcoming.map { it.id }
+        // The order of the part that is drawn, the rest after it as it was.
+        val shownCount = arrival.visible.value.coerceAtMost(upcoming.size)
+        val moved = QueueDrag.reorder(visibleIds.subList(0, shownCount), from, to) + visibleIds.drop(shownCount)
+        draft = moved
+        draftOf = state
+        draftTimer?.invoke()
+        draftTimer = control.scope.after(DRAFT_MS) {
+            draft = null
+            render()
+        }
+        deferred = false
+        control.move(item, to - from)
+        render()
+    }
+
+    private companion object {
+        const val CLEAR_MS = 4000L
+        const val DRAFT_MS = 2500L
+    }
+}

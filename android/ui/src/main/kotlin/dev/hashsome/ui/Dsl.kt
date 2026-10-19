@@ -11,8 +11,12 @@ import dev.hashsome.headless.ClimateControl
 import dev.hashsome.headless.ConnectionHealth
 import dev.hashsome.headless.EntityHandle
 import dev.hashsome.headless.LightControl
+import dev.hashsome.headless.MediaBrowserControl
+import dev.hashsome.headless.MediaPlayerControl
+import dev.hashsome.headless.QueueControl
 import dev.hashsome.headless.Scope
 import dev.hashsome.headless.SensorReading
+import dev.hashsome.headless.SpeakersControl
 import dev.hashsome.headless.SwitchControl
 import dev.hashsome.headless.WeatherControl
 
@@ -343,6 +347,20 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
 
     // --- Media ------------------------------------------------------------------------------------------------------
 
+    /** Adds [view] to what is being built, taking the room left in its parent when [grow]. */
+    private fun place(view: View, grow: Boolean = false) {
+        // What takes the room that is left also gives way when there is less than it would like (a column among columns).
+        stack.last().addView(view, flex(grow = grow).also { it.shrink = grow })
+    }
+
+    private fun player(ref: String) = MediaPlayerControl(handle(ref, EntityKind.MediaPlayer), scope)
+
+    /**
+     * Now playing with previous / play-pause / next and a volume key, for a media player. [rows] 1 puts the keys beside the track in one
+     * pill, 2 puts them on a row under it, for a narrow space. [time], [shuffle], [browse] and [grouping] leave their parts out when
+     * false; [onOpen] runs on the art and the library key, to go to the player's page, and without it the library key opens the
+     * library as a panel. [speakers] are the players that may be grouped with this one (empty: any it can be).
+     */
     fun mediaPlayerBar(
         ref: String,
         label: String,
@@ -352,19 +370,50 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         browse: Boolean = true,
         grouping: Boolean = true,
         onOpen: (() -> Unit)? = null,
-    ): Unit = TODO("WP4b")
+        speakers: List<EntityRef> = emptyList(),
+    ) {
+        val bar = MediaPlayerBarView(context, player(ref), label, PlayerOptions(time, shuffle, browse, grouping, rows))
+        bar.onOpen = onOpen
+        bar.speakers = speakers
+        place(bar)
+    }
 
-    /** [speakers] are the players that may be grouped with this one. */
+    /**
+     * The player as an upright card for a narrow column: art in a ring that shows (and seeks) the position, title, transport and a
+     * volume bar. With [overlays] its library and queue open as panels of their own; [fill] takes all the height the parent gives it.
+     * [speakers] are the players that may be grouped with this one.
+     */
     fun mediaPlayerColumn(
         ref: String,
         label: String,
         overlays: Boolean = true,
         fill: Boolean = true,
         speakers: List<EntityRef> = emptyList(),
-    ): Unit = TODO("WP4b")
+    ) {
+        val column = MediaPlayerColumnView(context, player(ref), label, overlays, fill)
+        column.speakers = speakers
+        place(column, grow = fill)
+    }
 
-    fun mediaPlayerFull(ref: String, label: String): Unit = TODO("WP4b")
-    fun mediaBrowser(ref: String): Unit = TODO("WP4b")
-    fun mediaQueue(ref: String): Unit = TODO("WP4b")
-    fun mediaSpeakers(ref: String, speakers: List<EntityRef>): Unit = TODO("WP4b")
+    /** The full player: the player on top and under it its library and queue as tabs. It takes the height that is left of the page. */
+    fun mediaPlayerFull(ref: String, label: String, speakers: List<EntityRef> = emptyList()) {
+        val full = MediaPlayerFullView(context, player(ref), label)
+        full.speakers = speakers
+        place(full, grow = true)
+    }
+
+    /** A player's own library: shelves as tabs, search, and rows to open and play. It takes the height that is left of the page. */
+    fun mediaBrowser(ref: String) {
+        place(MediaBrowserView(context, MediaBrowserControl(handle(ref, EntityKind.MediaPlayer), scope)), grow = true)
+    }
+
+    /** A player's queue: what has played, the track playing, and what comes next, which can be put in another order. */
+    fun mediaQueue(ref: String) {
+        place(MediaQueueView(context, QueueControl(handle(ref, EntityKind.MediaPlayer), scope)), grow = true)
+    }
+
+    /** Who plays together with a player, and the [speakers] that could. */
+    fun mediaSpeakers(ref: String, speakers: List<EntityRef>) {
+        place(MediaSpeakersView(context, SpeakersControl(handle(ref, EntityKind.MediaPlayer), scope, speakers)), grow = true)
+    }
 }
