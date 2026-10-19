@@ -12,6 +12,7 @@ import dev.hashsome.headless.ClimateControl
 import dev.hashsome.headless.ConnectionHealth
 import dev.hashsome.headless.EntityHandle
 import dev.hashsome.headless.LightControl
+import dev.hashsome.headless.LogbookControl
 import dev.hashsome.headless.MediaBrowserControl
 import dev.hashsome.headless.MediaPlayerControl
 import dev.hashsome.headless.QueueControl
@@ -20,6 +21,7 @@ import dev.hashsome.headless.SensorReading
 import dev.hashsome.headless.SpeakersControl
 import dev.hashsome.headless.SwitchControl
 import dev.hashsome.headless.WeatherControl
+import dev.hashsome.ui.icons.Ui
 
 // The dashboard DSL: a dashboard is a Kotlin object whose pages are built by calling the functions of `PageScope`,
 // the way a web dashboard composes components. Entity refs are strings (`"ha:light.bathroom_led"`), as on the web.
@@ -319,9 +321,22 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         }
     }
 
-    /** A light: tap to toggle, drag along the tile to dim. [icon] is a bulb, lit while on, when null. */
-    fun lightTile(ref: String, label: String, icon: Icon? = null) {
-        put(LightTileView(context, LightControl(handle(ref, EntityKind.Light)), label)).icon = icon
+    /**
+     * A light: tap to toggle, drag along the tile to dim. [icon] is a bulb, lit while on, when null. [drawer]: holding the tile opens a
+     * drawer with the full controls (the power button, brightness with fine steps, the color bars and swatches) and the light's recent
+     * activity; off, the tile is only a toggle that dims, and no drawer is built, which is lighter on a small display.
+     */
+    fun lightTile(ref: String, label: String, icon: Icon? = null, drawer: Boolean = true) {
+        val control = LightControl(handle(ref, EntityKind.Light))
+        val view = put(LightTileView(context, control, label))
+        view.icon = icon
+        if (drawer) {
+            view.tile.onHold = {
+                DrawerHost.open(context, scope, title = label, kind = "Light", icon = icon ?: Ui.lightbulb) { drawerContext ->
+                    LightDrawerBody(context, control, drawerContext.scope, LogbookControl(control.handle, drawerContext.scope))
+                }
+            }
+        }
     }
 
     /** A thermostat tile over [handle], which may be `EntityHandle.fixed(HandleState.Unavailable(null))` for a room that has none. */
@@ -329,10 +344,29 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         put(ClimateTileView(context, ClimateControl(handle), label))
     }
 
-    /** A switch as a tile with its [icon], with the watts of the power sensor [power] on its secondary line when given. */
-    fun switchTile(ref: String, label: String, icon: Icon, power: String? = null) {
+    /**
+     * A switch as a tile with its [icon], with the watts of the power sensor [power] on its secondary line when given. [energy] is its
+     * lifetime energy counter (kWh). [drawer]: holding the tile opens a drawer with what it draws over time and the energy it used today,
+     * this week and this month, from [power] and [energy]; a switch with neither has no drawer.
+     */
+    fun switchTile(ref: String, label: String, icon: Icon, power: String? = null, energy: String? = null, drawer: Boolean = true) {
         val control = SwitchControl(handle(ref, EntityKind.Switch), power?.let { handle(it, EntityKind.Sensor) })
-        put(SwitchTileView(context, control, label)).icon = icon
+        val view = put(SwitchTileView(context, control, label))
+        view.icon = icon
+        if (drawer && (power != null || energy != null)) {
+            view.tile.onHold = {
+                DrawerHost.open(context, scope, title = label, kind = "Switch", icon = icon) { drawerContext ->
+                    EnergyDrawerBody(
+                        context,
+                        drawerContext.scope,
+                        power?.let { EntityHandle(drawerContext.scope, EntityRef(it), EntityKind.Sensor) },
+                        energy?.let { EntityHandle(drawerContext.scope, EntityRef(it), EntityKind.Sensor) },
+                        drawerContext.expanded,
+                        drawerContext::onExpandedChanged,
+                    )
+                }
+            }
+        }
     }
 
     /**
