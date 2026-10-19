@@ -547,6 +547,9 @@ example/                     @hashsome/example          a complete project: the 
   shared/                      conventions the dashboards reuse (top bar, the switcher's list)
   dashboards/<id>/             one folder per dashboard: layout.tsx, pages/*.tsx
 demo/                        @hashsome/demo             the example's dashboards as a static site on mock data (GitHub Pages)
+android/                     dev.hashsome:*             the Kotlin libraries that render dashboards natively (its own Gradle build, see "Native Android")
+  client/ headless/ ui/ kiosk/ testing/                 one Gradle module each; parity.json and PARITY.md say what mirrors @hashsome/ui
+example/android/             a consumer's Android app, built against ../../android with includeBuild
 docs/screenshots/            the images the README shows
 ```
 
@@ -576,19 +579,92 @@ project, not packages, and the repository's tests cover `packages/*` only.
 The repository is set up so a coding agent can add a dashboard without touching the framework.
 The skills in `.claude/skills/` hold what an agent needs, and they read well for a person too:
 
-| Skill              | What it is for                                                                   |
-| ------------------ | -------------------------------------------------------------------------------- |
-| `create-dashboard` | The end-to-end process for a new dashboard                                       |
-| `dashboard-rules`  | The hard constraints, and the sharp edges found while building the real examples |
-| `entity-discovery` | Finding real entity ids instead of guessing them                                 |
-| `ui-catalog`       | Every component and its props, generated from source so it cannot go stale       |
-| `verify-dashboard` | How to check the result actually works before calling it done                    |
-| `add-ui-component` | The stricter, separate workflow for extending the design system itself           |
+| Skill                      | What it is for                                                                   |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| `create-dashboard`         | The end-to-end process for a new dashboard                                       |
+| `dashboard-rules`          | The hard constraints, and the sharp edges found while building the real examples |
+| `entity-discovery`         | Finding real entity ids instead of guessing them                                 |
+| `ui-catalog`               | Every component and its props, generated from source so it cannot go stale       |
+| `verify-dashboard`         | How to check the result actually works before calling it done                    |
+| `add-ui-component`         | The stricter, separate workflow for extending the design system itself           |
+| `create-android-dashboard` | The end-to-end process for a dashboard on the native Android side                |
+| `android-component`        | Adding a component to `android/ui`: headless control, view, parity entry, tests  |
 
 The main rule is that creating a dashboard does not edit `packages/*`. A real gap in `@hashsome/ui` is
 a separate, explicit change (see `add-ui-component`), so "make me a dashboard" can never turn into
 "also changed the framework". `CATALOG.md` is generated (`pnpm generate:catalog`) and CI fails if
-it drifts from the source.
+it drifts from the source. The same holds on Android: a dashboard does not edit `android/*`.
+
+## Native Android
+
+`android/` renders the same dashboards natively on Android, for the wall displays where a WebView is
+too slow. It is a second client of the runtime the web dashboards use (`/ws` and
+`/_hashsome/asset`): the Node server, `@hashsome/core` and the integrations are unchanged, and the
+entity model and wire protocol are the contract between the two sides. Dashboards are written in
+Kotlin with a DSL, in the consumer's own repository, the way a web project holds `dashboards/`.
+
+**Layers.** Five Gradle modules (group `dev.hashsome`, one AAR each), and dependencies point down only:
+
+| Module     | Holds                                                                                                        | Depends on |
+| ---------- | ------------------------------------------------------------------------------------------------------------ | ---------- |
+| `client`   | `Store`, `Scheduler`, `Transport`/`WsClient`, `Client`, the typed entity models and parsers, `Images`        | nothing    |
+| `headless` | `Scope`, `EntityHandle`, one state holder per control (`LightControl`, ...), the theme schedule              | `client`   |
+| `ui`       | theme and density, icons, base views, layouts and the page DSL, components, `DashboardActivity`              | `headless` |
+| `kiosk`    | device profiles, screen, presence, night mode, foreground service, MQTT bridge to Home Assistant, `Settings` | `ui`       |
+| `testing`  | `TestScheduler`, `FakeTransport`, `FakeClient`, JSON fixtures generated from `@hashsome/core`                | `client`   |
+
+The direction is enforced at build time, not by convention: each module's `check` runs
+`checkDependencies` (`android/build.gradle.kts`), which fails when a module declares anything but the
+one module under it, the Kotlin stdlib (and the MQTT client, for `kiosk` alone); `headless` also
+fails if it imports `android.*`, so it keeps running on a plain JVM; lint runs with `NewApi` fatal.
+`./gradlew build` runs all of it, and CI and the release run that.
+
+**Headless first.** Each control is a state holder with no View in it (what the web has as a hook);
+the view binds to it. That is also what makes the logic testable on the JVM with `FakeClient` and
+`TestScheduler`. A component is added in that order (see `android-component`).
+
+**Must-nots.** No AndroidX, no coroutines, no kotlinx.serialization in any library: state is
+`Store<T>` read on the main thread, JSON is `org.json`. Only API 24-safe platform calls (the
+libraries support minSdk 24, and the JDK surface is that of API 24: no `java.time`). No reflection;
+an icon is a resource id. A component reads every color, radius and size from the resolved theme
+when it draws. No vendor-specific code in `client` and `headless`: what an entity is comes from the
+model, not from which integration served it.
+
+**Plug points.** `ui` never references `kiosk`. It exposes `ScreenPolicy`, `TouchListener` and
+`PageListener` on `HashsomeApp` (defaults do nothing) and `kiosk` implements them; the consumer
+installs it with `HashsomeApp.withKiosk(...)`. Other customization is data: `ThemeOverrides`, the
+`font`, `Motion` per dashboard, `KioskConfig`.
+
+**Protocol rules.** The client sends and understands what `@hashsome/core`'s wire protocol defines
+and nothing else: subscribe/unsubscribe by `EntityRef`, commands by kind, queries, results with
+ok/err, the heartbeat that finds a silent connection dead, resubscribe after a reconnect with
+backoff. A kind the client does not know parses to `GenericEntity` with the raw payload kept; parsers
+read tolerantly (`opt*`). Fixtures are generated from `@hashsome/core`'s mock builders
+(`pnpm generate:fixtures`), so the Kotlin parsers are tested against what the server really sends,
+and a change to the protocol breaks the Android tests, not a display.
+
+**A consumer project.** Beside the web side of a project (`hashsome.config.ts`, `app/`,
+`dashboards/`), the Android side is `android/` (a Gradle app depending on `dev.hashsome:*`, its
+dashboards as Kotlin objects, a generated icon pack from `hashsome android icons`) and
+`devices.json` at the root (one entry per display: `id`, `host`, `profile`, and optionally
+`dashboard`, `server`, `mqtt`, `home`). `hashsome android build|deploy|provision|uninstall` drive
+Gradle and `adb` from it (`--dry-run` prints the commands). `example/android` is the reference;
+it uses `includeBuild("../../android")` so it builds against this checkout, as a consumer does with
+a local checkout, while a consumer that wants the released libraries declares the GitHub Packages
+repository and pins `hashsome` in its `gradle/libs.versions.toml`.
+
+**Parity with the web UI.** `android/parity.json` has an entry for every export of `@hashsome/ui`
+(`native`, `native:<Name>`, `planned` or `planned#<issue>`, `web-only`), plus `native-only` entries
+with a reason. `pnpm generate:parity` writes `android/PARITY.md` from it and `pnpm check:parity`
+fails CI for an export without an entry or an entry without an export. The rule: a change that adds
+or renames a `packages/ui` export adds its entry in the same PR, and `native` means the Kotlin
+component exists in that PR; otherwise it is `planned`.
+
+**Device quirks live in `kiosk`.** Keeping the app in front on a display whose stock app stays HOME,
+owning the backlight, waking on presence, removing the app's own device admin: a non-test device
+admin cannot be removed with `dpm remove-active-admin`, and `pm uninstall` fails while it is active,
+so `hashsome android uninstall` first broadcasts `dev.hashsome.REMOVE_ADMIN`, which the app answers
+by removing its own admin.
 
 ## Packaging and deployment
 
@@ -630,6 +706,12 @@ pod can land on, or the pod pinned to one. k3s's embedded registry mirror (`embe
 share images between nodes in principle, but it needs the flag on servers and agents, and in
 practice did not share an imported image on the cluster this was developed against. Importing on
 each node is the dependable path.
+
+**The Android app is not part of `hashsome package`.** The server side is unchanged: the same
+bundle and image serve the web dashboards and the native app's `/ws` and `/_hashsome/asset`. The APK
+is built by the consumer (`hashsome android build`, signed with the project's own keystore, so that
+`adb install -r` never meets a different signature) and deployed over `adb` to each display
+(`hashsome android deploy|provision`). Its address is the `server` of a device in `devices.json`.
 
 **Hosting notes.** A pod on `hostNetwork` needs the `Recreate` strategy, at the Deployment's `spec`
 level and not in the pod spec, or a rollout deadlocks on the node's port. The Service port in a
@@ -690,22 +772,36 @@ dependencies, skips any linked from a checkout (`workspace:`, `link:`, `file:`),
 on the rest. pnpm is the one supported manager: a project that names or has the lockfile of another gets
 the command to run by hand. All packages share one version, so they move together. It is `packages/runtime/src/cli/upgrade.ts`.
 
+A project with an Android app (`android/gradle/libs.versions.toml`) has that file's `hashsome = "<version>"` set to
+the installed `@hashsome/runtime` version too, since the Maven libraries carry the same version as the npm
+packages; `--dry-run` reports it without writing. A project that builds against a local checkout
+(`includeBuild`) ignores the number, as the npm side ignores a `link:` dependency.
+
 ## Releasing
 
-Packages are published to npm by hand, from **Actions → Release → Run workflow** on `main`.
+Packages are published to npm, and the Android libraries to GitHub Packages, by hand, from **Actions →
+Release → Run workflow** on `main`.
 
 - **What is published.** `@hashsome/core`, `ui`, `runtime` and the two integrations, all at one shared
-  version (0.x while alpha). The repo keeps `exports` pointing at `src/*.ts` so development needs no
+  version (0.x while alpha), and `dev.hashsome:client|headless|ui|kiosk|testing` (AARs with sources)
+  at that same version, to `https://maven.pkg.github.com/dstoyanoff/hashsome`. The Maven version
+  lives in `android/gradle.properties` (`hashsome.version`), which `scripts/release.ts` rewrites with
+  the package.json files (`VERSION_FILES`); never edit it by hand. A consumer needs `gpr.user` and
+  `gpr.key` (a classic personal access token with `read:packages`) in `~/.gradle/gradle.properties`,
+  since GitHub Packages asks for credentials even for a public repository. The repo keeps `exports` pointing at `src/*.ts` so development needs no
   build; each package's `publishConfig.exports` swaps them for the compiled `dist/` (ES modules plus
   `.d.ts`, no CommonJS) when `pnpm pack` makes the tarball. `pnpm build:packages` builds them.
 - **The version** comes from the conventional commits since the last `v*` tag
   (`scripts/release.ts`): `feat` is a minor, `fix`/`perf` a patch, nothing else releases. Below 1.0 a
   breaking change is also a minor. The workflow's `level` input overrides it, and 1.0.0 is a manual
   `major`. Tick **dry run** to see the version and notes without publishing.
-- **What a run does.** Checks (lint, typecheck, test), writes the version into every package and
-  `CHANGELOG.md`, commits and tags `vX.Y.Z` locally, publishes every tarball with provenance, and only
+- **What a run does.** Checks (lint, typecheck, test, and `./gradlew build` in `android/`), writes the
+  version into every package, `android/gradle.properties` and `CHANGELOG.md`, commits and tags
+  `vX.Y.Z` locally, publishes every tarball to npm with provenance, then the Android libraries to
+  GitHub Packages (after npm, since it is the likelier to fail and then recoverable by hand), and only
   then pushes the commit and tag to `main` and creates the GitHub release with the notes. A failed
-  publish therefore leaves `main` untouched. Pushing to `main` uses the `RELEASE_TOKEN` secret (a
+  publish therefore leaves `main` untouched. GitHub Packages does not overwrite a published version,
+  so a re-run after a partial Maven publish needs the modules already there skipped. Pushing to `main` uses the `RELEASE_TOKEN` secret (a
   fine-grained token with Contents write), since `main` requires PRs and the built-in token cannot
   bypass that.
 - **The docs site follows the release.** After a run has published, its last job (`docs`) runs
