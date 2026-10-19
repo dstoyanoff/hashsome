@@ -57,6 +57,10 @@ object Settings : HostSettings {
     /** Night mode on or off. Only Home Assistant and the settings sheet change it; the app never does. */
     val night: Store<Boolean> = Store(false)
     val nightIdleMs: Store<Long> = Store(120_000)
+
+    /** Where the floating "Back to dashboard" button was left, as fractions (0..1) of the room it can move in, so it survives a rotation; null is the bottom-right corner. */
+    val backButtonX: Store<Float?> = Store(null)
+    val backButtonY: Store<Float?> = Store(null)
     val mqtt: MqttSettings = MqttSettings()
     val debug: DebugSettings = DebugSettings()
 
@@ -111,6 +115,8 @@ object Settings : HostSettings {
         key("lastAutoLevel", lastAutoLevel, null, { it?.toString() }, { it.toIntOrNull() })
         flag("night", night, false)
         key("nightIdleMs", nightIdleMs, defaults.nightIdleMs, { it.toString() }, { it.toLongOrNull() })
+        key("backButtonX", backButtonX, null, { it?.toString() }, { it.toFloatOrNull() })
+        key("backButtonY", backButtonY, null, { it?.toString() }, { it.toFloatOrNull() })
         flag("mqtt.enabled", mqtt.enabled, false)
         key("mqtt.host", mqtt.host, "", { it }, { it })
         number("mqtt.port", mqtt.port, 1883)

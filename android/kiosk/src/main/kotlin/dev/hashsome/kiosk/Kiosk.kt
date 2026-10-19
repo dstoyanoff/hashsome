@@ -46,8 +46,12 @@ data class KioskConfig(
     val bootSettleMs: Long = 30_000,
     /** Shelly profiles, after a boot: and at least this long must have passed since boot. */
     val bootMinMs: Long = 90_000,
-    /** "Open Shelly app": keep-in-front stands down this long (ending early when the dashboard is resumed again). */
-    val stockAppPauseMs: Long = 600_000,
+    /**
+     * "Open Shelly app": the safety cap of the pause. Keep-in-front stands down until the floating "Back to dashboard" button is
+     * tapped (or the dashboard is resumed again); this ends it if neither happens. Where the overlay permission is missing there is
+     * no button and the pause is [Kiosk.FALLBACK_PAUSE_MS] instead.
+     */
+    val stockAppPauseMs: Long = 7_200_000,
 )
 
 /**
@@ -168,6 +172,12 @@ internal object Kiosk {
     /** Keep-in-front's pause while the stock app is used. */
     val pause = FrontPause({ android.os.SystemClock.elapsedRealtime() }) { Log.e("front", it) }
 
+    /** The pause where there is no button to end it. */
+    const val FALLBACK_PAUSE_MS = 600_000L
+
+    private fun overlayAllowed(context: Context): Boolean =
+        android.os.Build.VERSION.SDK_INT < 23 || android.provider.Settings.canDrawOverlays(context)
+
     /** Launches the stock Shelly app and pauses keep-in-front; where it is not installed nothing is paused. */
     internal fun openStockApp(context: Context?) {
         val intent = context?.packageManager?.getLaunchIntentForPackage(FrontDecision.STOCK_PACKAGE)
@@ -176,8 +186,11 @@ internal object Kiosk {
             return
         }
         try {
+            android.os.Handler(android.os.Looper.getMainLooper()).post { SettingsHost.close() }
             context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            pause.start(config.stockAppPauseMs)
+            val overlay = overlayAllowed(context)
+            if (!overlay) Log.w("kiosk", "no permission to draw over other apps (appops SYSTEM_ALERT_WINDOW), no back button: pausing for ${FALLBACK_PAUSE_MS / 1000} s")
+            pause.start(if (overlay) config.stockAppPauseMs else minOf(FALLBACK_PAUSE_MS, config.stockAppPauseMs), withButton = overlay)
         } catch (e: Exception) {
             Log.w("kiosk", "could not open the stock app: ${e.message}")
         }

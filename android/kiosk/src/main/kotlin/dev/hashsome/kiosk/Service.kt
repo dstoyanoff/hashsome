@@ -119,6 +119,14 @@ class KioskService : Service() {
         bridge.start()
         closers += { bridge.stop() }
 
+        val backButton = BackButtonOverlay(this, Settings, Kiosk.pause)
+        Kiosk.pause.onChange = { backButton.sync() }
+        backButton.sync()
+        closers += {
+            Kiosk.pause.onChange = null
+            backButton.close()
+        }
+
         val linkBinder = LinkBinder(state)
         val front = KeepInFront(this, profile)
         val watchdog = Watchdog(this)
