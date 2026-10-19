@@ -195,6 +195,21 @@ describe('unsupported SVG features', () => {
   });
 });
 
+describe('colliding names when the first fails', () => {
+  test('the second takes the name', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'icons-'));
+    try {
+      writeFileSync(join(dir, 'x_1.svg'), '<svg viewBox="0 0 24 24"><text/></svg>');
+      writeFileSync(join(dir, 'x1.svg'), fixture('polyline.svg'));
+      const result = convertPack('p', sourcesFor('p', '/', dir), 'com.x');
+      expect(Object.keys(result.files)).toEqual(['ic_p_x1.xml']);
+      expect(result.skipped).toHaveLength(1);
+    } finally {
+      rmSync(dir, { recursive: true });
+    }
+  });
+});
+
 describe('renderKotlin', () => {
   test('one val per icon, in the app package', () => {
     const kotlin = renderKotlin(

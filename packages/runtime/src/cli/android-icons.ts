@@ -19,7 +19,8 @@ Options:
   --package <name>     The app's package (default: \`namespace\` in android/app/build.gradle.kts).
                        The object is declared in <name>.icons and imports <name>.R
   --strict             Exit 1 if any icon was skipped (an SVG feature the converter does not support:
-                       transform, style, opacity, non-round caps/joins, other elements)
+                       transform, style, opacity, non-round caps/joins, other elements,
+                       or a name that becomes the same Kotlin property as another icon's)
   --dry-run            Show what would be written, change nothing
 
 Examples:
@@ -472,9 +473,9 @@ export function convertPack(pack: string, sources: SvgSource[], appPackage: stri
       continue;
     }
 
-    properties.set(property, file);
     try {
       files[`ic_${prefix}_${name}.xml`] = svgToVectorDrawable(readFileSync(file, 'utf8'));
+      properties.set(property, file);
     } catch (error) {
       skipped.push(`${file}: ${(error as Error).message}`);
     }
