@@ -250,13 +250,92 @@ data class GenericEntity(
 
 /** Parses an entity of any kind from the runtime's JSON (`kind` selects the parser). */
 object Entities {
-    fun parse(ref: EntityRef, json: JSONObject): Entity = TODO("WP1")
+    fun parse(ref: EntityRef, json: JSONObject): Entity = parseEntity(ref, json)
 }
 
 /** ISO 8601 timestamps without `java.time` (API 24 has none). */
 object Iso8601 {
     /** Milliseconds since the epoch, or null when [text] is not a timestamp. */
-    fun parse(text: String?): Long? = TODO("WP1")
+    fun parse(text: String?): Long? {
+        if (text == null) return null
+        var i = 0
+
+        // Reads exactly [n] digits at the cursor, or fails.
+        fun digits(n: Int): Int? {
+            if (i + n > text.length) return null
+            var v = 0
+            for (k in 0 until n) {
+                val c = text[i + k]
+                if (c !in '0'..'9') return null
+                v = v * 10 + (c - '0')
+            }
+            i += n
+            return v
+        }
+
+        fun eat(c: Char): Boolean = if (i < text.length && text[i] == c) { i++; true } else false
+
+        val year = digits(4) ?: return null
+        if (!eat('-')) return null
+        val month = digits(2) ?: return null
+        if (!eat('-')) return null
+        val day = digits(2) ?: return null
+        if (month !in 1..12 || day !in 1..daysIn(year, month)) return null
+        var hour = 0
+        var minute = 0
+        var second = 0
+        var millis = 0
+        var offsetMinutes = 0
+        if (i < text.length) {
+            if (!(eat('T') || eat('t') || eat(' '))) return null
+            hour = digits(2) ?: return null
+            if (!eat(':')) return null
+            minute = digits(2) ?: return null
+            if (eat(':')) {
+                second = digits(2) ?: return null
+                if (eat('.') || eat(',')) {
+                    val start = i
+                    while (i < text.length && text[i] in '0'..'9') i++
+                    if (i == start) return null
+                    // Milliseconds: the first three digits of the fraction, padded.
+                    val fraction = text.substring(start, i).padEnd(3, '0').substring(0, 3)
+                    millis = fraction.toInt()
+                }
+            }
+            if (hour > 23 || minute > 59 || second > 60) return null
+            if (i < text.length && !(eat('Z') || eat('z'))) {
+                val sign = when {
+                    eat('+') -> 1
+                    eat('-') -> -1
+                    else -> return null
+                }
+                val oh = digits(2) ?: return null
+                eat(':')
+                val om = digits(2) ?: 0
+                if (oh > 23 || om > 59) return null
+                offsetMinutes = sign * (oh * 60 + om)
+            }
+            if (i != text.length) return null
+        }
+        val days = daysFromCivil(year, month, day)
+        return ((days * 24 + hour) * 60 + minute - offsetMinutes) * 60_000L + second * 1000L + millis
+    }
+
+    private fun daysIn(year: Int, month: Int): Int = when (month) {
+        2 -> if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) 29 else 28
+        4, 6, 9, 11 -> 30
+        else -> 31
+    }
+
+    /** Days since 1970-01-01 of a proleptic Gregorian date (Howard Hinnant's algorithm). */
+    private fun daysFromCivil(year: Int, month: Int, day: Int): Long {
+        val y = if (month <= 2) year - 1 else year
+        val era = (if (y >= 0) y else y - 399) / 400
+        val yoe = y - era * 400
+        val doy = (153 * (month + (if (month > 2) -3 else 9)) + 2) / 5 + day - 1
+        val doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
+        return era * 146097L + doe - 719468L
+    }
 }
 
 // --- Query results -------------------------------------------------------------------------------------------------
