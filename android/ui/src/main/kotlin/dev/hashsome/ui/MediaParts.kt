@@ -593,7 +593,7 @@ internal class TitleRow(context: Context) : ViewGroup(context) {
         val room = maxOf(0, avail - buttonW - dotW)
         if (titleW + artistW > room) {
             if (artistW == 0) {
-                titleW = room
+                titleW = TitleFit.width(titleW, room)
             } else {
                 // They give way in proportion to what each would like.
                 val scale = room.toFloat() / (titleW + artistW)

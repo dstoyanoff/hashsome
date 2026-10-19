@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.view.Gravity
+import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -79,7 +80,10 @@ internal class ConfirmCard(context: Context, private val question: String, priva
             it.gap = 2
             it.justify = Justify.End
         }
-        buttons.addView(PillButton(context, null, "Cancel", Role.Label).also { it.onClick = { dismiss() } }, wrap())
+        buttons.addView(PillButton(context, null, "Cancel", Role.Label).also {
+            it.flat = true
+            it.onClick = { dismiss() }
+        }, wrap())
         buttons.addView(PillButton(context, null, "Go ahead", Role.Label).also {
             it.primary = true
             it.onClick = {
@@ -124,18 +128,61 @@ internal class ConfirmCard(context: Context, private val question: String, priva
 /** What a row of the speakers offers to do. */
 private class Act(val label: String, val icon: Icon, val key: String, val disabled: Boolean = false, val run: () -> Unit)
 
+/**
+ * A row's actions as ghost pills (a glyph and words, no fill until pressed: a deliberate native divergence from the web's raised pill). The
+ * pills are kept by the action's key and set in place, so a press's pending ring changes the button and nothing else about the row.
+ */
+private class Actions(context: Context, private val feedback: () -> Map<String, Feedback>) : RowLayout(context) {
+    private val pills = HashMap<String, PillButton>()
+
+    init {
+        gap = 2
+    }
+
+    fun set(acts: List<Act>) {
+        val state = feedback()
+        val keys = acts.map { it.key }
+        val gone = pills.keys.filter { it !in keys }
+        for (k in gone) pills.remove(k)?.let { removeView(it) }
+        acts.forEachIndexed { i, act ->
+            val pill = pills.getOrPut(act.key) {
+                PillButton(context, act.icon, act.label, Role.Label).also {
+                    it.flat = true
+                    it.heightDp = 32
+                    it.padUnits = 3.5f
+                    it.gapUnits = 1.5f
+                }
+            }
+            if (pill.icon != act.icon) pill.icon = act.icon
+            if (pill.label != act.label) pill.label = act.label
+            pill.contentDescription = act.label
+            val now = state[act.key]
+            pill.pending = now == Feedback.Pending
+            pill.failed = now == Feedback.Error
+            val enabled = !act.disabled && now != Feedback.Pending
+            if (pill.isEnabled != enabled) pill.isEnabled = enabled
+            pill.onClick = act.run
+            if (getChildAt(i) !== pill) {
+                if (pill.parent === this) removeView(pill)
+                addView(pill, i, wrap())
+            }
+        }
+    }
+}
+
 /** One speaker in the stream: its name and a note ("Leading"), its actions, and a volume bar under them. */
 private class StreamRow(
     context: Context,
     private val mp: MediaPlayerControl,
-    private val label: String?,
-    private val note: String?,
-    private val acts: List<PillButton>,
+    feedback: () -> Map<String, Feedback>,
 ) : BoundView(context) {
     private val name = LabelView(context, Role.BodyStrong)
     private val aside = LabelView(context, Role.Secondary, Tone.Muted)
     private val volume = VolumeParts(context, mp)
     private val level = RowLayout(context).also { it.gap = 2 }
+    private val actions = Actions(context, feedback)
+    private var label: String? = null
+    private var note: String? = null
 
     init {
         val column = ColumnLayout(context).also {
@@ -148,14 +195,20 @@ private class StreamRow(
         names.addView(name, wrap().also { it.shrink = true; it.grow = false })
         names.addView(aside, wrap())
         head.addView(names, wrap().also { it.grow = true; it.shrink = true })
-        val actions = RowLayout(context).also { it.gap = 2 }
-        acts.forEach { actions.addView(it, wrap()) }
         head.addView(actions, wrap())
         column.addView(head, across())
         level.addView(volume.bar, wrap().also { it.grow = true; it.shrink = true })
         level.addView(volume.percent, wrap())
         column.addView(level, across())
         addView(column, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+    }
+
+    /** What the row shows now; the row itself stays. */
+    fun bind(label: String?, note: String?, acts: List<Act>) {
+        this.label = label
+        this.note = note
+        actions.set(acts)
+        render()
     }
 
     override fun onAttachedToWindow() {
@@ -182,11 +235,12 @@ private class StreamRow(
 }
 
 /** One speaker that is not in the stream: its picture, name and what it is doing, and whatever its actions are. */
-private class SpeakerRow(context: Context, private val handle: EntityHandle<MediaPlayerEntity>, private val acts: List<PillButton>) : BoundView(context) {
+private class SpeakerRow(context: Context, private val handle: EntityHandle<MediaPlayerEntity>, feedback: () -> Map<String, Feedback>) : BoundView(context) {
     private val picture = SpeakerPicture(context)
     private val name = LabelView(context, Role.BodyStrong)
     private val status = LabelView(context, Role.Secondary, Tone.Muted)
     private val art = ArtworkSlot(AssetSize.Small, { dp(40) }) { picture.picture = it }
+    private val actions = Actions(context, feedback)
 
     init {
         val row = RowLayout(context).also {
@@ -199,11 +253,11 @@ private class SpeakerRow(context: Context, private val handle: EntityHandle<Medi
         text.addView(name, across())
         text.addView(status, across())
         row.addView(text, wrap().also { it.grow = true; it.shrink = true })
-        val actions = RowLayout(context).also { it.gap = 2 }
-        acts.forEach { actions.addView(it, wrap()) }
         row.addView(actions, wrap())
         addView(row, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
     }
+
+    fun bind(acts: List<Act>) = actions.set(acts)
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -234,8 +288,52 @@ private class SpeakerRow(context: Context, private val handle: EntityHandle<Medi
 }
 
 /**
+ * A place in the list: a header, a row or a note, with the collapse it is going through ([p]: 0 whole, 1 gone) as its height and fade,
+ * and the scope its row's handle lives in. Joining expands it, leaving collapses it, and the places below follow.
+ */
+private class Slot(context: Context, val key: String, val content: View, val scope: Scope, private val gapUnits: Float) : ViewGroup(context) {
+    var p = 0f
+        private set
+    var leaving = false
+    var moving = false
+    var from = 0f
+    var to = 0f
+    var startedAt = 0L
+
+    init {
+        addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+    }
+
+    fun collapse(value: Float) {
+        if (p == value) return
+        p = value
+        alpha = RowCollapse.alpha(1f, value)
+        visibility = if (value >= 1f) INVISIBLE else VISIBLE
+        requestLayout()
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val w = MeasureSpec.getSize(widthMeasureSpec)
+        content.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+        val whole = content.measuredHeight + Math.round(gapUnits * unitPx())
+        setMeasuredDimension(w, RowCollapse.size(whole, p))
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        val top = Math.round(gapUnits * unitPx())
+        content.layout(0, top, content.measuredWidth, top + content.measuredHeight)
+    }
+}
+
+/** What one place of the list should be: made once when it first appears, set (in place) on every render after. */
+private class Want(val key: String, val gap: Float, val make: (Scope) -> View, val set: (View) -> Unit)
+
+/**
  * The speakers of a player's stream: who plays together with it (a volume for each, a way to take one out), the ones playing something
  * else that it could join or add, and the quiet ones it could add. Playing something else on a speaker, or on this player, asks first.
+ *
+ * The rows are kept by what they are (a speaker in a section) and set in place as the state changes, so nothing is made again for a
+ * press, a poll or a volume; a row that joins expands and one that leaves collapses, as the queue's rows do.
  */
 open class MediaSpeakersView private constructor(context: Context, lazyControl: Lazy<SpeakersControl>, @Suppress("UNUSED_PARAMETER") marker: Unit) :
     BoundView(context) {
@@ -248,11 +346,17 @@ open class MediaSpeakersView private constructor(context: Context, lazyControl: 
     val control: SpeakersControl by lazyControl
 
     private val scroll = LibraryScroll(context)
-    private val list = ColumnLayout(context).also { it.gap = 4 }
-    private var rowScope: Scope? = null
+    private val list = ColumnLayout(context)
     private var mineScope: Scope? = null
     private var mine: MediaPlayerControl? = null
-    private var shownKey: String? = null
+
+    // Every place of the list by key, and in the order they are shown (those leaving still in it until they are gone).
+    private val slots = HashMap<String, Slot>()
+    private val order = ArrayList<Slot>()
+    private var plain: View? = null
+    private var built = false
+    private var ticking = false
+    private val frame = Runnable { step() }
 
     init {
         scroll.addView(list, FrameLayout.LayoutParams(-1, -2))
@@ -267,34 +371,19 @@ open class MediaSpeakersView private constructor(context: Context, lazyControl: 
         onDetach(control.status.listen(redraw))
         onDetach(control.feedback.listen(redraw))
         onDetach {
-            rowScope?.dispose()
+            removeCallbacks(frame)
+            ticking = false
+            clearAll()
             mineScope?.dispose()
+            mineScope = null
             mine = null
-            shownKey = null
         }
         render()
     }
 
-    private fun section(title: String, vararg rows: View): View {
-        val box = ColumnLayout(context).also { it.gap = 1 }
-        box.addView(LabelView(context, Role.Eyebrow, Tone.Muted).also { it.text = title.uppercase() }, across())
-        rows.forEach { box.addView(it, across()) }
-        return box
-    }
+    private fun header(title: String): View = LabelView(context, Role.Eyebrow, Tone.Muted).also { it.text = title.uppercase() }
 
-    private fun pill(act: Act): PillButton {
-        val state = control.feedback.value[act.key]
-        return PillButton(context, act.icon, act.label, Role.Label).also {
-            it.heightDp = 32
-            it.padUnits = 3.5f
-            it.gapUnits = 1.5f
-            it.contentDescription = act.label
-            it.pending = state == Feedback.Pending
-            it.failed = state == Feedback.Error
-            it.isEnabled = !act.disabled && state != Feedback.Pending
-            it.onClick = act.run
-        }
-    }
+    private val feedback: () -> Map<String, Feedback> = { control.feedback.value }
 
     /** This player's own control (its volume), made once for as long as the view is shown. */
     private fun mineControl(): MediaPlayerControl = mine ?: run {
@@ -307,39 +396,58 @@ open class MediaSpeakersView private constructor(context: Context, lazyControl: 
         ConfirmCard(context, title, text, go).open()
     }
 
-    /** What the rows depend on: when it is the same as what is on show, nothing is made again (a bar being dragged stays in the hand). */
-    private fun structure(): String {
-        val player = control.handle.entity
-        val group = player?.group
-        val b = StringBuilder()
-        b.append(control.handle.state.value.javaClass.simpleName).append('|').append(player?.name).append('|').append(player?.capabilities?.group)
-        b.append('|').append(player?.playback == PlaybackState.Playing)
-        b.append('|').append(group?.leader).append(group?.members)
-        control.speakers.value.forEach { b.append('|').append(it.ref).append(it.name).append(it.joined) }
-        control.status.value.forEach { (k, v) -> b.append('|').append(k).append(v) }
-        control.feedback.value.forEach { (k, v) -> b.append('|').append(k).append(v) }
-        return b.toString()
+    private fun clearAll() {
+        for (s in order) s.scope.dispose()
+        order.clear()
+        slots.clear()
+        list.removeAllViews()
+        plain = null
+        built = false
     }
 
+    /** Shows one thing in the place of the list (a skeleton, or why there is nothing to show). */
+    private fun only(view: View) {
+        clearAll()
+        plain = view
+        list.addView(view, across())
+    }
+
+    // A store update that arrives while the list is being brought up to date is run once more after it, not inside it.
+    private var busy = false
+    private var again = false
+
     private fun render() {
-        val key = structure()
-        if (key == shownKey) return
-        shownKey = key
-        rowScope?.dispose()
-        val scope = control.scope.child()
-        rowScope = scope
-        list.removeAllViews()
+        if (busy) {
+            again = true
+            return
+        }
+        busy = true
+        try {
+            do {
+                again = false
+                draw()
+            } while (again)
+        } finally {
+            busy = false
+        }
+    }
+
+    private fun draw() {
         val state = control.handle.state.value
         val player = control.handle.entity
         val me = control.handle.ref
         if (state !is HandleState.Ready || player == null || me == null) {
-            if (state is HandleState.Loading) list.addView(SkeletonList(context, 3), across()) else list.addView(message(context, mediaStatusLabel(state).orEmpty()), across())
+            only(if (state is HandleState.Loading) SkeletonList(context, 3) else message(context, mediaStatusLabel(state).orEmpty()))
             return
         }
         val own = player.name
         if (!player.capabilities.group) {
-            list.addView(message(context, "$own cannot be grouped with other speakers."), across())
+            only(message(context, "$own cannot be grouped with other speakers."))
             return
+        }
+        plain?.let {
+            list.removeView(it)
+            plain = null
         }
 
         val group = player.group
@@ -350,15 +458,14 @@ open class MediaSpeakersView private constructor(context: Context, lazyControl: 
         val handsOver = !follows && others.isNotEmpty()
         val soleHeir = if (handsOver && others.size == 1) others[0] else null
 
-        fun handleOf(ref: EntityRef): EntityHandle<MediaPlayerEntity> = if (ref == me) control.handle else EntityHandle(scope, ref, EntityKind.MediaPlayer)
-
-        val stream = ArrayList<View>()
+        val wants = ArrayList<Want>()
+        wants += Want("h:stream", 0f, { header("This stream") }, {})
         val myActs = when {
             follows -> listOf(Act("Leave", Ui.logOut, "group:reset") { control.leave() })
             soleHeir != null -> listOf(Act("Leave", Ui.logOut, "group:handover") { control.leave() })
             else -> emptyList()
         }
-        stream += StreamRow(context, mineControl(), own, null, myActs.map { pill(it) })
+        wants += Want("s:$me", 1f, { StreamRow(context, mineControl(), feedback) }, { (it as StreamRow).bind(own, null, myActs) })
         for (speaker in others) {
             val ref = speaker.ref
             val leading = ref == group?.leader
@@ -370,25 +477,127 @@ open class MediaSpeakersView private constructor(context: Context, lazyControl: 
                     add(Act("Remove", UiIcons.close, "group:remove:$ref") { control.remove(ref) })
                 }
             }
-            stream += StreamRow(context, MediaPlayerControl(handleOf(ref), scope), null, if (leading) "Leading" else null, acts.map { pill(it) })
+            wants += Want("s:$ref", 1f, { scope -> StreamRow(context, MediaPlayerControl(EntityHandle(scope, ref, EntityKind.MediaPlayer), scope), feedback) }, {
+                (it as StreamRow).bind(null, if (leading) "Leading" else null, acts)
+            })
         }
-        list.addView(section("This stream", *stream.toTypedArray()), across())
 
         val candidates = all.filter { !it.joined }
         val (elsewhere, quiet) = candidates.partition { status[it.ref]?.playsOwn == true }
         if (elsewhere.isNotEmpty()) {
-            val rows = elsewhere.map { speaker -> SpeakerRow(context, handleOf(speaker.ref), elsewhereActs(speaker, player, own, status[speaker.ref]?.available == true, status[speaker.ref]?.playing).map { pill(it) }) }
-            list.addView(section("Playing elsewhere", *rows.toTypedArray()), across())
+            wants += Want("h:elsewhere", 4f, { header("Playing elsewhere") }, {})
+            for (speaker in elsewhere) {
+                val acts = elsewhereActs(speaker, player, own, status[speaker.ref]?.available == true, status[speaker.ref]?.playing)
+                wants += Want("e:${speaker.ref}", 1f, { scope -> SpeakerRow(context, EntityHandle(scope, speaker.ref, EntityKind.MediaPlayer), feedback) }, { (it as SpeakerRow).bind(acts) })
+            }
         }
-        val quietRows: Array<View> = if (quiet.isEmpty()) {
-            arrayOf(message(context, "No other speakers to add."))
+        wants += Want("h:add", 4f, { header("Add to this stream") }, {})
+        if (quiet.isEmpty()) {
+            wants += Want("n:none", 1f, { message(context, "No other speakers to add.") }, {})
         } else {
-            quiet.map { speaker ->
+            for (speaker in quiet) {
                 val available = status[speaker.ref]?.available == true
-                SpeakerRow(context, handleOf(speaker.ref), listOf(pill(Act("Add", Ui.plus, "group:add:${speaker.ref}", disabled = !available) { control.add(speaker.ref) })))
-            }.toTypedArray()
+                val acts = listOf(Act("Add", Ui.plus, "group:add:${speaker.ref}", disabled = !available) { control.add(speaker.ref) })
+                wants += Want("q:${speaker.ref}", 1f, { scope -> SpeakerRow(context, EntityHandle(scope, speaker.ref, EntityKind.MediaPlayer), feedback) }, { (it as SpeakerRow).bind(acts) })
+            }
         }
-        list.addView(section("Add to this stream", *quietRows), across())
+        reconcile(wants)
+    }
+
+    /** Keeps the places that are still wanted (set in place), brings in the new ones and sends off the ones that are not. */
+    private fun reconcile(wants: List<Want>) {
+        val wanted = HashSet<String>()
+        for (w in wants) wanted += w.key
+        // Without motion a leaver is dropped at once, out of the list being walked.
+        for (s in order.toTypedArray()) {
+            if (s.key !in wanted && !s.leaving) {
+                s.leaving = true
+                move(s, 1f)
+            }
+        }
+        val before = order.map { it.key }
+        val arriving = ArrayList<Slot>()
+        for (w in wants) {
+            var slot = slots[w.key]
+            if (slot == null) {
+                val scope = control.scope.child()
+                slot = Slot(context, w.key, w.make(scope), scope, w.gap)
+                slots[w.key] = slot
+                // The first showing is not an arrival: only what joins afterwards expands.
+                if (built && Animation.animates) slot.collapse(1f)
+                arriving += slot
+            } else if (slot.leaving) {
+                slot.leaving = false
+                move(slot, 0f)
+            }
+            w.set(slot.content)
+        }
+        val keys = RowOrder.merge(before, wants.map { it.key })
+        order.clear()
+        // A key that is gone from the map (dropped while this ran) is skipped, never looked up as present.
+        for (k in RowOrder.live(keys) { slots.containsKey(it) }) slots[k]?.let { order += it }
+        for (i in order.indices) {
+            val slot = order[i]
+            if (list.getChildAt(i) === slot) continue
+            if (slot.parent === list) list.removeView(slot)
+            list.addView(slot, i, across())
+        }
+        built = true
+        for (slot in arriving) if (slot.p > 0f) move(slot, 0f)
+    }
+
+    /** Takes [slot] toward [to] (1 gone, 0 whole) in the queue's 160 ms, or at once when motion is off. */
+    private fun move(slot: Slot, to: Float) {
+        slot.from = slot.p
+        slot.to = to
+        if (!Animation.animates || !isAttachedToWindow || slot.p == to) {
+            slot.moving = false
+            slot.collapse(to)
+            if (slot.leaving) drop(slot)
+            return
+        }
+        slot.startedAt = SystemClock.uptimeMillis()
+        slot.moving = true
+        // One frame callback moves every place that is going, each on its own clock (not an animator: the device's animation scale must
+        // not cut a collapse short), and nothing is made for a frame.
+        if (!ticking) {
+            ticking = true
+            postOnAnimation(frame)
+        }
+    }
+
+    private fun step() {
+        val now = SystemClock.uptimeMillis()
+        var done = false
+        var going = false
+        for (i in order.indices) {
+            val slot = order[i]
+            if (!slot.moving) continue
+            val elapsed = now - slot.startedAt
+            slot.collapse(RowCollapse.at(slot.from, slot.to, elapsed))
+            if (elapsed >= RowCollapse.MS) {
+                slot.moving = false
+                if (slot.leaving) done = true
+            } else {
+                going = true
+            }
+        }
+        if (done) {
+            var i = order.size - 1
+            while (i >= 0) {
+                val slot = order[i]
+                if (slot.leaving && !slot.moving) drop(slot)
+                i--
+            }
+        }
+        if (going) postOnAnimation(frame) else ticking = false
+    }
+
+    private fun drop(slot: Slot) {
+        order.remove(slot)
+        slots.remove(slot.key)
+        list.removeView(slot)
+        slot.scope.dispose()
     }
 
     private fun elsewhereActs(speaker: Speaker, player: MediaPlayerEntity, own: String, available: Boolean, playing: String?): List<Act> {

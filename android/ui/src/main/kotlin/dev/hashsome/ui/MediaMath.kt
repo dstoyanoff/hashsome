@@ -219,6 +219,51 @@ object QueueDrag {
 }
 
 /** A queue row leaving (or coming back, when the player refused): it fades and gives up its height, ease-out, in [MS] ms. */
+/**
+ * How wide a lone title is drawn in a [room] that is a little short of what it measures. The face's advances measure about 2% wider on
+ * the device than the browser lays the same words out (137 px against 134 for "Nothing playing" at 12 px x 1.5), so a title that
+ * overflows by no more than that is drawn whole, into the gap beside it, rather than ending in an ellipsis the web does not show.
+ */
+object TitleFit {
+    const val SLACK = 0.025f
+
+    /** The most a title of [natural] px may overflow its room and still be drawn whole. */
+    fun slack(natural: Int): Int = Math.ceil((natural * SLACK).toDouble()).toInt()
+
+    /** The width to give a title of [natural] px in [room] px: its own when it is within the slack, else the room (it ends in an ellipsis). */
+    fun width(natural: Int, room: Int): Int = if (natural <= room + slack(natural)) natural else room
+}
+
+/** The order of a list whose places come and go: the ones that stay in their new order, a leaver where it was, a newcomer where it belongs. */
+object RowOrder {
+    /**
+     * [wanted] in order, with each key of [old] that is not in it kept right after the key that preceded it in [old] (or first, when none
+     * that stays did), so a row that is leaving collapses where it stood while the rest take their places.
+     */
+    fun merge(old: List<String>, wanted: List<String>): List<String> {
+        val keep = wanted.toHashSet()
+        val after = HashMap<String?, ArrayList<String>>()
+        var anchor: String? = null
+        for (k in old) {
+            if (k in keep) {
+                anchor = k
+            } else {
+                after.getOrPut(anchor) { ArrayList() }.add(k)
+            }
+        }
+        val out = ArrayList<String>(wanted.size + old.size)
+        after[null]?.let { out.addAll(it) }
+        for (k in wanted) {
+            out.add(k)
+            after[k]?.let { out.addAll(it) }
+        }
+        return out
+    }
+
+    /** [keys] without those that are no longer [alive] (a row dropped while the list was being brought up to date). */
+    fun live(keys: List<String>, alive: (String) -> Boolean): List<String> = keys.filter(alive)
+}
+
 object RowCollapse {
     const val MS = 160L
 
