@@ -24,7 +24,10 @@ object DemoLaunch {
             }
         }
         val filter = android.content.IntentFilter("dev.hashsome.PROVISION")
-        if (android.os.Build.VERSION.SDK_INT >= 33) app.registerReceiver(provision, filter, Context.RECEIVER_EXPORTED) else app.registerReceiver(provision, filter)
+        // Only in a debuggable build: an exported receiver that changes what the app shows is for development.
+        if (app.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+            if (android.os.Build.VERSION.SDK_INT >= 33) app.registerReceiver(provision, filter, Context.RECEIVER_EXPORTED) else app.registerReceiver(provision, filter)
+        }
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
                 val intent = activity.intent

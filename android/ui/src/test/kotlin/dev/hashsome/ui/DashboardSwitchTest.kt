@@ -83,4 +83,15 @@ class DashboardSwitchTest {
         assertEquals(listOf("drop a"), events)
         assertNull(pickDashboard(emptyList(), "x") {})
     }
+
+    @Test
+    fun `a paused switch ignores the setting and catches up on resume`() {
+        val s = switch()
+        events.clear()
+        s.pause()
+        settings.dashboard.set("b")
+        assertEquals(emptyList<String>(), events)
+        s.start(settings.dashboard)
+        assertEquals(listOf("drop a", "make b", "page b/", "show b"), events)
+    }
 }

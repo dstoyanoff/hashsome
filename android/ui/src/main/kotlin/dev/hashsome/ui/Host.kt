@@ -466,10 +466,12 @@ open class DashboardActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        switch?.start(Hashsome.settings.dashboard)
         Hashsome.screenPolicy.onResume(this)
     }
 
     override fun onPause() {
+        switch?.pause()
         Hashsome.screenPolicy.onPause(this)
         super.onPause()
     }
@@ -505,15 +507,25 @@ internal class DashboardSwitch<H>(
     private var current: H? = null
     private var cancel: Cancel = {}
 
-    /** Shows the chosen dashboard, then follows [setting]. */
+    private var following = false
+
+    /** Shows the chosen dashboard, then follows [setting]. Again after [pause]: catches up with what changed meanwhile. */
     fun start(setting: Store<String?>) {
+        if (following) return
+        following = true
         apply()
         cancel = setting.listen { apply() }
     }
 
-    fun stop() {
+    /** Stops following (the activity left the front: an old one must not rebuild a host or dismiss the new one's overlays). The dashboard stays. */
+    fun pause() {
         cancel()
         cancel = {}
+        following = false
+    }
+
+    fun stop() {
+        pause()
         current?.let(drop)
         current = null
         currentId = null
