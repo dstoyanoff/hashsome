@@ -614,6 +614,7 @@ describe('androidCommand (dry run)', () => {
         await expect(androidCommand(['deploy'], root, m.exec, sleep)).rejects.toThrow(
           'deploy failed',
         );
+
         expect(m.seen.some((l) => l.includes(' push ') || l.includes('remount'))).toBe(false);
       });
 
