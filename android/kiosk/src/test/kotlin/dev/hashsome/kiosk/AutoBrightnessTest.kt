@@ -128,4 +128,56 @@ class AutoBrightnessTest {
         assertEquals(10, DeviceProfile.ShellyJenna.floor)
         assertEquals(10, DeviceProfile.Generic.floor)
     }
+
+    @Test
+    fun `without a reading the minimum is applied after the grace`() {
+        auto.start()
+        sched.advance(AutoBrightness.INITIAL_GRACE_MS - 1)
+        assertEquals(emptyList<Int>(), screen.writes)
+        sched.advance(1)
+        assertEquals(listOf(minLevel), screen.writes)
+    }
+
+    @Test
+    fun `without a reading the last level written is applied after the grace`() {
+        val last = Store<Int?>(177)
+        AutoBrightness(lux, screen, min, last).also { it.scheduler = sched }.start()
+        sched.advance(AutoBrightness.INITIAL_GRACE_MS)
+        assertEquals(listOf(177), screen.writes)
+    }
+
+    @Test
+    fun `a reading inside the grace takes over and the grace writes nothing`() {
+        auto.start()
+        sched.advance(200)
+        lux.set(500f)
+        sched.advance(5_000)
+        assertEquals(listOf(255), screen.writes)
+    }
+
+    @Test
+    fun `a reading after the grace takes over from the initial level`() {
+        auto.start()
+        sched.advance(AutoBrightness.INITIAL_GRACE_MS)
+        lux.set(500f)
+        assertEquals(listOf(minLevel, 255), screen.writes)
+    }
+
+    @Test
+    fun `the screen coming on with no lux known applies the initial level`() {
+        auto.start()
+        sched.advance(1_000)
+        screen.off()
+        sched.advance(10_000)
+        screen.wake()
+        assertEquals(listOf(minLevel, minLevel), screen.writes)
+    }
+
+    @Test
+    fun `what is written is remembered for the next start`() {
+        val last = Store<Int?>(null)
+        AutoBrightness(lux, screen, min, last).also { it.scheduler = sched }.apply { start() }
+        lux.set(500f)
+        assertEquals(255, last.value)
+    }
 }

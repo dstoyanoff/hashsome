@@ -713,9 +713,24 @@ open class BarView(context: Context) : View(context) {
     }
 }
 
+/** The timing of the status dot's long press, as pure math. */
+object StatusDotHold {
+    const val DEFAULT_MS = 5_000L
+
+    /** How far the finger may drift, in px, before the hold is given up (the platform's touch slop). */
+    fun withinSlop(dx: Float, dy: Float, slop: Float): Boolean = dx * dx + dy * dy <= slop * slop
+
+    /** The fill of the ring, 0..1, after [elapsedMs] of a hold of [holdMs]. */
+    fun progress(elapsedMs: Long, holdMs: Long): Float = if (holdMs <= 0) 1f else (elapsedMs.toFloat() / holdMs).coerceIn(0f, 1f)
+
+    /** Whether a hold of [holdMs] has completed after [elapsedMs]. */
+    fun completed(elapsedMs: Long, holdMs: Long): Boolean = elapsedMs >= holdMs
+}
+
 /**
- * A small dot with a ring round it: green when [ok], red otherwise. The settings gesture listens for taps on it
- * (`TouchListener.onStatusDotTap`).
+ * A small dot with a ring round it: green when [ok], red otherwise. A tap reaches `TouchListener.onStatusDotTap`; pressing and
+ * holding it still for `TouchListener.statusDotHoldMs` (5 s) fills a ring round it and then calls `TouchListener.onStatusDotHold`
+ * (the kiosk's settings gesture). A completed hold swallows the release, so no tap and no popover follow it.
  */
 open class StatusDot(context: Context) : View(context) {
     var ok: Boolean = true
@@ -741,9 +756,75 @@ open class StatusDot(context: Context) : View(context) {
     private val tone = EasedColor(this, theme.palette.success)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
+    private val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+    private var downX = 0f
+    private var downY = 0f
+    private var ring: ValueAnimator? = null
+    private var ringProgress = 0f
+    private var held = false
+
     init {
         isClickable = true
         setOnClickListener { Hashsome.touchListener.onStatusDotTap() }
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downX = event.x
+                downY = event.y
+                held = false
+                startRing(Hashsome.touchListener.statusDotHoldMs)
+            }
+            MotionEvent.ACTION_MOVE -> if (!StatusDotHold.withinSlop(event.x - downX, event.y - downY, slop)) stopRing()
+            MotionEvent.ACTION_UP -> {
+                stopRing()
+                if (held) {
+                    held = false
+                    return true
+                }
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                stopRing()
+                held = false
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+
+    private fun startRing(holdMs: Long) {
+        stopRing()
+        ring = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = holdMs
+            interpolator = LinearInterpolator()
+            addUpdateListener {
+                ringProgress = StatusDotHold.progress(it.currentPlayTime, holdMs)
+                invalidate()
+                if (StatusDotHold.completed(it.currentPlayTime, holdMs) && !held) {
+                    held = true
+                    ring = null
+                    cancel()
+                    ringProgress = 0f
+                    invalidate()
+                    Hashsome.touchListener.onStatusDotHold()
+                }
+            }
+            start()
+        }
+    }
+
+    private fun stopRing() {
+        ring?.cancel()
+        ring = null
+        if (ringProgress != 0f) {
+            ringProgress = 0f
+            invalidate()
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        stopRing()
+        super.onDetachedFromWindow()
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) = setMeasuredDimension(dp(32), dp(32))
@@ -754,6 +835,15 @@ open class StatusDot(context: Context) : View(context) {
         canvas.drawCircle(c, c, dp(10f), paint)
         paint.color = tone.value
         canvas.drawCircle(c, c, dp(6f), paint)
+        if (ringProgress > 0f) {
+            val r = dp(14f)
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = dp(2f)
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.color = theme.palette.accent
+            canvas.drawArc(c - r, c - r, c + r, c + r, -90f, 360f * ringProgress, false, paint)
+            paint.style = Paint.Style.FILL
+        }
     }
 }
 

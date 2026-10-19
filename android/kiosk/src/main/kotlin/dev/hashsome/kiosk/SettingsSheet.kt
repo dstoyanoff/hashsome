@@ -106,7 +106,7 @@ private class SheetContent(
     }
 
     private fun build() {
-        val gesture = if (Kiosk.config.settingsGesture == Gesture.FiveTapsOnStatusDot) "five taps on the status dot, or two fingers held for 2 s" else "two fingers held for 2 s, or five taps on the status dot"
+        val gesture = if (Kiosk.config.settingsGesture is Gesture.HoldStatusDot) "the status dot held for 5 s, or two fingers held for 2 s" else "two fingers held for 2 s, or the status dot held for 5 s"
         label("Settings: opened by $gesture.", dim, 13f)
 
         section("Connection")

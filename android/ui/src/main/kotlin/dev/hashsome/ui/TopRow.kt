@@ -163,7 +163,7 @@ open class Clock(context: Context, var format: ClockFormat = ClockFormat.Auto) :
 
 /**
  * One dot for the link to the runtime and every integration: green when all are up, warm while something connects, red when
- * something is down. A tap says which (the popover) and also reaches `TouchListener.onStatusDotTap`, which the settings gesture counts.
+ * something is down. A tap says which (the popover) and also reaches `TouchListener.onStatusDotTap`; holding it for 5 s reaches `onStatusDotHold` (the settings gesture) instead, with no popover.
  */
 open class SystemStatus(context: Context, val health: ConnectionHealth) : BoundView(context) {
     private val dot = StatusDot(context)

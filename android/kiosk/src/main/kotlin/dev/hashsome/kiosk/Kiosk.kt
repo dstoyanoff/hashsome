@@ -21,12 +21,18 @@ import java.lang.ref.WeakReference
 // `kiosk` depends on `ui` and implements the plug points `ui` exposes on `HashsomeApp`; `ui` never imports this module.
 
 /** How the settings sheet is opened. Both gestures are always available; this picks the primary one the docs and the sheet's hint name. */
-enum class Gesture {
-    /** Five taps on the status dot within 2 s. Falls back to [TwoFingerHold] on pages without a top row. */
-    FiveTapsOnStatusDot,
+sealed interface Gesture {
+    /** The status dot pressed and held still for [ms] (5 s). Falls back to [TwoFingerHold] on pages without a top row. */
+    data class HoldStatusDot(val ms: Long = 5_000) : Gesture
 
     /** Two fingers held anywhere for 2 s. */
-    TwoFingerHold,
+    data object TwoFingerHold : Gesture
+
+    companion object {
+        /** The gesture before the status dot's hold replaced the five taps (they did not work: the popover's scrim took the taps after the first). */
+        @Deprecated("Five taps are gone; the status dot is held instead.", ReplaceWith("Gesture.HoldStatusDot()"))
+        val FiveTapsOnStatusDot: Gesture = HoldStatusDot()
+    }
 }
 
 /**
@@ -38,7 +44,7 @@ data class KioskConfig(
     val autoBrightness: Boolean = true,
     /** Percent of the panel's range. */
     val minBrightness: Int = 8,
-    val settingsGesture: Gesture = Gesture.FiveTapsOnStatusDot,
+    val settingsGesture: Gesture = Gesture.HoldStatusDot(),
 )
 
 /**
@@ -102,6 +108,10 @@ internal object Kiosk {
     /** The dashboard activity that is showing, for the sheet and the cover. */
     var activity: WeakReference<Activity>? = null
 
+    /** Whether the dashboard activity is the resumed one right now (between its onResume and onPause). */
+    @Volatile
+    var dashboardResumed: Boolean = false
+
     /** Starts the foreground service. Called from `Application.onCreate`, the boot receiver and provisioning. */
     fun startService(context: Context) {
         val intent = Intent(context, KioskService::class.java)
@@ -124,10 +134,12 @@ internal class KioskScreenPolicy(private val next: ScreenPolicy) : ScreenPolicy 
 
     override fun onResume(activity: Activity) {
         next.onResume(activity)
+        Kiosk.dashboardResumed = true
         shown(activity)
     }
 
     override fun onPause(activity: Activity) {
+        Kiosk.dashboardResumed = false
         next.onPause(activity)
     }
 
@@ -150,11 +162,10 @@ internal class KioskScreenPolicy(private val next: ScreenPolicy) : ScreenPolicy 
 }
 
 /**
- * Feeds touches to [Presence], and opens the settings sheet by either gesture: five taps on the status dot within 2 s, or two
+ * Feeds touches to [Presence], and opens the settings sheet by either gesture: the status dot held for 5 s, or two
  * fingers held for 2 s. [next] is the consumer's listener, which also hears everything.
  */
 internal class KioskTouchListener(private val next: TouchListener, private val scheduler: Scheduler) : TouchListener {
-    private val taps = ArrayDeque<Long>()
     private var hold: (() -> Unit)? = null
 
     /** The finger that put down while the panel was asleep woke it; the rest of that gesture is swallowed too, so no tile under it is pressed. */
@@ -181,12 +192,15 @@ internal class KioskTouchListener(private val next: TouchListener, private val s
         return swallow || consumedByNext
     }
 
-    override fun onStatusDotTap() {
-        next.onStatusDotTap()
-        val opens = fiveTaps(taps, scheduler.now())
-        Log.i("touch", "status dot tapped (${taps.size} in a row)${if (opens) ": opening the settings" else ""}")
-        if (opens) openSheet()
+    override fun onStatusDotTap() = next.onStatusDotTap()
+
+    override fun onStatusDotHold() {
+        next.onStatusDotHold()
+        Log.i("touch", "status dot held: opening the settings")
+        openSheet()
     }
+
+    override val statusDotHoldMs: Long get() = (Kiosk.config.settingsGesture as? Gesture.HoldStatusDot)?.ms ?: next.statusDotHoldMs
 
     private fun cancelHold() {
         hold?.invoke()
@@ -199,19 +213,6 @@ internal class KioskTouchListener(private val next: TouchListener, private val s
 
     companion object {
         const val HOLD_MS = 2_000L
-        const val TAPS = 5
-        const val TAPS_WINDOW_MS = 2_000L
-
-        /** Records a tap at [now] and says whether it is the fifth within [TAPS_WINDOW_MS]; the count starts over after it. */
-        internal fun fiveTaps(taps: ArrayDeque<Long>, now: Long): Boolean {
-            taps.addLast(now)
-            while (taps.size > TAPS) taps.removeFirst()
-            if (taps.size == TAPS && now - taps.first() <= TAPS_WINDOW_MS) {
-                taps.clear()
-                return true
-            }
-            return false
-        }
     }
 }
 

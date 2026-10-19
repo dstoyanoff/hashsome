@@ -68,4 +68,10 @@ class EntityStatusTest {
         scheduler.runCurrent()
         assertTrue(status.value is HandleState.Unavailable)
     }
+
+    @Test
+    fun `a handle still loading says so, only a known-unavailable one says Unavailable`() {
+        assertEquals("…", StatusLabels.of(HandleState.Loading))
+        assertEquals("Unavailable", StatusLabels.of(HandleState.Unavailable(null)))
+    }
 }

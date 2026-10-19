@@ -204,4 +204,30 @@ class NightModeTest {
         mode.sleep()
         assertTrue(mode.asleep)
     }
+
+    @Test
+    fun `a backlight raised by someone else while asleep is a wake`() {
+        val mode = night(idleMs = 10_000, on = true)
+        sched.advance(10_000)
+        assertEquals(NightState.NightAsleep, mode.state.value)
+        sched.advance(10_000)
+        assertEquals(1, screen.offs)
+        assertEquals(0, screen.wakes)
+        screen.lit = true
+        sched.advance(2_000)
+        assertEquals(1, screen.wakes)
+        assertEquals(ScreenState.On, screen.state.value)
+        assertTrue(mode.state.value is NightState.NightAwake)
+        // The idle timer runs again.
+        sched.advance(10_000)
+        assertEquals(NightState.NightAsleep, mode.state.value)
+    }
+
+    @Test
+    fun `a dark panel nobody lit stays asleep`() {
+        val mode = night(idleMs = 10_000, on = true)
+        sched.advance(60_000)
+        assertEquals(NightState.NightAsleep, mode.state.value)
+        assertEquals(0, screen.wakes)
+    }
 }
