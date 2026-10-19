@@ -85,3 +85,19 @@ class OverlayTapTest {
         org.junit.Assert.assertFalse(OverlayTap.counts(20f, 58f, 45f, 45f, 12f))
     }
 }
+
+class TouchDebugTest {
+    @org.junit.Test
+    fun `a gesture is called by what took it`() {
+        org.junit.Assert.assertEquals("tap", TouchDebug.classify(2f, tapped = true, pulled = false, downOnScroll = false))
+        org.junit.Assert.assertEquals("pull", TouchDebug.classify(80f, tapped = false, pulled = true, downOnScroll = false))
+        org.junit.Assert.assertEquals("scroll", TouchDebug.classify(30f, tapped = false, pulled = false, downOnScroll = true))
+        org.junit.Assert.assertEquals("ignored", TouchDebug.classify(3f, tapped = false, pulled = false, downOnScroll = true))
+        org.junit.Assert.assertEquals("ignored", TouchDebug.classify(40f, tapped = false, pulled = false, downOnScroll = false))
+    }
+
+    @org.junit.Test
+    fun `a number is written to a tenth`() {
+        org.junit.Assert.assertEquals("12.3", TouchDebug.fmt(12.34f))
+    }
+}

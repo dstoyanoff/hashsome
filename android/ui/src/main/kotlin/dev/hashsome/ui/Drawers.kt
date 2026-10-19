@@ -142,6 +142,7 @@ object DrawerHost {
     private fun scrolled(context: Context, body: View): View = ScrollView(context).also {
         it.isFillViewport = false
         it.isVerticalScrollBarEnabled = false
+        it.tag = "scroll body"
         it.overScrollMode = View.OVER_SCROLL_NEVER
         it.addView(body, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
     }

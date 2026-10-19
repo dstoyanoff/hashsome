@@ -78,6 +78,19 @@ abstract class Overlay(context: Context) : BoundView(context) {
 
     var onDismissed: (() -> Unit)? = null
 
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (!TouchDebug.enabled) return super.dispatchTouchEvent(event)
+        val over = TouchDebug.viewAt(this, event.x, event.y)
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) TouchDebug.began(event, over)
+        TouchDebug.log {
+            "${MotionEvent.actionToString(event.actionMasked)} at (${TouchDebug.fmt(event.rawX / screenDensity)}, ${TouchDebug.fmt(event.rawY / screenDensity)}) dp, " +
+                "pointers ${event.pointerCount}, t ${event.eventTime}, over ${TouchDebug.name(over)}"
+        }
+        val handled = super.dispatchTouchEvent(event)
+        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) TouchDebug.ended(event, over)
+        return handled
+    }
+
     /** The name in the title row (nothing when empty). */
     var title: CharSequence = ""
 
@@ -91,6 +104,7 @@ abstract class Overlay(context: Context) : BoundView(context) {
     protected val scrim = object : View(context) {
         override fun hasOverlappingRendering(): Boolean = false
     }.apply {
+        tag = "scrim"
         setBackgroundColor(SCRIM)
         setOnClickListener { dismiss() }
     }
@@ -161,9 +175,9 @@ abstract class Overlay(context: Context) : BoundView(context) {
 
     /** The close button every panel has. */
     protected fun closeButton(): View = OverlayAction(context, UiIcons.close) {
-        android.util.Log.d("hashsome-drawer", "close button tapped")
+        TouchDebug.tapped()
         dismiss()
-    }
+    }.also { it.tag = "close X" }
 
     internal companion object {
         const val ACTION = 30
@@ -202,6 +216,8 @@ internal class OverlayAction(context: Context, private val icon: Icon, private v
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
     private var glyph = iconDrawable(icon)
+    private var pressX = 0f
+    private var pressY = 0f
 
     init {
         isClickable = true
@@ -232,7 +248,21 @@ internal class OverlayAction(context: Context, private val icon: Icon, private v
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         // A tap that lands a finger's width off the 30 dp square (a fingertip is wider than the button) still counts.
-        if (event.actionMasked == MotionEvent.ACTION_UP && OverlayTap.counts(event.x, event.y, width.toFloat(), height.toFloat(), dp(OverlayTap.SLOP_DP))) onTap()
+        val inside = contains(event.x, event.y)
+        val counts = OverlayTap.counts(event.x, event.y, width.toFloat(), height.toFloat(), dp(OverlayTap.SLOP_DP))
+        if (TouchDebug.enabled) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    pressX = event.x
+                    pressY = event.y
+                    TouchDebug.log { "X: DOWN at (${TouchDebug.fmt(event.x / screenDensity)}, ${TouchDebug.fmt(event.y / screenDensity)}) dp in its ${TouchDebug.fmt(width / screenDensity)} dp square" }
+                }
+                MotionEvent.ACTION_MOVE -> TouchDebug.log { "X: MOVE ${TouchDebug.fmt(Math.hypot((event.x - pressX).toDouble(), (event.y - pressY).toDouble()).toFloat() / screenDensity)} dp from DOWN, inside $inside" }
+                MotionEvent.ACTION_UP -> TouchDebug.log { "X: UP inside the square: $inside, within the ${OverlayTap.SLOP_DP.toInt()} dp slop: $counts -> ${if (counts) "tap" else "outside"}" }
+                MotionEvent.ACTION_CANCEL -> TouchDebug.log { "X: CANCEL (the parent took the gesture)" }
+            }
+        }
+        if (event.actionMasked == MotionEvent.ACTION_UP && counts) onTap()
         return true
     }
 }
@@ -431,6 +461,7 @@ open class Sheet(context: Context) : Overlay(context) {
             val side = Math.round(5 * u)
             setMargins(side, Math.round(2 * u), side, Math.round(3 * u))
         })
+        handle.tag = "handle"
         handle.setOnTouchListener { _, event -> pull(event) }
         // Above the content in touch order too, so that nothing the body lays out over the header's edge can take a tap meant for its buttons.
         handle.translationZ = dp(1f)
@@ -460,8 +491,12 @@ open class Sheet(context: Context) : Overlay(context) {
     /** The pull-down gesture of the web's `useSheetPull`: follows the finger down only, lets go past 100 dp or faster than 0.5 dp/ms, else springs back. */
     private fun pull(event: MotionEvent): Boolean {
         val p = panel ?: return false
+        if (TouchDebug.enabled && event.actionMasked != MotionEvent.ACTION_DOWN) {
+            TouchDebug.log { "pull: ${MotionEvent.actionToString(event.actionMasked)} dy ${TouchDebug.fmt((event.rawY - pullStart) / screenDensity)} dp, speed ${TouchDebug.fmt(pullSpeed / screenDensity)} dp/ms" }
+        }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                TouchDebug.log { "pull: tracking starts (no slop: the sheet follows the finger from the first pixel; dismisses past 100 dp or 0.5 dp/ms)" }
                 pullStart = event.rawY
                 pullLast = event.rawY
                 pullAt = event.eventTime
@@ -479,7 +514,10 @@ open class Sheet(context: Context) : Overlay(context) {
 
             MotionEvent.ACTION_UP -> {
                 val offset = maxOf(0f, event.rawY - pullStart)
-                if (SheetPull.dismisses(offset / screenDensity, pullSpeed / screenDensity)) dismiss() else springBack()
+                val gone = SheetPull.dismisses(offset / screenDensity, pullSpeed / screenDensity)
+                TouchDebug.log { "pull: UP offset ${TouchDebug.fmt(offset / screenDensity)} dp -> ${if (gone) "dismiss" else "spring back"}" }
+                if (offset > 0f) TouchDebug.pulled()
+                if (gone) dismiss() else springBack()
             }
 
             MotionEvent.ACTION_CANCEL -> springBack()
