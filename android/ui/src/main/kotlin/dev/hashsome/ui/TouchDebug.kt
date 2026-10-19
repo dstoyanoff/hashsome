@@ -8,12 +8,12 @@ import android.view.ViewGroup
 /**
  * Temporary diagnostics for the touches a drawer or sheet gets (tag `hashsome-touch`, `Log.e` so a display's log shows it): every event
  * with the view that is under it, what the pull-to-dismiss and the close button make of it, and one summary line per gesture. Off with
- * [enabled] (a settings switch can bind to it; `kiosk` owns the settings, `ui` only has the flag). Nothing is built while it is off.
+ * [enabled] (`kiosk`'s `Settings.debug.touch` binds to it; `ui` only has the flag). Nothing is built while it is off.
  */
 object TouchDebug {
-    /** On by default for now; set false to silence it. */
+    /** Off; the kiosk's `Settings.debug.touch` (a switch in the settings sheet's Debug group) turns it on. */
     @JvmField
-    var enabled: Boolean = true
+    var enabled: Boolean = false
 
     internal const val TAG = "hashsome-touch"
 

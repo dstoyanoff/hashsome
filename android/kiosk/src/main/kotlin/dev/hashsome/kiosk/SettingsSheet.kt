@@ -179,6 +179,7 @@ private class SheetContent(
 
         section("Debug")
         switch("Module grid overlay", settings.debug.grid)
+        switch("Touch log (logcat tag hashsome-touch)", settings.debug.touch)
         info("Device admin") { show -> show(if (DeviceAdmin.isActive(ctx)) "active" else "not active"); {} }
         // Restart device only where the device can be rebooted (probed after the service starts, so it may appear a moment after the sheet opens).
         val restart = confirmButton("Restart device", "Tap again to restart the device") { actions.restartDevice() }
