@@ -109,6 +109,8 @@ class KioskService : Service() {
         closers += presence.near.listenNow { state.occupied.set(it) }
         closers += screen.state.listenNow { state.sleeping.set(it == ScreenState.Off) }
 
+        Kiosk.probeReboot(this, profile)
+
         val bridge = MqttBridge(Settings, state, Kiosk.actions, PahoMqttLink(sched), Hashsome.app.dashboards.map { it.id })
         bridge.scheduler = sched
         bridge.appVersion = appVersion(this)
@@ -334,6 +336,62 @@ class WatchdogReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Log.e("service", "watchdog: the service stopped ticking, starting it")
         Kiosk.startService(context)
+    }
+}
+
+/**
+ * Restarting the app: a one-shot alarm [DELAY_MS] ahead that starts [KioskService] (through [WatchdogReceiver], like the watchdog, so
+ * the boot gate of a Shelly profile applies as to any start; keep-in-front then brings the dashboard back), then this process ends.
+ * What the device does is passed in, so the order and the time are tested.
+ */
+internal class AppRestarter(
+    private val alarm: RestartAlarm,
+    private val clock: () -> Long,
+    private val finish: () -> Unit,
+    private val kill: () -> Unit,
+) {
+    fun restart() {
+        // Without the alarm the kill would leave a dark display (START_STICKY may bring the service back, but do not count on it).
+        if (!alarm.schedule(clock() + DELAY_MS)) {
+            Log.w("kiosk", "restart: could not schedule the start, staying up")
+            return
+        }
+        Log.i("kiosk", "restarting the app in ${DELAY_MS} ms")
+        finish()
+        kill()
+    }
+
+    companion object {
+        const val DELAY_MS = 1_500L
+    }
+}
+
+/** The one-shot alarm of [AppRestarter]; false when it could not be set. */
+internal fun interface RestartAlarm {
+    fun schedule(atElapsedMs: Long): Boolean
+}
+
+internal fun RestartAlarm(context: Context) = RestartAlarm { at ->
+    val alarms = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    val pending = PendingIntent.getBroadcast(
+        context, 1, Intent(context, WatchdogReceiver::class.java),
+        PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0),
+    )
+    try {
+        if (Build.VERSION.SDK_INT >= 23) {
+            try {
+                alarms.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, pending)
+            } catch (e: SecurityException) {
+                // Android 12+ without the exact-alarm permission: an inexact one is still a start.
+                alarms.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, pending)
+            }
+        } else {
+            alarms.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, pending)
+        }
+        true
+    } catch (e: Exception) {
+        Log.w("service", "could not schedule the restart: ${e.message}")
+        false
     }
 }
 

@@ -62,6 +62,7 @@ class KioskExtension(val config: KioskConfig) : AppExtension {
     override fun install(app: Application, hashsome: Hashsome) {
         Settings.init(app, config)
         Kiosk.config = config
+        Kiosk.appContext = app
         // The kiosk's plug points sit in front of the consumer's, which keep working.
         hashsome.screenPolicy = KioskScreenPolicy(hashsome.screenPolicy)
         hashsome.touchListener = KioskTouchListener(hashsome.touchListener, mainScheduler())
@@ -86,6 +87,9 @@ internal object Kiosk {
         link = Store("Not connected"),
     )
 
+    /** [Reboot.available] of whichever [reboot] is current, as one store the sheet and the bridge can hold. */
+    private val rebootAvailable = Store(false)
+
     val actions = object : KioskActions {
         override fun wake() {
             nightMode?.wake()
@@ -100,10 +104,45 @@ internal object Kiosk {
             Hashsome.reconnect()
         }
 
-        override fun rebootIfPossible() {
-            // No display gives the app a shell, and nothing offers this to Home Assistant (see MqttBridge).
-            Log.w("kiosk", "reboot is not available")
+        override fun restartApp() = restartApp(Kiosk.appContext)
+
+        override fun restartDevice() {
+            reboot?.rebootIfPossible() ?: Log.w("kiosk", "reboot is not available")
         }
+
+        override val canRestartDevice: Store<Boolean> = rebootAvailable
+    }
+
+    /** Set by [KioskExtension]; what the restart needs to schedule an alarm. */
+    @Volatile
+    var appContext: Context? = null
+
+    /** The ways to reboot, probed once the service runs (and again when the profile changes). */
+    @Volatile
+    var reboot: Reboot? = null
+    private var rebootWatch: dev.hashsome.client.Cancel? = null
+
+    /** Probes the reboot paths of [profile]; the result lands in [KioskActions.canRestartDevice]. */
+    fun probeReboot(context: Context, profile: DeviceProfile) {
+        rebootWatch?.invoke()
+        val r = Reboot(DeviceRebootBackend(context))
+        rebootWatch = r.available.listenNow { rebootAvailable.set(it) }
+        reboot = r
+        r.probe(shelly = profile.settlesAtBoot)
+    }
+
+    /** Schedules the service's start and ends this process (see [AppRestarter]). */
+    internal fun restartApp(context: Context?) {
+        val app = context ?: run {
+            Log.w("kiosk", "restart: no context")
+            return
+        }
+        AppRestarter(
+            alarm = RestartAlarm(app),
+            clock = { android.os.SystemClock.elapsedRealtime() },
+            finish = { activity?.get()?.finishAffinity() },
+            kill = { android.os.Process.killProcess(android.os.Process.myPid()) },
+        ).restart()
     }
 
     /** The dashboard activity that is showing, for the sheet and the cover. */

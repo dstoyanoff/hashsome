@@ -63,6 +63,11 @@ Publishing goes to GitHub Packages (`https://maven.pkg.github.com/dstoyanoff/has
 
 Each module publishes its `release` AAR with sources, under group `dev.hashsome` and the module's name as the artifact id.
 
+## `kiosk`: restarting from the settings sheet and Home Assistant
+
+- **Restart app** (Connection group; MQTT button `restart_app`): schedules a one-shot alarm 1.5 s ahead that starts `KioskService` (the boot gate of a Shelly profile applies as to any start), then ends the process; the dashboard comes back with the service.
+- **Restart device** (Debug group, tap twice; MQTT button `restart_device`): shown only where a reboot is possible, probed once the service runs: the display's own Shelly RPC (`/rpc/Shelly.Reboot` on 127.0.0.1:80) on a Shelly profile, or `PowerManager.reboot` / the device-owner reboot where the app holds `REBOOT` or is device owner.
+
 ## How `example/android` consumes it
 
 `example/android` is its own Gradle build, like a consumer's repo. Its `settings.gradle.kts` has
