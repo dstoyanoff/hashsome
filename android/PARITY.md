@@ -48,7 +48,7 @@ Statuses: `native` (a Kotlin counterpart exists; `native:<Name>` when it is name
 | `IconButton`       | component | planned  |                      |
 | `TaskTile`         | component | native   |                      |
 | `ConfirmDialog`    | component | native   |                      |
-| `EnergyChart`      | component | planned  |                      |
+| `EnergyChart`      | component | native   | `EnergyDrawerBody`   |
 | `HistorySection`   | component | native   | `HistorySectionView` |
 | `Icon`             | component | web-only |                      |
 | `HashsomeProvider` | component | planned  |                      |

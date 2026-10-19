@@ -13,7 +13,7 @@
   "IconButton": "planned",
   "TaskTile": "native",
   "ConfirmDialog": "native",
-  "EnergyChart": "planned",
+  "EnergyChart": "native:EnergyDrawerBody",
   "HistorySection": "native:HistorySectionView",
   "Icon": "web-only",
   "LightTile": "native",

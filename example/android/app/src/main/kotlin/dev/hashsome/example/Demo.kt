@@ -113,10 +113,14 @@ object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
                 lightTile("ha:light.living_room_lamp", "On, no dimming")
                 lightTile("ha:light.living_room_wall", "Dimmable, 78%")
                 lightTile("ha:light.living_room_accent", "Colour, off")
+                // Hold a light for its drawer: brightness, the colour bars, and what changed it. No drawer when it is left out.
+                lightTile("ha:light.demo_tunable", "Tunable, hold me")
+                lightTile("ha:light.living_room_lamp", "On, no drawer", drawer = false)
                 lightTile("ha:light.porch_lamp", "Unavailable")
                 lightTile("ha:light.does_not_exist", "Missing")
                 add(LightTileView(context, LightControl(EntityHandle.fixed(HandleState.Loading)), "Loading"))
-                switchTile("ha:lock.front_door", "Switch, on", Ui.house, power = "ha:sensor.living_room_lamp_power")
+                // Hold it for the power it draws over time and the energy it used.
+                switchTile("ha:lock.front_door", "Switch, on", Ui.house, power = "ha:sensor.living_room_lamp_power", energy = "ha:sensor.living_room_lamp_energy")
                 switchTile("ha:switch.kitchen_coffee_maker", "Switch, off", Ui.house)
             }
             roomHeader("Sensors", Ui.thermometer) {
