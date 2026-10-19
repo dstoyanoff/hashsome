@@ -12,7 +12,7 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * Follows the ambient light to a brightness: [min] at 30 lx or less up to 255 at 500 lx or more, with hysteresis, animated.
+ * Follows the ambient light to a brightness: [min] (a percent of the panel's range) at 30 lx or less up to 255 at 500 lx or more, with hysteresis, animated.
  *
  * Hysteresis, in lux: a reading is ignored while it is within [bandFor] of the last one acted on, which is the larger of
  * 45 lx (one and a half steps of the X1's sensor, which flips between 30 and 60 lx in a steady room) and 15 % of that
@@ -121,7 +121,7 @@ class AutoBrightness(private val lux: Store<Float?>, private val screen: Screen,
     }
 
     /** The brightness for [lux]: ShellyElevate's ramp, linear from the minimum at 30 lx to 255 at 500 lx. */
-    internal fun target(lux: Float): Int = brightnessFor(lux, min.value)
+    internal fun target(lux: Float): Int = brightnessFor(lux, screen.panelLevel(min.value))
 
     internal companion object {
         const val SETTLE_MS = 3_000L

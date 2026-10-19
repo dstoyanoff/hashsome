@@ -17,16 +17,18 @@ sealed interface NightState {
 
 /**
  * Follows `Settings.night` and never flips it itself (no schedule, no sun). While night: off after `Settings.nightIdleMs`
- * without a touch or proximity, woken by either. While day: always on.
+ * without a touch or proximity (and not while someone is still near), woken by either. While day: always on, so a screen
+ * that goes off by other means (the power key, the stock app's timeout) is woken at once.
  *
- * [sleep] and [wake] are the buttons of Home Assistant and the settings sheet. They work in both modes: in day mode [sleep]
- * switches the screen off until the next touch or proximity (the state stays [NightState.Day]); [wake] switches it on and,
- * at night, starts the idle timer again.
+ * A dark panel always wakes: a touch or proximity switches it on whatever the state says. [sleep] and [wake] are the
+ * buttons of Home Assistant and the settings sheet. They work in both modes: in day mode [sleep] switches the screen off
+ * until the next touch or proximity (the state stays [NightState.Day]); [wake] switches it on and, at night, starts the
+ * idle timer again.
  */
 class NightMode(private val settings: Settings, private val presence: Presence, private val screen: Screen, private val scheduler: Scheduler) {
     val state: Store<NightState> = Store(NightState.Day)
 
-    /** A sleep asked for in day mode: the screen is off although the mode is [NightState.Day]. */
+    /** A sleep asked for in day mode: the screen is off on purpose although the mode is [NightState.Day]. */
     private var dayAsleep = false
     private var idle: Cancel? = null
     private val cancels = ArrayList<Cancel>()
@@ -38,8 +40,12 @@ class NightMode(private val settings: Settings, private val presence: Presence, 
         }
         cancels += presence.touches.listen { activity() }
         cancels += presence.near.listen { if (it) activity() }
+        cancels += screen.state.listen { onScreen(it) }
         onNightChanged(settings.night.value)
     }
+
+    /** The panel is dark, by whatever means: a touch on it, or the next wake, has to be heard. */
+    internal val asleep: Boolean get() = screen.state.value == ScreenState.Off || state.value == NightState.NightAsleep || dayAsleep
 
     /** Switches the screen on and, at night, waits `nightIdleMs` for the next touch before it goes off again. */
     fun wake() {
@@ -68,19 +74,34 @@ class NightMode(private val settings: Settings, private val presence: Presence, 
         idle = null
         dayAsleep = false
         if (night) {
-            // Switching night on counts as someone being here (it is the person at the sheet, or Home Assistant's automation at dusk).
-            armIdle()
+            // A screen that is already dark (night switched on while off, or the app restarted while asleep) starts asleep.
+            if (screen.state.value == ScreenState.Off) state.set(NightState.NightAsleep) else armIdle()
         } else {
             state.set(NightState.Day)
             if (screen.state.value == ScreenState.Off) screen.wake()
         }
     }
 
+    /** The screen went on or off by itself or by our own doing. */
+    private fun onScreen(now: ScreenState) {
+        if (now == ScreenState.Off) {
+            if (settings.night.value) {
+                idle?.invoke()
+                idle = null
+                state.set(NightState.NightAsleep)
+            } else if (!dayAsleep) {
+                // Day is always on: the power key or the stock app's timeout does not get to keep it dark.
+                screen.wake()
+            }
+        } else if (settings.night.value && state.value == NightState.NightAsleep) {
+            armIdle()
+        }
+    }
+
     /** A touch or someone near. */
     private fun activity() {
-        val asleep = state.value == NightState.NightAsleep || dayAsleep
         when {
-            asleep -> wake()
+            screen.state.value == ScreenState.Off || state.value == NightState.NightAsleep || dayAsleep -> wake()
             state.value is NightState.NightAwake -> armIdle()
         }
     }
@@ -91,8 +112,13 @@ class NightMode(private val settings: Settings, private val presence: Presence, 
         state.set(NightState.NightAwake(scheduler.now() + ms))
         idle = scheduler.after(ms) {
             idle = null
-            state.set(NightState.NightAsleep)
-            screen.off()
+            // Someone still standing at the display is no reason to switch it off.
+            if (presence.near.value) {
+                armIdle()
+            } else {
+                state.set(NightState.NightAsleep)
+                screen.off()
+            }
         }
     }
 }

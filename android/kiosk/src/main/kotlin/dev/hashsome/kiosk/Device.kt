@@ -52,7 +52,7 @@ sealed interface DeviceProfile {
     data object ShellyStargate : DeviceProfile {
         override val id = "shelly-stargate"
         override val needsDeviceAdmin = false
-        override fun screen(context: Context): Screen = PanelScreen(context, sysfs = true, floor = 0)
+        override fun screen(context: Context): Screen = PanelScreen(context, sysfs = true, floor = floor)
         override fun presence(context: Context, scheduler: Scheduler): Presence = Presence(context, scheduler)
     }
 
@@ -60,7 +60,7 @@ sealed interface DeviceProfile {
     data object ShellyJenna : DeviceProfile {
         override val id = "shelly-jenna"
         override val needsDeviceAdmin = true
-        override fun screen(context: Context): Screen = PanelScreen(context, sysfs = false, floor = PanelScreen.SETTINGS_FLOOR)
+        override fun screen(context: Context): Screen = PanelScreen(context, sysfs = false, floor = floor)
 
         // The X2i's proximity sensor reports 1.0 for "near" and 0.0 for "far": the opposite of the X1 (ShellyElevate DeviceModel.JENNA).
         override fun presence(context: Context, scheduler: Scheduler): Presence = Presence(context, scheduler).also { it.invertProximity = true }
@@ -70,7 +70,7 @@ sealed interface DeviceProfile {
     data object Generic : DeviceProfile {
         override val id = "generic"
         override val needsDeviceAdmin = true
-        override fun screen(context: Context): Screen = PanelScreen(context, sysfs = false, floor = PanelScreen.SETTINGS_FLOOR)
+        override fun screen(context: Context): Screen = PanelScreen(context, sysfs = false, floor = floor)
         override fun presence(context: Context, scheduler: Scheduler): Presence = Presence(context, scheduler)
     }
 
@@ -95,7 +95,7 @@ sealed interface DeviceProfile {
  * alive and touches still arrive); otherwise `Settings.System` brightness (floored at 10 by the ROM) with `lockNow()` as the
  * real off where the device admin is active, and a black cover over the dashboard where it is not.
  */
-internal class PanelScreen(private val context: Context, private val sysfs: Boolean, private val floor: Int) : Screen, Closeable {
+internal class PanelScreen(private val context: Context, private val sysfs: Boolean, internal val floor: Int) : Screen, Closeable {
     private val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
     private val node: File? = if (sysfs) SYSFS_NODES.map(::File).firstOrNull { it.canWrite() } else null
     private var level = 255
@@ -126,7 +126,8 @@ internal class PanelScreen(private val context: Context, private val sysfs: Bool
     }
 
     override fun brightness(level: Int) {
-        this.level = level.coerceIn(0, 255)
+        // Only off() darkens the panel: a level below the floor is the floor.
+        this.level = level.coerceIn(floor, 255)
         // Off stays off: AutoBrightness may still send a level while the panel is dark.
         if (state.value == ScreenState.On) write(this.level)
     }
@@ -193,6 +194,9 @@ internal class PanelScreen(private val context: Context, private val sysfs: Bool
     companion object {
         /** `Settings.System` brightness never goes below this on either display (spikes S1e, S2c). */
         const val SETTINGS_FLOOR = 10
+
+        /** The lowest level the X1's backlight node still lights: 0 is off. */
+        const val SYSFS_FLOOR = 1
         private const val WAKE_LOCK_MS = 3_000L
 
         /** The X1's backlight (spike S2), then the nodes ShellyElevate knows. */
@@ -213,6 +217,17 @@ internal class PanelScreen(private val context: Context, private val sysfs: Bool
         }
     }
 }
+
+/** The lowest lit level of each profile's panel: 1 on the X1's sysfs backlight, 10 on `Settings.System`. */
+internal val DeviceProfile.floor: Int get() = if (this === DeviceProfile.ShellyStargate) PanelScreen.SYSFS_FLOOR else PanelScreen.SETTINGS_FLOOR
+
+/**
+ * The panel level (0..255) of [percent] (0..100): the percent spans the panel's own lit range, so 0 % is [floor] (still lit;
+ * only sleep and night mode switch the panel off) and 100 % is 255.
+ */
+internal fun panelLevel(percent: Int, floor: Int): Int = floor + Math.round(percent.coerceIn(0, 100) * (255 - floor) / 100f)
+
+internal fun Screen.panelLevel(percent: Int): Int = panelLevel(percent, (this as? PanelScreen)?.floor ?: 0)
 
 internal fun dashboardIntent(context: Context, extraFlags: Int = 0): Intent =
     Intent(context, DashboardActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or extraFlags)

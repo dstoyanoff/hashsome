@@ -81,6 +81,10 @@ class MqttBridge(
     private var luxSent: Float? = null
     private var luxTrailing: Cancel? = null
 
+    /** The topics this connection announced itself under, so a new device id or base can retract them. */
+    private var linkStatusTopic: String? = null
+    private var linkDiscoveryTopic: String? = null
+
     private class Component(
         val key: String,
         val platform: String,
@@ -106,7 +110,8 @@ class MqttBridge(
         else -> null
     }
 
-    private fun parseNumber(payload: String): Int? = payload.trim().toDoubleOrNull()?.roundToInt()
+    /** A finite number, or null: `NaN`, `inf` and text are not commands. */
+    private fun parseNumber(payload: String): Int? = payload.trim().toDoubleOrNull()?.takeIf { it.isFinite() }?.roundToInt()
 
     private val components: List<Component> by lazy {
         listOf(
@@ -129,20 +134,20 @@ class MqttBridge(
             ),
             Component(
                 "brightness", "number", "Brightness",
-                describe = { put("min", 0); put("max", 255); put("step", 1) },
+                describe = { put("min", 0); put("max", 100); put("step", 1); put("unit_of_measurement", "%") },
                 value = { settings.brightness.value.toString() },
                 stores = listOf(settings.brightness),
-                command = { parseNumber(it)?.let { n -> settings.brightness.set(n.coerceIn(0, 255)) } },
+                command = { parseNumber(it)?.let { n -> settings.brightness.set(n.coerceIn(0, 100)) } },
             ),
             Component("auto_brightness", "switch", "Auto brightness", value = { onOff(settings.autoBrightness.value) }, stores = listOf(settings.autoBrightness), command = {
                 parseOnOff(it)?.let(settings.autoBrightness::set)
             }),
             Component(
                 "min_brightness", "number", "Minimum brightness",
-                describe = { put("min", 0); put("max", 255); put("step", 1) },
+                describe = { put("min", 0); put("max", 100); put("step", 1); put("unit_of_measurement", "%") },
                 value = { settings.minBrightness.value.toString() },
                 stores = listOf(settings.minBrightness),
-                command = { parseNumber(it)?.let { n -> settings.minBrightness.set(n.coerceIn(0, 255)) } },
+                command = { parseNumber(it)?.let { n -> settings.minBrightness.set(n.coerceIn(0, 100)) } },
             ),
             Component(
                 "dashboard", "select", "Dashboard",
@@ -263,6 +268,8 @@ class MqttBridge(
         retry = null
         if (!running || !wanted()) return
         val will = MqttLink.Message(statusTopic, "offline", retained = true)
+        linkStatusTopic = statusTopic
+        linkDiscoveryTopic = discoveryTopic
         link.connect(settings.mqtt.host.value.trim(), settings.mqtt.port.value, "hashsome-$deviceId", will, listener)
     }
 
@@ -271,7 +278,13 @@ class MqttBridge(
         retry = null
         luxTrailing?.invoke()
         luxTrailing = null
-        if (connected && graceful) link.publish(MqttLink.Message(statusTopic, "offline", retained = true))
+        if (connected && graceful) {
+            val status = linkStatusTopic ?: statusTopic
+            link.publish(MqttLink.Message(status, "offline", retained = true))
+            // A new device id: Home Assistant must forget the entities of the old one (an empty retained config removes them).
+            val discovery = linkDiscoveryTopic
+            if (discovery != null && discovery != discoveryTopic) link.publish(MqttLink.Message(discovery, "", retained = true))
+        }
         connected = false
         link.disconnect()
     }
@@ -297,7 +310,11 @@ class MqttBridge(
             val prefix = "$root/"
             if (!message.topic.startsWith(prefix) || !message.topic.endsWith("/set")) return
             val key = message.topic.substring(prefix.length, message.topic.length - "/set".length)
-            components.firstOrNull { it.key == key }?.command?.invoke(message.payload)
+            try {
+                components.firstOrNull { it.key == key }?.command?.invoke(message.payload)
+            } catch (e: Exception) {
+                Log.w("mqtt", "command for $key ignored: ${e.message}")
+            }
         }
 
         override fun onDisconnected(reason: String?) {

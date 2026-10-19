@@ -36,6 +36,7 @@ enum class Gesture {
 data class KioskConfig(
     val nightIdleMs: Long = 120_000,
     val autoBrightness: Boolean = true,
+    /** Percent of the panel's range. */
     val minBrightness: Int = 8,
     val settingsGesture: Gesture = Gesture.FiveTapsOnStatusDot,
 )
@@ -58,6 +59,7 @@ class KioskExtension(val config: KioskConfig) : AppExtension {
         hashsome.screenPolicy = KioskScreenPolicy(hashsome.screenPolicy)
         hashsome.touchListener = KioskTouchListener(hashsome.touchListener, mainScheduler())
         hashsome.pageListener = KioskPageListener(hashsome.pageListener)
+        GridOverlay.install()
         Kiosk.startService(app)
     }
 }
@@ -133,6 +135,7 @@ internal class KioskScreenPolicy(private val next: ScreenPolicy) : ScreenPolicy 
     private fun shown(activity: Activity) {
         Kiosk.activity = WeakReference(activity)
         Cover.attach(activity)
+        GridOverlay.attach(activity)
         // `am start --es settings true` (provisioning). A running singleTask activity only sees it in onNewIntent, so
         // this relies on the dashboard keeping that intent as its own (setIntent).
         val intent = activity.intent
@@ -155,8 +158,12 @@ internal class KioskTouchListener(private val next: TouchListener, private val s
     private val taps = ArrayDeque<Long>()
     private var hold: (() -> Unit)? = null
 
-    override fun onTouch(event: MotionEvent) {
-        next.onTouch(event)
+    /** The finger that put down while the panel was asleep woke it; the rest of that gesture is swallowed too, so no tile under it is pressed. */
+    private var wakeGesture = false
+
+    override fun onTouch(event: MotionEvent): Boolean {
+        val consumedByNext = next.onTouch(event)
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) wakeGesture = Kiosk.nightMode?.asleep == true
         Kiosk.presence?.onTouch(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_POINTER_DOWN -> if (event.pointerCount == 2) {
@@ -170,6 +177,9 @@ internal class KioskTouchListener(private val next: TouchListener, private val s
             }
             MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> cancelHold()
         }
+        val swallow = wakeGesture
+        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) wakeGesture = false
+        return swallow || consumedByNext
     }
 
     override fun onStatusDotTap() {

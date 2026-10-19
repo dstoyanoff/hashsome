@@ -13,6 +13,9 @@ class AutoBrightnessTest {
     private val screen = FakeScreen()
     private val auto = AutoBrightness(lux, screen, min).also { it.scheduler = sched }
 
+    /** 8 % of the range of a screen with floor 0. */
+    private val minLevel = 20
+
     @Test
     fun `the ramp runs from the minimum at 30 lx to 255 at 500 lx`() {
         assertEquals(8, AutoBrightness.brightnessFor(0f, 8))
@@ -34,14 +37,14 @@ class AutoBrightnessTest {
     fun `the X1 flipping between 30 and 60 lx does not move the backlight`() {
         lux.set(30f)
         auto.start()
-        assertEquals(listOf(8), screen.writes)
+        assertEquals(listOf(minLevel), screen.writes)
         repeat(20) {
             lux.set(60f)
             sched.advance(2_000)
             lux.set(30f)
             sched.advance(2_000)
         }
-        assertEquals(listOf(8), screen.writes)
+        assertEquals(listOf(minLevel), screen.writes)
     }
 
     @Test
@@ -50,10 +53,10 @@ class AutoBrightnessTest {
         auto.start()
         lux.set(300f)
         sched.advance(2_900)
-        assertEquals(listOf(8), screen.writes)
+        assertEquals(listOf(minLevel), screen.writes)
         sched.advance(100)
         sched.advance(1_000)
-        val target = AutoBrightness.brightnessFor(300f, 8)
+        val target = AutoBrightness.brightnessFor(300f, minLevel)
         assertEquals(target, screen.writes.last())
         assertTrue("fade is animated, not a jump: ${screen.writes}", screen.writes.size > 5)
         assertEquals(screen.writes.sorted(), screen.writes)
@@ -78,7 +81,7 @@ class AutoBrightnessTest {
         screen.off()
         lux.set(500f)
         sched.advance(10_000)
-        assertEquals(listOf(8), screen.writes)
+        assertEquals(listOf(minLevel), screen.writes)
         screen.wake()
         assertEquals(255, screen.writes.last())
     }
@@ -88,7 +91,7 @@ class AutoBrightnessTest {
         lux.set(0f)
         auto.start()
         min.set(30)
-        assertEquals(30, screen.writes.last())
+        assertEquals(screen.panelLevel(30), screen.writes.last())
         auto.stop()
         val n = screen.writes.size
         lux.set(500f)
@@ -102,5 +105,27 @@ class AutoBrightnessTest {
         assertTrue(AutoBrightness.bandFor(30f) > 30f)
         assertTrue(AutoBrightness.bandFor(60f) > 30f)
         assertEquals(150f, AutoBrightness.bandFor(1000f), 0.01f)
+    }
+
+    @Test
+    fun `the minimum is a percent of the panel's own range`() {
+        // A panel whose lowest lit level is 10: 0 % is 10, never off.
+        assertEquals(10, panelLevel(0, 10))
+        assertEquals(255, panelLevel(100, 10))
+        assertEquals(133, panelLevel(50, 10))
+        assertEquals(1, panelLevel(0, 1))
+        assertEquals(255, panelLevel(100, 1))
+        assertEquals(0, panelLevel(0, 0))
+        // Out-of-range percents stay in range.
+        assertEquals(10, panelLevel(-5, 10))
+        assertEquals(255, panelLevel(400, 10))
+        assertEquals((0..100).map { panelLevel(it, 10) }.sorted(), (0..100).map { panelLevel(it, 10) })
+    }
+
+    @Test
+    fun `the lowest level of each profile is lit`() {
+        assertEquals(1, DeviceProfile.ShellyStargate.floor)
+        assertEquals(10, DeviceProfile.ShellyJenna.floor)
+        assertEquals(10, DeviceProfile.Generic.floor)
     }
 }

@@ -78,7 +78,7 @@ class SettingsTest {
         prefs.putString("brightness", "bright")
         prefs.putString("theme", "sepia")
         Settings.load(prefs, KioskConfig()) { true }
-        assertEquals(255, Settings.brightness.value)
+        assertEquals(100, Settings.brightness.value)
         assertEquals(ThemeChoice.Auto, Settings.theme.value)
     }
 }

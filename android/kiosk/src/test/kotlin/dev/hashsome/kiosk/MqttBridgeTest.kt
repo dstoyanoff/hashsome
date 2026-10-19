@@ -49,7 +49,8 @@ private class FakeLink : MqttLink {
 
 private class Actions : KioskActions {
     val calls = ArrayList<String>()
-    override fun wake() { calls += "wake" }
+    var boom = false
+    override fun wake() { if (boom) error("boom"); calls += "wake" }
     override fun sleep() { calls += "sleep" }
     override fun reload() { calls += "reload" }
     override fun rebootIfPossible() { calls += "reboot" }
@@ -175,7 +176,7 @@ class MqttBridgeTest {
         assertTrue(discovery.retained)
         assertEquals(b.discoveryPayload(), discovery.payload)
         assertEquals("ON", link.last("$root/screen/state")!!.payload)
-        assertEquals("255", link.last("$root/brightness/state")!!.payload)
+        assertEquals("100", link.last("$root/brightness/state")!!.payload)
         assertEquals("bathroom", link.last("$root/dashboard/state")!!.payload)
         assertEquals("auto", link.last("$root/theme/state")!!.payload)
         assertEquals("120", link.last("$root/night_idle/state")!!.payload)
@@ -208,8 +209,8 @@ class MqttBridgeTest {
     @Test
     fun `every settings change is published back`() {
         connected()
-        Settings.brightness.set(100)
-        assertEquals("100", link.last("$root/brightness/state")!!.payload)
+        Settings.brightness.set(40)
+        assertEquals("40", link.last("$root/brightness/state")!!.payload)
         Settings.night.set(true)
         assertEquals("ON", link.last("$root/night_mode/state")!!.payload)
         Settings.nightIdleMs.set(30_000)
@@ -257,9 +258,9 @@ class MqttBridgeTest {
         link.receive("$root/night_idle/set", "45.0")
         assertEquals(45_000L, Settings.nightIdleMs.value)
         link.receive("$root/brightness/set", "300")
-        assertEquals(255, Settings.brightness.value)
-        link.receive("$root/brightness/set", "128")
-        assertEquals(128, Settings.brightness.value)
+        assertEquals(100, Settings.brightness.value)
+        link.receive("$root/brightness/set", "60")
+        assertEquals(60, Settings.brightness.value)
         link.receive("$root/auto_brightness/set", "OFF")
         assertFalse(Settings.autoBrightness.value)
         link.receive("$root/min_brightness/set", "20")
@@ -283,7 +284,7 @@ class MqttBridgeTest {
         // Nonsense and unknown keys do nothing.
         link.receive("$root/brightness/set", "very")
         link.receive("$root/nothing/set", "1")
-        assertEquals(128, Settings.brightness.value)
+        assertEquals(60, Settings.brightness.value)
     }
 
     @Test
@@ -344,5 +345,67 @@ class MqttBridgeTest {
         assertNotNull(link.last("walls/bathroom/status"))
         assertEquals("walls/bathroom/status", link.will!!.topic)
         assertEquals(listOf("homeassistant/status", "walls/bathroom/+/set"), link.subscribed)
+    }
+
+    @Test
+    fun `brightness and minimum brightness are percent in the discovery`() {
+        val cmps = JSONObject(bridge().discoveryPayload()).getJSONObject("cmps")
+        for (key in listOf("brightness", "min_brightness")) {
+            assertEquals(100, cmps.getJSONObject(key).getInt("max"))
+            assertEquals(0, cmps.getJSONObject(key).getInt("min"))
+            assertEquals("%", cmps.getJSONObject(key).getString("unit_of_measurement"))
+        }
+    }
+
+    @Test
+    fun `numbers that are not numbers do nothing on any command topic`() {
+        connected()
+        Settings.brightness.set(50)
+        Settings.minBrightness.set(10)
+        Settings.nightIdleMs.set(30_000)
+        for (bad in listOf("NaN", "", "garbage", "Infinity", "-Infinity", "1e999", "  ")) {
+            link.receive("$root/brightness/set", bad)
+            link.receive("$root/min_brightness/set", bad)
+            link.receive("$root/night_idle/set", bad)
+        }
+        assertEquals(50, Settings.brightness.value)
+        assertEquals(10, Settings.minBrightness.value)
+        assertEquals(30_000L, Settings.nightIdleMs.value)
+        // And the other kinds ignore garbage too.
+        for (key in listOf("night_mode", "auto_brightness", "dashboard_switcher", "theme", "dashboard", "screen", "nothing")) {
+            for (bad in listOf("NaN", "", "garbage")) link.receive("$root/$key/set", bad)
+        }
+        assertFalse(Settings.night.value)
+        assertEquals(ThemeChoice.Auto, Settings.theme.value)
+        assertEquals(emptyList<String>(), actions.calls)
+    }
+
+    @Test
+    fun `a command that throws does not take the bridge down`() {
+        connected()
+        actions.boom = true
+        link.receive("$root/wake/set", "PRESS")
+        actions.boom = false
+        link.receive("$root/brightness/set", "70")
+        assertEquals(70, Settings.brightness.value)
+    }
+
+    @Test
+    fun `a new device id retracts the old discovery before announcing the new one`() {
+        connected()
+        val oldDiscovery = "homeassistant/device/hashsome-bathroom/config"
+        link.published.clear()
+        Settings.deviceId.set("kitchen")
+        val retract = link.published.indexOfFirst { it.topic == oldDiscovery }
+        assertTrue("an empty retained config under the old id", retract >= 0)
+        assertEquals("", link.published[retract].payload)
+        assertTrue(link.published[retract].retained)
+        assertEquals("offline", link.published.first { it.topic == "$root/status" }.payload)
+        assertEquals(2, link.connects)
+        assertEquals("hashsome-kitchen", link.clientId)
+        link.listener!!.onConnected()
+        val announce = link.published.indexOfFirst { it.topic == "homeassistant/device/hashsome-kitchen/config" }
+        assertTrue(announce > retract)
+        assertEquals("online", link.last("hashsome/kitchen/status")!!.payload)
     }
 }

@@ -45,9 +45,10 @@ class Presence(context: Context, private val scheduler: Scheduler) : TouchListen
         override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
     }
 
-    override fun onTouch(event: android.view.MotionEvent) {
+    override fun onTouch(event: android.view.MotionEvent): Boolean {
         // Every move of a finger is an event; a touch is the beginning of one.
         if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN) touches.set(touches.value + 1)
+        return false
     }
 
     internal fun start() {

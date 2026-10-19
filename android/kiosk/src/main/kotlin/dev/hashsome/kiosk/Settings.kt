@@ -21,7 +21,7 @@ class DebugSettings {
     /** Draws the module grid over the page. */
     val grid: Store<Boolean> = Store(false)
 
-    /** Reports frame gaps. */
+    /** Reserved for frame-gap reports: nothing reads it yet, and the sheet does not show it. */
     val perf: Store<Boolean> = Store(false)
 }
 
@@ -45,9 +45,10 @@ object Settings : HostSettings {
     override val switcherEnabled: Store<Boolean> = Store(true)
     override val theme: Store<ThemeChoice> = Store(ThemeChoice.Auto)
 
-    /** 0..255. */
-    val brightness: Store<Int> = Store(255)
+    /** Percent, 0..100; each profile maps it onto the panel's own range (see [panelLevel]), and 0 % is still lit. */
+    val brightness: Store<Int> = Store(100)
     val autoBrightness: Store<Boolean> = Store(true)
+    /** Percent, 0..100: where auto-brightness settles in the dark. */
     val minBrightness: Store<Int> = Store(8)
 
     /** Night mode on or off. Only Home Assistant and the settings sheet change it; the app never does. */
@@ -101,7 +102,7 @@ object Settings : HostSettings {
         text("profileOverride", profileOverride)
         text("dashboard", dashboard)
         key("theme", theme, ThemeChoice.Auto, { it.name.lowercase() }, { s -> ThemeChoice.values().firstOrNull { it.name.equals(s, ignoreCase = true) } })
-        number("brightness", brightness, 255)
+        number("brightness", brightness, 100)
         flag("autoBrightness", autoBrightness, defaults.autoBrightness)
         number("minBrightness", minBrightness, defaults.minBrightness)
         flag("night", night, false)

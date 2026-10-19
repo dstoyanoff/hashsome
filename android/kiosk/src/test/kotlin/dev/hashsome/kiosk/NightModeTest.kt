@@ -2,6 +2,7 @@ package dev.hashsome.kiosk
 
 import dev.hashsome.testing.TestScheduler
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -49,6 +50,7 @@ class NightModeTest {
         presence.near.set(true)
         assertEquals(1, screen.wakes)
         assertTrue(mode.state.value is NightState.NightAwake)
+        presence.near.set(false)
         sched.advance(10_000)
         assertEquals(NightState.NightAsleep, mode.state.value)
         presence.near.set(false)
@@ -121,5 +123,85 @@ class NightModeTest {
         Settings.nightIdleMs.set(5_000)
         sched.advance(5_000)
         assertEquals(NightState.NightAsleep, mode.state.value)
+    }
+
+    @Test
+    fun `a service restart while asleep at night comes up asleep and wakes on the first touch`() {
+        freshSettings(KioskConfig(nightIdleMs = 10_000))
+        Settings.night.set(true)
+        screen.state.set(ScreenState.Off)
+        val mode = NightMode(Settings, presence, screen, sched)
+        assertEquals(NightState.NightAsleep, mode.state.value)
+        sched.advance(60_000)
+        assertEquals(0, screen.wakes)
+        presence.near.set(true)
+        assertEquals(1, screen.wakes)
+    }
+
+    @Test
+    fun `at night a screen that went off by itself counts as asleep and any touch wakes it`() {
+        val mode = night(idleMs = 60_000, on = true)
+        assertTrue(mode.state.value is NightState.NightAwake)
+        screen.state.set(ScreenState.Off)
+        assertEquals(NightState.NightAsleep, mode.state.value)
+        touch()
+        assertEquals(1, screen.wakes)
+        assertTrue(mode.state.value is NightState.NightAwake)
+    }
+
+    @Test
+    fun `in day mode a screen that goes off by itself is woken at once`() {
+        val mode = night()
+        screen.state.set(ScreenState.Off)
+        assertEquals(1, screen.wakes)
+        assertEquals(ScreenState.On, screen.state.value)
+        assertEquals(NightState.Day, mode.state.value)
+    }
+
+    @Test
+    fun `a day sleep followed by night on is asleep at night and a touch wakes it`() {
+        val mode = night()
+        mode.sleep()
+        Settings.night.set(true)
+        assertEquals(NightState.NightAsleep, mode.state.value)
+        assertEquals(0, screen.wakes)
+        touch()
+        assertEquals(1, screen.wakes)
+    }
+
+    @Test
+    fun `a touch wakes a dark panel whatever the state says`() {
+        val mode = night(idleMs = 60_000, on = true)
+        // Inconsistent on purpose: the screen is dark but the state still says awake.
+        screen.off()
+        screen.state.set(ScreenState.Off)
+        mode.state.set(NightState.NightAwake(0))
+        touch()
+        assertEquals(ScreenState.On, screen.state.value)
+    }
+
+    @Test
+    fun `someone standing near is not put to sleep on`() {
+        val mode = night(idleMs = 10_000, on = true)
+        presence.near.set(true)
+        sched.advance(35_000)
+        assertEquals(0, screen.offs)
+        assertTrue(mode.state.value is NightState.NightAwake)
+        presence.near.set(false)
+        sched.advance(10_000)
+        assertEquals(NightState.NightAsleep, mode.state.value)
+        assertEquals(1, screen.offs)
+    }
+
+    @Test
+    fun `the touch that wakes is told apart from one on an awake screen`() {
+        val mode = night(idleMs = 10_000, on = true)
+        assertFalse(mode.asleep)
+        sched.advance(10_000)
+        assertTrue(mode.asleep)
+        mode.wake()
+        assertFalse(mode.asleep)
+        mode.sleep()
+        assertTrue(mode.asleep)
     }
 }

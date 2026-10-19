@@ -153,9 +153,10 @@ private class SheetContent(
 
         section("Debug")
         switch("Module grid overlay", settings.debug.grid)
-        switch("Performance beacons", settings.debug.perf)
         info("Device admin") { show -> show(if (DeviceAdmin.isActive(ctx)) "active" else "not active"); {} }
-        button("Remove device admin (before uninstalling)") { toast(if (DeviceAdmin.remove(ctx)) "Device admin removed" else "The device admin is not active") }
+        confirmButton("Remove device admin (before uninstalling)", "Tap again to remove the device admin") {
+            toast(if (DeviceAdmin.remove(ctx)) "Device admin removed" else "The device admin is not active")
+        }
     }
 
     // ---- rows -----------------------------------------------------------------------------------------------------
@@ -243,7 +244,8 @@ private class SheetContent(
         var updating = false
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                if (!updating) store.set(parse(options[position]))
+                // The spinner reports its first selection when it is laid out: that is not a choice, and must not write a setting.
+                if (!updating && options[position] != show(store.value)) store.set(parse(options[position]))
             }
 
             override fun onNothingSelected(parent: AdapterView<*>) {}
@@ -290,6 +292,28 @@ private class SheetContent(
 
     private fun button(name: String, onClick: () -> Unit) {
         val b = Button(ctx).apply { this.text = name; isAllCaps = false; setOnClickListener { onClick() } }
+        column.addView(b, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+    }
+
+    /** A button that needs a second tap within 4 s, for what cannot be undone from the display. */
+    private fun confirmButton(name: String, confirm: String, onConfirmed: () -> Unit) {
+        val b = Button(ctx).apply { this.text = name; isAllCaps = false }
+        var armed = false
+        val disarm = Runnable {
+            armed = false
+            b.text = name
+        }
+        b.setOnClickListener {
+            if (armed) {
+                b.removeCallbacks(disarm)
+                disarm.run()
+                onConfirmed()
+            } else {
+                armed = true
+                b.text = confirm
+                b.postDelayed(disarm, 4_000)
+            }
+        }
         column.addView(b, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
     }
 

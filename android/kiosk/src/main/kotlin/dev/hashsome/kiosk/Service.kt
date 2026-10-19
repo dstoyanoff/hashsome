@@ -17,6 +17,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import dev.hashsome.client.Cancel
 import dev.hashsome.client.Scheduler
 import dev.hashsome.ui.Hashsome
@@ -24,18 +25,24 @@ import org.json.JSONObject
 
 /** Foreground service: keeps the dashboard in front (checks every 2 s through UsageStatsManager and relaunches it) and owns presence, night mode, auto brightness and the MQTT bridge. */
 class KioskService : Service() {
-    private val closers = ArrayList<() -> Unit>()
-    private var running = false
+    private var rebuilder: Rebuilder? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Within five seconds of startForegroundService, whatever else happens.
         startInForeground()
-        if (!running) {
-            running = true
+        if (rebuilder == null) {
+            // The displays are mains-powered: the CPU stays up while the panel is dark, so the idle timer, the MQTT keep-alive and the
+            // proximity sensor's events are never starved (spike S2b left proximity-while-dark open; this removes the doubt about timers).
+            val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "hashsome:service").apply {
+                setReferenceCounted(false)
+                acquire()
+            }
             try {
-                build()
+                rebuilder = Rebuilder(Settings) { build() }
             } catch (e: Exception) {
                 Log.e("service", "could not start the kiosk", e)
             }
@@ -44,12 +51,10 @@ class KioskService : Service() {
     }
 
     override fun onDestroy() {
-        closers.reversed().forEach { it() }
-        closers.clear()
-        Kiosk.presence = null
-        Kiosk.screen = null
-        Kiosk.nightMode = null
-        running = false
+        rebuilder?.close()
+        rebuilder = null
+        wakeLock?.let { if (it.isHeld) it.release() }
+        wakeLock = null
         super.onDestroy()
     }
 
@@ -66,7 +71,9 @@ class KioskService : Service() {
         startForeground(NOTIFICATION_ID, builder.setSmallIcon(icon).setContentTitle("Hashsome").setContentText("Keeping the dashboard in front").setOngoing(true).build())
     }
 
-    private fun build() {
+    /** Creates the parts that depend on the profile, and returns how to tear them down. */
+    private fun build(): () -> Unit {
+        val closers = ArrayList<() -> Unit>()
         val sched = mainScheduler()
         val profile = DeviceProfile.detect()
         Log.i("service", "profile ${profile.id} (device ${Build.DEVICE}, model ${Build.MODEL}), device id ${Settings.deviceId.value}")
@@ -86,6 +93,11 @@ class KioskService : Service() {
         Kiosk.presence = presence
         Kiosk.screen = screen
         Kiosk.nightMode = night
+        closers += {
+            Kiosk.presence = null
+            Kiosk.screen = null
+            Kiosk.nightMode = null
+        }
 
         val state = Kiosk.state
         closers += presence.lux.listenNow { state.lux.set(it) }
@@ -101,10 +113,12 @@ class KioskService : Service() {
 
         val linkBinder = LinkBinder(state)
         val front = KeepInFront(this)
+        // Also while the screen is off: a stock popup must not sit in front of the dashboard when it wakes.
         closers += sched.every(CHECK_MS) {
             linkBinder.bindIfPossible()
-            if (screen.state.value == ScreenState.On) front.check()
+            front.check()
         }
+        return { closers.reversed().forEach { it() } }
     }
 
     private companion object {
@@ -121,6 +135,27 @@ internal fun appVersion(context: Context): String = try {
 }
 
 /**
+ * Builds the parts that depend on the device profile ([build] returns how to tear them down) and builds them again, at once, when
+ * `Settings.profileOverride` changes, so a new profile from the sheet or a provisioning broadcast does not wait for a restart.
+ * (A new `deviceId` needs no rebuild: the bridge moves itself, retracting the old discovery.)
+ */
+internal class Rebuilder(settings: Settings, private val build: () -> () -> Unit) {
+    private var teardown: () -> Unit = build()
+    private val listen = settings.profileOverride.listen { rebuild() }
+
+    fun rebuild() {
+        teardown()
+        teardown = build()
+    }
+
+    fun close() {
+        listen()
+        teardown()
+        teardown = {}
+    }
+}
+
+/**
  * Follows `Settings.brightness` and `Settings.autoBrightness`: with auto on and a light sensor, [AutoBrightness] drives the screen;
  * otherwise the fixed level does (ShellyElevate does the same: without a light sensor the fixed level applies).
  */
@@ -132,8 +167,8 @@ internal class BrightnessControl(private val settings: Settings, private val pre
     fun start() {
         auto.scheduler = scheduler
         cancels += settings.autoBrightness.listen { apply() }
-        cancels += settings.brightness.listen { if (!usesAuto()) screen.brightness(it) }
-        cancels += screen.state.listen { if (it == ScreenState.On && !usesAuto()) screen.brightness(settings.brightness.value) }
+        cancels += settings.brightness.listen { if (!usesAuto()) screen.brightness(screen.panelLevel(it)) }
+        cancels += screen.state.listen { if (it == ScreenState.On && !usesAuto()) screen.brightness(screen.panelLevel(settings.brightness.value)) }
         apply()
     }
 
@@ -150,7 +185,7 @@ internal class BrightnessControl(private val settings: Settings, private val pre
             auto.start()
         } else {
             auto.stop()
-            screen.brightness(settings.brightness.value)
+            screen.brightness(screen.panelLevel(settings.brightness.value))
         }
     }
 }
