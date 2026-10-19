@@ -467,9 +467,9 @@ export function convertPack(pack: string, sources: SvgSource[], appPackage: stri
     const property = camelCase(name);
     const same = properties.get(property);
     if (same) {
-      throw new Error(
-        `${file} and ${same} both become the Kotlin property ${property}; rename one`,
-      );
+      // Whole packs have such pairs (lucide's arrow-down-0-1 and arrow-down-01): the first keeps the name, the other is skipped.
+      skipped.push(`${file}: becomes the Kotlin property ${property} like ${same}`);
+      continue;
     }
 
     properties.set(property, file);

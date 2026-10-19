@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -6,6 +6,7 @@ import {
   androidCommand,
   buildCommands,
   deployCommands,
+  HOME_ALIAS,
   parseFlags,
   provisionCommands,
   readGradleValue,
@@ -193,12 +194,12 @@ describe('provisionCommands', () => {
   test('--home (or home: true) enables the alias and sets it as the home activity, last', () => {
     for (const lines of [shellLines(device(), true), shellLines(device({ home: true }))]) {
       expect(lines.slice(-2)).toEqual([
-        `pm enable ${PKG}/dev.hashsome.kiosk.HomeAlias`,
-        `cmd package set-home-activity ${PKG}/dev.hashsome.kiosk.HomeAlias`,
+        `pm enable ${PKG}/dev.hashsome.kiosk.HomeActivityAlias`,
+        `cmd package set-home-activity ${PKG}/dev.hashsome.kiosk.HomeActivityAlias`,
       ]);
     }
 
-    expect(shellLines(device()).some((l) => l.includes('HomeAlias'))).toBe(false);
+    expect(shellLines(device()).some((l) => l.includes('HomeActivityAlias'))).toBe(false);
   });
 });
 
@@ -314,7 +315,7 @@ describe('androidCommand (dry run)', () => {
     const provisioned = log.mock.calls.map((c) => c[0]).join('\n');
     expect(provisioned).not.toContain('1.1.1.1');
     expect(provisioned).toContain('cloud.shelly.stargate');
-    expect(provisioned).toContain('HomeAlias');
+    expect(provisioned).toContain('HomeActivityAlias');
   });
 
   test('uninstall needs no APK, honours --device, and reminds about the home app only for a home device', async () => {
@@ -415,5 +416,16 @@ describe('androidCommand (dry run)', () => {
     for (const sub of ['build', 'deploy', 'provision', 'uninstall', 'icons']) {
       expect(text).toContain(`  ${sub} `);
     }
+  });
+});
+
+describe('HOME_ALIAS', () => {
+  test('is the activity-alias the kiosk manifest declares', () => {
+    const manifest = readFileSync(
+      join(import.meta.dirname, '../../../../../android/kiosk/src/main/AndroidManifest.xml'),
+      'utf8',
+    );
+
+    expect(manifest).toContain(`android:name="${HOME_ALIAS}"`);
   });
 });

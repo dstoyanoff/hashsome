@@ -16,6 +16,7 @@ folder. Read ARCHITECTURE.md "Native Android" once if you have not.
   missing component is a separate change: stop, say so, and see `android-component`.
 - Everything you add lives in the consumer app: its `src/main/kotlin/<ns>/` (dashboards, shared
   helpers), `devices.json`, and the app's `App.kt` where dashboards are listed.
+- The libraries cannot declare `usesCleartextTraffic`: if the runtime is plain `http://`, the consumer's own manifest must set `android:usesCleartextTraffic="true"` on its `<application>`.
 - No AndroidX, coroutines or kotlinx.serialization in the app either: observation is
   `Store.listen { }`, which the DSL does for you.
 - Entity refs are strings, as on the web: `"ha:light.bathroom_led"`, `"ma:player-id"`. Find real ids
