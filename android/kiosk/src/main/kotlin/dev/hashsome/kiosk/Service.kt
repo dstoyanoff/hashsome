@@ -37,7 +37,7 @@ class KioskService : Service() {
         startInForeground()
         // The boot receiver's start: the gate must hold from here (the process may already be up, started by Application.onCreate).
         // Also a restart inside the settle window (watchdog, crash, the stock app's force-stop) is gated, not only the receiver's start.
-        Kiosk.armBootGateIfNeeded(intent?.getBooleanExtra(Kiosk.EXTRA_BOOT, false) == true)
+        Kiosk.armBootGateIfNeeded(this, intent?.getBooleanExtra(Kiosk.EXTRA_BOOT, false) == true)
         if (rebuilder == null) {
             // The displays are mains-powered: the CPU stays up while the panel is dark, so the idle timer, the MQTT keep-alive and the
             // proximity sensor's events are never starved (spike S2b left proximity-while-dark open; this removes the doubt about timers).
@@ -242,6 +242,7 @@ internal class KeepInFront(private val context: Context, private val profile: De
         top = { topActivity() },
         dashboardResumed = { Kiosk.dashboardResumed },
         ownProcessVisible = { ownProcessVisible() },
+        overSplash = { Kiosk.systemApp },
         launch = {
             try {
                 context.startActivity(dashboardIntent(context, Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP))

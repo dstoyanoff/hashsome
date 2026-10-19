@@ -21,17 +21,18 @@ internal object FrontDecision {
     /**
      * [dashboardResumed]: our activity is the resumed one, so nothing is in front of it and no launch is needed. Otherwise [top] (the
      * package of the last activity moved to the foreground, null when unknown) decides, and without it [ownProcessVisible].
-     * [topClass] is its activity class: never launch over the stock app's splash, the next tick tries again.
+     * [topClass] is its activity class: never launch over the stock app's splash, the next tick tries again, unless [overSplash] (a system app, which the stock app's force-stop hook skips).
      */
     fun shouldLaunch(
         top: String?,
         ownPackage: String,
         dashboardResumed: Boolean,
         topClass: String? = null,
+        overSplash: Boolean = false,
         ownProcessVisible: () -> Boolean,
     ): Boolean {
         if (dashboardResumed) return false
-        if (isStockSplash(top, topClass)) return false
+        if (!overSplash && isStockSplash(top, topClass)) return false
         val front = if (top != null) top == ownPackage else ownProcessVisible()
         return !front
     }
@@ -42,18 +43,25 @@ internal object FrontDecision {
  * "shutdown completed" that force-stops whatever started inside it. Open when the top activity has not changed (and was not the
  * splash) for [settleMs] and at least [minMs] have passed since boot, whichever is later. Once open it stays open.
  * [clock] is `SystemClock.elapsedRealtime()`, so it counts from boot.
+ *
+ * As a system app ([systemApp]) the stock app's force-stop hook skips it, so there is no gate: it is open from the start.
  */
 internal class BootGate(
     private val settleMs: Long,
     private val minMs: Long,
     private val clock: () -> Long,
+    systemApp: Boolean = false,
     private val log: (String) -> Unit = {},
 ) {
-    var open = false
+    var open = systemApp
         private set
     private var announced = false
     private var key: Pair<String?, String?>? = null
     private var stableSince = 0L
+
+    init {
+        if (systemApp) log("boot: system app, no gate")
+    }
 
     /** Observes [top] for this tick and says whether the dashboard may be taken to the front now. */
     fun admit(top: TopActivity): Boolean {
@@ -128,6 +136,7 @@ internal class FrontKeeper(
     private val launch: () -> Unit,
     private val log: (String) -> Unit = {},
     private val pause: FrontPause? = null,
+    private val overSplash: () -> Boolean = { false },
 ) {
     private var lastLaunch = Long.MIN_VALUE / 2
 
@@ -137,7 +146,7 @@ internal class FrontKeeper(
         val t = if (resumed) TopActivity(ownPackage, null) else top()
         val g = gate()
         if (g != null && !g.admit(t)) return
-        if (!FrontDecision.shouldLaunch(t.pkg, ownPackage, resumed, t.cls, ownProcessVisible)) return
+        if (!FrontDecision.shouldLaunch(t.pkg, ownPackage, resumed, t.cls, overSplash(), ownProcessVisible)) return
         val now = clock()
         if (now - lastLaunch < RELAUNCH_COOLDOWN_MS) return
         lastLaunch = now

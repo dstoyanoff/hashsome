@@ -65,6 +65,46 @@ class BootGateTest {
     }
 }
 
+class BootGateSystemAppTest {
+    private val sched = TestScheduler()
+    private val logs = ArrayList<String>()
+    private val splash = TopActivity("cloud.shelly.stargate", "cloud.shelly.stargate.activities.SplashActivity")
+
+    @Test
+    fun `a system app has no gate, even over the splash`() {
+        val g = BootGate(30_000, 90_000, { sched.now() }, systemApp = true) { logs += it }
+        assertTrue(g.open)
+        assertTrue(g.admit(splash))
+        assertEquals(listOf("boot: system app, no gate"), logs)
+    }
+
+    @Test
+    fun `a non-system app keeps the conservative gate`() {
+        val g = BootGate(30_000, 90_000, { sched.now() }, systemApp = false) { logs += it }
+        assertFalse(g.open)
+        sched.advance(10_000)
+        assertFalse(g.admit(splash))
+        assertTrue(logs.none { it.contains("system app") })
+    }
+
+    @Test
+    fun `a system app launches on the first tick with the splash on top`() {
+        var launches = 0
+        val keeper = FrontKeeper(
+            "dev.hashsome.app", { sched.now() }, { BootGate(30_000, 90_000, { sched.now() }, systemApp = true) }, { splash },
+            { false }, { false }, { launches++ }, overSplash = { true },
+        )
+        keeper.check()
+        assertEquals(1, launches)
+    }
+
+    @Test
+    fun `over the splash is only for a system app`() {
+        assertTrue(FrontDecision.shouldLaunch("cloud.shelly.stargate", "dev.hashsome.app", false, splash.cls, true) { false })
+        assertFalse(FrontDecision.shouldLaunch("cloud.shelly.stargate", "dev.hashsome.app", false, splash.cls, false) { false })
+    }
+}
+
 class FrontKeeperTest {
     private val sched = TestScheduler()
     private var top = TopActivity("cloud.shelly.stargate", "cloud.shelly.stargate.activities.SplashActivity")

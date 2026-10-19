@@ -194,6 +194,11 @@ internal object Kiosk {
     @Volatile
     var bootGate: BootGate? = null
 
+    /** Installed as a system app (`FLAG_SYSTEM`, also an updated one): the stock app's force-stop hook skips it, so nothing waits for or avoids the stock app's start-up. */
+    @Volatile
+    var systemApp: Boolean = false
+    private var flagsLogged = false
+
     /** The top activity the keep-in-front last saw, for the wake path. */
     @Volatile
     var lastTop: TopActivity = TopActivity.UNKNOWN
@@ -203,11 +208,23 @@ internal object Kiosk {
         settles && (boot || elapsedMs < minMs)
 
     /** Arms the gate once per process (the profile and the clock decide, see [shouldArmBootGate]). */
-    fun armBootGateIfNeeded(boot: Boolean) {
+    fun armBootGateIfNeeded(context: Context, boot: Boolean) {
+        val flags = try {
+            context.packageManager.getApplicationInfo(context.packageName, 0).flags
+        } catch (e: Exception) {
+            context.applicationInfo.flags
+        }
+        val system = flags and (android.content.pm.ApplicationInfo.FLAG_SYSTEM or android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+        if (system != systemApp || !flagsLogged) Log.e("front", "boot: appflags=0x${Integer.toHexString(flags)} system=$system")
+        flagsLogged = true
+        systemApp = system
         if (bootGate != null) return
         val elapsed = android.os.SystemClock.elapsedRealtime()
         if (!shouldArmBootGate(boot, elapsed, config.bootMinMs, DeviceProfile.detect().settlesAtBoot)) return
-        bootGate = BootGate(config.bootSettleMs, config.bootMinMs, { android.os.SystemClock.elapsedRealtime() }) { Log.e("front", it) }
+        bootGate = BootGate(
+            config.bootSettleMs, config.bootMinMs, { android.os.SystemClock.elapsedRealtime() },
+            systemApp = systemApp,
+        ) { Log.e("front", it) }
     }
 
     /** Starts the foreground service. Called from `Application.onCreate`, the boot receiver ([boot]) and provisioning. */
