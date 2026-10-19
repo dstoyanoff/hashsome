@@ -46,6 +46,8 @@ data class KioskConfig(
     val bootSettleMs: Long = 30_000,
     /** Shelly profiles, after a boot: and at least this long must have passed since boot. */
     val bootMinMs: Long = 90_000,
+    /** "Open Shelly app": keep-in-front stands down this long (ending early when the dashboard is resumed again). */
+    val stockAppPauseMs: Long = 600_000,
 )
 
 /**
@@ -62,6 +64,7 @@ class KioskExtension(val config: KioskConfig) : AppExtension {
     override fun install(app: Application, hashsome: Hashsome) {
         Settings.init(app, config)
         Kiosk.config = config
+        Kiosk.appContext = app
         // The kiosk's plug points sit in front of the consumer's, which keep working.
         hashsome.screenPolicy = KioskScreenPolicy(hashsome.screenPolicy)
         hashsome.touchListener = KioskTouchListener(hashsome.touchListener, mainScheduler())
@@ -86,6 +89,12 @@ internal object Kiosk {
         link = Store("Not connected"),
     )
 
+    /** [Reboot.available] of whichever [reboot] is current, as one store the sheet and the bridge can hold. */
+    private val rebootAvailable = Store(false)
+
+    /** Whether "Open Shelly app" is offered: a Shelly profile is in use (read when the service builds, which a change of profile repeats). */
+    private val stockAppOffered = Store(false)
+
     val actions = object : KioskActions {
         override fun wake() {
             nightMode?.wake()
@@ -100,10 +109,76 @@ internal object Kiosk {
             Hashsome.reconnect()
         }
 
-        override fun rebootIfPossible() {
-            // No display gives the app a shell, and nothing offers this to Home Assistant (see MqttBridge).
-            Log.w("kiosk", "reboot is not available")
+        override fun restartApp() = restartApp(Kiosk.appContext)
+
+        override fun restartDevice() {
+            reboot?.rebootIfPossible() ?: Log.w("kiosk", "reboot is not available")
         }
+
+        override val canOpenStockApp: Store<Boolean> = stockAppOffered
+
+        override fun openStockApp() = openStockApp(Kiosk.activity?.get() ?: Kiosk.appContext)
+
+        override val canRestartDevice: Store<Boolean> = rebootAvailable
+    }
+
+    /** Set by [KioskExtension]; what the restart needs to schedule an alarm. */
+    @Volatile
+    var appContext: Context? = null
+
+    /** The ways to reboot, probed once the service runs (and again when the profile changes). */
+    @Volatile
+    var reboot: Reboot? = null
+    private var rebootWatch: dev.hashsome.client.Cancel? = null
+
+    /** Probes the reboot paths of [profile]; the result lands in [KioskActions.canRestartDevice]. */
+    fun probeReboot(context: Context, profile: DeviceProfile) {
+        releaseReboot()
+        stockAppOffered.set(profile.settlesAtBoot)
+        val r = Reboot(DeviceRebootBackend(context))
+        rebootWatch = r.available.listenNow { rebootAvailable.set(it) }
+        reboot = r
+        r.probe(shelly = profile.settlesAtBoot)
+    }
+
+    /** Keep-in-front's pause while the stock app is used. */
+    val pause = FrontPause({ android.os.SystemClock.elapsedRealtime() }) { Log.e("front", it) }
+
+    /** Launches the stock Shelly app and pauses keep-in-front; where it is not installed nothing is paused. */
+    internal fun openStockApp(context: Context?) {
+        val intent = context?.packageManager?.getLaunchIntentForPackage(FrontDecision.STOCK_PACKAGE)
+        if (context == null || intent == null) {
+            Log.w("kiosk", "the stock Shelly app is not installed")
+            return
+        }
+        try {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            pause.start(config.stockAppPauseMs)
+        } catch (e: Exception) {
+            Log.w("kiosk", "could not open the stock app: ${e.message}")
+        }
+    }
+
+    /** Stops probing and watching (the service is torn down or rebuilt). */
+    fun releaseReboot() {
+        rebootWatch?.invoke()
+        rebootWatch = null
+        reboot?.close()
+        reboot = null
+    }
+
+    /** Schedules the service's start and ends this process (see [AppRestarter]). */
+    internal fun restartApp(context: Context?) {
+        val app = context ?: run {
+            Log.w("kiosk", "restart: no context")
+            return
+        }
+        AppRestarter(
+            alarm = RestartAlarm(app),
+            clock = { android.os.SystemClock.elapsedRealtime() },
+            finish = { activity?.get()?.finishAffinity() },
+            kill = { android.os.Process.killProcess(android.os.Process.myPid()) },
+        ).restart()
     }
 
     /** The dashboard activity that is showing, for the sheet and the cover. */

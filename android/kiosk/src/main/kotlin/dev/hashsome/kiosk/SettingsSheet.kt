@@ -136,6 +136,11 @@ private class SheetContent(
         select("Profile", listOf("auto") + listOf(DeviceProfile.ShellyStargate, DeviceProfile.ShellyJenna, DeviceProfile.Generic).map { it.id }, settings.profileOverride, { it ?: "auto" }, { if (it == "auto") null else it })
         buttons(
             button("Reload (reconnect)", primary = true) { actions.reload() },
+            button("Restart app") { actions.restartApp() },
+        )
+        val stock = buttons(button("Open Shelly app") { actions.openStockApp() })
+        binders += { actions.canOpenStockApp.listenNow { stock.visibility = if (it) View.VISIBLE else View.GONE } }
+        buttons(
             button("Re-provision from the last broadcast") {
                 val last = Provisioning.decode(settings.lastProvision)
                 if (last.isEmpty()) toast("No provisioning broadcast yet") else {
@@ -177,6 +182,9 @@ private class SheetContent(
                 toast(if (DeviceAdmin.remove(ctx)) "Device admin removed" else "The device admin is not active")
             },
         )
+        // Only where the device can be rebooted (probed after the service starts, so it may appear a moment after the sheet opens).
+        val restart = buttons(confirmButton("Restart device", "Tap again to restart the device") { actions.restartDevice() })
+        binders += { actions.canRestartDevice.listenNow { restart.visibility = if (it) View.VISIBLE else View.GONE } }
     }
 
     // ---- rows -----------------------------------------------------------------------------------------------------
@@ -287,12 +295,13 @@ private class SheetContent(
     }
 
     /** Action buttons: side by side when their words are short, else one under the other. */
-    private fun buttons(vararg actions: PillButton) {
+    private fun buttons(vararg actions: PillButton): View {
         val short = actions.sumOf { it.label.orEmpty().length } <= 40
         val holder: ViewGroup = if (short) RowLayout(ctx).apply { gap = 2 } else ColumnLayout(ctx).apply { gap = 2; align = Align.Start }
         actions.forEach { holder.addView(it, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)) }
         holder.setPadding(0, dp(8), 0, dp(4))
         add(holder)
+        return holder
     }
 
     private fun toast(message: String) = Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()

@@ -35,7 +35,20 @@ interface KioskActions {
     fun wake()
     fun sleep()
     fun reload()
-    fun rebootIfPossible()
+
+    /** Restarts the app: the service comes back ~1.5 s later and the dashboard with it. */
+    fun restartApp()
+
+    /** Restarts the device where [canRestartDevice] says it can be; otherwise it only logs. */
+    fun restartDevice()
+
+    /** Opens the stock Shelly app and pauses keep-in-front (Shelly profiles only, see [canOpenStockApp]). */
+    fun openStockApp()
+
+    val canOpenStockApp: Store<Boolean>
+
+    /** Whether [restartDevice] has a way to work (probed once the service runs); false until then. */
+    val canRestartDevice: Store<Boolean>
 }
 
 /** What the bridge reports that is not a setting. */
@@ -54,7 +67,7 @@ class KioskState(
  * switch screen, switch night_mode, number night_idle (s), number brightness, switch auto_brightness, number min_brightness,
  * select dashboard (options = the app's dashboard ids), switch dashboard_switcher, select theme (auto|dark|light),
  * sensor illuminance (lx), binary_sensor occupancy, binary_sensor sleeping, sensor page, sensor link (diagnostic),
- * buttons wake/sleep/reload (reboot only where a shell exists).
+ * buttons wake/sleep/reload/restart_app, open_stock_app (Shelly profiles) and restart_device only where the device can be rebooted.
  * Every `Settings` change is published back, so HA and the settings sheet always agree.
  */
 class MqttBridge(
@@ -93,6 +106,8 @@ class MqttBridge(
         val value: (() -> String?)? = null,
         val command: ((String) -> Unit)? = null,
         val stores: List<Store<*>> = emptyList(),
+        /** Whether this component is announced and answers at all (restart_device only where a reboot is possible). */
+        val offered: () -> Boolean = { true },
     )
 
     private val deviceId: String get() = settings.deviceId.value ?: "unknown"
@@ -188,7 +203,18 @@ class MqttBridge(
             Component("wake", "button", "Wake", describe = { put("payload_press", "PRESS") }, command = { actions.wake() }),
             Component("sleep", "button", "Sleep", describe = { put("payload_press", "PRESS") }, command = { actions.sleep() }),
             Component("reload", "button", "Reload", describe = { put("payload_press", "PRESS") }, command = { actions.reload() }),
-            // No reboot button: no display runs a shell for the app (actions.rebootIfPossible is not offered to Home Assistant).
+            Component("restart_app", "button", "Restart app", describe = { put("payload_press", "PRESS") }, command = { actions.restartApp() }),
+            Component(
+                "open_stock_app", "button", "Open Shelly app", describe = { put("payload_press", "PRESS") },
+                command = { actions.openStockApp() },
+                offered = { actions.canOpenStockApp.value },
+            ),
+            Component(
+                "restart_device", "button", "Restart device",
+                describe = { put("payload_press", "PRESS"); put("device_class", "restart") },
+                command = { actions.restartDevice() },
+                offered = { actions.canRestartDevice.value },
+            ),
         )
     }
 
@@ -210,6 +236,10 @@ class MqttBridge(
             }
         }
         watching += state.lux.listen { if (connected) publishLux() }
+        // The reboot probe finishes after the first discovery: announce the button then.
+        watching += actions.canRestartDevice.listen { if (connected) publishDiscovery() }
+        // The profile (and so "Open Shelly app") is known once the service has built, and changes with profileOverride.
+        watching += actions.canOpenStockApp.listen { if (connected) publishDiscovery() }
         connectIfWanted()
     }
 
@@ -233,7 +263,7 @@ class MqttBridge(
             JSONObject().put("topic", statusTopic).put("payload_available", "online").put("payload_not_available", "offline"),
         )
         val cmps = JSONObject()
-        for (c in components) {
+        for (c in components.filter { it.offered() }) {
             val body = JSONObject()
                 .put("p", c.platform)
                 .put("unique_id", "hashsome-${deviceId}_${c.key}")
@@ -311,7 +341,7 @@ class MqttBridge(
             if (!message.topic.startsWith(prefix) || !message.topic.endsWith("/set")) return
             val key = message.topic.substring(prefix.length, message.topic.length - "/set".length)
             try {
-                components.firstOrNull { it.key == key }?.command?.invoke(message.payload)
+                components.firstOrNull { it.key == key && it.offered() }?.command?.invoke(message.payload)
             } catch (e: Exception) {
                 Log.w("mqtt", "command for $key ignored: ${e.message}")
             }

@@ -16,8 +16,16 @@
         android:name="android.permission.SYSTEM_ALERT_WINDOW"
         tools:ignore="ProtectedPermissions" />
     <uses-permission
+        android:name="android.permission.REBOOT"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
+
+    <!-- Android 11+ hides other apps: the stock Shelly app must be visible to be launched ("Open Shelly app"). -->
+    <queries>
+        <package android:name="cloud.shelly.stargate" />
+    </queries>
 
     <application>
         <service

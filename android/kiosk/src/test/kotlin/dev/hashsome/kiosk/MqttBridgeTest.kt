@@ -53,7 +53,11 @@ private class Actions : KioskActions {
     override fun wake() { if (boom) error("boom"); calls += "wake" }
     override fun sleep() { calls += "sleep" }
     override fun reload() { calls += "reload" }
-    override fun rebootIfPossible() { calls += "reboot" }
+    override fun restartApp() { calls += "restart_app" }
+    override fun restartDevice() { calls += "restart_device" }
+    override fun openStockApp() { calls += "open_stock_app" }
+    override val canOpenStockApp = Store(false)
+    override val canRestartDevice = Store(false)
 }
 
 class MqttBridgeTest {
@@ -105,10 +109,44 @@ class MqttBridgeTest {
                 "screen" to "switch", "night_mode" to "switch", "night_idle" to "number", "brightness" to "number",
                 "auto_brightness" to "switch", "min_brightness" to "number", "dashboard" to "select", "dashboard_switcher" to "switch",
                 "theme" to "select", "illuminance" to "sensor", "occupancy" to "binary_sensor", "sleeping" to "binary_sensor",
-                "page" to "sensor", "link" to "sensor", "wake" to "button", "sleep" to "button", "reload" to "button",
+                "page" to "sensor", "link" to "sensor", "wake" to "button", "sleep" to "button", "reload" to "button", "restart_app" to "button",
             ),
             platforms,
         )
+    }
+
+    @Test
+    fun `restart_device is announced only where the device can reboot, and answers only then`() {
+        val b = bridge()
+        assertFalse(JSONObject(b.discoveryPayload()).getJSONObject("cmps").has("restart_device"))
+        b.start()
+        link.listener!!.onConnected()
+        link.receive("$root/restart_device/set", "PRESS")
+        link.receive("$root/restart_app/set", "PRESS")
+        assertEquals(listOf("restart_app"), actions.calls)
+
+        actions.canRestartDevice.set(true)
+        val cmps = JSONObject(link.last("homeassistant/device/hashsome-bathroom/config")!!.payload).getJSONObject("cmps")
+        assertEquals("button", cmps.getJSONObject("restart_device").getString("p"))
+        assertEquals("$root/restart_device/set", cmps.getJSONObject("restart_device").getString("cmd_t"))
+        link.receive("$root/restart_device/set", "PRESS")
+        assertEquals(listOf("restart_app", "restart_device"), actions.calls)
+    }
+
+    @Test
+    fun `open_stock_app is announced only on a Shelly profile, and answers only then`() {
+        val b = bridge()
+        assertFalse(JSONObject(b.discoveryPayload()).getJSONObject("cmps").has("open_stock_app"))
+        b.start()
+        link.listener!!.onConnected()
+        link.receive("$root/open_stock_app/set", "PRESS")
+        assertTrue(actions.calls.isEmpty())
+
+        actions.canOpenStockApp.set(true)
+        val cmps = JSONObject(link.last("homeassistant/device/hashsome-bathroom/config")!!.payload).getJSONObject("cmps")
+        assertEquals("button", cmps.getJSONObject("open_stock_app").getString("p"))
+        link.receive("$root/open_stock_app/set", "PRESS")
+        assertEquals(listOf("open_stock_app"), actions.calls)
     }
 
     @Test

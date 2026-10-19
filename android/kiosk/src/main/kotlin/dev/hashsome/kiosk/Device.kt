@@ -231,6 +231,8 @@ internal class PanelScreen(private val context: Context, private val sysfs: Bool
         fun bringToFront(context: Context) {
             // After a boot the stock app is still starting: the wake path waits for the gate too.
             if (Kiosk.bootGate?.open == false) return
+            // The user asked for the stock app: a wake must not pull the dashboard over it.
+            if (Kiosk.pause.active(Kiosk.dashboardResumed)) return
             // Already the resumed activity (the X1, whose "off" leaves the panel alive): a start would only re-resume the host.
             val top = Kiosk.lastTop
             if (!FrontDecision.shouldLaunch(top.pkg, context.packageName, Kiosk.dashboardResumed, top.cls) { false }) return
