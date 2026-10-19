@@ -136,6 +136,9 @@ object Hashsome {
     var touchListener: TouchListener = TouchListener
     var pageListener: PageListener = PageListener
 
+    /** Where a hold gesture (the status dot's) shows its progress; the activity installs it. */
+    internal var holdIndicator: HoldProgressSink? = null
+
     /** The application, for what needs resources (icons, fonts) away from any view. */
     internal lateinit var appContext: Context
 
@@ -410,6 +413,13 @@ internal class ThemeHost(
 open class DashboardActivity : Activity() {
     private var host: DashboardHost? = null
     private var switch: DashboardSwitch<DashboardHost>? = null
+    private val holdIndicator by lazy { HoldIndicator(this) }
+
+    // `setContentView` empties the content, so the indicator goes back over each dashboard's root.
+    private fun attachHoldIndicator() {
+        HoldIndicator.attach(findViewById(android.R.id.content), holdIndicator)
+        Hashsome.holdIndicator = holdIndicator
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -425,6 +435,7 @@ open class DashboardActivity : Activity() {
             show = { shown ->
                 host = shown
                 setContentView(shown.root)
+                attachHoldIndicator()
                 // After the first frame, with the screen drawn, so it costs nothing at start.
                 shown.root.postDelayed({ warmIcons(this) }, 800)
             },
@@ -483,6 +494,7 @@ open class DashboardActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (Hashsome.holdIndicator === holdIndicator) Hashsome.holdIndicator = null
         switch?.stop()
         switch = null
         host = null

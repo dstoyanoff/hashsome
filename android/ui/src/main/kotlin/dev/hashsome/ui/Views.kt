@@ -732,11 +732,40 @@ object StatusDotHold {
     const val DEFAULT_MS = 5_000L
 
     /** How far past the dot's edge, in dp, the finger may wander before the hold is given up. */
-    const val MARGIN_DP = 24
+    const val MARGIN_DP = 48
 
     /** Whether the point ([x], [y]) is inside a [w] x [h] view's bounds expanded by [marginPx] on every side. */
     fun withinArea(x: Float, y: Float, w: Float, h: Float, marginPx: Float): Boolean =
         x >= -marginPx && x <= w + marginPx && y >= -marginPx && y <= h + marginPx
+
+    /** The smallest side, in dp, of the area a press starts the hold in; the drawn dot is smaller. */
+    const val TARGET_DP = 56
+
+    /** Whether ([x], [y]) is inside the view's bounds grown by [l], [t], [r], [b] and then by [marginPx] on every side. */
+    fun withinArea(x: Float, y: Float, w: Float, h: Float, l: Float, t: Float, r: Float, b: Float, marginPx: Float): Boolean =
+        x >= -l - marginPx && x <= w + r + marginPx && y >= -t - marginPx && y <= h + b + marginPx
+
+    /**
+     * How far, in px, the touch target grows before and after a view of [size] along one axis so that it is at least [min]:
+     * evenly, but all the way to the edge on a side where less than [min] of room is left ([roomBefore], [roomAfter]).
+     */
+    fun reach(size: Int, min: Int, roomBefore: Int, roomAfter: Int): IntArray {
+        val grow = maxOf(0, min - size)
+        val half = grow / 2
+        val before = if (roomBefore < min) maxOf(roomBefore, 0) else half
+        val after = if (roomAfter < min) maxOf(roomAfter, 0) else grow - half
+        return intArrayOf(before, after)
+    }
+
+    /** The longest press, in ms, that still counts as a tap (the health popover); a longer one released early is an abandoned hold. */
+    const val TAP_MAX_MS = 400L
+
+    /** What a release means: a [Held] hold (swallowed), a hold given up by leaving the area ([Cancelled]), a press too long for a tap but released before the hold ran out ([Abandoned]), or a plain [Tap]. */
+    enum class Release { Tap, Abandoned, Held, Cancelled }
+
+    /** [fired]: the hold's time ran out; [gaveUp]: the finger left the area; [elapsedMs]: DOWN to release. Only a press of at most [TAP_MAX_MS] is a [Release.Tap]. */
+    fun release(fired: Boolean, gaveUp: Boolean, elapsedMs: Long): Release =
+        if (fired) Release.Held else if (gaveUp) Release.Cancelled else if (elapsedMs > TAP_MAX_MS) Release.Abandoned else Release.Tap
 
     /** Ms held at [now] by a press that began at [start] (both uptime clock). */
     fun elapsed(now: Long, start: Long): Long = maxOf(0L, now - start)
@@ -748,9 +777,13 @@ object StatusDotHold {
     fun completed(elapsedMs: Long, holdMs: Long): Boolean = elapsedMs >= holdMs
 }
 
+private const val HOLD_SOURCE = "status-dot"
+private const val HOLD_LABEL = "Hold for settings"
+
 /**
  * A small dot with a ring round it: green when [ok], red otherwise. A tap reaches `TouchListener.onStatusDotTap`; pressing and
- * holding it still for `TouchListener.statusDotHoldMs` (5 s) fills a ring round it and then calls `TouchListener.onStatusDotHold`
+ * holding it still for `TouchListener.statusDotHoldMs` (5 s) shows the hold's progress in the middle of the screen (the dot is under
+ * the finger) and then calls `TouchListener.onStatusDotHold`
  * (the kiosk's settings gesture). A completed hold swallows the release, so no tap and no popover follow it.
  */
 open class StatusDot(context: Context) : View(context) {
@@ -777,39 +810,57 @@ open class StatusDot(context: Context) : View(context) {
     private val tone = EasedColor(this, theme.palette.success)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    private var ringProgress = 0f
     private var held = false
+
+    /** How far, in px, the area a press starts the hold in reaches beyond the dot's bounds (the dot is 32 dp; the finger lands wider). */
+    internal var reachL = 0
+    internal var reachT = 0
+    internal var reachR = 0
+    internal var reachB = 0
 
     init {
         isClickable = true
         setOnClickListener { Hashsome.touchListener.onStatusDotTap() }
     }
 
+    // The dot decides its own click (the touch target over it only forwards): a tap clicks, a held or given-up press never does.
+    private var gaveUp = false
+    private var downAt = 0L
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 held = false
+                gaveUp = false
+                isPressed = true
+                downAt = android.os.SystemClock.uptimeMillis()
                 startRing(Hashsome.touchListener.statusDotHoldMs)
             }
             // Drift inside the expanded area changes nothing; leaving it gives the hold up for good.
             MotionEvent.ACTION_MOVE ->
-                if (holding && !StatusDotHold.withinArea(event.x, event.y, width.toFloat(), height.toFloat(), dp(StatusDotHold.MARGIN_DP).toFloat())) stopRing()
+                if (!gaveUp && !held && !StatusDotHold.withinArea(event.x, event.y, width.toFloat(), height.toFloat(), reachL.toFloat(), reachT.toFloat(), reachR.toFloat(), reachB.toFloat(), dp(StatusDotHold.MARGIN_DP).toFloat())) {
+                    gaveUp = true
+                    stopRing()
+                    isPressed = false
+                }
             MotionEvent.ACTION_UP -> {
                 // Lifted after the full time but before the timer ran: the hold counts, and the release is swallowed.
                 if (holding && StatusDotHold.completed(StatusDotHold.elapsed(android.os.SystemClock.uptimeMillis(), holdStart), holdMs)) fire.run()
                 stopRing()
-                if (held) {
-                    held = false
-                    isPressed = false
-                    return true
-                }
+                val release = StatusDotHold.release(held, gaveUp, StatusDotHold.elapsed(android.os.SystemClock.uptimeMillis(), downAt))
+                held = false
+                gaveUp = false
+                isPressed = false
+                if (release == StatusDotHold.Release.Tap) performClick()
             }
             MotionEvent.ACTION_CANCEL -> {
                 stopRing()
                 held = false
+                gaveUp = false
+                isPressed = false
             }
         }
-        return super.onTouchEvent(event)
+        return true
     }
 
     // Timed from the uptime clock, not a ValueAnimator: a zero animator scale (common on kiosks) would end an animator at once.
@@ -820,9 +871,12 @@ open class StatusDot(context: Context) : View(context) {
         if (!holding) return@Runnable
         holding = false
         held = true
-        ringProgress = 0f
-        invalidate()
+        Hashsome.holdIndicator?.complete(HOLD_SOURCE)
         Hashsome.touchListener.onStatusDotHold()
+    }
+
+    private val show = Runnable {
+        if (holding) Hashsome.holdIndicator?.begin(HOLD_SOURCE, holdStart, holdMs, HOLD_LABEL)
     }
 
     private fun startRing(ms: Long) {
@@ -831,16 +885,15 @@ open class StatusDot(context: Context) : View(context) {
         holdStart = android.os.SystemClock.uptimeMillis()
         holding = true
         postDelayed(fire, ms)
-        postInvalidateOnAnimation()
+        // Not for a quick tap: the indicator shows once the press has outlasted one, filled as far as the hold has got.
+        if (ms > StatusDotHold.TAP_MAX_MS) postDelayed(show, StatusDotHold.TAP_MAX_MS) else show.run()
     }
 
     private fun stopRing() {
+        if (holding) Hashsome.holdIndicator?.cancel(HOLD_SOURCE)
         holding = false
         removeCallbacks(fire)
-        if (ringProgress != 0f) {
-            ringProgress = 0f
-            invalidate()
-        }
+        removeCallbacks(show)
     }
 
     override fun onDetachedFromWindow() {
@@ -856,19 +909,6 @@ open class StatusDot(context: Context) : View(context) {
         canvas.drawCircle(c, c, dp(10f), paint)
         paint.color = tone.value
         canvas.drawCircle(c, c, dp(6f), paint)
-        if (holding) {
-            ringProgress = StatusDotHold.progress(StatusDotHold.elapsed(android.os.SystemClock.uptimeMillis(), holdStart), holdMs)
-            postInvalidateOnAnimation()
-        }
-        if (ringProgress > 0f) {
-            val r = dp(14f)
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = dp(2f)
-            paint.strokeCap = Paint.Cap.ROUND
-            paint.color = theme.palette.accent
-            canvas.drawArc(c - r, c - r, c + r, c + r, -90f, 360f * ringProgress, false, paint)
-            paint.style = Paint.Style.FILL
-        }
     }
 }
 
