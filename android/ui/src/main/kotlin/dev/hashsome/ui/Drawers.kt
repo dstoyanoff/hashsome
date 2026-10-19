@@ -78,7 +78,12 @@ object DrawerHost {
             scope.dispose()
             if (current === overlay) current = null
         }
-        val body = build(DrawerContext(scope, overlay))
+        val body = try {
+            build(DrawerContext(scope, overlay))
+        } catch (e: Throwable) {
+            scope.dispose()
+            throw e
+        }
         current = overlay
         overlay.show(if (scrolls) scrolled(context, body) else body)
     }

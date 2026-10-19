@@ -91,7 +91,7 @@ open class SensorDrawerBody(context: Context, ctx: DrawerContext, val reading: S
         val tone = if (low) p.danger else p.textMuted
         batteryIcon.icon = when {
             battery == null -> Ui.battery
-            battery.percent <= 20 -> Ui.batteryLow
+            battery.low -> Ui.batteryLow
             battery.percent <= 60 -> Ui.batteryMedium
             else -> Ui.batteryFull
         }

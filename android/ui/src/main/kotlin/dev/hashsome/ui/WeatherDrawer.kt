@@ -45,6 +45,8 @@ open class WeatherForecastBody(context: Context, private val ctx: DrawerContext,
     private val hoursBlock = ColumnLayout(context)
     private val daysBlock = ColumnLayout(context)
     private val readout = AlignedText(context, "", Role.Secondary, theme.palette.textMuted, Paint.Align.RIGHT)
+    private val detail = labelText(context, "", Role.Secondary, theme.palette.textMuted)
+    private var shownHours: ForecastResult? = null
     private var asked = false
     private var hours: List<ForecastPoint> = emptyList()
     private var hourlyResult: ForecastResult? = null
@@ -106,6 +108,9 @@ open class WeatherForecastBody(context: Context, private val ctx: DrawerContext,
     private fun renderHours() {
         val state = hourly.forecast.value
         val result = (state as? ForecastState.Ready)?.takeIf { it.type == ForecastType.Hourly }?.result
+        // The same answer again (a state that only changed its Loading for it) is not drawn anew: a mark on the chart would go.
+        if (result != null && result == shownHours) return
+        shownHours = result
         hourlyResult = result
         hours = result?.points.orEmpty().take(HOURS)
         hoursBlock.removeAllViews()
@@ -130,10 +135,14 @@ open class WeatherForecastBody(context: Context, private val ctx: DrawerContext,
         chart.samples = steps.map { it.first!! }
         chart.onScrub = { s ->
             val h = steps.firstOrNull { it.first === s }?.second
+            // The rest of what the hour knows (wind, rain, air, sun, pressure) goes on a line under the chart, which keeps its room.
+            detail.text = if (s == null) "" else s.notes.drop(1).joinToString(" · ")
             readout.text = if (s == null || h == null) "" else "${ChartText.hour(s.atMs)} · ${ForecastText.degrees(h.temperature)} · ${WeatherLook.of(h.condition).label}" +
                 (ForecastText.rain(h.precipitationProbability, h.precipitation, result?.precipitationUnit)?.let { " · Rain $it" } ?: "")
         }
         hoursBlock.addView(chart, FlexParams(MATCH, WRAP).apply { topMargin = Math.round(3 * unitPx()) })
+        detail.text = ""
+        hoursBlock.addView(detail, FlexParams(MATCH, WRAP))
 
         val along = RowLayout(context).also { it.justify = Justify.SpaceBetween; it.align = Align.Start }
         hours.filterIndexed { i, _ -> i % EVERY == 0 }.forEach { h ->

@@ -49,9 +49,11 @@ open class SeriesChartView(context: Context) : View(context) {
     /** The readings, oldest first. */
     var samples: List<SeriesSample> = emptyList()
         set(value) {
+            if (field == value) return
             field = value
             dirty = true
-            scrubbed = -1
+            // A mark on a reading that is gone would stay, with its readout.
+            release()
             requestLayout()
             invalidate()
         }
@@ -323,7 +325,6 @@ open class SeriesChartView(context: Context) : View(context) {
                 downX = event.x
                 downY = event.y
                 horizontal = false
-                scrubTo(event.x)
             }
 
             MotionEvent.ACTION_MOVE -> {
@@ -334,6 +335,7 @@ open class SeriesChartView(context: Context) : View(context) {
                     release()
                     return false
                 }
+                // The mark appears once the finger is going along the line, not on the touch: a scroll over the chart leaves none.
                 if (dx > slop) {
                     horizontal = true
                     parent?.requestDisallowInterceptTouchEvent(true)
@@ -341,10 +343,15 @@ open class SeriesChartView(context: Context) : View(context) {
                 if (horizontal) scrubTo(event.x)
             }
 
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 parent?.requestDisallowInterceptTouchEvent(false)
                 // The mark stays a moment after the finger leaves, long enough to read.
-                postDelayed(settle, SETTLE_MS)
+                if (scrubbed >= 0) postDelayed(settle, SETTLE_MS)
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                parent?.requestDisallowInterceptTouchEvent(false)
+                release()
             }
         }
         return true

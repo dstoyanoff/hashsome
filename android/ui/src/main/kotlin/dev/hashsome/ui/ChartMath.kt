@@ -7,7 +7,7 @@ import java.util.TimeZone
 // any view so that it is tested on the JVM: scales and ticks, the smooth line between points, which labels fit, and the min / max of a period.
 
 /** One reading of a series: when ([atMs], epoch ms), what ([value]) and the extra lines the chart shows for it (the sky and the wind at that hour). */
-class SeriesSample(val atMs: Long, val value: Double, val notes: List<String> = emptyList())
+data class SeriesSample(val atMs: Long, val value: Double, val notes: List<String> = emptyList())
 
 /** The window a chart covers; [Custom] is a from / to pair the caller has already applied to the samples. */
 enum class SeriesRange(val label: String) {
