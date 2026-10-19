@@ -58,6 +58,11 @@ internal object SettingsHost {
     /** Whether the screen is wide enough for a [Drawer] rather than a [Sheet] (dp). */
     private const val WIDE_DP = 600
 
+    /** Closes the sheet at once, if it is open (the stock app is about to cover the dashboard; it must not come back to an open sheet). */
+    fun close() {
+        overlay?.dismissNow()
+    }
+
     fun open(activity: Activity) {
         if (overlay != null) return
         val wide = activity.resources.configuration.screenWidthDp >= WIDE_DP

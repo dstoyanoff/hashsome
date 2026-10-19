@@ -389,7 +389,11 @@ class FormSlider(context: Context, private val min: Int = 0, private val max: In
     }
 }
 
-/** A text field styled as the library's search field: a raised, outlined pill with the accent outline while it has focus. */
+/**
+ * A text field styled as the library's search field: a raised, outlined pill with the accent outline while it has focus.
+ * It never takes focus on its own (on attach, resume or when the window regains focus the system would pick the first field and
+ * raise the keyboard): it is focusable only once touched, and [release] (also on every window-focus gain) takes the focus and the keyboard away.
+ */
 class FormField(context: Context) : EditText(context) {
     private val shape = GradientDrawable()
 
@@ -408,6 +412,29 @@ class FormField(context: Context) : EditText(context) {
         setPadding(dp(14), 0, dp(14), 0)
         minHeight = dp(40)
         paintOutline(false)
+        isFocusable = false
+        isFocusableInTouchMode = false
+    }
+
+    /** Lets go of the focus and hides the keyboard; the field is focusable again only by a touch. */
+    fun release() {
+        clearFocus()
+        isFocusable = false
+        isFocusableInTouchMode = false
+        (context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)?.hideSoftInputFromWindow(windowToken, 0)
+    }
+
+    override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
+        if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN && !isFocusableInTouchMode) {
+            isFocusable = true
+            isFocusableInTouchMode = true
+        }
+        return super.onTouchEvent(event)
+    }
+
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus)
+        if (hasWindowFocus) release()
     }
 
     private fun paintOutline(focused: Boolean) {

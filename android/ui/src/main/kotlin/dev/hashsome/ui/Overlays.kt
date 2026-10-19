@@ -126,7 +126,7 @@ abstract class Overlay(context: Context) : BoundView(context) {
     }
 
     /** Removes it at once, without an animation (a page change, a rebuilt theme). */
-    internal fun dismissNow() {
+    fun dismissNow() {
         if (parent == null) return
         // Whatever is still animating (the scrim, the panel) would call `remove` again when it ended.
         animate().cancel()

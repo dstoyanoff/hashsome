@@ -186,6 +186,7 @@ internal object Kiosk {
             return
         }
         try {
+            android.os.Handler(android.os.Looper.getMainLooper()).post { SettingsHost.close() }
             context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             val overlay = overlayAllowed(context)
             if (!overlay) Log.w("kiosk", "no permission to draw over other apps (appops SYSTEM_ALERT_WINDOW), no back button: pausing for ${FALLBACK_PAUSE_MS / 1000} s")
