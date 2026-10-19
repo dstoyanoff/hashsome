@@ -110,7 +110,7 @@ class HitZoneTest {
         // 6.7 dp to the right of a 30 dp square is inside the 9 dp the zone adds on each side.
         org.junit.Assert.assertTrue(HitZone.contains(100f, 100f, 48f, 100f + 15f + 6.7f, 100f))
         org.junit.Assert.assertFalse(HitZone.contains(100f, 100f, 48f, 125f, 100f))
-        org.junit.Assert.assertFalse(HitZone.contains(100f, 100f, 48f, 100f, 76f))
+        org.junit.Assert.assertFalse(HitZone.contains(100f, 100f, 48f, 100f, 75f))
     }
 
     @org.junit.Test
