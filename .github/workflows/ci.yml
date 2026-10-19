@@ -26,3 +26,33 @@ jobs:
         run: |
           pnpm generate:catalog
           git diff --exit-code .claude/skills/ui-catalog/CATALOG.md packages/ui/src/gallery/props-data.ts
+
+  # The Kotlin libraries in android/ and the example app that consumes them. Gradle and the JDK are
+  # not on the pnpm job's path, so this is its own job; the parity and fixture checks need pnpm too.
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      # Compiles every module, runs lint (an API above 24 is fatal), the unit tests and the layering checks.
+      - name: Build and test the libraries
+        working-directory: android
+        run: ./gradlew build
+      - name: Build the example app
+        working-directory: example/android
+        run: ./gradlew assembleDebug
+      - uses: pnpm/action-setup@v6
+      - run: pnpm install --frozen-lockfile
+      # The fixtures the Kotlin tests read are generated from @hashsome/core (that script arrives with the
+      # client tests; --if-present keeps this green until then), and PARITY.md from parity.json.
+      - name: Check the generated Android files are up to date
+        run: |
+          pnpm run --if-present generate:fixtures
+          pnpm generate:parity
+          git diff --exit-code -- android/testing/src/main/resources/fixtures android/PARITY.md
+      - name: Check every @hashsome/ui export has a parity entry
+        run: pnpm check:parity

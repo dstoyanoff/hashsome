@@ -1,6 +1,6 @@
 /**
  * Works out the next version from the conventional commits since the last release, writes it into
- * every published package, updates CHANGELOG.md and prints the release notes to `--notes <file>`.
+ * every file that carries it (the npm packages and `android/gradle.properties`), updates CHANGELOG.md and prints the release notes to `--notes <file>`.
  * Does not touch git or npm: `.github/workflows/release.yml` commits, tags and publishes.
  *
  *   node scripts/release.ts [--level major|minor|patch] [--dry-run] [--notes <file>]
@@ -8,9 +8,10 @@
  * Prints `version=<x.y.z>` (or `skip=true` when nothing is releasable) for the workflow to read.
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import {
   bump,
+  bumpVersionIn,
   currentVersion,
   levelFor,
   notes,
@@ -23,14 +24,19 @@ import {
 
 const REPO = 'https://github.com/dstoyanoff/hashsome';
 
-/** Every published package, and the root, share one version. */
-const PACKAGES = [
-  'package.json',
-  'packages/core/package.json',
-  'packages/ui/package.json',
-  'packages/runtime/package.json',
-  'packages/integrations/home-assistant/package.json',
-  'packages/integrations/music-assistant/package.json',
+const PACKAGE_JSON = /"version": "[^"]+"/;
+
+/** Every file that carries the one shared version: the npm packages (and the root) and the Android libraries'. */
+const VERSION_FILES: { file: string; pattern: RegExp }[] = [
+  ...[
+    'package.json',
+    'packages/core/package.json',
+    'packages/ui/package.json',
+    'packages/runtime/package.json',
+    'packages/integrations/home-assistant/package.json',
+    'packages/integrations/music-assistant/package.json',
+  ].map((file) => ({ file, pattern: PACKAGE_JSON })),
+  { file: 'android/gradle.properties', pattern: /^hashsome\.version=.*$/m },
 ];
 
 const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8' }).trim();
@@ -95,9 +101,12 @@ if (notesFile) {
 }
 
 if (!dryRun) {
-  for (const file of PACKAGES) {
-    const text = readFileSync(file, 'utf8');
-    writeFileSync(file, text.replace(/"version": "[^"]+"/, `"version": "${version}"`));
+  for (const { file, pattern } of VERSION_FILES) {
+    if (!existsSync(file)) {
+      throw new Error(`${file} is listed in VERSION_FILES but does not exist`);
+    }
+
+    writeFileSync(file, bumpVersionIn(readFileSync(file, 'utf8'), pattern, version));
   }
 
   const date = new Date().toISOString().slice(0, 10);
