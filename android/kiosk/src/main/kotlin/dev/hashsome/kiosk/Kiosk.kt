@@ -89,9 +89,8 @@ internal object Kiosk {
         }
 
         override fun reload() {
-            val context = activity?.get() ?: return
-            // A fresh dashboard connects again; the task is cleared so nothing of the old one stays.
-            context.startActivity(dashboardIntent(context, Intent.FLAG_ACTIVITY_CLEAR_TASK))
+            // A new connection from Settings.server; the host rebuilds its page on it.
+            Hashsome.reconnect()
         }
 
         override fun rebootIfPossible() {
