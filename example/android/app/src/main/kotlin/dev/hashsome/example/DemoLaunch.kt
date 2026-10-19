@@ -11,8 +11,20 @@ import dev.hashsome.ui.Hashsome
  * is provisioned: the example is a plain app with no kiosk module, so this stands in for it.
  */
 object DemoLaunch {
+    @android.annotation.SuppressLint("UnspecifiedRegisterReceiverFlag")
     fun install(app: Application) {
         val prefs = app.getSharedPreferences("demo", Context.MODE_PRIVATE)
+        // `am broadcast -a dev.hashsome.PROVISION --es dashboard <id>`, as a kiosk is provisioned: switches the running app, in place.
+        val provision = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: android.content.Intent) {
+                intent.getStringExtra("dashboard")?.let {
+                    prefs.edit().putString("dashboard", it).apply()
+                    Hashsome.settings.dashboard.set(it)
+                }
+            }
+        }
+        val filter = android.content.IntentFilter("dev.hashsome.PROVISION")
+        if (android.os.Build.VERSION.SDK_INT >= 33) app.registerReceiver(provision, filter, Context.RECEIVER_EXPORTED) else app.registerReceiver(provision, filter)
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
                 val intent = activity.intent
