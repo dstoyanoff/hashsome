@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- The runtime is reached over the network; `kiosk` declares this for projects that use it. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".App"
         android:allowBackup="false"
         android:label="Hashsome example">
 
-        <!-- The activity is declared by dev.hashsome.ui; the app only says it is the one to launch. -->
+        <!-- The dashboard activity of dev.hashsome.ui, taking the runtime address from the intent. -->
         <activity
-            android:name="dev.hashsome.ui.DashboardActivity"
+            android:name=".DemoActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

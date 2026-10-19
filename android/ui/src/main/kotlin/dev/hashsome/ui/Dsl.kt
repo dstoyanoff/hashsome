@@ -6,8 +6,16 @@ import android.view.ViewGroup
 import dev.hashsome.client.Entity
 import dev.hashsome.client.EntityKind
 import dev.hashsome.client.EntityRef
+import dev.hashsome.client.Store
+import dev.hashsome.headless.ActionControl
+import dev.hashsome.headless.ClimateControl
+import dev.hashsome.headless.ConnectionHealth
 import dev.hashsome.headless.EntityHandle
+import dev.hashsome.headless.LightControl
 import dev.hashsome.headless.Scope
+import dev.hashsome.headless.SensorReading
+import dev.hashsome.headless.SwitchControl
+import dev.hashsome.headless.WeatherControl
 
 // The dashboard DSL: a dashboard is a Kotlin object whose pages are built by calling the functions of `PageScope`,
 // the way a web dashboard composes components. Entity refs are strings (`"ha:light.bathroom_led"`), as on the web.
@@ -41,7 +49,7 @@ abstract class Dashboard(val id: String, val motion: Motion = Motion.Full, val i
 @HashsomeDsl
 class ShellScope internal constructor() {
     internal var rail: List<PageSpec>? = null
-    internal val attention = LinkedHashMap<String, Attention>()
+    internal val attention = LinkedHashMap<String, Store<Attention?>>()
     internal var topBarTitle: String? = null
     internal var switcher: List<DashboardOption> = emptyList()
 
@@ -52,6 +60,14 @@ class ShellScope internal constructor() {
 
     /** A dot on the rail item of the page at [path], for something on it that needs a look. */
     fun attention(path: String, level: Attention) {
+        attention[path] = Store(level)
+    }
+
+    /**
+     * A dot on the rail item of the page at [path] that comes and goes with [level] (null: no dot), as the web's `NavItem.attention` does
+     * when its dashboard computes it. The dot follows the store for as long as the dashboard is shown.
+     */
+    fun attention(path: String, level: Store<Attention?>) {
         attention[path] = level
     }
 
@@ -167,32 +183,133 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
 
     // --- Top row ----------------------------------------------------------------------------------------------------
 
-    fun dateChip(): Unit = TODO("WP4a")
-    fun weatherChip(ref: String): Unit = TODO("WP4a")
-    fun clock(): Unit = TODO("WP4a")
-    fun systemStatus(): Unit = TODO("WP4a")
+    private fun <V : View> put(view: V): V {
+        stack.last().addView(view)
+        return view
+    }
 
-    /** The wall header: [left] is drawn at its left edge, then the date, weather, clock and status. */
-    fun header(left: (PageScope.() -> Unit)? = null): Unit = TODO("WP4a")
+    fun dateChip() {
+        put(DateChip(context))
+    }
+
+    /** The weather now: [ref] is a weather entity (`ha:weather.forecast_home`), or a plain temperature sensor, which gets a fixed sun. */
+    fun weatherChip(ref: String) {
+        put(WeatherChip(context, WeatherControl(handle(ref, EntityKind.Weather), scope), handle(ref, EntityKind.Sensor)))
+    }
+
+    fun clock() {
+        put(Clock(context))
+    }
+
+    fun systemStatus() {
+        put(SystemStatus(context, ConnectionHealth(scope.client, scope)))
+    }
+
+    /**
+     * The wall header: [left] is drawn at its left edge, then the date, the weather ([weather], when given), the clock and the status
+     * dot at the right, in one row of the top row's height.
+     */
+    fun header(left: (PageScope.() -> Unit)? = null, weather: String? = null) {
+        row(gap = 3, minHeight = TOP_ROW) {
+            left?.invoke(this)
+            spacer(grow = true)
+            dateChip()
+            if (weather != null) weatherChip(weather)
+            clock()
+            systemStatus()
+        }
+    }
 
     // --- Tiles ------------------------------------------------------------------------------------------------------
 
-    fun roomHeader(title: String, icon: Icon, readouts: PageScope.() -> Unit = {}): Unit = TODO("WP4a")
+    /** A room's header: [title] and [icon], a hairline, and the [readouts] (`sensorReadout`s) at the right. A header after other content starts a new group, with a space above. */
+    fun roomHeader(title: String, icon: Icon, readouts: PageScope.() -> Unit = {}) {
+        val header = RoomHeaderView(context, title, icon)
+        val parent = stack.last()
+        val params = FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        if (parent.childCount > 0) params.topMargin = Math.round(3 * unitPx())
+        parent.addView(header, params)
+        stack += header.readouts
+        try {
+            readouts()
+        } finally {
+            stack.removeAt(stack.size - 1)
+        }
+    }
 
-    /** A reading of the sensor [ref], with the battery of [battery] when given; a value outside [safeRange] is flagged. */
-    fun sensorReadout(ref: String, battery: String? = null, safeRange: ClosedFloatingPointRange<Double>? = null): Unit = TODO("WP4a")
+    /**
+     * A reading of the sensor [ref], with the battery of [battery] when given; a value outside [safeRange] is flagged (humidity is held to
+     * 30..60 when none is given). [icon] is by what the sensor measures when null.
+     */
+    fun sensorReadout(ref: String, battery: String? = null, safeRange: ClosedFloatingPointRange<Double>? = null, icon: Icon? = null) {
+        val reading = SensorReading(handle(ref, EntityKind.Sensor), battery?.let { handle(it, EntityKind.Sensor) }, safeRange)
+        put(SensorReadoutView(context, reading, icon))
+    }
 
-    fun lightTile(ref: String, label: String): Unit = TODO("WP4a")
+    /** A light: tap to toggle, drag along the tile to dim. [icon] is a bulb, lit while on, when null. */
+    fun lightTile(ref: String, label: String, icon: Icon? = null) {
+        put(LightTileView(context, LightControl(handle(ref, EntityKind.Light)), label)).icon = icon
+    }
 
-    /** A thermostat tile over [handle], which may be `EntityHandle.fixed(HandleState.Unavailable...)` for a room that has none. */
-    fun climateTile(handle: EntityHandle<dev.hashsome.client.ClimateEntity>, label: String): Unit = TODO("WP4a")
+    /** A thermostat tile over [handle], which may be `EntityHandle.fixed(HandleState.Unavailable(null))` for a room that has none. */
+    fun climateTile(handle: EntityHandle<dev.hashsome.client.ClimateEntity>, label: String) {
+        put(ClimateTileView(context, ClimateControl(handle), label))
+    }
 
     /** A switch as a tile, with the watts of the power sensor [power] on its secondary line when given. */
-    fun switchTile(ref: String, label: String, power: String? = null): Unit = TODO("WP4a")
+    fun switchTile(ref: String, label: String, power: String? = null, icon: Icon? = null) {
+        val control = SwitchControl(handle(ref, EntityKind.Switch), power?.let { handle(it, EntityKind.Sensor) })
+        put(SwitchTileView(context, control, label)).icon = icon
+    }
 
-    fun taskTile(ref: String, label: String): Unit = TODO("WP4a")
+    /**
+     * A recurring task over the action [ref]: tap, then confirm with the day it was done. [info] says where the task stands (it is
+     * the dashboard's to work out); [onComplete] is what completing does, else the action is triggered.
+     */
+    fun taskTile(
+        ref: String,
+        label: String,
+        info: Store<TaskInfo>? = null,
+        icon: Icon? = null,
+        onComplete: ((doneOn: Long, finish: (String?) -> Unit) -> Unit)? = null,
+    ) {
+        val view = put(TaskTileView(context, ActionControl(handle(ref, EntityKind.Action)), label))
+        if (icon != null) view.icon = icon
+        view.infoSource = info
+        view.onComplete = onComplete
+    }
 
-    fun listTabs(labels: List<String>, surfaces: List<PageScope.() -> Unit>): Unit = TODO("WP4a")
+    /**
+     * Tabs over [labels] with one surface each (built when its tab is opened, and let go of when another is). [icons] go before the labels.
+     * The surfaces fill what is left of the page's height.
+     */
+    fun listTabs(labels: List<String>, surfaces: List<PageScope.() -> Unit>, icons: List<Icon?> = emptyList()) {
+        val tabs = ListTabsView(context, labels)
+        tabs.icons = icons
+        val body = ColumnLayout(context).also { it.gap = 3 }
+        stack.last().addView(tabs, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        stack.last().addView(body, flex(grow = true))
+        var surface: Scope? = null
+
+        fun open(i: Int) {
+            surface?.dispose()
+            body.removeAllViews()
+            val child = scope.child()
+            surface = child
+            val sub = PageScope(context, child)
+            sub.navigator = navigator
+            sub.begin(body)
+            surfaces.getOrNull(i)?.invoke(sub)
+            if (Animation.animates) {
+                // Another list fades in where the last one was.
+                body.alpha = 0f
+                body.animate().alpha(1f).setDuration(150).setInterpolator(EASE_OUT).start()
+            }
+        }
+
+        tabs.onSelect = { open(it) }
+        open(0)
+    }
 
     // --- Media ------------------------------------------------------------------------------------------------------
 

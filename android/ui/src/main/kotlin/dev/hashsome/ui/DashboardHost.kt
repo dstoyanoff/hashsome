@@ -25,6 +25,9 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
     private var pageView: View? = null
     private var rail: NavRailView? = null
     private val cancels = ArrayList<Cancel>()
+
+    // What the current chrome listens to (the attention stores), let go of at each rebuild.
+    private val chromeCancels = ArrayList<Cancel>()
     private val idle: IdleReturn? =
         if (dashboard.idleReturn && Hashsome.app.idleReturnMs > 0) IdleReturn(Hashsome.scheduler, Hashsome.app.idleReturnMs) { navigate(home) } else null
 
@@ -40,12 +43,20 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
         activity.window.setBackgroundDrawable(ColorDrawable(bg))
         root.setBackgroundColor(bg)
         root.removeAllViews()
+        chromeCancels.forEach { it() }
+        chromeCancels.clear()
         rail = shell.rail?.let { railPages ->
             NavRailView(activity, railPages).also { view ->
                 view.onSelect = { navigate(it) }
-                view.attention = shell.attention.mapNotNull { (path, level) ->
-                    railPages.indexOfFirst { it.path == path }.takeIf { it >= 0 }?.let { it to level }
-                }.toMap()
+                // The dots follow their stores: one that comes or goes redraws the rail.
+                val refresh = {
+                    view.attention = shell.attention.mapNotNull { (path, store) ->
+                        val level = store.value ?: return@mapNotNull null
+                        railPages.indexOfFirst { it.path == path }.takeIf { it >= 0 }?.let { it to level }
+                    }.toMap()
+                }
+                shell.attention.values.forEach { chromeCancels += it.listen { _ -> refresh() } }
+                refresh()
             }
         }
         if (pages.isNotEmpty()) show(startAt.coerceIn(0, pages.size - 1), animate = false, side = 0)
@@ -76,7 +87,7 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
     private fun show(i: Int, animate: Boolean, side: Int) {
         Overlays.dismissAllNow()
         // The page that was showing goes at once, and the new one fades in.
-        scope?.let { headless { it.dispose() } }
+        scope?.dispose()
         pageView?.let { root.removeView(it) }
         val spec = pages[i]
         val pageScope = Scope(Hashsome.client, Hashsome.scheduler)
@@ -90,25 +101,27 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
         builder.navigator = { navigate(it) }
         builder.begin(layout)
         spec.build(builder)
-        pageView = layout
+        // The page scrolls when its content is taller than the screen.
+        val scroll = PageScroll(activity, layout)
+        pageView = scroll
         index = i
         // Under the rail, which stays where it is.
-        root.addView(layout, 0, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        root.addView(scroll, 0, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         Pager.syncRail(rail, pages, i)
         if (animate && Animation.animates) {
             // A later page comes in from the right, an earlier from the left (the web's `AnimatedOutlet`, 24 px).
-            layout.alpha = 0f
-            layout.translationX = side * dp(PAGE_SLIDE)
-            layout.animate().alpha(1f).translationX(0f).setDuration(PAGE_MS).setInterpolator(EASE_OUT).start()
+            scroll.alpha = 0f
+            scroll.translationX = side * dp(PAGE_SLIDE)
+            scroll.animate().alpha(1f).translationX(0f).setDuration(PAGE_MS).setInterpolator(EASE_OUT).start()
         }
         // A rebuild for a new theme shows the same page again: nobody navigated.
         if (!rebuilding) Hashsome.pageListener.onPage(dashboard.id, spec.path)
-        idle?.let { headless { it.arrivedAt(spec.path, i == home) } }
+        idle?.arrivedAt(spec.path, i == home)
     }
 
     /** A touch anywhere: the idle countdown starts again. */
     fun touched() {
-        idle?.let { headless { it.touched() } }
+        idle?.touched()
     }
 
     /** Back closes the overlay on top, else goes home from another page; false when there is nothing to go back to. */
@@ -124,10 +137,12 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
     fun dispose() {
         cancels.forEach { it() }
         cancels.clear()
+        chromeCancels.forEach { it() }
+        chromeCancels.clear()
         Overlays.dismissAllNow()
-        scope?.let { headless { it.dispose() } }
+        scope?.dispose()
         scope = null
-        idle?.let { headless { it.stop() } }
+        idle?.stop()
     }
 
     private companion object {
@@ -141,17 +156,5 @@ private object Pager {
         if (rail == null) return
         val i = rail.pages.indexOfFirst { it.path == pages[index].path }
         if (i >= 0) rail.active = i
-    }
-}
-
-/**
- * Calls into `headless` that have no body yet on a branch that does not have WP2 (`Scope.dispose`, `IdleReturn`): the host
- * runs without them rather than not at all. Removed when WP2 is merged.
- */
-internal inline fun headless(block: () -> Unit) {
-    try {
-        block()
-    } catch (e: NotImplementedError) {
-        // Not written yet.
     }
 }

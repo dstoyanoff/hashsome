@@ -42,6 +42,20 @@ internal class PageLayout(context: Context) : ColumnLayout(context) {
 }
 
 /**
+ * Holds a page and scrolls it when its content is taller than the screen (the web's page scrolls). The page is measured at the
+ * screen's height when its content fits (so a cell that fills, a spacer that grows and the centering all work), and at its content's
+ * height when it does not.
+ */
+internal class PageScroll(context: Context, val page: PageLayout) : android.widget.ScrollView(context) {
+    init {
+        isFillViewport = true
+        isVerticalScrollBarEnabled = false
+        overScrollMode = OVER_SCROLL_NEVER
+        addView(page, android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+    }
+}
+
+/**
  * The top bar of a page (title, and a switcher between dashboards): the title in the `title` style and, when the display
  * offers a switcher, a chevron after it. The switcher's menu and the scenes are the tablets' (M2); this draws the bar.
  */
