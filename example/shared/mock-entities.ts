@@ -91,6 +91,13 @@ export const mockEntities = {
     unit: '%',
     measurement: 'humidity',
   }),
+  // A battery that has run down, for a sensor's low-battery state.
+  'sensor.living_room_temperature_battery': mockSensor({
+    name: 'Living room temperature battery',
+    value: '12',
+    unit: '%',
+    measurement: 'battery',
+  }),
   'light.living_room_lamp': mockLight({ name: 'Living room lamp', on: true }),
   'light.living_room_wall': mockLight({
     name: 'Living room wall',

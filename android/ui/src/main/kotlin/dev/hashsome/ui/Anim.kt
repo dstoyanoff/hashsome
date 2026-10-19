@@ -71,8 +71,13 @@ class EasedColor(private val view: View, start: Int, private val ms: Long = 280)
         private set
     private var animator: ValueAnimator? = null
 
+    // Where it is going. Not [value]: a color that has only just started to move is still its old self, and asking for that color
+    // back has to stop the move, not be taken for "already there".
+    private var goal = start
+
     fun to(target: Int) {
-        if (target == value) return
+        if (target == goal) return
+        goal = target
         animator?.cancel()
         if (!Animation.animates || !view.isAttachedToWindow) {
             value = target

@@ -6,6 +6,7 @@ import dev.hashsome.ui.Icon
 
 object Ui {
     val bath = Icon(R.drawable.ic_ui_bath)
+    val batteryLow = Icon(R.drawable.ic_ui_battery_low)
     val check = Icon(R.drawable.ic_ui_check)
     val chevronDown = Icon(R.drawable.ic_ui_chevron_down)
     val chevronLeft = Icon(R.drawable.ic_ui_chevron_left)
@@ -20,6 +21,7 @@ object Ui {
     val cloudSnow = Icon(R.drawable.ic_ui_cloud_snow)
     val cloudSun = Icon(R.drawable.ic_ui_cloud_sun)
     val droplet = Icon(R.drawable.ic_ui_droplet)
+    val gauge = Icon(R.drawable.ic_ui_gauge)
     val gripVertical = Icon(R.drawable.ic_ui_grip_vertical)
     val house = Icon(R.drawable.ic_ui_house)
     val library = Icon(R.drawable.ic_ui_library)

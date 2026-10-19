@@ -178,8 +178,7 @@ object Hashsome {
      * theme follows the new client and [themeChanged] ticks, so the dashboard host rebuilds its page on it.
      */
     fun reconnect() {
-        // `RemoteClient.close` has no body on a branch without WP1.
-        clientOrNull?.let { old -> headless { old.close() } }
+        clientOrNull?.close()
         clientOrNull = null
         connected = false
         themeHost?.rebind(client, scheduler)
@@ -250,7 +249,7 @@ internal class ThemeHost(
     /** The client is another one (a reconnect): the schedule follows the new one, and the host rebuilds on it. */
     fun rebind(client: Client, scheduler: Scheduler) {
         cancelDark()
-        headless { scope.dispose() }
+        scope.dispose()
         scope = Scope(client, scheduler)
         controller = ThemeController(config.theme, scope)
         cancelDark = controller.dark.listen { refresh() }

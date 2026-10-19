@@ -11,7 +11,11 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import dev.hashsome.client.Store
 import dev.hashsome.client.WeatherCondition
+import dev.hashsome.headless.EntityHandle
+import dev.hashsome.headless.HandleState
+import dev.hashsome.headless.LightControl
 import dev.hashsome.ui.Align
 import dev.hashsome.ui.Attention
 import dev.hashsome.ui.BarView
@@ -21,6 +25,7 @@ import dev.hashsome.ui.Dashboard
 import dev.hashsome.ui.FlexParams
 import dev.hashsome.ui.Hashsome
 import dev.hashsome.ui.Justify
+import dev.hashsome.ui.LightTileView
 import dev.hashsome.ui.MarqueeText
 import dev.hashsome.ui.Motion
 import dev.hashsome.ui.PageScope
@@ -30,8 +35,8 @@ import dev.hashsome.ui.RoundButton
 import dev.hashsome.ui.RowSpan
 import dev.hashsome.ui.ShellScope
 import dev.hashsome.ui.Skeleton
-import dev.hashsome.ui.StatusDot
-import dev.hashsome.ui.TileView
+import dev.hashsome.ui.TaskInfo
+import dev.hashsome.ui.TaskState
 import dev.hashsome.ui.UiIcons
 import dev.hashsome.ui.dp
 import dev.hashsome.ui.icons.Ui
@@ -39,18 +44,36 @@ import dev.hashsome.ui.iconBitmap
 import dev.hashsome.ui.overlayForScreen
 
 /**
- * A dashboard built only from the layout DSL and the base views (no entity components), to see the host, the rail, the page
- * transition, the board with a cell that fills, the overlays and the weather glyphs on a device.
+ * The M1 components in every state the mock backend can produce, then the base views and the layout DSL: the pages to look at on
+ * a device. Run the mock runtime (`pnpm --filter @hashsome/example dev`) and start the app with `--es server <host>:<port>`.
  */
 object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
     override val pages = listOf(
         page("", "Room", Ui.bath) { room() },
+        page("tasks", "Tasks", Ui.wrench) { tasks() },
         page("music", "Music", Ui.music) { music() },
         page("more", "Weather", Ui.cloudSun) { weather() },
     )
 
+    /** A dot on the Tasks item that comes and goes, to see the rail follow a store. */
+    private val tasksAttention = Store<Attention?>(Attention.Notice)
+
+    init {
+        val handler = Handler(Looper.getMainLooper())
+        val cycle = listOf<Attention?>(Attention.Notice, Attention.Urgent, null)
+        var at = 0
+        handler.postDelayed(object : Runnable {
+            override fun run() {
+                at = (at + 1) % cycle.size
+                tasksAttention.set(cycle[at])
+                handler.postDelayed(this, 5000)
+            }
+        }, 5000)
+    }
+
     override fun shell(s: ShellScope) {
         s.navRail(pages)
+        s.attention("tasks", tasksAttention)
         s.attention("more", Attention.Notice)
     }
 
@@ -61,60 +84,54 @@ object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
             if (muted) it.color = Hashsome.theme.palette.textMuted
         }
 
-    private fun PageScope.tile(label: String, secondary: String?, fill: Float?, icon: dev.hashsome.ui.Icon = Ui.lightbulb): TileView =
-        TileView(context).also { tile ->
-            tile.title = label
-            tile.icon = icon
-            tile.secondary = secondary
-            tile.fill = fill
-            var on = fill != null && fill > 0f
-            var level = fill ?: 1f
-            tile.filled = on
-            tile.onClick = {
-                on = !on
-                tile.filled = on
-                if (fill != null) tile.fill = if (on) level else 0f
-                tile.secondary = if (on) (if (fill != null) "${(level * 100).toInt()}%" else "On") else "Off"
-            }
-            if (fill != null) {
-                tile.onDrag = {
-                    level = it
-                    tile.fill = it
-                    tile.filled = true
-                    tile.secondary = "${(it * 100).toInt()}%"
-                }
-                tile.onCommit = { on = true }
-            }
-            tile.onHold = { tile.secondary = "Held" }
-        }
-
     private fun PageScope.room() {
-        // A wide display puts the player beside the room, a narrow one under it (which is what fills the page's height).
-        val wide = context.resources.displayMetrics.widthPixels / dp(1f) >= 700
-        board {
-            cell(cols = if (wide) 7 else 12) {
-                row(gap = 3, minHeight = 40) {
-                    add(text("Bathroom", Role.Title))
-                    spacer(grow = true)
-                    add(text("21.5 C  45%", Role.Body, muted = true))
-                    add(StatusDot(context))
-                }
-                grid(2) {
-                    add(tile("Ambient", "60%", 0.6f))
-                    add(tile("Lamp", "Off", 0f))
-                    add(tile("Mirror", "On", null))
-                    add(tile("Fan", "Off", null, Ui.wrench))
-                }
-                add(TileView(context).also {
-                    it.title = "Heater"
-                    it.icon = Ui.thermometer
-                    it.secondary = "Unavailable"
-                    it.disabled = true
-                })
+        column(gap = 3) {
+            header(weather = "ha:weather.home")
+            roomHeader("Living room", Ui.house) {
+                sensorReadout("ha:sensor.living_room_temperature", battery = "ha:sensor.living_room_temperature_battery")
+                // 64% is outside the 30..60 a humidity sensor is held to.
+                sensorReadout("ha:sensor.living_room_humidity", battery = "ha:sensor.living_room_temperature_battery")
             }
-            cell(cols = if (wide) 5 else 12, rows = RowSpan.Fill) {
-                add(PlayerCard(context))
+            grid(2) {
+                lightTile("ha:light.living_room_lamp", "On, no dimming")
+                lightTile("ha:light.living_room_wall", "Dimmable, 78%")
+                lightTile("ha:light.living_room_accent", "Colour, off")
+                lightTile("ha:light.porch_lamp", "Unavailable")
+                lightTile("ha:light.does_not_exist", "Missing")
+                add(LightTileView(context, LightControl(EntityHandle.fixed(HandleState.Loading)), "Loading"))
+                switchTile("ha:lock.front_door", "Switch, on", Ui.house, power = "ha:sensor.living_room_lamp_power")
+                switchTile("ha:switch.kitchen_coffee_maker", "Switch, off", Ui.house)
             }
+            roomHeader("Sensors", Ui.thermometer) {
+                sensorReadout("ha:sensor.master_bedroom_temperature")
+                sensorReadout("ha:sensor.does_not_exist")
+            }
+            climateTile(EntityHandle.fixed(HandleState.Unavailable(null)), "Heater, none here")
+            // Taller than the screen: the page scrolls.
+            roomHeader("Below the fold", Ui.lightbulb)
+            grid(2) {
+                lightTile("ha:light.kitchen_ceiling", "Kitchen ceiling")
+                lightTile("ha:light.porch_ambient", "Porch ambient")
+            }
+        }
+    }
+
+    private fun PageScope.tasks() {
+        column(gap = 3) {
+            header(left = { add(text("Tasks", Role.Title)) })
+            val now = System.currentTimeMillis()
+            val day = 86_400_000L
+            // What the dashboard does with the day it was done on; the demo only says it went through.
+            val done: (Long, (String?) -> Unit) -> Unit = { _, finish -> finish(null) }
+            taskTile("ha:scene.movie_night", "Up to date", onComplete = done, info = Store(TaskInfo(TaskState.Ok, now + 30 * day, now - 5 * day)))
+            taskTile("ha:scene.movie_night", "Due soon", onComplete = done, info = Store(TaskInfo(TaskState.DueSoon, now + 2 * day, now - 20 * day)))
+            taskTile("ha:scene.movie_night", "Overdue", onComplete = done, info = Store(TaskInfo(TaskState.Overdue, now - 3 * day, now - 40 * day)))
+            taskTile("ha:scene.does_not_exist", "Missing", onComplete = done)
+            listTabs(
+                listOf("Library", "Queue"),
+                listOf({ add(text("The library surface")) }, { add(text("The queue surface")) }),
+                icons = listOf(Ui.library, Ui.listMusic),
+            )
         }
     }
 
@@ -140,6 +157,17 @@ object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
 
     private fun PageScope.weather() {
         column(gap = 3, grow = true) {
+            add(text("Top row pieces: date, weather (entity, sensor, missing), clock, status", Role.Secondary, muted = true))
+            row(gap = 3) {
+                dateChip()
+                weatherChip("ha:weather.home")
+                weatherChip("ha:sensor.temperature")
+                weatherChip("ha:weather.does_not_exist")
+            }
+            row(gap = 3) {
+                clock()
+                systemStatus()
+            }
             add(text("Weather glyphs", Role.Title))
             add(WeatherStrip(context, night = false))
             add(WeatherStrip(context, night = true))
@@ -151,6 +179,7 @@ object Demo : Dashboard("demo", motion = Motion.Light, idleReturn = false) {
                 add(RoundButton(context, UiIcons.shuffle).also { it.active = true })
                 add(RoundButton(context, UiIcons.close))
             }
+            add(PlayerCard(context), 150)
             spacer(grow = true)
         }
     }

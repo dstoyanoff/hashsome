@@ -115,6 +115,14 @@ open class TileView(context: Context) : ViewGroup(context) {
             sync(animate = true)
         }
 
+    /** The color of the second line while the tile is ready, in place of the usual muted one (a task's "Overdue"); null keeps the usual. */
+    var secondaryTone: Int? = null
+        set(value) {
+            if (field == value) return
+            field = value
+            sync(animate = true)
+        }
+
     var onClick: (() -> Unit)? = null
     var onHold: (() -> Unit)? = null
     var onDrag: ((Float) -> Unit)? = null
@@ -182,7 +190,13 @@ open class TileView(context: Context) : ViewGroup(context) {
         )
         glyphTint.to(if (accented) p.accentText else if (ready) p.line else p.textMuted)
         titleColor.to(if (ready) p.text else p.textMuted)
-        secondaryColor.to(if (!ready) p.textMuted else if (solid || level > 0.85f) p.onAccent else p.line)
+        secondaryColor.to(
+            when {
+                !ready -> p.textMuted
+                solid || level > 0.85f -> p.onAccent
+                else -> secondaryTone ?: p.line
+            },
+        )
         val target = if (ready) 1f else 0.7f
         if (!animate || !Animation.animates || !isAttachedToWindow) {
             animate().cancel()
@@ -331,7 +345,6 @@ open class TileView(context: Context) : ViewGroup(context) {
                 dragging = false
                 // Measured once, here: a drag does not ask the view for its size on every move.
                 dragWidth = maxOf(1, width).toFloat()
-                parent?.requestDisallowInterceptTouchEvent(true)
                 if (onHold != null) {
                     postDelayed(holdFire, HOLD_MS)
                     startHold()
@@ -344,6 +357,8 @@ open class TileView(context: Context) : ViewGroup(context) {
                 val dx = event.x - downX
                 if (onDrag != null && !dragging && Math.abs(dx) > dp(DRAG_THRESHOLD)) {
                     dragging = true
+                    // A page that scrolls keeps the touch until the finger turns out to be dragging along the tile, not down the page.
+                    parent?.requestDisallowInterceptTouchEvent(true)
                     stopHold()
                     sync(animate = false)
                 }
@@ -701,6 +716,20 @@ open class StatusDot(context: Context) : View(context) {
         set(value) {
             field = value
             tone.to(if (value) theme.palette.success else theme.palette.danger)
+        }
+
+    /** How well the system is doing, in the three colors of the web's status dot (green, warm while something connects, red). Overrides [ok]. */
+    var level: dev.hashsome.headless.HealthLevel = dev.hashsome.headless.HealthLevel.Ok
+        set(value) {
+            field = value
+            val p = theme.palette
+            tone.to(
+                when (value) {
+                    dev.hashsome.headless.HealthLevel.Ok -> p.success
+                    dev.hashsome.headless.HealthLevel.Pending -> p.warm
+                    dev.hashsome.headless.HealthLevel.Down -> p.danger
+                },
+            )
         }
 
     private val tone = EasedColor(this, theme.palette.success)

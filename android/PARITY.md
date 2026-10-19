@@ -8,27 +8,27 @@ Statuses: `native` (a Kotlin counterpart exists; `native:<Name>` when it is name
 
 | Web                 | Kind      | Status  | Native type / notes |
 | ------------------- | --------- | ------- | ------------------- |
-| `LightTile`         | component | planned |                     |
-| `ClimateTile`       | component | planned |                     |
-| `SensorReadout`     | component | planned |                     |
+| `LightTile`         | component | native  |                     |
+| `ClimateTile`       | component | native  | `ClimateTileView`   |
+| `SensorReadout`     | component | native  |                     |
 | `ActionButton`      | component | planned |                     |
 | `SceneButton`       | component | planned |                     |
 | `MediaPlayerBar`    | component | planned |                     |
 | `MediaPlayerColumn` | component | planned |                     |
-| `ListTabs`          | component | planned |                     |
+| `ListTabs`          | component | native  |                     |
 | `MediaPlayerFull`   | component | planned |                     |
 | `MediaBrowser`      | component | planned |                     |
 | `MediaQueue`        | component | planned |                     |
 | `MediaSpeakers`     | component | planned |                     |
-| `NavRail`           | component | planned |                     |
+| `NavRail`           | component | native  |                     |
 | `NavDock`           | component | planned |                     |
 | `NavBar`            | component | planned |                     |
 | `TopBar`            | component | planned |                     |
-| `SystemStatus`      | component | planned |                     |
-| `WeatherChip`       | component | planned |                     |
+| `SystemStatus`      | component | native  |                     |
+| `WeatherChip`       | component | native  |                     |
 | `PresenceStack`     | component | planned |                     |
-| `DateChip`          | component | planned |                     |
-| `Clock`             | component | planned |                     |
+| `DateChip`          | component | native  |                     |
+| `Clock`             | component | native  |                     |
 | `WeatherForecast`   | component | planned |                     |
 
 ## Layout
@@ -39,15 +39,15 @@ Statuses: `native` (a Kotlin counterpart exists; `native:<Name>` when it is name
 | `AnimatedNumber`   | component | planned  |                     |
 | `Board`            | component | planned  |                     |
 | `Cell`             | component | planned  |                     |
-| `TopRow`           | component | planned  |                     |
+| `TopRow`           | component | native   |                     |
 | `Page`             | component | web-only |                     |
 | `AnimatedOutlet`   | component | web-only |                     |
 | `Motion`           | component | web-only |                     |
-| `RoomHeader`       | component | planned  |                     |
-| `Tile`             | component | planned  |                     |
+| `RoomHeader`       | component | native   |                     |
+| `Tile`             | component | native   |                     |
 | `IconButton`       | component | planned  |                     |
-| `TaskTile`         | component | planned  |                     |
-| `ConfirmDialog`    | component | planned  |                     |
+| `TaskTile`         | component | native   |                     |
+| `ConfirmDialog`    | component | native   |                     |
 | `EnergyChart`      | component | planned  |                     |
 | `HistorySection`   | component | planned  |                     |
 | `Icon`             | component | web-only |                     |
