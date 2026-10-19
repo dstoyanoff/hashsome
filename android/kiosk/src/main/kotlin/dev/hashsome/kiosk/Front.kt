@@ -42,13 +42,22 @@ internal object FrontDecision {
  * "shutdown completed" that force-stops whatever started inside it. Open when the top activity has not changed (and was not the
  * splash) for [settleMs] and at least [minMs] have passed since boot, whichever is later. Once open it stays open.
  * [clock] is `SystemClock.elapsedRealtime()`, so it counts from boot.
+ *
+ * As a system app ([systemApp]) the stock app's force-stop hook skips it, so the gate degrades to "not over the splash, and the top
+ * stable for [systemSettleMs]", with no minimum since boot: the dashboard takes the front seconds after the splash has passed.
  */
 internal class BootGate(
-    private val settleMs: Long,
-    private val minMs: Long,
+    settleMs: Long,
+    minMs: Long,
     private val clock: () -> Long,
+    systemApp: Boolean = false,
+    systemSettleMs: Long = 5_000,
     private val log: (String) -> Unit = {},
 ) {
+    private val settleMs = if (systemApp) systemSettleMs else settleMs
+    private val minMs = if (systemApp) 0L else minMs
+    private val mode = if (systemApp) "boot: system app, short settle" else null
+
     var open = false
         private set
     private var announced = false
@@ -71,6 +80,7 @@ internal class BootGate(
         }
         if (!announced) {
             announced = true
+            mode?.let(log)
             log("boot: waiting for the stock app to settle")
         }
         return false

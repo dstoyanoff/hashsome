@@ -46,6 +46,8 @@ data class KioskConfig(
     val bootSettleMs: Long = 30_000,
     /** Shelly profiles, after a boot: and at least this long must have passed since boot. */
     val bootMinMs: Long = 90_000,
+    /** Shelly profiles, after a boot, when installed as a system app (the stock app's force-stop skips those): only the top-stable time applies, with no minimum since boot. */
+    val bootSettleSystemMs: Long = 5_000,
     /** "Open Shelly app": keep-in-front stands down this long (ending early when the dashboard is resumed again). */
     val stockAppPauseMs: Long = 600_000,
 )
@@ -203,11 +205,15 @@ internal object Kiosk {
         settles && (boot || elapsedMs < minMs)
 
     /** Arms the gate once per process (the profile and the clock decide, see [shouldArmBootGate]). */
-    fun armBootGateIfNeeded(boot: Boolean) {
+    fun armBootGateIfNeeded(context: Context, boot: Boolean) {
         if (bootGate != null) return
         val elapsed = android.os.SystemClock.elapsedRealtime()
         if (!shouldArmBootGate(boot, elapsed, config.bootMinMs, DeviceProfile.detect().settlesAtBoot)) return
-        bootGate = BootGate(config.bootSettleMs, config.bootMinMs, { android.os.SystemClock.elapsedRealtime() }) { Log.e("front", it) }
+        val system = context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0
+        bootGate = BootGate(
+            config.bootSettleMs, config.bootMinMs, { android.os.SystemClock.elapsedRealtime() },
+            systemApp = system, systemSettleMs = config.bootSettleSystemMs,
+        ) { Log.e("front", it) }
     }
 
     /** Starts the foreground service. Called from `Application.onCreate`, the boot receiver ([boot]) and provisioning. */
