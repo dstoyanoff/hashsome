@@ -604,4 +604,21 @@ class RemoteClientTest {
         scheduler.advance(500)
         assertEquals(2, factory.created.size)
     }
+
+    @Test
+    fun `an entity body that cannot be read degrades to a generic entity and is logged`() {
+        val logged = ArrayList<String>()
+        client.log = { logged += it }
+        client.parseEntityBody = { _, _ -> throw IllegalStateException("broken body") }
+        open()
+        val seen = ArrayList<Snapshot>()
+        client.watch(light) { seen += it }
+        transport.receive(lightFrame(true))
+        scheduler.runCurrent()
+        val entity = (seen.last() as Snapshot.Present).entity as GenericEntity
+        assertEquals("X", entity.name)
+        assertEquals(Availability.Ready, entity.availability)
+        assertEquals(1, logged.size)
+        assertTrue(logged[0], logged[0].contains("ha:light.x") && logged[0].contains("broken body"))
+    }
 }

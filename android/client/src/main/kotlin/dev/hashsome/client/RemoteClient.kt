@@ -22,6 +22,11 @@ class RemoteClient(
     private val transport: Transport.Factory = WsClient.Factory,
     private val scheduler: Scheduler,
 ) : Client {
+    /** Where problems worth a line go (an entity body that could not be read); may be called from the transport's thread. */
+    @Volatile var log: ((String) -> Unit)? = null
+
+    internal var parseEntityBody: (EntityRef, JSONObject) -> Entity = ::parseEntity
+
     override val link: Store<LinkStatus> = Store(LinkStatus.Connecting)
 
     override val integrations: Store<Map<String, ConnectionStatus>> = Store(emptyMap())
@@ -262,7 +267,7 @@ class RemoteClient(
                 if (cached != null && cached.text == text) return cached.message
             }
         }
-        val message = ServerMessage.decode(text)
+        val message = ServerMessage.decode(text, parseEntityBody, log)
         if (message is ServerMessage.EntityUpdate) frames[message.ref.value] = Frame(text, message)
         return message
     }

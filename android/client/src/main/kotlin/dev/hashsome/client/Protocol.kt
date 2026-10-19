@@ -96,16 +96,19 @@ sealed interface ServerMessage {
 
     companion object {
         /** Null for anything malformed or of a type this app does not know. */
-        fun decode(text: String): ServerMessage? {
+        fun decode(text: String): ServerMessage? = decode(text, ::parseEntity, null)
+
+        /** [parse] reads an entity body; when it throws, the entity still arrives as a [GenericEntity] of its base fields and [onError] hears why. */
+        internal fun decode(text: String, parse: (EntityRef, JSONObject) -> Entity, onError: ((String) -> Unit)?): ServerMessage? {
             val json = try {
                 JSONObject(text)
             } catch (_: Exception) {
                 return null
             }
-            return decode(json)
+            return decode(json, parse, onError)
         }
 
-        internal fun decode(json: JSONObject): ServerMessage? = try {
+        internal fun decode(json: JSONObject, parse: (EntityRef, JSONObject) -> Entity = ::parseEntity, onError: ((String) -> Unit)? = null): ServerMessage? = try {
             when (json.str("type")) {
                 "pong" -> Pong
                 "entity" -> {
@@ -114,7 +117,7 @@ sealed interface ServerMessage {
                         ref == null -> null
                         // `entity: null` says the entity does not exist; no `entity` key at all is malformed.
                         json.has("entity") && json.isNull("entity") -> EntityUpdate(ref, null)
-                        else -> json.obj("entity")?.let { EntityUpdate(ref, Entities.parse(ref, it)) }
+                        else -> json.obj("entity")?.let { EntityUpdate(ref, readEntity(ref, it, parse, onError)) }
                     }
                 }
                 "status" -> {
@@ -130,9 +133,17 @@ sealed interface ServerMessage {
                 else -> null
             }
         } catch (_: Exception) {
-            // An entity the parsers could not read is dropped like any malformed frame, so one bad entity never ends the link.
+            // Anything else malformed is dropped, so one bad frame never ends the link.
             null
         }
+
+        private fun readEntity(ref: EntityRef, json: JSONObject, parse: (EntityRef, JSONObject) -> Entity, onError: ((String) -> Unit)?): Entity =
+            try {
+                parse(ref, json)
+            } catch (e: Exception) {
+                onError?.invoke("Could not read $ref as ${json.str("kind")}: ${e.message}")
+                parseGeneric(ref, json)
+            }
     }
 }
 
