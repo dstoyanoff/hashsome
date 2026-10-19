@@ -40,7 +40,8 @@ class HistoryControl(
     init {
         if (ref != null) {
             load()
-            scope.onReconnect { if (state.value !is HistoryState.Ready) load() }
+            // The connection coming back is a reason to ask again; an answer that is still fresh is used as it is.
+            scope.onReconnect { load() }
         }
     }
 

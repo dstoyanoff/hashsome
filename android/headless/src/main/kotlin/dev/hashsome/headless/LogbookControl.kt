@@ -30,7 +30,7 @@ class LogbookControl(val ref: EntityRef?, val scope: Scope, val limit: Int = LIM
     private val key = "$ref|$limit"
 
     init {
-        scope.onReconnect { if (asked && state.value !is LogbookState.Ready) load() }
+        scope.onReconnect { if (asked) load() }
     }
 
     /** Asks for the entries, once; a later call does nothing. */
