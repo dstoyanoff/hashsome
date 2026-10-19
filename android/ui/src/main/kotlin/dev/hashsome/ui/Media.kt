@@ -704,6 +704,9 @@ private class Capped(context: Context, private val maxDp: Int) : ViewGroup(conte
  * The player stays put and the list scrolls in the room that is left. The speakers open as the side panel.
  */
 open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl, val label: String) : BoundView(context) {
+    /** The speakers panel has a button that widens it (off by default). */
+    var expandable: Boolean = false
+
     /** The speakers that may be grouped with this player; empty for any it can be grouped with. Set before the view is shown. */
     var speakers: List<EntityRef> = emptyList()
 
@@ -721,7 +724,7 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
         val scope = control.scope.child()
         own = scope
         val queue = QueueControl(control.handle, scope)
-        val pill = SpeakersPillView(context, compact = false) { openSpeakers(context, control, speakers, label) }
+        val pill = SpeakersPillView(context, compact = false) { openSpeakers(context, control, speakers, label, null, expandable) }
         pillView = pill
         grouping = null
         val player = NowPlayingView(context, control, label, queue, shuffleAtTitle = true, speakers = pill)

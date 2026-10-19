@@ -400,9 +400,10 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
     }
 
     /** The full player: the player on top and under it its library and queue as tabs. It takes the height that is left of the page. */
-    fun mediaPlayerFull(ref: String, label: String, speakers: List<EntityRef> = emptyList()) {
+    fun mediaPlayerFull(ref: String, label: String, speakers: List<EntityRef> = emptyList(), expandable: Boolean = false) {
         val full = MediaPlayerFullView(context, player(ref), label)
         full.speakers = speakers
+        full.expandable = expandable
         place(full, grow = true)
     }
 
