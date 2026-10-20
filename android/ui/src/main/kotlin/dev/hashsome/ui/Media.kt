@@ -666,11 +666,16 @@ internal class UnderlineTabs(context: Context, private val tabs: List<ListTab>) 
  * What the full player's parts are laid out in: every part but the last as tall as it is, the last (the list) the height that is left, and
  * never less than [minList]; when that is more than the room there is, the whole is taller than its scroll view and scrolls.
  *
- * With a height to fill and a list to show, the split is even: the player (the first part) is half of it and the library or queue, with its tabs,
- * the other half, so the artwork grows into the room. The player is never less than it needs, and the list never less than [minList].
+ * With a height to fill and a list to show, the split is 40 / 60: the player (the first part) takes two fifths of it and the library or queue, with its
+ * tabs, the rest, so the artwork grows into the room while the list keeps the larger part. The player is never less than it needs, and the list never less than [minList].
  */
 private class FullLayout(context: Context) : ViewGroup(context) {
     var minListDp = 260
+
+    private companion object {
+        /** The player's share of the room, the library or queue (with its tabs) having the rest: 40 / 60. */
+        const val PLAYER_SHARE = 0.4f
+    }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
@@ -696,10 +701,10 @@ private class FullLayout(context: Context) : ViewGroup(context) {
             first.measure(widthSpec, unspecified)
             playerHeight = first.measuredHeight
             if (exact) {
-                // Half of the room for the player, but no more than leaves the list its least; never less than it needs.
-                val half = (total - gap) / 2
+                // Its share of the room for the player, but no more than leaves the list its least; never less than it needs.
+                val share = ((total - gap) * PLAYER_SHARE).toInt()
                 val most = total - gap - between - gap - dp(minListDp)
-                val wanted = maxOf(playerHeight, minOf(half, most))
+                val wanted = maxOf(playerHeight, minOf(share, most))
                 if (wanted > playerHeight) {
                     (first as? Capped)?.fill = true
                     first.measure(widthSpec, MeasureSpec.makeMeasureSpec(wanted, MeasureSpec.EXACTLY))
