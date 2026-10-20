@@ -52,8 +52,9 @@ class UpdatesTest {
         val installed = ArrayList<String>()
         val deleted = ArrayList<String>()
         var failFetch = false
+        val responses = HashMap<String, String>()
         var fileSize = 1000L
-        override fun fetch(url: String): String = if (failFetch) error("no route") else latest
+        override fun fetch(url: String, accept: String?): String = if (failFetch) error("no route") else responses[url] ?: latest
         override fun download(url: String, progress: (Int) -> Unit): String {
             progress(40)
             progress(100)
@@ -169,5 +170,56 @@ class UpdatesTest {
         assertEquals(UpdateState.Off, u.state.value)
         sched.advance(10_000_000)
         assertEquals(UpdateState.Off, u.state.value)
+    }
+
+    private val digest = "sha256:" + "c".repeat(64)
+
+    private fun registry(vararg tags: String): FakeIO {
+        val api = "http://10.4.5.1:5000/v2/hashsome/home"
+        val manifest = """{"config":{"digest":"sha256:cfg"},"layers":[{"mediaType":"application/vnd.android.package-archive","digest":"$digest","size":1000}]}"""
+        val config = """{"packageName":"dev.hashsome.home","versionName":"0.19.3","versionCode":1903,"notes":"Fixes"}"""
+        return FakeIO().also {
+            it.responses["$api/tags/list"] = """{"name":"hashsome/home","tags":[${tags.joinToString(",") { t -> "\"$t\"" }}]}"""
+            it.responses["$api/manifests/1903"] = manifest
+            it.responses["$api/blobs/sha256:cfg"] = config
+        }
+    }
+
+    @Test
+    fun `a registry address is read as plain http, or https with ocis`() {
+        assertTrue(OciFeed.handles("oci://10.4.5.1:5000/hashsome/home"))
+        assertEquals("http://10.4.5.1:5000/v2/hashsome/home", OciFeed.api("oci://10.4.5.1:5000/hashsome/home/"))
+        assertEquals("https://registry.lan/v2/home", OciFeed.api("ocis://registry.lan/home"))
+        assertTrue(!OciFeed.handles("http://h/local/x"))
+    }
+
+    @Test
+    fun `the newest release in a registry is the highest numeric tag, with the layer's digest and size`() {
+        val release = ReleaseFeed.resolve(registry("latest", "1902", "1903", "1901"), "oci://10.4.5.1:5000/hashsome/home")
+        assertEquals(1903L, release.versionCode)
+        assertEquals("0.19.3", release.versionName)
+        assertEquals("c".repeat(64), release.sha256)
+        assertEquals(1000L, release.size)
+        assertEquals("http://10.4.5.1:5000/v2/hashsome/home/blobs/$digest", release.apkUrl)
+        assertEquals("Fixes", release.notes)
+    }
+
+    @Test
+    fun `a registry with no numeric tag has no release, and the updater says so`() {
+        val io = registry("latest")
+        url.set("oci://10.4.5.1:5000/hashsome/home")
+        val u = Updater(url, io, sched, { it() }, "dev.hashsome.home", 1902, "0.19.2", clock = { 5_000L }, checkEveryMs = 3_600_000, firstCheckMs = 1_000)
+        u.start()
+        sched.advance(1_000)
+        assertTrue(u.state.value is UpdateState.Failed)
+    }
+
+    @Test
+    fun `the updater offers a registry release like a folder's`() {
+        url.set("oci://10.4.5.1:5000/hashsome/home")
+        val u = Updater(url, registry("1902", "1903"), sched, { it() }, "dev.hashsome.home", 1902, "0.19.2", clock = { 5_000L }, checkEveryMs = 3_600_000, firstCheckMs = 1_000)
+        u.start()
+        sched.advance(1_000)
+        assertTrue(u.state.value is UpdateState.Available)
     }
 }

@@ -73,25 +73,24 @@ Each module publishes its `release` AAR with sources, under group `dev.hashsome`
 
 ## `kiosk`: updating from Home Assistant
 
-The first install of a display is manual, once (`hashsome android provision`, or `provision --system` on the X1; see
-the consumer's README for its per-device steps). After that a display updates itself from a **feed**: any folder a plain
-HTTP GET can read (Home Assistant's `/config/www`, served at `/local/`, a static host, an object store) holding
-`latest.json` and the APK it names.
+The first install of a display is manual, once ([INSTALL.md](INSTALL.md)). After that a display updates itself from a **feed**,
+which is either an OCI registry repository (`oci://host:port/repository`; the release is an artifact tagged with its version code,
+the APK its one layer, so size and SHA-256 come from the registry) or a folder any HTTP GET can read (`latest.json` and the APK it
+names; Home Assistant's `/config/www`, a static host).
 
-1. `hashsome android build`, then `hashsome android publish --to <feed folder> --notes "what changed"`. This copies
-   the APK to `<package>-<versionCode>.apk` and writes `latest.json` (`packageName`, `versionName`, `versionCode`,
-   `apk`, `sha256`, `size`, `notes`).
-2. Give each device `"updates": "http://<host>:8123/local/hashsome"` in `devices.json` and provision or deploy once (or
-   type it into the settings sheet's "Updates" group). Without a feed nothing is checked and no entity appears.
-3. The device checks a minute after start and every six hours. When `versionCode` is higher, Home Assistant's `update`
-   entity on the device (and the sheet's "Install update") offers it. It is never installed by itself.
-4. Install downloads the APK, checks its size and SHA-256 against `latest.json`, and hands it to the system installer.
-   A system app (the X1) installs silently and restarts. Any other (the X2i, a tablet) shows Android's confirmation:
-   one tap on the display. The X1 needs one reboot after the first deploy of a build that has the update feature
-   (`INSTALL_PACKAGES` is granted to a system app's new permissions only when its /system copy is rescanned).
+1. `hashsome android build`, then `hashsome android publish --to <feed> --notes "what changed"`: `--to oci://...` pushes to the
+   registry, `--to <folder>` writes `<package>-<versionCode>.apk` and `latest.json` (`packageName`, `versionName`, `versionCode`, `apk`,
+   `sha256`, `size`, `notes`) for you to put on a web server.
+2. Give each device `"updates": "<the feed's address>"` in `devices.json` and provision or deploy once (or type it into the settings
+   sheet's "Updates" group). Without a feed nothing is checked and no entity appears.
+3. The device checks a minute after start and every six hours. When `versionCode` is higher, Home Assistant's `update` entity on the
+   device (and the sheet's "Install update") offers it. It is never installed by itself.
+4. Install downloads the APK, checks its size and SHA-256, and hands it to the system installer. A system app (the X1) installs
+   silently and restarts. Any other (the X2i, a tablet) shows Android's confirmation: one tap on the display. The X1 needs one reboot
+   after the first deploy of a build that has the update feature (`INSTALL_PACKAGES` is granted to a system app's new permissions
+   only when its /system copy is rescanned).
 
-The "Check for update" button in Home Assistant checks at once. The feed URL needs no authentication, so keep it on the
-local network.
+The "Check for update" button in Home Assistant checks at once. Feeds need no authentication, so keep them on the local network.
 
 ## System install on Shelly displays (X1)
 

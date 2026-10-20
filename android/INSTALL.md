@@ -20,7 +20,7 @@ about building and developing the libraries.
       "dashboard": "kitchen",
       "server": "http://10.1.1.2:3000",
       "mqtt": "10.1.1.2:1883",
-      "updates": "http://10.1.1.2:8123/local/hashsome"
+      "updates": "oci://10.1.1.3:5000/kitchen-app"
     }
   ]
   ```
@@ -64,25 +64,31 @@ settings as Home Assistant, plus the connection details and the update feed.
 
 ## Updates
 
-A display with an `updates` address checks a folder for a newer build a minute after it starts and every six hours, and
-offers it as an **update entity** on its Home Assistant device. Nothing installs unless you press install (in Home
-Assistant, or the settings sheet's "Install update").
-
-The folder is any place a plain HTTP GET can read: Home Assistant's `/config/www` (served at `/local/`), a static web host
-or an object store. Publishing a release is:
+A display with an `updates` address checks it for a newer build a minute after it starts and every six hours, and offers it as an
+**update entity** on its Home Assistant device. Nothing installs unless you press install (in Home Assistant, or the settings
+sheet's "Install update"). The address is one of two kinds, and a release is published with the same command:
 
 ```sh
 hashsome android build
-hashsome android publish --to <folder> --notes "what changed"
+hashsome android publish --to <where> --notes "what changed"
 ```
 
-This writes `<package>-<versionCode>.apk` and a `latest.json` (version, checksum, size, notes) into the folder. The version
-code comes from your app, so raise it for every release. The display checks the APK's size and SHA-256 against
-`latest.json` before it hands the file to Android. The feed needs no credentials: keep it on your local network.
+**An OCI registry** (Zot, the Docker registry, anything that speaks the registry API), the way to go when you have one:
+`"updates": "oci://10.1.1.3:5000/home-android"` and `--to oci://10.1.1.3:5000/home-android`. The release is pushed as an artifact
+tagged with its version code; there is no folder to copy anywhere, and the registry's own retention keeps the latest few. Use the
+registry's plain-HTTP LAN address (as a node pulling images does), because a display does not trust your own CA; `ocis://` is for a
+registry with a certificate Android trusts. The registry must allow anonymous reads and, for whoever publishes, writes.
 
-On an X1 installed as a system app the update installs silently and the app restarts. Everywhere else Android asks for one
-tap on the display. The first time you deploy a build that has the update feature to an X1, reboot it once so the system
-grants the app the right to install.
+**A folder** any HTTP GET can read (Home Assistant's `/config/www`, served at `/local/`, a static web host, an object store):
+`"updates": "http://10.1.1.2:8123/local/hashsome"`. `publish --to <folder>` writes `<package>-<versionCode>.apk` and a `latest.json`
+(version, checksum, size, notes) into it, and you put that folder where the web server serves it.
+
+The version code comes from your app, so raise it for every release. The display checks the APK's size and SHA-256 against what the
+feed says before it hands the file to Android. Neither feed needs credentials: keep them on your local network.
+
+On an X1 installed as a system app the update installs silently and the app restarts. Everywhere else Android asks for one tap on the
+display. The first time you deploy a build that has the update feature to an X1, reboot it once so the system grants the app the right
+to install.
 
 ## Uninstalling
 

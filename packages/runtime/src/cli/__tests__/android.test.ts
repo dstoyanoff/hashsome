@@ -8,6 +8,9 @@ import {
   hasSystemFlag,
   isDataInstall,
   isRootable,
+  isOciTarget,
+  ociApi,
+  ociRelease,
   parseAaptBadging,
   parseAaptVersionCode,
   releaseFeed,
@@ -833,5 +836,35 @@ describe('release feed', () => {
     expect(() =>
       validateDevices([{ id: 'a', host: '1.2.3.4', profile: 'generic', updates: '' }]),
     ).toThrow(/updates/);
+  });
+});
+
+describe('registry release', () => {
+  const badge = { packageName: 'dev.hashsome.home', versionCode: 1903, versionName: '0.19.3' };
+
+  test('a registry target is told from a folder, and gives its API root', () => {
+    expect(isOciTarget('oci://10.4.5.1:5000/home-android')).toBe(true);
+    expect(isOciTarget('android/dist')).toBe(false);
+    expect(ociApi('oci://10.4.5.1:5000/hashsome/home/')).toBe(
+      'http://10.4.5.1:5000/v2/hashsome/home',
+    );
+
+    expect(ociApi('ocis://registry.lan/home')).toBe('https://registry.lan/v2/home');
+    expect(() => ociApi('oci://10.4.5.1:5000')).toThrow(/repository/);
+  });
+
+  test('the manifest has the APK as its layer, tagged with the version code', () => {
+    const apk = new TextEncoder().encode('apk bytes');
+    const { manifest, tag, config } = ociRelease(badge, apk, 'Fixes');
+    expect(tag).toBe('1903');
+    expect(manifest.layers).toHaveLength(1);
+    expect(manifest.layers[0]).toMatchObject({
+      mediaType: 'application/vnd.android.package-archive',
+      size: apk.length,
+    });
+
+    expect(manifest.layers[0]!.digest).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(manifest.config.size).toBe(config.length);
+    expect(JSON.parse(new TextDecoder().decode(config))).toEqual({ ...badge, notes: 'Fixes' });
   });
 });
