@@ -20,7 +20,14 @@ private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
  * it. It shares the tile's [control], so the tile's fill and this bar are one level. The web's "Any color" picker has no counterpart on
  * a display without a keyboard or a color dialog: the swatches stand in its place.
  */
-open class LightDrawerBody(context: Context, val control: LightControl, scope: Scope, history: LogbookControl? = null) : BoundView(context) {
+open class LightDrawerBody(
+    context: Context,
+    val control: LightControl,
+    scope: Scope,
+    history: LogbookControl? = null,
+    /** What the light draws over time (the web's `energy` on a `LightTile`): shown between the colour controls and the history. */
+    energy: View? = null,
+) : BoundView(context) {
     private val column = ColumnLayout(context).also { it.gap = 2 }
 
     private val powerHint = LabelView(context, Role.Secondary, Tone.Muted)
@@ -149,6 +156,7 @@ open class LightDrawerBody(context: Context, val control: LightControl, scope: S
         }
         hueBar.onCancel = { heldHue.flush(::commitHue) }
 
+        if (energy != null) column.addView(energy, FlexParams(MATCH, WRAP))
         if (history != null) column.addView(HistorySectionView(context, history, scope), FlexParams(MATCH, WRAP))
         addView(column, LayoutParams(MATCH, WRAP))
     }
