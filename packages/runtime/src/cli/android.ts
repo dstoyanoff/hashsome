@@ -258,7 +258,7 @@ const install = (device: Device, apk: string): Command => [
 ];
 
 /** The settings broadcast: only the extras the device sets. Addressed to the app (-p) so Android 8+ delivers it to the manifest receiver; `--include-stopped-packages` because a freshly installed app is in the stopped state. */
-function provisionBroadcast(device: Device, pkg: string): Command {
+function provisionBroadcast(device: Device, pkg: string, home: boolean = false): Command {
   const extras = [
     ['server', device.server],
     ['dashboard', device.dashboard],
@@ -266,6 +266,8 @@ function provisionBroadcast(device: Device, pkg: string): Command {
     ['profile', device.profile],
     ['mqtt', device.mqtt],
     ['updates', device.updates],
+    // The app enables its own home alias: a shell may not change another app's component state on a current Android (`pm enable` is refused).
+    ['home', home ? 'true' : undefined],
   ].flatMap(([key, value]) => (value ? ['--es', key!, value] : []));
 
   return shell(
@@ -294,7 +296,7 @@ export function deployCommands(device: Device, apk: string, pkg: string): Comman
   ];
 }
 
-/** deploy plus the one-time set-up: permissions, battery whitelist, device admin (Jenna, generic), Jenna's own kiosk host put out of the way, and the home screen if asked. The permissions come before the app starts. */
+/** deploy plus the one-time set-up: permissions, battery whitelist, device admin (Jenna, generic), no lock screen (generic), Jenna's own kiosk host put out of the way, and the home screen if asked. The permissions come before the app starts. */
 export function provisionCommands(
   device: Device,
   apk: string,
@@ -311,17 +313,29 @@ export function provisionCommands(
     ),
     shell(device, 'dumpsys', 'deviceidle', 'whitelist', `+${pkg}`),
     ...(admin ? [shell(device, 'dpm', 'set-active-admin', `${pkg}/${ADMIN}`)] : []),
+    // A tablet that is put to sleep with lockNow() wakes on its lock screen unless that is off. A device with a PIN keeps it: the step does not fail.
+    ...(device.profile === 'generic'
+      ? [
+          shell(
+            device,
+            'sh',
+            '-c',
+            'locksettings set-disabled true || echo "the lock screen stays: the device has a PIN or pattern"',
+          ),
+        ]
+      : []),
     ...(device.profile === 'shelly-jenna'
       ? [
           shell(device, 'appops', 'set', SHELLY, 'SYSTEM_ALERT_WINDOW', 'deny'),
           shell(device, 'am', 'force-stop', SHELLY),
         ]
       : []),
-    provisionBroadcast(device, pkg),
+    provisionBroadcast(device, pkg, home),
     start(device, pkg),
+    // A moment for the app to have enabled the alias, then it can be made the home activity.
     ...(home
       ? [
-          shell(device, 'pm', 'enable', `${pkg}/${HOME_ALIAS}`),
+          shell(device, 'sleep', '2'),
           shell(device, 'cmd', 'package', 'set-home-activity', `${pkg}/${HOME_ALIAS}`),
         ]
       : []),

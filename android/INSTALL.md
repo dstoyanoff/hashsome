@@ -52,7 +52,7 @@ Per kind of display:
 | ---------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Shelly Wall Display X2i** (`shelly-jenna`)   | `hashsome android provision --device <id>`          | A normal install. The stock Shelly app does not restart at boot, so the dashboard starts straight after it. Updates ask for one tap on the display.                                                            |
 | **Shelly Wall Display X1** (`shelly-stargate`) | `hashsome android provision --system --device <id>` | Its stock app force-stops every non-system app at boot, so the app has to be a **system app**. This needs the display's userdebug image (`adb root` works) and reboots it once. Updates then install silently. |
-| **Other Android tablet** (`generic`)           | `hashsome android provision --device <id> [--home]` | `--home` makes the app the home screen. Updates ask for one tap.                                                                                                                                               |
+| **Other Android tablet** (`generic`)           | `hashsome android provision --device <id> [--home]` | `--home` makes the app the home screen; the lock screen is switched off so a sleeping tablet wakes into the dashboard (kept if a PIN is set). Updates ask for one tap.                                         |
 
 See "System install on Shelly displays (X1)" in `android/README.md` for what `--system` does step by step.
 

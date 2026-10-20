@@ -187,9 +187,16 @@ describe('provisionCommands', () => {
       `appops set ${PKG} GET_USAGE_STATS allow`,
       `dumpsys deviceidle whitelist +${PKG}`,
       `dpm set-active-admin ${PKG}/dev.hashsome.kiosk.HashsomeDeviceAdmin`,
+      `sh -c 'locksettings set-disabled true || echo "the lock screen stays: the device has a PIN or pattern"'`,
       `am broadcast --include-stopped-packages -a dev.hashsome.PROVISION -p ${PKG} --es device bathroom --es profile generic`,
       `am start -n ${PKG}/dev.hashsome.ui.DashboardActivity`,
     ]);
+  });
+
+  test('only a generic device has its lock screen switched off', () => {
+    for (const profile of ['shelly-stargate', 'shelly-jenna'] as const) {
+      expect(shellLines(device({ profile })).some((l) => l.includes('locksettings'))).toBe(false);
+    }
   });
 
   test('shelly-stargate gets no device admin', () => {
@@ -207,15 +214,20 @@ describe('provisionCommands', () => {
     expect(lines.filter((l) => l.includes('force-stop'))).toHaveLength(1);
   });
 
-  test('--home (or home: true) enables the alias and sets it as the home activity, last', () => {
+  test('--home (or home: true) has the app enable its alias, then sets it as the home activity, last', () => {
     for (const lines of [shellLines(device(), true), shellLines(device({ home: true }))]) {
+      expect(lines.find((l) => l.startsWith('am broadcast'))).toContain('--es home true');
       expect(lines.slice(-2)).toEqual([
-        `pm enable ${PKG}/dev.hashsome.kiosk.HomeActivityAlias`,
+        'sleep 2',
         `cmd package set-home-activity ${PKG}/dev.hashsome.kiosk.HomeActivityAlias`,
       ]);
+
+      expect(lines.some((l) => l.startsWith('pm enable'))).toBe(false);
     }
 
     expect(shellLines(device()).some((l) => l.includes('HomeActivityAlias'))).toBe(false);
+
+    expect(shellLines(device()).join('\n')).not.toContain('--es home');
   });
 });
 
