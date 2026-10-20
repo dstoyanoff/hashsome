@@ -183,6 +183,8 @@ internal class NowPlayingView(
     private val leading: View? = null,
     private val extra: View? = null,
     private val speakers: View? = null,
+    /** Names the player the card controls and switches it; at the top left, with the speakers pill then at the top right. */
+    private val playerChip: View? = null,
     private val onOpenArtwork: (() -> Unit)? = null,
     /** The ring's diameter when the panel has room for it, in dp. */
     ringDp: Int = 168,
@@ -237,12 +239,15 @@ internal class NowPlayingView(
         panel.addView(transport, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         panel.addView(volumeRow, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         addView(panel, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        // The speakers pill is at the top left of the card, out of the way of the title block and the keys.
+        // The speakers pill is at the top left of the card, out of the way of the title block and the keys; with a chip that names the player, the chip
+        // is there and the pill at the top right.
+        playerChip?.let { addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, android.view.Gravity.TOP or android.view.Gravity.START)) }
         speakers?.let {
-            addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, android.view.Gravity.TOP or android.view.Gravity.START))
-            // The ring starts a little lower, so the pill does not touch its outline.
-            panel.setPadding(0, dp(14), 0, 0)
+            val side = if (playerChip != null) android.view.Gravity.END else android.view.Gravity.START
+            addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, android.view.Gravity.TOP or side))
         }
+        // The ring starts a little lower, so they do not touch its outline: under the pills' row when there are two of them.
+        if (speakers != null || playerChip != null) panel.setPadding(0, dp(if (playerChip != null) 40 else 14), 0, 0)
 
         ring.onPreview = { control.seek.drag(it) }
         ring.onCommit = { control.seek.commit(it) }

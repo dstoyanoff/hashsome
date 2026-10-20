@@ -11,7 +11,9 @@ import android.widget.FrameLayout
 import android.widget.ScrollView
 import dev.hashsome.client.AssetSize
 import dev.hashsome.client.Cancel
+import dev.hashsome.client.EntityKind
 import dev.hashsome.client.EntityRef
+import dev.hashsome.headless.EntityHandle
 import dev.hashsome.headless.HandleState
 import dev.hashsome.headless.MediaBrowserControl
 import dev.hashsome.headless.MediaPlayerControl
@@ -717,7 +719,17 @@ private class Capped(context: Context, private val maxDp: Int) : ViewGroup(conte
  * The full player: the player on top, centered, and under a line its library and its queue as two tabs (one list has a plain line).
  * The player stays put and the list scrolls in the room that is left. The speakers open as the side panel.
  */
-open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl, val label: String) : BoundView(context) {
+open class MediaPlayerFullView(context: Context, control: MediaPlayerControl, label: String) : BoundView(context) {
+    /** The player this card controls: the one it was made with, or the one picked from [players]. */
+    var control: MediaPlayerControl = control
+        private set
+
+    var label: String = label
+        private set
+
+    /** The players the card can control, when there are two or more: a chip at its top names the one it controls and switches between them. Set before the view is shown. */
+    var players: List<PlayerChoice> = emptyList()
+
     /** The speakers panel has a button that widens it (off by default). */
     var expandable: Boolean = false
 
@@ -747,8 +759,14 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
         val pill = SpeakersPillView(context, compact = false) { openSpeakers(context, control, speakers, label, null, expandable) }
         pillView = pill
         grouping = null
+        val chip = if (players.size > 1) {
+            val now = players.firstOrNull { it.ref == control.handle.ref?.value } ?: players.first()
+            PlayerChip(context, players, now, scope, ::switchTo)
+        } else {
+            null
+        }
         val player = NowPlayingView(
-            context, control, label, queue, shuffleAtTitle = true, speakers = pill,
+            context, control, label, queue, shuffleAtTitle = true, speakers = pill, playerChip = chip,
             onOpenArtwork = if (fullScreen) ({ NowPlayingScreen.open(context, control, label) }) else null,
         )
         val stack = FullLayout(context)
@@ -828,24 +846,51 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
         }
     }
 
+    private var had: List<ListTab> = emptyList()
+    private var watchingState: Cancel? = null
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         build()
         // The lists a player has are known once it has reported.
-        var had = lists()
-        val update = {
-            val canGroup = control.ready && control.handle.entity?.capabilities?.group == true
-            if (canGroup && grouping == null) {
-                own?.let { scope -> grouping = SpeakersControl(control.handle, scope, speakers).also { pillView?.use(it) } }
-            }
-            pillView?.visibility = if (canGroup) View.VISIBLE else View.GONE
-            val now = lists()
-            if (now != had) {
-                had = now
-                arrange()
-            }
+        had = lists()
+        watchState()
+        onDetach { watchingState?.invoke(); watchingState = null }
+        update()
+    }
+
+    private fun watchState() {
+        watchingState?.invoke()
+        watchingState = control.handle.state.listen { update() }
+    }
+
+    private fun update() {
+        val canGroup = control.ready && control.handle.entity?.capabilities?.group == true
+        if (canGroup && grouping == null) {
+            own?.let { scope -> grouping = SpeakersControl(control.handle, scope, speakers).also { pillView?.use(it) } }
         }
-        onDetach(control.handle.state.listen { update() })
+        pillView?.visibility = if (canGroup) View.VISIBLE else View.GONE
+        val now = lists()
+        if (now != had) {
+            had = now
+            arrange()
+        }
+    }
+
+    /** The card controls [choice] from now on: its handle, its lists and its speakers panel, and it is remembered for the next visit to the page. */
+    private fun switchTo(choice: PlayerChoice) {
+        PlayerSelection.choose(players, choice)
+        if (choice.ref == control.handle.ref?.value) return
+        listScope?.dispose()
+        listScope = null
+        own?.dispose()
+        own = null
+        val scope = control.scope
+        control = MediaPlayerControl(EntityHandle(scope, EntityRef(choice.ref), EntityKind.MediaPlayer), scope)
+        label = choice.label
+        build()
+        had = lists()
+        watchState()
         update()
     }
 

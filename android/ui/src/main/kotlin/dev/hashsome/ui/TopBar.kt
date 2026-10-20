@@ -114,8 +114,8 @@ internal class DashboardTitle(
     }
 }
 
-/** One entry of an [OptionMenu]: its [label] and, optionally, a glyph before it. */
-data class MenuItem(val label: String, val icon: Icon? = null)
+/** One entry of an [OptionMenu]: its [label], optionally a glyph before it and a [detail] (a muted line after the label: what it is doing). */
+data class MenuItem(val label: String, val icon: Icon? = null, val detail: String? = null)
 
 /**
  * A short list that opens under (or, with [alignEnd], ending at) the view it is shown from: one row for each of [items], [selected] marked
@@ -198,7 +198,8 @@ internal class OptionMenuCard(
         // the glyph, the label and the room for the check, in each row.
         val u = unitPx()
         val measure = TextPaint(Paint.ANTI_ALIAS_FLAG).style(t, Role.Body, 0)
-        val widest = items.maxOfOrNull { measure.measureText(it.label) } ?: 0f
+        val secondary = TextPaint(Paint.ANTI_ALIAS_FLAG).style(t, Role.Secondary, 0)
+        val widest = items.maxOfOrNull { measure.measureText(it.label) + (it.detail?.let { d -> secondary.measureText(d) + 2 * u } ?: 0f) } ?: 0f
         val width = Math.max(minWidth, Math.ceil((widest + 2 * dp(16f) + 2 * 2 * u + 2 * 3 * u + 2 * pad).toDouble()).toInt())
         cardWidth = width
         items.forEachIndexed { index, item ->
@@ -222,6 +223,7 @@ private class MenuRow(context: Context, item: MenuItem, private val active: Bool
         val wrap = ViewGroup.LayoutParams.WRAP_CONTENT
         addView(GlyphView(context, item.icon, 16), FlexParams(wrap, wrap))
         addView(labelText(context, item.label, Role.Body), FlexParams(wrap, wrap).apply { grow = true })
+        item.detail?.let { addView(labelText(context, it, Role.Secondary, Hashsome.theme.palette.textMuted), FlexParams(wrap, wrap)) }
         // Room for the check on every row, so the menu does not change width with the current dashboard.
         addView(GlyphView(context, if (active) Ui.check else null, 16), FlexParams(wrap, wrap))
     }

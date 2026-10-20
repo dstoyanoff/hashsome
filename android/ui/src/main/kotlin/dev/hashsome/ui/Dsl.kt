@@ -568,11 +568,23 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
     }
 
     /**
-     * The full player: the player on top and, unless [lists] is false, under it its library and queue as tabs. A page that shows them
+     * The full player: the player on top and, unless [lists] is false, under it its library and queue as tabs. With two or more [players] a chip at the
+     * top of the card names the one it controls and opens a list to pick another (to stop what plays in a room you are not in). A page that shows them
      * beside the player (as `mediaBrowser` and `mediaQueue` in a card of their own) passes `lists = false`. It takes the height that is left of the page.
      */
-    fun mediaPlayerFull(ref: String, label: String, speakers: List<EntityRef> = emptyList(), expandable: Boolean? = null, lists: Boolean = true, screen: Boolean = false) {
-        val full = MediaPlayerFullView(context, player(ref), label)
+    fun mediaPlayerFull(
+        ref: String,
+        label: String,
+        speakers: List<EntityRef> = emptyList(),
+        expandable: Boolean? = null,
+        lists: Boolean = true,
+        screen: Boolean = false,
+        players: List<PlayerChoice> = emptyList(),
+    ) {
+        // With [players] the card starts on the one picked last (the first when none was), and a chip at its top switches it.
+        val first = if (players.size > 1) PlayerSelection.of(players) else null
+        val full = MediaPlayerFullView(context, player(first?.ref ?: ref), first?.label ?: label)
+        full.players = players
         full.speakers = speakers
         full.expandable = expandable ?: drawersExpandable
         full.lists = lists
