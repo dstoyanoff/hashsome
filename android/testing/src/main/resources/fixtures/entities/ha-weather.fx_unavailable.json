@@ -1,0 +1,23 @@
+{
+  "type": "entity",
+  "ref": "ha:weather.fx_unavailable",
+  "entity": {
+    "kind": "weather",
+    "name": "Weather gone",
+    "availability": "unavailable",
+    "condition": "sunny",
+    "temperature": 20,
+    "unit": "°C",
+    "windSpeed": 14,
+    "windBearing": 225,
+    "windUnit": "km/h",
+    "uvIndex": 3,
+    "cloudCoverage": 40,
+    "apparentTemperature": 18,
+    "pressure": 1015,
+    "pressureUnit": "hPa",
+    "precipitationUnit": "mm",
+    "forecasts": ["daily", "hourly"],
+    "ref": "ha:weather.fx_unavailable"
+  }
+}

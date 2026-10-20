@@ -1,0 +1,12 @@
+{
+  "type": "entity",
+  "ref": "ha:sensor.fx_text",
+  "entity": {
+    "kind": "sensor",
+    "name": "Daylight",
+    "availability": "ready",
+    "value": "on",
+    "measurement": "daylight",
+    "ref": "ha:sensor.fx_text"
+  }
+}

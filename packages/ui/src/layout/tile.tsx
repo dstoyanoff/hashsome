@@ -371,11 +371,10 @@ export function Tile({
         />
       ) : null}
       {holdable && holding ? (
-        // Visible against either background: a light wash normally, a dark wash on an accent-colored
-        // (non-dimmable-active) card, where a light or accent bar would disappear or clash.
+        // The theme accent, or the on-accent color on a solid-accent card, where an accent bar would disappear.
         <HoldProgress
           edge="bottom"
-          color={solidAccent ? 'rgba(0, 0, 0, 0.35)' : 'rgba(255, 255, 255, 0.55)'}
+          color={solidAccent ? 'var(--hs-on-accent)' : 'var(--hs-accent)'}
         />
       ) : null}
       {overlay ? (

@@ -1,0 +1,12 @@
+{
+  "type": "entity",
+  "ref": "ha:person.fx_unavailable",
+  "entity": {
+    "kind": "person",
+    "name": "Nobody",
+    "availability": "unavailable",
+    "home": true,
+    "location": "home",
+    "ref": "ha:person.fx_unavailable"
+  }
+}

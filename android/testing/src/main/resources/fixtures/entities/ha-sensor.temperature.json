@@ -1,0 +1,24 @@
+{
+  "type": "entity",
+  "ref": "ha:sensor.temperature",
+  "entity": {
+    "kind": "sensor",
+    "name": "Temperature",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": {
+      "state": "18.4",
+      "attributes": {
+        "friendly_name": "Temperature",
+        "device_class": "temperature",
+        "unit_of_measurement": "°C"
+      }
+    },
+    "value": "18.4",
+    "numeric": 18.4,
+    "unit": "°C",
+    "measurement": "temperature",
+    "ref": "ha:sensor.temperature"
+  }
+}

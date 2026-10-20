@@ -1,0 +1,13 @@
+{
+  "type": "entity",
+  "ref": "ha:person.fx_zone",
+  "entity": {
+    "kind": "person",
+    "name": "Sam",
+    "availability": "ready",
+    "home": false,
+    "location": "Work",
+    "pictureUrl": "/_hashsome/asset/ha?path=%2Fapi%2Fimage%2Fsam.png",
+    "ref": "ha:person.fx_zone"
+  }
+}

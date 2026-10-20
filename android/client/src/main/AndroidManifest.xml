@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- The client reaches the runtime over the network; the manifest merger gives every app that uses it this permission. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

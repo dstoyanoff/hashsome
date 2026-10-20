@@ -91,11 +91,31 @@ export const mockEntities = {
     unit: '%',
     measurement: 'humidity',
   }),
+  // A battery that has run down, for a sensor's low-battery state.
+  'sensor.living_room_temperature_battery': mockSensor({
+    name: 'Living room temperature battery',
+    value: '12',
+    unit: '%',
+    measurement: 'battery',
+  }),
   'light.living_room_lamp': mockLight({ name: 'Living room lamp', on: true }),
   'light.living_room_wall': mockLight({
     name: 'Living room wall',
     on: true,
     brightness: 0.78,
+  }),
+  // The android demo's drawer: a light with a color temperature, a color and a range.
+  'light.demo_tunable': mockLight({
+    name: 'Tunable',
+    on: true,
+    brightness: 0.6,
+    color: { mode: 'temperature', kelvin: 3000 },
+    capabilities: {
+      brightness: true,
+      colorTemperature: true,
+      color: true,
+      kelvinRange: { min: 2000, max: 6500 },
+    },
   }),
   'light.living_room_accent': mockLight({
     name: 'Living room accent',

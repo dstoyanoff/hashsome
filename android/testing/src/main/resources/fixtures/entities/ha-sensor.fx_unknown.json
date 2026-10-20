@@ -1,0 +1,11 @@
+{
+  "type": "entity",
+  "ref": "ha:sensor.fx_unknown",
+  "entity": {
+    "kind": "sensor",
+    "name": "Sensor silent",
+    "availability": "unknown",
+    "value": "",
+    "ref": "ha:sensor.fx_unknown"
+  }
+}

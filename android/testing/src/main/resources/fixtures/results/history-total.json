@@ -1,0 +1,18 @@
+{
+  "type": "result",
+  "id": 13,
+  "ok": true,
+  "data": {
+    "points": [
+      { "timestamp": "2026-02-23T00:00:00.000Z", "value": 0.735 },
+      { "timestamp": "2026-02-24T00:00:00.000Z", "value": 1.152 },
+      { "timestamp": "2026-02-25T00:00:00.000Z", "value": 1.353 },
+      { "timestamp": "2026-02-26T00:00:00.000Z", "value": 1.042 },
+      { "timestamp": "2026-02-27T00:00:00.000Z", "value": 0.711 },
+      { "timestamp": "2026-02-28T00:00:00.000Z", "value": 0.839 },
+      { "timestamp": "2026-03-01T00:00:00.000Z", "value": 1.202 }
+    ],
+    "kind": "total",
+    "unit": "kWh"
+  }
+}

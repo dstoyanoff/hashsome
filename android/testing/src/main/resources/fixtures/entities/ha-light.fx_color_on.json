@@ -1,0 +1,16 @@
+{
+  "type": "entity",
+  "ref": "ha:light.fx_color_on",
+  "entity": {
+    "kind": "light",
+    "name": "Color light on",
+    "availability": "ready",
+    "on": true,
+    "brightness": 0.5,
+    "color": { "mode": "color", "hue": 280, "saturation": 80, "rgb": [170, 51, 255] },
+    "lastChanged": "2026-03-01T11:59:00.000Z",
+    "lastUpdated": "2026-03-01T11:59:00.000Z",
+    "capabilities": { "brightness": true, "colorTemperature": false, "color": true },
+    "ref": "ha:light.fx_color_on"
+  }
+}

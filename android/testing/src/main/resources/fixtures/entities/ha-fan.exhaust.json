@@ -1,0 +1,14 @@
+{
+  "type": "entity",
+  "ref": "ha:fan.exhaust",
+  "entity": {
+    "kind": "switch",
+    "name": "Exhaust fan",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": { "state": "off", "attributes": { "friendly_name": "Exhaust fan" } },
+    "on": false,
+    "ref": "ha:fan.exhaust"
+  }
+}

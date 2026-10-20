@@ -1,0 +1,11 @@
+{
+  "type": "entity",
+  "ref": "ha:switch.fx_unavailable",
+  "entity": {
+    "kind": "switch",
+    "name": "Plug gone",
+    "availability": "unavailable",
+    "on": false,
+    "ref": "ha:switch.fx_unavailable"
+  }
+}

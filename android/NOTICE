@@ -1,0 +1,44 @@
+Hashsome Android libraries
+==========================
+
+This product includes work from the following projects.
+
+ShellyElevate
+  https://github.com/RapierXbox/ShellyElevate
+  License: Apache License 2.0
+  Used by: kiosk
+  Device knowledge and code adapted from it for the Shelly Wall Displays: the backlight sysfs paths, the
+  Settings.System brightness handling, the auto-brightness ramp, keeping the app in front through UsageStats,
+  the MQTT discovery builder and the appops used when provisioning. Each adapted file names it in its header
+  (kiosk: AutoBrightness.kt, Device.kt, Presence.kt, Mqtt.kt, Service.kt). Also the procedure of its
+  tools/install-privapp.sh for installing the app as a system app (adb root, remount /system read-write,
+  a directory in /system/priv-app, push, chmod/chown and the SELinux label, remount read-only, reboot, and its
+  checks for "cannot run as root" and for free space), reimplemented in Node as `hashsome android provision
+  --system` (packages/runtime/src/cli/android.ts).
+  Copyright the ShellyElevate authors (RapierXbox and contributors). Licensed under the Apache License,
+  Version 2.0; you may obtain a copy at https://www.apache.org/licenses/LICENSE-2.0. The adapted code is
+  rewritten in Kotlin and changed (the proximity polarity of the X2i, the backlight and device-admin handling,
+  the hysteresis band, the discovery payload); it is distributed on an "AS IS" basis, without warranties or
+  conditions of any kind.
+
+Lucide
+  https://lucide.dev
+  License: ISC License, and the MIT License for the glyphs derived from the Feather project (https://github.com/feathericons/feather)
+  Used by: ui (the glyphs of its own chrome: the SVGs in android/ui/icons, version 1.59.0, converted to vector drawables)
+  Copyright (c) 2026 Lucide Icons and Contributors
+  Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby
+  granted, provided that the above copyright notice and this permission notice appear in all copies. The software is
+  provided "as is" and the author disclaims all warranties. Both licences, in full, are in android/ui/icons/LICENSE.
+
+Inter
+  https://rsms.me/inter/
+  License: SIL Open Font License 1.1
+  Used by: ui (bundled Regular, Medium and SemiBold in android/ui/src/main/assets/fonts; the Medium face is the Latin subset of
+  Inter 500 from @fontsource/inter 5.3.0, converted from WOFF to TrueType)
+  Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
+  Licensed under the SIL Open Font License, Version 1.1; the text is in android/ui/src/main/assets/fonts/OFL.txt
+
+Eclipse Paho MQTT Client
+  https://eclipse.dev/paho/
+  License: Eclipse Public License 2.0 / Eclipse Distribution License 1.0
+  Used by: kiosk (a dependency, not bundled source)

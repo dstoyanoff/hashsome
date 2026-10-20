@@ -1,0 +1,18 @@
+{
+  "type": "entity",
+  "ref": "ha:sensor.not_reporting",
+  "entity": {
+    "kind": "sensor",
+    "name": "Silent sensor",
+    "availability": "unknown",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": {
+      "state": "unknown",
+      "attributes": { "friendly_name": "Silent sensor", "device_class": "temperature" }
+    },
+    "value": "unknown",
+    "measurement": "temperature",
+    "ref": "ha:sensor.not_reporting"
+  }
+}

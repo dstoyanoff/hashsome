@@ -1,0 +1,47 @@
+{
+  "type": "result",
+  "id": 4,
+  "ok": true,
+  "data": {
+    "title": "Results for “mgmt”",
+    "items": [
+      {
+        "id": "t-kids",
+        "title": "Kids",
+        "subtitle": "MGMT",
+        "artworkUrl": "https://picsum.photos/seed/t-kids/400",
+        "duration": 192,
+        "kind": "track",
+        "playable": true,
+        "expandable": false
+      },
+      {
+        "id": "t-electric",
+        "title": "Electric Feel",
+        "subtitle": "MGMT",
+        "artworkUrl": "https://picsum.photos/seed/t-electric/400",
+        "duration": 160,
+        "kind": "track",
+        "playable": true,
+        "expandable": false
+      },
+      {
+        "id": "al-oracular",
+        "title": "Oracular Spectacular",
+        "subtitle": "MGMT",
+        "artworkUrl": "https://picsum.photos/seed/al-oracular/400",
+        "kind": "album",
+        "playable": true,
+        "expandable": true
+      },
+      {
+        "id": "ar-mgmt",
+        "title": "MGMT",
+        "artworkUrl": "https://picsum.photos/seed/ar-mgmt/400",
+        "kind": "artist",
+        "playable": true,
+        "expandable": true
+      }
+    ]
+  }
+}

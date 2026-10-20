@@ -11,3 +11,9 @@ coverage
 .hashsome
 /release
 /example/release
+android/**/build
+example/android/**/build
+**/.gradle
+**/local.properties
+**/*.iml
+.idea

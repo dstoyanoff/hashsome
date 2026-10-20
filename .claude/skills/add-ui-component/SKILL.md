@@ -48,10 +48,16 @@ isn't documented clearly. Only proceed if it's genuinely missing.
    `.claude/skills/ui-catalog/CATALOG.md` — it's generated from source doc comments and prop types,
    and CI fails if it doesn't match; if the catalog output looks wrong, fix the source comment,
    not the generated file.
-7. **Verify**: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test`, plus look at it in
+7. **Add the parity entry.** Every `packages/ui` export has one in `android/parity.json`: for a new
+   component or hook add `"Name": "planned"` (or `planned#<issue>` once there is an issue; `web-only`
+   if it can never exist natively), and for a rename or removal change or delete the key. Run
+   `pnpm generate:parity` (writes `android/PARITY.md`, commit it) and `pnpm check:parity`; CI fails on
+   a missing or stale entry. `native` is only for a component whose Kotlin counterpart is in the same
+   PR (see `android-component`).
+8. **Verify**: `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test`, plus look at it in
    `pnpm docs:dev` (the gallery is `packages/ui`'s own standalone dev command, not
    part of `packages/runtime` or any project's own routes).
-8. **Then**, and only then, use the new component from the dashboard that needed it.
+9. **Then**, and only then, use the new component from the dashboard that needed it.
 
 ## Boundaries
 

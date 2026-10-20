@@ -1,6 +1,6 @@
 /**
  * Works out the next version from the conventional commits since the last release, writes it into
- * every published package, updates CHANGELOG.md and prints the release notes to `--notes <file>`.
+ * every file that carries it (the npm packages and `android/gradle.properties`), updates CHANGELOG.md and prints the release notes to `--notes <file>`.
  * Does not touch git or npm: `.github/workflows/release.yml` commits, tags and publishes.
  *
  *   node scripts/release.ts [--level major|minor|patch] [--dry-run] [--notes <file>]
@@ -8,9 +8,10 @@
  * Prints `version=<x.y.z>` (or `skip=true` when nothing is releasable) for the workflow to read.
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import {
   bump,
+  bumpVersionIn,
   currentVersion,
   levelFor,
   notes,
@@ -23,14 +24,37 @@ import {
 
 const REPO = 'https://github.com/dstoyanoff/hashsome';
 
-/** Every published package, and the root, share one version. */
-const PACKAGES = [
-  'package.json',
-  'packages/core/package.json',
-  'packages/ui/package.json',
-  'packages/runtime/package.json',
-  'packages/integrations/home-assistant/package.json',
-  'packages/integrations/music-assistant/package.json',
+interface VersionFile {
+  file: string;
+
+  /** The text to replace: the line that carries the version. */
+  pattern: RegExp;
+
+  /** What that line becomes for a version. */
+  format: (version: string) => string;
+}
+
+const PACKAGE_JSON = /"version": "[^"]+"/;
+
+/** Every file that carries the one shared version: the npm packages (and the root) and the Android libraries'. */
+const VERSION_FILES: VersionFile[] = [
+  ...[
+    'package.json',
+    'packages/core/package.json',
+    'packages/ui/package.json',
+    'packages/runtime/package.json',
+    'packages/integrations/home-assistant/package.json',
+    'packages/integrations/music-assistant/package.json',
+  ].map((file) => ({
+    file,
+    pattern: PACKAGE_JSON,
+    format: (version: string) => `"version": "${version}"`,
+  })),
+  {
+    file: 'android/gradle.properties',
+    pattern: /^hashsome\.version=.*$/m,
+    format: (version) => `hashsome.version=${version}`,
+  },
 ];
 
 const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8' }).trim();
@@ -95,9 +119,15 @@ if (notesFile) {
 }
 
 if (!dryRun) {
-  for (const file of PACKAGES) {
-    const text = readFileSync(file, 'utf8');
-    writeFileSync(file, text.replace(/"version": "[^"]+"/, `"version": "${version}"`));
+  // All must exist before any is written, so a missing file leaves the tree as it was.
+  for (const { file } of VERSION_FILES) {
+    if (!existsSync(file)) {
+      throw new Error(`${file} is listed in VERSION_FILES but does not exist`);
+    }
+  }
+
+  for (const { file, pattern, format } of VERSION_FILES) {
+    writeFileSync(file, bumpVersionIn(readFileSync(file, 'utf8'), pattern, format(version)));
   }
 
   const date = new Date().toISOString().slice(0, 10);

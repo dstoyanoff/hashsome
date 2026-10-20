@@ -1,0 +1,24 @@
+{
+  "type": "entity",
+  "ref": "ha:climate.fx_heating",
+  "entity": {
+    "kind": "climate",
+    "name": "Floor heating",
+    "availability": "ready",
+    "mode": "heat",
+    "unit": "°C",
+    "action": "heating",
+    "targetTemperature": 23,
+    "currentTemperature": 21.5,
+    "humidity": 48,
+    "preset": "comfort",
+    "capabilities": {
+      "modes": ["off", "heat", "auto"],
+      "presets": ["comfort", "eco"],
+      "targetTemperature": true,
+      "step": 0.5,
+      "range": { "min": 10, "max": 28 }
+    },
+    "ref": "ha:climate.fx_heating"
+  }
+}

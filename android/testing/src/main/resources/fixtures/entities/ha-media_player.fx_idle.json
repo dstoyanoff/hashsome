@@ -1,0 +1,26 @@
+{
+  "type": "entity",
+  "ref": "ha:media_player.fx_idle",
+  "entity": {
+    "kind": "mediaPlayer",
+    "name": "Idle",
+    "availability": "ready",
+    "playback": "idle",
+    "muted": false,
+    "volume": 0.15,
+    "capabilities": {
+      "volume": true,
+      "mute": true,
+      "next": true,
+      "previous": true,
+      "browse": false,
+      "search": false,
+      "seek": false,
+      "shuffle": false,
+      "queue": false,
+      "transfer": false,
+      "group": false
+    },
+    "ref": "ha:media_player.fx_idle"
+  }
+}

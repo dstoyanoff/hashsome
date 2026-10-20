@@ -1,0 +1,48 @@
+{
+  "type": "result",
+  "id": 7,
+  "ok": true,
+  "data": {
+    "items": [
+      {
+        "id": "q0-t-running",
+        "title": "Running Up That Hill",
+        "artist": "Kate Bush",
+        "artworkUrl": "https://picsum.photos/seed/t-running/400",
+        "duration": 170
+      },
+      {
+        "id": "q1-t-cloudbusting",
+        "title": "Cloudbusting",
+        "artist": "Kate Bush",
+        "artworkUrl": "https://picsum.photos/seed/t-cloudbusting/400",
+        "duration": 207
+      },
+      {
+        "id": "q2-t-blank-space",
+        "title": "Blank Space",
+        "artist": "Taylor Swift",
+        "artworkUrl": "https://picsum.photos/seed/t-blank-space/400",
+        "duration": 244,
+        "current": true
+      },
+      {
+        "id": "q3-t-dreams",
+        "title": "Dreams",
+        "artist": "Fleetwood Mac",
+        "artworkUrl": "https://picsum.photos/seed/t-dreams/400",
+        "duration": 191
+      },
+      {
+        "id": "q4-t-kids",
+        "title": "Kids",
+        "artist": "MGMT",
+        "artworkUrl": "https://picsum.photos/seed/t-kids/400",
+        "duration": 228
+      }
+    ],
+    "total": 24,
+    "offset": 0,
+    "duration": 5112
+  }
+}

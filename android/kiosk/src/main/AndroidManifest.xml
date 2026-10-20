@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission
+        android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.SYSTEM_ALERT_WINDOW"
+        tools:ignore="ProtectedPermissions" />
+    <!-- Updates: any app may ask the system installer (which asks the person); a privileged system app with INSTALL_PACKAGES installs silently. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission
+        android:name="android.permission.INSTALL_PACKAGES"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.REBOOT"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- Android 11+ hides other apps: the stock Shelly app must be visible to be launched ("Open Shelly app"). -->
+    <queries>
+        <package android:name="cloud.shelly.stargate" />
+    </queries>
+
+    <application>
+        <service
+            android:name="dev.hashsome.kiosk.KioskService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps the wall display's dashboard in front and the device reachable from Home Assistant" />
+        </service>
+
+        <receiver
+            android:name="dev.hashsome.kiosk.BootReceiver"
+            android:directBootAware="true"
+            android:exported="false">
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- An update replaces the process (and drops its alarms): this brings the service, and with it the dashboard, back. -->
+        <receiver android:name="dev.hashsome.kiosk.UpdatedReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name="dev.hashsome.kiosk.WatchdogReceiver"
+            android:exported="false" />
+
+        <!-- Provisioning is `adb shell am broadcast`, which is the shell user: exported, and guarded by the permission only the shell holds. -->
+        <receiver
+            android:name="dev.hashsome.kiosk.ProvisionReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP">
+            <intent-filter>
+                <action android:name="dev.hashsome.PROVISION" />
+                <!-- Needed before an uninstall: a device admin cannot be removed from adb (spike S1f). -->
+                <action android:name="dev.hashsome.REMOVE_ADMIN" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Where the system installer reports back to an update: shows its confirmation when it needs one. -->
+        <receiver
+            android:name="dev.hashsome.kiosk.UpdateResultReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name="dev.hashsome.kiosk.HashsomeDeviceAdmin"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/hashsome_device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Disabled until the provision command's home option enables it: the app becomes the launcher of a plain tablet. -->
+        <activity-alias
+            android:name="dev.hashsome.kiosk.HomeActivityAlias"
+            android:enabled="false"
+            android:exported="true"
+            android:targetActivity="dev.hashsome.ui.DashboardActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
+    </application>
+</manifest>

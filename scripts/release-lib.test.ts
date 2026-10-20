@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { bump, currentVersion, levelFor, notes, parse, prependChangelog } from './release-lib.ts';
+import {
+  bump,
+  bumpVersionIn,
+  currentVersion,
+  levelFor,
+  notes,
+  parse,
+  prependChangelog,
+} from './release-lib.ts';
 
 const c = (subject: string, body = '') => parse({ hash: 'abcdef1234567', subject, body })!;
 
@@ -77,5 +85,29 @@ describe('notes and changelog', () => {
     const second = prependChangelog(first, '0.3.0', '2026-10-07', '- two');
     expect(second.indexOf('## 0.3.0')).toBeLessThan(second.indexOf('## 0.2.0'));
     expect(second.startsWith('# Changelog')).toBe(true);
+  });
+});
+
+describe('bumpVersionIn', () => {
+  it('rewrites the version of a package.json and nothing else', () => {
+    const text =
+      '{\n  "name": "x",\n  "version": "0.19.2",\n  "dependencies": { "y": "1.0.0" }\n}\n';
+
+    expect(bumpVersionIn(text, /"version": "[^"]+"/, '"version": "0.20.0"')).toBe(
+      text.replace('0.19.2', '0.20.0'),
+    );
+  });
+
+  it('rewrites the hashsome.version line of gradle.properties and keeps the other lines', () => {
+    const text = '# comment\nhashsome.version=0.19.2\norg.gradle.jvmargs=-Xmx3g\n';
+    expect(bumpVersionIn(text, /^hashsome\.version=.*$/m, 'hashsome.version=0.20.0')).toBe(
+      '# comment\nhashsome.version=0.20.0\norg.gradle.jvmargs=-Xmx3g\n',
+    );
+  });
+
+  it('throws when the file no longer carries a version', () => {
+    expect(() => bumpVersionIn('nothing here', /^hashsome\.version=.*$/m, '1.0.0')).toThrow(
+      'matches nothing',
+    );
   });
 });

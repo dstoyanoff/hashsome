@@ -1,0 +1,35 @@
+{
+  "type": "entity",
+  "ref": "ha:climate.heater",
+  "entity": {
+    "kind": "climate",
+    "name": "Heater",
+    "availability": "ready",
+    "lastChanged": "2026-01-01T00:00:00.000Z",
+    "lastUpdated": "2026-01-01T00:00:00.000Z",
+    "raw": {
+      "state": "heat",
+      "attributes": {
+        "friendly_name": "Heater",
+        "hvac_modes": ["off", "heat"],
+        "temperature": 21,
+        "current_temperature": 19.4,
+        "min_temp": 5,
+        "max_temp": 30,
+        "target_temp_step": 0.5
+      }
+    },
+    "mode": "heat",
+    "targetTemperature": 21,
+    "currentTemperature": 19.4,
+    "unit": "°C",
+    "capabilities": {
+      "modes": ["off", "heat"],
+      "presets": [],
+      "targetTemperature": true,
+      "step": 0.5,
+      "range": { "min": 5, "max": 30 }
+    },
+    "ref": "ha:climate.heater"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "type": "result",
+  "id": 2,
+  "ok": true,
+  "data": {
+    "title": "Playlists",
+    "items": [
+      {
+        "id": "pl-morning",
+        "title": "Morning coffee",
+        "subtitle": "24 tracks",
+        "artworkUrl": "https://picsum.photos/seed/pl-morning/400",
+        "kind": "playlist",
+        "playable": true,
+        "expandable": true
+      },
+      {
+        "id": "pl-dinner",
+        "title": "Dinner party",
+        "subtitle": "41 tracks",
+        "artworkUrl": "https://picsum.photos/seed/pl-dinner/400",
+        "kind": "playlist",
+        "playable": true,
+        "expandable": true
+      },
+      {
+        "id": "pl-focus",
+        "title": "Deep focus",
+        "subtitle": "60 tracks",
+        "artworkUrl": "https://picsum.photos/seed/pl-focus/400",
+        "kind": "playlist",
+        "playable": true,
+        "expandable": true
+      },
+      {
+        "id": "pl-bass",
+        "title": "BASS BOOSTED SONGS 2026 🔊 REMIXES 🔊 🔊",
+        "subtitle": "A playlist with a very, very long name to show how titles are held to their room",
+        "artworkUrl": "https://picsum.photos/seed/pl-bass/400",
+        "kind": "playlist",
+        "playable": true,
+        "expandable": true
+      }
+    ]
+  }
+}
