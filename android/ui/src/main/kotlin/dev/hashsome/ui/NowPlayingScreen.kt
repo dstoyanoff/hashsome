@@ -12,6 +12,7 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.drawable.GradientDrawable
 import android.text.TextPaint
 import android.text.TextUtils
 import android.view.MotionEvent
@@ -25,12 +26,18 @@ import dev.hashsome.client.QueueItem
 import dev.hashsome.client.QueueResult
 import dev.hashsome.headless.Feedback
 import dev.hashsome.headless.HandleState
+import dev.hashsome.headless.MediaBrowserControl
 import dev.hashsome.headless.MediaPlayerControl
 import dev.hashsome.headless.QueueControl
 import dev.hashsome.headless.transportAvailability
 import dev.hashsome.headless.upNext
+import dev.hashsome.ui.icons.Ui
 
-/** The full-screen player: the track in large type beside its artwork, over a backdrop of the artwork's colors that drifts, with the keys and what plays next. */
+/**
+ * The full-screen player: the track in large type beside its artwork, over a backdrop of the artwork's colors that drifts, with the keys and what plays next.
+ * A wide display also has the queue (the next tracks, opened to the whole queue) on the right and the library at the bottom, which pushes the artwork up
+ * when it opens; a square one keeps what plays next in a strip along the bottom.
+ */
 object NowPlayingScreen {
     /** How the backdrop moves. For trying the styles on a device without a rebuild: `adb shell settings put global hashsome_backdrop lava` (any style's name) is read each time the screen opens. */
     var backdropStyle: BackdropStyle = BackdropStyle.Drift
@@ -90,6 +97,15 @@ private class ScreenOverlay(context: Context) : Overlay(context) {
         const val ENTER_MS = 280L
         const val EXIT_MS = 180L
     }
+}
+
+/** A group that lays nothing out itself: its parent places each child, so a panel and what is in it open and close as one. */
+private class Box(context: Context) : ViewGroup(context) {
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.getSize(heightMeasureSpec))
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) = Unit
 }
 
 private const val WHITE = 0xFFFFFFFF.toInt()
@@ -828,9 +844,23 @@ internal class NowPlayingScreenView(
         backdrop.setColors(colorsOf(picture))
     }
 
+    private val panelLeft = View(context).also { it.background = panelBackground() }
+    private val panelRight = View(context).also { it.background = panelBackground() }
+    private val leftKey = ScreenButton(context, Ui.library).also { it.glyphDp = 20f }
+    private val rightKey = ScreenButton(context, Ui.chevronDown).also { it.glyphDp = 20f }
+    private val libBox = Box(context)
+    private val queueBox = Box(context)
+    private var libOpen = false
+    private var queueFull = false
+    private var flipFrom: Map<View, IntArray>? = null
+    private var queueView: MediaQueueView? = null
+    private var libraryView: MediaBrowserView? = null
     private var scope = control.scope.child()
     private var queue: QueueControl? = null
     private var wide = true
+
+    // A wide display has the queue and the library beside the artwork; it is known from the display, before the first layout.
+    private val stage = context.resources.displayMetrics.let { it.widthPixels >= it.heightPixels * 1.3f }
     private var shown = MAX_UP_NEXT
 
     init {
@@ -840,6 +870,18 @@ internal class NowPlayingScreenView(
         addView(ring)
         for (v in listOf(title, artist, album, previous, play, next, shuffle, volumeKey, upNextLabel)) addView(v)
         items.forEach { addView(it) }
+        if (stage) {
+            addView(panelRight)
+            addView(queueBox)
+            queueBox.visibility = GONE
+            libBox.addView(panelLeft)
+            addView(libBox)
+            libBox.visibility = GONE
+            addView(leftKey)
+            addView(rightKey)
+            leftKey.onClick = { toggleLibrary() }
+            rightKey.onClick = { toggleQueue() }
+        }
         addView(back)
         addView(popover)
         back.onClick = { onClose?.invoke() }
@@ -862,6 +904,7 @@ internal class NowPlayingScreenView(
         scope = control.scope.child()
         val q = QueueControl(control.handle, scope).also { queue = it }
         items.forEach { v -> v.onClick = { item -> q.play(item) } }
+        if (stage) buildLists(q)
         val redraw: (Any?) -> Unit = { render() }
         val cancels = ArrayList<Cancel>()
         cancels += control.handle.state.listen(redraw)
@@ -877,6 +920,94 @@ internal class NowPlayingScreenView(
 
     private var detach: (() -> Unit)? = null
 
+    private fun panelBackground() = GradientDrawable().also {
+        it.setColor(0x33000000)
+        it.cornerRadius = dp(16f)
+    }
+
+    /** The queue and the library that sit beside the artwork on a wide display. */
+    private fun buildLists(q: QueueControl) {
+        val queueList = MediaQueueView(context, q)
+        val libraryList = MediaBrowserView(context, MediaBrowserControl(control.handle, scope)).also { it.layout = BrowseLayout.Theater }
+        queueView = queueList
+        libraryView = libraryList
+        queueBox.addView(queueList)
+        libBox.addView(libraryList)
+    }
+
+    private fun slide(box: Box, open: Boolean, toward: Int, vertical: Boolean = false, shut: () -> Boolean) {
+        box.animate().cancel()
+        val away = toward * dp(if (vertical) 48f else 24f)
+        fun moved(value: Float) {
+            if (vertical) box.translationY = value else box.translationX = value
+        }
+        if (open) {
+            box.visibility = VISIBLE
+            if (Animation.animates) {
+                box.alpha = 0f
+                moved(away)
+                val go = box.animate().alpha(1f).setDuration(220).setInterpolator(EASE_OUT)
+                if (vertical) go.translationY(0f) else go.translationX(0f)
+                go.start()
+            } else {
+                box.alpha = 1f
+                moved(0f)
+            }
+        } else if (Animation.animates) {
+            val go = box.animate().alpha(0f).setDuration(160).setInterpolator(EASE_IN)
+            if (vertical) go.translationY(away) else go.translationX(away)
+            go.withEndAction { if (shut()) box.visibility = GONE }.start()
+        } else {
+            box.visibility = GONE
+        }
+    }
+
+    /** The views of the middle column, which glide from where they were to where a change of layout puts them. */
+    private fun movers() = listOf(ring, title, artist, album, previous, play, next, shuffle, volumeKey, popover)
+
+    private fun remember() {
+        flipFrom = movers().associateWith { intArrayOf(it.left, it.top, it.width, it.height) }
+    }
+
+    private fun glide() {
+        val before = flipFrom ?: return
+        flipFrom = null
+        if (!Animation.animates) return
+        for (v in movers()) {
+            val old = before[v] ?: continue
+            if (old[2] == 0 || v.width == 0) continue
+            v.pivotX = 0f
+            v.pivotY = 0f
+            // The artwork shrinks or grows with its room; the rest only moves.
+            val scale = if (v === ring) old[2].toFloat() / v.width else 1f
+            v.scaleX = scale
+            v.scaleY = scale
+            v.translationX = (old[0] - v.left).toFloat()
+            v.translationY = (old[1] - v.top).toFloat()
+            v.animate().scaleX(1f).scaleY(1f).translationX(0f).translationY(0f).setDuration(240).setInterpolator(EASE_OUT).start()
+        }
+    }
+
+    /** Opens the library at the bottom, which takes room from the artwork, or closes it. */
+    private fun toggleLibrary() {
+        remember()
+        libOpen = !libOpen
+        leftKey.icon = if (libOpen) Ui.chevronDown else Ui.library
+        slide(libBox, libOpen, 1, vertical = true, shut = { !libOpen })
+        requestLayout()
+    }
+
+    /** Opens the whole queue over the next tracks, or goes back to them. */
+    private fun toggleQueue() {
+        queueFull = !queueFull
+        rightKey.icon = if (queueFull) Ui.chevronUp else Ui.chevronDown
+        panelRightFrom = panelRight.height
+        slide(queueBox, queueFull, 0, shut = { !queueFull })
+        requestLayout()
+    }
+
+    private var panelRightFrom = 0
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         detach?.invoke()
@@ -884,6 +1015,10 @@ internal class NowPlayingScreenView(
         artwork.stop()
         scope.dispose()
         queue = null
+        queueView?.let { (it.parent as? ViewGroup)?.removeView(it) }
+        libraryView?.let { (it.parent as? ViewGroup)?.removeView(it) }
+        queueView = null
+        libraryView = null
     }
 
     /** Three colors for the backdrop from a downscaled copy of the artwork; the neutral ones for no picture. */
@@ -969,13 +1104,17 @@ internal class NowPlayingScreenView(
         wide = w >= h * 1.3f
         val pad = dp(if (wide) 24 else 18)
         place(back, pad, pad - dp(4), dp(40), dp(40))
-        // What plays next runs along the bottom: as many as there is width for, at least two; its pictures are smaller on a square display.
-        val count = if (wide) ((w - 2 * pad) / dp(230)).coerceIn(2, MAX_UP_NEXT) else 2
+        if (stage && wide) {
+            layoutStage(w, h, pad)
+            return
+        }
+        // What plays next runs along the bottom, two of them, with small pictures.
+        val count = 2
         shown = count
-        val picture = if (wide) UpNextItemView.PICTURE else 36
+        val picture = 36
         items.forEach { it.pictureDp = picture }
         val itemsHeight = dp(picture)
-        val labelHeight = dp(if (wide) 18 else 16)
+        val labelHeight = dp(16)
         val blockTop = h - pad - itemsHeight - labelHeight - dp(4)
         place(upNextLabel, pad, blockTop, w - 2 * pad, labelHeight)
         val gap = dp(16)
@@ -987,42 +1126,81 @@ internal class NowPlayingScreenView(
                 place(v, 0, 0, 0, 0)
             }
         }
-        if (wide) layoutWide(w, pad, blockTop) else layoutSquare(w, pad, blockTop)
+        layoutSquare(pad, w - 2 * pad, pad, blockTop, (w * 0.62f).toInt())
     }
 
-    private fun layoutWide(w: Int, pad: Int, blockTop: Int) {
+    /** The artwork and the keys with the queue on the right and the library at the bottom. */
+    private fun layoutStage(w: Int, h: Int, pad: Int) {
+        val gap = dp(16)
+        val inset = dp(12)
         val top = pad
-        val room = blockTop - top - dp(12)
-        val d = minOf(room, ((w - 2 * pad) * 0.42f).toInt())
-        val ringLeft = w - pad - d - dp(8)
-        val ringTop = top + (room - d) / 2
-        place(ring, ringLeft, ringTop, d, d)
-        val x0 = pad
-        val colW = ringLeft - dp(24) - x0
-        for (t in listOf(title, artist, album)) t.align = Paint.Align.LEFT
-        // The text is at the top of the column and the keys at the bottom of it, above what plays next.
-        var y = top + dp(44)
-        place(title, x0, y, colW, dp(32)); y += dp(32)
-        place(artist, x0, y, colW, dp(24)); y += dp(24)
-        place(album, x0, y, colW, dp(20))
-        controls(x0, blockTop - dp(10) - dp(KEYS_WIDE), colW, KEYS_WIDE, 1.22f)
+        val railTop = top + dp(44)
+        val bottom = h - pad
+        // The library runs the full width along the bottom; what is above it (the artwork, the queue) has the rest.
+        val libH = ((bottom - top) * 0.4f).toInt()
+        val libTop = bottom - libH
+        val floor = if (libOpen) libTop - gap else bottom
+        val panelW = ((w - 2 * pad) * 0.34f).toInt()
+        val queueLeft = w - pad - panelW
+        val listW = panelW - 2 * inset
+        // The queue: the next tracks while it is shut, as many as fit, and the whole of it when opened.
+        val row = dp(UpNextItemView.PICTURE) + dp(8)
+        val label = dp(18)
+        val fit = ((floor - railTop - 2 * inset - label - dp(4)) / row).coerceIn(1, MAX_UP_NEXT)
+        val panelH = if (queueFull) floor - railTop else 2 * inset + label + dp(4) + fit * row
+        place(panelRight, queueLeft, railTop, panelW, panelH)
+        val was = panelRightFrom
+        if (was > 0 && was != panelH && Animation.animates) {
+            panelRight.pivotY = 0f
+            panelRight.scaleY = was.toFloat() / panelH
+            panelRight.animate().scaleY(1f).setDuration(240).setInterpolator(EASE_OUT).start()
+        }
+        panelRightFrom = 0
+        place(queueBox, queueLeft, railTop, panelW, floor - railTop)
+        queueView?.let { place(it, inset, inset, listW, floor - railTop - 2 * inset) }
+        if (queueFull) {
+            place(upNextLabel, 0, 0, 0, 0)
+            items.forEach { place(it, 0, 0, 0, 0) }
+        } else {
+            shown = MAX_UP_NEXT
+            place(upNextLabel, queueLeft + inset, railTop + inset, listW, label)
+            items.forEachIndexed { i, v ->
+                v.pictureDp = UpNextItemView.PICTURE
+                if (i < fit) {
+                    place(v, queueLeft + inset, railTop + inset + label + dp(4) + i * row, listW, dp(UpNextItemView.PICTURE))
+                } else {
+                    place(v, 0, 0, 0, 0)
+                }
+            }
+        }
+        place(rightKey, w - pad - dp(40), pad - dp(4), dp(40), dp(40))
+
+        val libW = w - 2 * pad
+        place(libBox, pad, libTop, libW, libH)
+        place(panelLeft, 0, 0, libW, libH)
+        libraryView?.let { place(it, inset, inset, libW - 2 * inset, libH - 2 * inset) }
+        val colW = queueLeft - gap - pad
+        place(leftKey, pad + colW - dp(40), pad - dp(4), dp(40), dp(40))
+        layoutSquare(pad, colW, top, floor, (colW * 0.9f).toInt())
+        glide()
     }
 
-    private fun layoutSquare(w: Int, pad: Int, blockTop: Int) {
-        val colW = w - 2 * pad
+    private fun layoutSquare(x0: Int, colW: Int, top: Int, bottom: Int, maxRing: Int) {
         for (t in listOf(title, artist, album)) t.align = Paint.Align.CENTER
         // What is under the artwork has the height it needs; the artwork takes the rest.
         val textH = dp(30) + dp(22) + dp(18)
-        val keysH = dp(KEYS)
-        val under = textH + dp(26) + keysH + dp(6)
-        val d = (blockTop - pad - under - dp(6)).coerceIn(dp(96), (w * 0.62f).toInt())
-        var y = pad
-        place(ring, (w - d) / 2, y, d, d)
+        val room = bottom - top - textH - dp(26) - dp(6) - dp(6)
+        // The keys grow with the artwork: a larger one has room for them, and keys that small beside it look lost.
+        val scale = ((room - dp(KEYS)).coerceAtMost(maxRing) / dp(240f)).coerceIn(1f, 1.4f)
+        val keysH = Math.round(dp(KEYS) * scale)
+        val d = (room - keysH).coerceIn(dp(96), maxRing)
+        var y = top
+        place(ring, x0 + (colW - d) / 2, y, d, d)
         y += d + dp(6)
-        place(title, pad, y, colW, dp(30)); y += dp(30)
-        place(artist, pad, y, colW, dp(22)); y += dp(22)
-        place(album, pad, y, colW, dp(18)); y += dp(18) + dp(26)
-        controls(pad, y, colW, KEYS, 1f)
+        place(title, x0, y, colW, dp(30)); y += dp(30)
+        place(artist, x0, y, colW, dp(22)); y += dp(22)
+        place(album, x0, y, colW, dp(18)); y += dp(18) + dp(26)
+        controls(x0, y, colW, keysH, scale)
     }
 
     /** The row of keys: shuffle, previous, play, next and the volume, the three of the transport larger than the two at the ends; [scale] sizes them all. */
@@ -1055,7 +1233,6 @@ internal class NowPlayingScreenView(
     private companion object {
         /** The height of the row of keys, in dp. */
         const val KEYS = 64
-        const val KEYS_WIDE = 78
         const val MAX_UP_NEXT = 4
         const val SAMPLE = 24
     }
