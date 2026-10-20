@@ -321,7 +321,8 @@ internal class ArtworkRingView(context: Context) : RingView(context) {
         val offset = s * 0.2f
         bubbleText.typeface = theme.typefaces.forWeight(500)
         bubbleText.textAlign = Paint.Align.CENTER
-        var size = (s * 0.058f).coerceIn(dp(8f), dp(12f))
+        // Grows with the artwork, but between a floor that stays readable and a ceiling that keeps it small on a large one.
+        var size = (s * 0.045f).coerceIn(dp(7.5f), dp(9.5f))
         var w: Float
         var h: Float
         var tries = 0
@@ -336,15 +337,12 @@ internal class ArtworkRingView(context: Context) : RingView(context) {
             size *= 0.92f
         }
         bubbleText.color = 0xFFFFFFFF.toInt()
-        // A light pill, so little of the picture is covered; the text keeps a soft shadow to stay readable on a bright one.
-        bubbleText.setShadowLayer(dp(2f), 0f, dp(1f), 0x73000000)
         val cy = height / 2f + offset
-        bubble.color = 0x47000000
+        bubble.color = 0x66000000
         bubbleRect.set(width / 2f - w / 2f, cy - h / 2f, width / 2f + w / 2f, cy + h / 2f)
         canvas.drawRoundRect(bubbleRect, h / 2f, h / 2f, bubble)
         val fm = bubbleText.fontMetrics
         canvas.drawText(timeText, 0, timeText.length, width / 2f, cy - (fm.ascent + fm.descent) / 2f, bubbleText)
-        bubbleText.clearShadowLayer()
     }
 
     /** The position under the finger, in a dark pill in the middle of the picture, so it can be read where the thumb is not. */
