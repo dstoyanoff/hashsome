@@ -20,10 +20,19 @@ private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
 private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 
 /** Fine adjustment (the web's `StepButton`): a press nudges by [delta]; holding repeats in steps of [holdDelta] every 400 ms until released. */
-internal class StepButtonView(context: Context, private val icon: Icon, delta: Int, label: String, onStep: (Int) -> Unit) : View(context) {
+internal class StepButtonView(
+    context: Context,
+    private val icon: Icon,
+    delta: Int,
+    label: String,
+    onStep: (Int) -> Unit,
+    /** How many presses' worth each repeat of a hold is: 10 for a percent, 4 for the steps of a thermostat (as the web's `holdDelta`). */
+    holdFactor: Int = 10,
+    private val sizeDp: Int = SIZE,
+) : View(context) {
     private val glyph = iconDrawable(icon)
     private val handler = Handler(Looper.getMainLooper())
-    private val press = StepHold(delta, delta * 10, onStep, { r, ms -> handler.postDelayed(r, ms) }, { handler.removeCallbacks(it) })
+    private val press = StepHold(delta, delta * holdFactor, onStep, { r, ms -> handler.postDelayed(r, ms) }, { handler.removeCallbacks(it) })
 
     init {
         isClickable = true
@@ -31,7 +40,12 @@ internal class StepButtonView(context: Context, private val icon: Icon, delta: I
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(dp(SIZE), dp(SIZE))
+        setMeasuredDimension(dp(sizeDp), dp(sizeDp))
+    }
+
+    override fun setEnabled(enabled: Boolean) {
+        super.setEnabled(enabled)
+        alpha = if (enabled) 1f else 0.4f
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -42,6 +56,8 @@ internal class StepButtonView(context: Context, private val icon: Icon, delta: I
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // A button at the end of its range is shown dimmed and does nothing.
+        if (!isEnabled) return true
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> press.down()
             MotionEvent.ACTION_MOVE -> press.move(contains(event.x, event.y))
