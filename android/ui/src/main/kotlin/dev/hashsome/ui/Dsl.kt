@@ -3,6 +3,7 @@ package dev.hashsome.ui
 import android.content.Context
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ScrollView
 import dev.hashsome.client.Entity
 import dev.hashsome.client.EntityKind
 import dev.hashsome.client.EntityRef
@@ -252,6 +253,21 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
                 ) { ctx -> WeatherForecastBody(context, ctx, EntityRef(ref)) }
             }
         }
+    }
+
+    /**
+     * The forecast of a weather entity as a page (the web's `WeatherForecast expanded`): the weather now, the readings, the next 24 hours and the days
+     * ahead, in the layout for a wide space. It scrolls when it is longer than the page. [expanded] false is the narrow layout of the drawer.
+     */
+    fun weatherForecast(ref: String, expanded: Boolean = true) {
+        val body = WeatherForecastBody(context, scope, EntityRef(ref), expanded)
+        val scroll = ScrollView(context).also {
+            it.isVerticalScrollBarEnabled = false
+            it.overScrollMode = View.OVER_SCROLL_NEVER
+            it.isFillViewport = false
+            it.addView(body, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+        place(scroll, grow = true)
     }
 
     /** The time of day. [format] writes the hours as 24 or 12 (the web's `format="24h"`), or as the device's own setting ([ClockFormat.Auto]). */
