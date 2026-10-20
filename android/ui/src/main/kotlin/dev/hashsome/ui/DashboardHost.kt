@@ -123,6 +123,7 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
         }
         val builder = PageScope(activity, pageScope)
         builder.navigator = { navigate(it) }
+        builder.drawersExpandable = dashboard.expandableDrawers
         builder.begin(layout)
         spec.build(builder)
         // The page scrolls when its content is taller than the screen.
