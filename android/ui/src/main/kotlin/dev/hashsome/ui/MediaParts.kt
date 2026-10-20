@@ -313,16 +313,30 @@ internal class ArtworkRingView(context: Context) : RingView(context) {
         if (previewSeconds == null && timeText.isNotEmpty()) drawTime(canvas)
     }
 
-    /** The time in a small dark pill low on the picture, sized with the ring. */
+    /** The time in a small dark pill low on the picture, sized with the ring so that it stays inside the picture's circle. */
     private fun drawTime(canvas: Canvas) {
         val s = minOf(width, height).toFloat()
-        bubbleText.textSize = (s * 0.075f).coerceIn(dp(11f), dp(15f))
+        // The picture is a disc 36 % of the ring's size in radius; the pill sits a little below its middle.
+        val radius = s * 0.36f
+        val offset = s * 0.2f
         bubbleText.typeface = theme.typefaces.forWeight(500)
-        bubbleText.color = 0xFFFFFFFF.toInt()
         bubbleText.textAlign = Paint.Align.CENTER
-        val w = bubbleText.measureText(timeText, 0, timeText.length) + bubbleText.textSize * 1.4f
-        val h = bubbleText.textSize * 2f
-        val cy = height / 2f + s * 0.24f
+        var size = (s * 0.075f).coerceIn(dp(9f), dp(15f))
+        var w: Float
+        var h: Float
+        var tries = 0
+        while (true) {
+            bubbleText.textSize = size
+            w = bubbleText.measureText(timeText, 0, timeText.length) + size * 1.4f
+            h = size * 2f
+            // The pill's lower corners are where it is widest and the disc is narrowest: the chord of the disc there must hold its width.
+            val low = offset + h / 2f
+            val chord = if (low >= radius) 0f else 2f * Math.sqrt((radius * radius - low * low).toDouble()).toFloat()
+            if (w <= chord * 0.96f || tries++ >= 12) break
+            size *= 0.92f
+        }
+        bubbleText.color = 0xFFFFFFFF.toInt()
+        val cy = height / 2f + offset
         bubble.color = 0x8C000000.toInt()
         bubbleRect.set(width / 2f - w / 2f, cy - h / 2f, width / 2f + w / 2f, cy + h / 2f)
         canvas.drawRoundRect(bubbleRect, h / 2f, h / 2f, bubble)
