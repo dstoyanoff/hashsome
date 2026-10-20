@@ -118,13 +118,11 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
         scope = pageScope
         val layout = PageLayout(activity)
         if (shell.rail != null) layout.leftInsetDp = NAV_RAIL
-        shell.topBarTitle?.let { title ->
-            layout.addView(TopBarView(activity, title, shell.switcher), FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(TOP_ROW)))
-        }
         val builder = PageScope(activity, pageScope)
         builder.navigator = { navigate(it) }
         builder.drawersExpandable = dashboard.expandableDrawers
         builder.begin(layout)
+        shell.topBar?.let { builder.topBarRow(it, dashboard.id) }
         spec.build(builder)
         // The page scrolls when its content is taller than the screen.
         // A top row (date, weather, clock, status, or the shell's top bar) stays pinned and only what is under it scrolls.
