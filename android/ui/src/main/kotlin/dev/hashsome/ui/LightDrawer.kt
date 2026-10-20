@@ -157,8 +157,8 @@ open class LightDrawerBody(
         hueBar.onCancel = { heldHue.flush(::commitHue) }
 
         if (energy != null) column.addView(energy, FlexParams(MATCH, WRAP))
-        if (history != null) column.addView(HistorySectionView(context, history, scope), FlexParams(MATCH, WRAP))
-        addView(column, LayoutParams(MATCH, WRAP))
+        if (history != null) column.addPinnedHistory(HistorySectionView(context, history, scope))
+        addView(column, LayoutParams(MATCH, MATCH))
     }
 
     private fun kelvinRange() = LightBars.kelvinRange(control.handle.entity)

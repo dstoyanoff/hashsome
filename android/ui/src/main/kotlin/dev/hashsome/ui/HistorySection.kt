@@ -144,3 +144,9 @@ internal class ActivityRowView(context: Context, private val entry: LogbookEntry
         canvas.drawTextCentered(whenText, x, cy + plain.fontSpacing * 0.6f, plain)
     }
 }
+
+/** Adds [history] at the bottom of this drawer body's column: whatever room the body leaves goes above it, so it sits at the foot of the panel. */
+internal fun ColumnLayout.addPinnedHistory(history: HistorySectionView) {
+    addView(Spacer(context), FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, 0).apply { grow = true })
+    addView(history, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+}
