@@ -168,7 +168,7 @@ open class SensorReadoutView(context: Context, val reading: SensorReading, icon:
 }
 
 /** The tile every entity tile is drawn on, filling this view. */
-private fun BoundView.hostTile(): TileView =
+internal fun BoundView.hostTile(): TileView =
     TileView(context).also { addView(it, FrameLayout.LayoutParams(MATCH, MATCH)) }
 
 /** A light: tap toggles it; drag along the tile sets its brightness, the fill following the finger; the level is the second line. */
@@ -245,39 +245,6 @@ open class SwitchTileView(context: Context, val control: SwitchControl, val labe
         tile.icon = icon
         tile.filled = control.on.value
         tile.secondary = StatusLabels.of(state) ?: control.watts.value?.let { wattsText(it) }
-    }
-}
-
-/**
- * A thermostat tile. For now it draws only its disabled look: a dimmed tile with the room's temperature, or why there is none
- * (a room with no heater is a fixed `Unavailable` handle). The live tile is the next milestone's.
- */
-open class ClimateTileView(context: Context, val control: ClimateControl, val label: String) : BoundView(context) {
-    val tile: TileView = hostTile()
-
-    var icon: Icon = Ui.thermometer
-        set(value) {
-            field = value
-            render()
-        }
-
-    init {
-        tile.title = label
-        tile.disabled = true
-    }
-
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        bind(control.handle.state) { render() }
-        bind(control.current) { render() }
-    }
-
-    private fun render() {
-        tile.icon = icon
-        tile.disabled = true
-        val current = control.current.value
-        val unit = control.handle.entity?.unit ?: "°C"
-        tile.secondary = if (current != null) climateReading(current, unit) else StatusLabels.of(control.handle.state.value)
     }
 }
 
