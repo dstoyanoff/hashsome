@@ -54,6 +54,13 @@ sealed interface DeviceProfile {
     /** Whether, after a boot, the dashboard waits for the stock Shelly app to finish starting before it takes the front (see [BootGate]). */
     val settlesAtBoot: Boolean get() = false
 
+    /**
+     * Whether the stock app force-stops every non-system app as it restarts itself at boot, so a dashboard installed normally cannot
+     * take the front until it has settled ([BootGate]). The X1's does; the X2i's does not restart at boot, so there the dashboard
+     * takes the front as soon as its service starts.
+     */
+    val stockKillsAtBoot: Boolean get() = false
+
     fun screen(context: Context): Screen
     fun presence(context: Context, scheduler: Scheduler): Presence
 
@@ -62,6 +69,7 @@ sealed interface DeviceProfile {
         override val id = "shelly-stargate"
         override val needsDeviceAdmin = false
         override val settlesAtBoot = true
+        override val stockKillsAtBoot = true
         override fun screen(context: Context): Screen = PanelScreen(context, sysfs = true, floor = floor)
         override fun presence(context: Context, scheduler: Scheduler): Presence = Presence(context, scheduler)
     }

@@ -257,7 +257,7 @@ internal object Kiosk {
         systemApp = system
         if (bootGate != null) return
         val elapsed = android.os.SystemClock.elapsedRealtime()
-        if (!shouldArmBootGate(boot, elapsed, config.bootMinMs, DeviceProfile.detect().settlesAtBoot)) return
+        if (!shouldArmBootGate(boot, elapsed, config.bootMinMs, DeviceProfile.detect().stockKillsAtBoot)) return
         bootGate = BootGate(
             config.bootSettleMs, config.bootMinMs, { android.os.SystemClock.elapsedRealtime() },
             systemApp = systemApp,

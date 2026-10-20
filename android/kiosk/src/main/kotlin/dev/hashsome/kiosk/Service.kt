@@ -245,8 +245,8 @@ internal class KeepInFront(private val context: Context, private val profile: De
     private val keeper = FrontKeeper(
         ownPackage = context.packageName,
         clock = { android.os.SystemClock.elapsedRealtime() },
-        // Only a boot start of a Shelly profile waits for the stock app; Kiosk.bootGate is armed by the boot receiver's start.
-        gate = { if (profile.settlesAtBoot) Kiosk.bootGate else null },
+        // Only a boot start of a profile whose stock app kills other apps at boot (the X1) waits for it; Kiosk.bootGate is armed by the boot receiver's start.
+        gate = { if (profile.stockKillsAtBoot) Kiosk.bootGate else null },
         top = { topActivity() },
         dashboardResumed = { Kiosk.dashboardResumed },
         ownProcessVisible = { ownProcessVisible() },
