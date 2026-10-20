@@ -148,6 +148,10 @@ class KioskService : Service() {
             backButton.close()
         }
 
+        // A new server (provisioned while the app runs, typed in the sheet, set from Home Assistant) is connected to at once: until
+        // now only the dashboard's start read it, so an app started before it was provisioned stayed on "Not found".
+        closers += Settings.server.listen { Hashsome.reconnect() }
+
         val linkBinder = LinkBinder(state)
         val front = KeepInFront(this, profile)
         val watchdog = Watchdog(this)
