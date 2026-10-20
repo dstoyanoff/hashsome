@@ -84,4 +84,11 @@ class DeviceTest {
         assertEquals(mapOf("server" to "http://a:1", "dashboard" to "kitchen"), Provisioning.decode(Provisioning.encode(extras)))
         assertTrue(Provisioning.decode(null).isEmpty())
     }
+
+    @Test
+    fun `only a tablet obeys its power key, and each profile names the button for its own UI`() {
+        assertEquals(listOf(false, false, true), listOf(DeviceProfile.ShellyStargate, DeviceProfile.ShellyJenna, DeviceProfile.Generic).map { it.powerKeySleeps })
+        assertEquals("Open Shelly app", DeviceProfile.ShellyJenna.hostAppLabel)
+        assertEquals("Open tablet settings", DeviceProfile.Generic.hostAppLabel)
+    }
 }

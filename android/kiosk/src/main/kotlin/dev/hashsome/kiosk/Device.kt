@@ -61,6 +61,15 @@ sealed interface DeviceProfile {
      */
     val stockKillsAtBoot: Boolean get() = false
 
+    /**
+     * Whether a screen that goes dark by itself in day mode (the power key) stays dark until a touch or Home Assistant wakes it. A wall display
+     * has no power key and its stock app's timeout must not keep it dark, so it is woken at once; a tablet is put to sleep by hand.
+     */
+    val powerKeySleeps: Boolean get() = false
+
+    /** What the "open the device's own UI" button is called: the stock Shelly app on the Shelly displays, Android's settings on a tablet. */
+    val hostAppLabel: String get() = "Open Shelly app"
+
     fun screen(context: Context): Screen
     fun presence(context: Context, scheduler: Scheduler): Presence
 
@@ -89,6 +98,8 @@ sealed interface DeviceProfile {
     data object Generic : DeviceProfile {
         override val id = "generic"
         override val needsDeviceAdmin = true
+        override val powerKeySleeps = true
+        override val hostAppLabel = "Open tablet settings"
         override fun screen(context: Context): Screen = PanelScreen(context, sysfs = false, floor = floor)
         override fun presence(context: Context, scheduler: Scheduler): Presence = Presence(context, scheduler)
     }

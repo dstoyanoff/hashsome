@@ -11,10 +11,10 @@ class NightModeTest {
     private val screen = FakeScreen()
     private val presence = fakePresence(sched)
 
-    private fun night(idleMs: Long = 120_000, on: Boolean = false): NightMode {
+    private fun night(idleMs: Long = 120_000, on: Boolean = false, powerKeySleeps: Boolean = false): NightMode {
         freshSettings(KioskConfig(nightIdleMs = idleMs))
         Settings.night.set(on)
-        return NightMode(Settings, presence, screen, sched)
+        return NightMode(Settings, presence, screen, sched, powerKeySleeps)
     }
 
     private fun touch() = presence.touches.set(presence.touches.value + 1)
@@ -25,6 +25,31 @@ class NightModeTest {
         sched.advance(24 * 3_600_000L)
         assertEquals(NightState.Day, mode.state.value)
         assertEquals(0, screen.offs)
+    }
+
+    @Test
+    fun `a wall display is woken at once when something else puts the screen off in day mode`() {
+        night()
+        screen.state.set(ScreenState.Off)
+        assertEquals(1, screen.wakes)
+    }
+
+    @Test
+    fun `a tablet stays dark after its power key in day mode, and a touch or the firmware's own wake lights it again`() {
+        val mode = night(powerKeySleeps = true)
+        screen.state.set(ScreenState.Off)
+        sched.advance(60_000)
+        assertEquals(0, screen.wakes)
+        assertTrue(mode.asleep)
+        // The firmware's double tap lights the panel without us: no longer asleep, so the first touch is not taken for a wake touch.
+        screen.state.set(ScreenState.On)
+        assertFalse(mode.asleep)
+        // A second power key press sleeps it again; a touch (or Home Assistant's wake) lights it.
+        screen.state.set(ScreenState.Off)
+        assertEquals(0, screen.wakes)
+        touch()
+        assertEquals(1, screen.wakes)
+        assertFalse(mode.asleep)
     }
 
     @Test

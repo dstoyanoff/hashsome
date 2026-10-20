@@ -120,8 +120,13 @@ internal object Kiosk {
     /** [Reboot.available] of whichever [reboot] is current, as one store the sheet and the bridge can hold. */
     private val rebootAvailable = Store(false)
 
-    /** Whether "Open Shelly app" is offered: a Shelly profile is in use (read when the service builds, which a change of profile repeats). */
+    /** Whether the button that opens the device's own UI is offered (every profile has one: the Shelly app, or the tablet's settings). */
     private val stockAppOffered = Store(false)
+
+    /** The label of that button for the profile in use (read when the service builds, which a change of profile repeats). */
+    @Volatile
+    private var hostAppLabel = "Open Shelly app"
+
 
     /** [KioskActions.updateState], one store for the whole process: the updater feeds it while the service runs. */
     private val updateStateStore = Store<UpdateState>(UpdateState.Off)
@@ -159,6 +164,8 @@ internal object Kiosk {
 
         override val canOpenStockApp: Store<Boolean> = stockAppOffered
 
+        override val stockAppLabel: String get() = hostAppLabel
+
         override fun openStockApp() = openStockApp(Kiosk.activity?.get() ?: Kiosk.appContext)
 
         override val canRestartDevice: Store<Boolean> = rebootAvailable
@@ -193,7 +200,8 @@ internal object Kiosk {
     /** Probes the reboot paths of [profile]; the result lands in [KioskActions.canRestartDevice]. */
     fun probeReboot(context: Context, profile: DeviceProfile) {
         releaseReboot()
-        stockAppOffered.set(profile.settlesAtBoot)
+        hostAppLabel = profile.hostAppLabel
+        stockAppOffered.set(true)
         val r = Reboot(DeviceRebootBackend(context))
         rebootWatch = r.available.listenNow { rebootAvailable.set(it) }
         reboot = r
@@ -209,11 +217,15 @@ internal object Kiosk {
     private fun overlayAllowed(context: Context): Boolean =
         android.os.Build.VERSION.SDK_INT < 23 || android.provider.Settings.canDrawOverlays(context)
 
-    /** Launches the stock Shelly app and pauses keep-in-front; where it is not installed nothing is paused. */
+    /** Launches the device's own UI (the stock Shelly app, or a tablet's settings) and pauses keep-in-front; where there is none nothing is paused. */
     internal fun openStockApp(context: Context?) {
-        val intent = context?.packageManager?.getLaunchIntentForPackage(FrontDecision.STOCK_PACKAGE)
+        val intent = if (DeviceProfile.detect() == DeviceProfile.Generic) {
+            Intent(android.provider.Settings.ACTION_SETTINGS)
+        } else {
+            context?.packageManager?.getLaunchIntentForPackage(FrontDecision.STOCK_PACKAGE)
+        }
         if (context == null || intent == null) {
-            Log.w("kiosk", "the stock Shelly app is not installed")
+            Log.w("kiosk", "there is no stock app to open")
             return
         }
         try {
