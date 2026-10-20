@@ -392,6 +392,15 @@ internal class UpNextItemView(context: Context) : View(context) {
 
     var onClick: ((QueueItem) -> Unit)? = null
 
+    /** The side of the small artwork, in dp (smaller on a square display, where room is short). */
+    var pictureDp = PICTURE
+        set(value) {
+            if (field == value) return
+            field = value
+            requestLayout()
+            invalidate()
+        }
+
     private val title = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val artist = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -399,7 +408,7 @@ internal class UpNextItemView(context: Context) : View(context) {
     private val matrix = Matrix()
     private var picture: Bitmap? = null
     private var shader: BitmapShader? = null
-    private val artwork = ArtworkSlot(AssetSize.Small, { dp(PICTURE) }) {
+    private val artwork = ArtworkSlot(AssetSize.Small, { dp(pictureDp) }) {
         picture = it
         shader = it?.let { b -> BitmapShader(b, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP) }
         invalidate()
@@ -420,12 +429,12 @@ internal class UpNextItemView(context: Context) : View(context) {
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), dp(PICTURE))
+        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), dp(pictureDp))
     }
 
     override fun onDraw(canvas: Canvas) {
         val track = item ?: return
-        val size = dp(PICTURE).toFloat()
+        val size = dp(pictureDp).toFloat()
         val radius = dp(6f)
         rect.set(0f, 0f, size, size)
         paint.color = withAlpha(WHITE, 0.12f)
@@ -442,10 +451,10 @@ internal class UpNextItemView(context: Context) : View(context) {
             paint.shader = null
         }
         val theme = theme
-        title.textSize = textPx(13f)
+        title.textSize = textPx(if (pictureDp < PICTURE) 12f else 13f)
         title.typeface = theme.typefaces.forWeight(600)
         title.color = WHITE
-        artist.textSize = textPx(11f)
+        artist.textSize = textPx(if (pictureDp < PICTURE) 10f else 11f)
         artist.typeface = theme.typefaces.forWeight(400)
         artist.color = withAlpha(WHITE, 0.62f)
         val x = size + dp(10f)
@@ -465,6 +474,76 @@ internal class UpNextItemView(context: Context) : View(context) {
     companion object {
         /** The small artwork's side, in dp. */
         const val PICTURE = 44
+    }
+}
+
+/** A small pill over the screen with the volume: its mute key and its bar. It opens from the volume key and goes after a few seconds untouched. */
+internal class VolumePopover(context: Context) : ViewGroup(context) {
+    val mute = ScreenButton(context, UiIcons.volume).also {
+        it.plain = true
+        it.glyphDp = 18f
+    }
+    val bar = ScreenBar(context)
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val rect = RectF()
+    private val hide = Runnable { visibility = GONE }
+
+    init {
+        visibility = GONE
+        setWillNotDraw(false)
+        addView(mute)
+        addView(bar)
+    }
+
+    /** Shows it (or keeps it showing) for a few seconds more. */
+    fun keepOpen() {
+        visibility = VISIBLE
+        removeCallbacks(hide)
+        postDelayed(hide, OPEN_MS)
+    }
+
+    fun close() {
+        removeCallbacks(hide)
+        visibility = GONE
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        removeCallbacks(hide)
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        setMeasuredDimension(dp(WIDTH), dp(HEIGHT))
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        val key = dp(32)
+        val pad = dp(8)
+        mute.measure(MeasureSpec.makeMeasureSpec(key, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(key, MeasureSpec.EXACTLY))
+        mute.layout(pad, (height - key) / 2, pad + key, (height + key) / 2)
+        val barLeft = pad + key + dp(4)
+        val barWidth = width - barLeft - dp(16)
+        bar.measure(MeasureSpec.makeMeasureSpec(barWidth, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(dp(ScreenBar.HEIGHT), MeasureSpec.EXACTLY))
+        bar.layout(barLeft, (height - dp(ScreenBar.HEIGHT)) / 2, barLeft + barWidth, (height + dp(ScreenBar.HEIGHT)) / 2)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        paint.color = 0x99000000.toInt()
+        rect.set(0f, 0f, width.toFloat(), height.toFloat())
+        canvas.drawRoundRect(rect, height / 2f, height / 2f, paint)
+    }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        // Any touch on it keeps it open.
+        removeCallbacks(hide)
+        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) postDelayed(hide, OPEN_MS)
+        return super.dispatchTouchEvent(event)
+    }
+
+    private companion object {
+        const val WIDTH = 210
+        const val HEIGHT = 44
+        const val OPEN_MS = 3500L
     }
 }
 
@@ -489,15 +568,15 @@ internal class NowPlayingScreenView(
         it.discColor = 0x33000000
     }
     private val title = ScreenText(context).also {
-        it.sizeDp = 28f
+        it.sizeDp = 26f
         it.weight = 600
     }
     private val artist = ScreenText(context).also {
-        it.sizeDp = 18f
+        it.sizeDp = 16f
         it.color = withAlpha(WHITE, 0.86f)
     }
     private val album = ScreenText(context).also {
-        it.sizeDp = 15f
+        it.sizeDp = 14f
         it.color = withAlpha(WHITE, 0.58f)
     }
     private val bar = ScreenBar(context)
@@ -512,25 +591,25 @@ internal class NowPlayingScreenView(
     }
     private val previous = ScreenButton(context, UiIcons.skipPrevious).also {
         it.plain = true
-        it.glyphDp = 30f
+        it.glyphDp = 26f
     }
     private val play = ScreenButton(context, UiIcons.play).also {
         it.filled = true
-        it.glyphDp = 30f
+        it.glyphDp = 26f
     }
     private val next = ScreenButton(context, UiIcons.skipNext).also {
         it.plain = true
-        it.glyphDp = 30f
+        it.glyphDp = 26f
     }
     private val shuffle = ScreenButton(context, UiIcons.shuffle).also {
         it.plain = true
         it.glyphDp = 20f
     }
-    private val mute = ScreenButton(context, UiIcons.volume).also {
+    private val volumeKey = ScreenButton(context, UiIcons.volume).also {
         it.plain = true
         it.glyphDp = 20f
     }
-    private val volume = ScreenBar(context)
+    private val popover = VolumePopover(context)
     private val upNextLabel = ScreenText(context).also {
         it.text = "Up next"
         it.sizeDp = 12f
@@ -551,24 +630,26 @@ internal class NowPlayingScreenView(
     init {
         addView(backdrop)
         addView(ring)
-        for (v in listOf(title, artist, album, bar, elapsed, remaining, previous, play, next, shuffle, mute, volume, upNextLabel)) addView(v)
+        for (v in listOf(title, artist, album, bar, elapsed, remaining, previous, play, next, shuffle, volumeKey, upNextLabel)) addView(v)
         items.forEach { addView(it) }
         addView(back)
+        addView(popover)
         back.onClick = { onClose?.invoke() }
         previous.onClick = { control.press("previous", MediaPlayerCommands.previous()) }
         play.onClick = { control.press("togglePlay", MediaPlayerCommands.togglePlay()) }
         next.onClick = { control.press("next", MediaPlayerCommands.next()) }
         shuffle.onClick = { control.press("setShuffle", MediaPlayerCommands.setShuffle(control.handle.entity?.shuffle != true)) }
-        mute.onClick = { control.volume.toggleMute() }
+        volumeKey.onClick = { if (popover.visibility == VISIBLE) popover.close() else popover.keepOpen() }
+        popover.mute.onClick = { control.volume.toggleMute() }
         ring.onPreview = { control.seek.drag(it) }
         ring.onCommit = { control.seek.commit(it) }
         ring.onCancel = { control.seek.cancel() }
         bar.onPreview = { fraction -> control.handle.entity?.duration?.let { control.seek.drag(it * fraction) } }
         bar.onCommit = { fraction -> control.handle.entity?.duration?.let { control.seek.commit(it * fraction) } }
         bar.onCancel = { control.seek.cancel() }
-        volume.onPreview = { control.volume.drag(it.toDouble()) }
-        volume.onCommit = { control.volume.commit(it.toDouble()) }
-        volume.onCancel = { control.volume.cancel() }
+        popover.bar.onPreview = { control.volume.drag(it.toDouble()) }
+        popover.bar.onCommit = { control.volume.commit(it.toDouble()) }
+        popover.bar.onCancel = { control.volume.cancel() }
     }
 
     override fun onAttachedToWindow() {
@@ -638,12 +719,12 @@ internal class NowPlayingScreenView(
         shuffle.visibility = if (ready && caps?.shuffle == true) VISIBLE else INVISIBLE
         shuffle.active = player?.shuffle == true
         val hasVolume = ready && (caps?.volume != false || caps?.mute == true)
-        mute.visibility = if (hasVolume) VISIBLE else INVISIBLE
-        volume.visibility = if (hasVolume) VISIBLE else INVISIBLE
+        volumeKey.visibility = if (hasVolume) VISIBLE else INVISIBLE
         val muted = control.volume.muted.value
-        mute.icon = if (muted) UiIcons.volumeMuted else UiIcons.volume
-        mute.active = !muted
-        volume.fraction = control.volume.shown.value.toFloat()
+        volumeKey.icon = if (muted) UiIcons.volumeMuted else UiIcons.volume
+        popover.mute.icon = volumeKey.icon
+        popover.mute.active = !muted
+        popover.bar.fraction = control.volume.shown.value.toFloat()
 
         val next = queue?.state?.value?.upNext(items.size) ?: emptyList()
         for ((i, v) in items.withIndex()) v.item = if (i < shown) next.getOrNull(i) else null
@@ -677,20 +758,22 @@ internal class NowPlayingScreenView(
         val h = b - t
         place(backdrop, 0, 0, w, h)
         wide = w >= h * 1.3f
-        val pad = dp(if (wide) 24 else 20)
+        val pad = dp(if (wide) 24 else 18)
         place(back, pad, pad - dp(4), dp(40), dp(40))
-        // What plays next runs along the bottom: as many as there is width for, at least two.
+        // What plays next runs along the bottom: as many as there is width for, at least two; its pictures are smaller on a square display.
         val count = if (wide) ((w - 2 * pad) / dp(230)).coerceIn(2, MAX_UP_NEXT) else 2
         shown = count
-        val itemsHeight = dp(UpNextItemView.PICTURE)
-        val labelHeight = dp(18)
-        val blockTop = h - pad - itemsHeight - labelHeight - dp(6)
+        val picture = if (wide) UpNextItemView.PICTURE else 36
+        items.forEach { it.pictureDp = picture }
+        val itemsHeight = dp(picture)
+        val labelHeight = dp(if (wide) 18 else 16)
+        val blockTop = h - pad - itemsHeight - labelHeight - dp(4)
         place(upNextLabel, pad, blockTop, w - 2 * pad, labelHeight)
         val gap = dp(16)
         val itemWidth = (w - 2 * pad - gap * (count - 1)) / count
         for ((i, v) in items.withIndex()) {
             if (i < count) {
-                place(v, pad + i * (itemWidth + gap), blockTop + labelHeight + dp(6), itemWidth, itemsHeight)
+                place(v, pad + i * (itemWidth + gap), blockTop + labelHeight + dp(4), itemWidth, itemsHeight)
             } else {
                 place(v, 0, 0, 0, 0)
             }
@@ -706,43 +789,61 @@ internal class NowPlayingScreenView(
         place(ring, ringLeft, top + (room - d) / 2, d, d)
         val x0 = pad
         val colW = ringLeft - dp(24) - x0
-        var y = top + dp(48)
-        place(title, x0, y, colW, dp(36)); y += dp(36)
-        place(artist, x0, y, colW, dp(26)); y += dp(26)
-        place(album, x0, y, colW, dp(22)); y += dp(22) + dp(14)
+        for (t in listOf(title, artist, album)) t.align = Paint.Align.LEFT
+        // The text, the keys and the progress are one block, centred in the height there is under the back key.
+        val textH = dp(32) + dp(24) + dp(20)
+        val keysH = dp(KEYS)
+        val progressH = dp(ScreenBar.HEIGHT) + dp(12)
+        val blockH = textH + dp(18) + keysH + dp(14) + progressH
+        val free = blockTop - (top + dp(44)) - dp(8)
+        var y = top + dp(44) + maxOf(0, (free - blockH) / 2)
+        place(title, x0, y, colW, dp(32)); y += dp(32)
+        place(artist, x0, y, colW, dp(24)); y += dp(24)
+        place(album, x0, y, colW, dp(20)); y += dp(20) + dp(18)
         controls(x0, y, colW)
-        y += dp(72) + dp(10)
+        y += keysH + dp(14)
         progress(x0, y, colW)
-        y += dp(28) + dp(16) + dp(10)
-        extras(x0, y, colW)
     }
 
     private fun layoutSquare(w: Int, pad: Int, blockTop: Int) {
         val colW = w - 2 * pad
-        val d = minOf((blockTop * 0.30f).toInt(), (w * 0.45f).toInt())
-        var y = pad + dp(2)
-        place(ring, (w - d) / 2, y, d, d)
-        y += d + dp(8)
         for (t in listOf(title, artist, album)) t.align = Paint.Align.CENTER
-        place(title, pad, y, colW, dp(34)); y += dp(34)
-        place(artist, pad, y, colW, dp(24)); y += dp(24)
-        place(album, pad, y, colW, dp(20)); y += dp(20) + dp(6)
+        // What is under the artwork has the height it needs; the artwork takes the rest.
+        val textH = dp(30) + dp(22) + dp(18)
+        val keysH = dp(KEYS)
+        val progressH = dp(ScreenBar.HEIGHT) + dp(12)
+        val under = textH + dp(6) + progressH + dp(4) + keysH + dp(10)
+        val d = (blockTop - pad - under - dp(6)).coerceIn(dp(96), (w * 0.56f).toInt())
+        var y = pad
+        place(ring, (w - d) / 2, y, d, d)
+        y += d + dp(6)
+        place(title, pad, y, colW, dp(30)); y += dp(30)
+        place(artist, pad, y, colW, dp(22)); y += dp(22)
+        place(album, pad, y, colW, dp(18)); y += dp(18) + dp(6)
         progress(pad, y, colW)
-        y += dp(28) + dp(16) + dp(2)
+        y += progressH + dp(4)
         controls(pad, y, colW)
-        y += dp(72) + dp(2)
-        extras(pad, y, colW)
     }
 
+    /** The row of keys: shuffle, previous, play, next and the volume, the three of the transport larger than the two at the ends. */
     private fun controls(x0: Int, y: Int, width: Int) {
-        val side = dp(56)
-        val big = dp(72)
-        val gap = dp(20)
-        val total = side * 2 + big + gap * 2
+        val small = dp(44)
+        val side = dp(48)
+        val big = dp(64)
+        val gap = dp(10)
+        val total = small * 2 + side * 2 + big + gap * 4
         var x = x0 + (width - total) / 2
-        place(previous, x, y + (big - side) / 2, side, side); x += side + gap
-        place(play, x, y, big, big); x += big + gap
-        place(next, x, y + (big - side) / 2, side, side)
+        val centre = y + dp(KEYS) / 2
+        place(shuffle, x, centre - small / 2, small, small); x += small + gap
+        place(previous, x, centre - side / 2, side, side); x += side + gap
+        place(play, x, centre - big / 2, big, big); x += big + gap
+        place(next, x, centre - side / 2, side, side); x += side + gap
+        place(volumeKey, x, centre - small / 2, small, small)
+        // The volume's pill opens above its key, kept inside the screen.
+        val popW = dp(210)
+        val popH = dp(44)
+        val left = (x + small - popW).coerceAtLeast(dp(8))
+        place(popover, left, y - popH - dp(6), popW, popH)
     }
 
     private fun progress(x0: Int, y: Int, width: Int) {
@@ -751,17 +852,9 @@ internal class NowPlayingScreenView(
         place(remaining, x0 + width / 2, y + dp(ScreenBar.HEIGHT) - dp(4), width - width / 2, dp(16))
     }
 
-    private fun extras(x0: Int, y: Int, width: Int) {
-        // Shuffle at the left; the volume takes the rest: its key, then its bar to the edge.
-        val key = dp(40)
-        place(shuffle, x0, y, key, key)
-        val muteLeft = x0 + width / 3
-        place(mute, muteLeft, y, key, key)
-        val barLeft = muteLeft + key + dp(6)
-        place(volume, barLeft, y + (key - dp(ScreenBar.HEIGHT)) / 2, (x0 + width) - barLeft, dp(ScreenBar.HEIGHT))
-    }
-
     private companion object {
+        /** The height of the row of keys, in dp. */
+        const val KEYS = 64
         const val MAX_UP_NEXT = 4
         const val SAMPLE = 24
     }
