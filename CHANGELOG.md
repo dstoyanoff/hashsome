@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.20.0 (2026-10-20)
+
+### ⚠ Breaking changes
+
+- **android:** native Android dashboards, kiosk and Home Assistant device (#188) ([b6f7f86](https://github.com/dstoyanoff/hashsome/commit/b6f7f86d16ef7eb74a54e6209a6aaf241bbd8172))
+
+### Features
+
+- **android-ui:** every player shows its time on the artwork, which takes the row the time had (#199) ([886b555](https://github.com/dstoyanoff/hashsome/commit/886b555a09dcab1362eea3e65c2d3ffb3c6a51f8))
+- **android-ui:** a full-screen now-playing layout with a backdrop of the artwork's colors (#196) ([9f1d7d3](https://github.com/dstoyanoff/hashsome/commit/9f1d7d32a4bdec2063ef53fb5345cbeecef439e4))
+- **android-ui:** a dashboard can make its drawers expandable, and a list's tabs have room under them (#193) ([9024349](https://github.com/dstoyanoff/hashsome/commit/90243496c2254475cc85cc376b09bd0c5067378b))
+
+### Fixes
+
+- **android-ui:** the time on the artwork is smaller, between a floor and a ceiling, with no shadow (#202) ([98b3c36](https://github.com/dstoyanoff/hashsome/commit/98b3c361e94c4b25bce75182356740986945d2b7))
+- **android-ui:** the time on the artwork is smaller and its pill lighter (#201) ([ee61521](https://github.com/dstoyanoff/hashsome/commit/ee61521d52685ef0a696d4678488112e27140168))
+- **android-ui:** the time pill fits inside the artwork, and the speakers pill is a ghost at the top left of the player's card (#200) ([728dd2c](https://github.com/dstoyanoff/hashsome/commit/728dd2c751e336a8699540d9db15705913f7fb90))
+- **android-ui:** more room between the track's name and the keys on the full-screen player's square layout (#198) ([850efd5](https://github.com/dstoyanoff/hashsome/commit/850efd50bd237d014b57e02758ba91db711d4752))
+- **android-ui:** the full-screen player's play key follows the player, a tap on its background does nothing, and its backdrop moves more (#197) ([d39b35d](https://github.com/dstoyanoff/hashsome/commit/d39b35d7d12898ce3b11a613f9dd98ec883da974))
+- **android-ui:** icons are drawn on whole pixels, and the library's search icon has no background and the height of its field (#195) ([830035a](https://github.com/dstoyanoff/hashsome/commit/830035a9f5f977443e586ecf30288f7a7b95a08e))
+- **android-ui:** a fixed page keeps its lists in their cards, and the library's search can be an icon (#192) ([dcb8452](https://github.com/dstoyanoff/hashsome/commit/dcb845217b8703d73fe34cfef8be8f21afbd7ecc))
+- **runtime:** an icon whose arc flags run into its numbers no longer crashes the Android app (#191) ([7095a94](https://github.com/dstoyanoff/hashsome/commit/7095a942c684944e0c1a48f3d1a20f2b93d5eaaa))
+- **core:** a connection that went silent is found dead within seconds, and the page says so (#143) ([816e376](https://github.com/dstoyanoff/hashsome/commit/816e376976c2c4fbfd43e2ca43975a9e88a30701))
+- **ui:** the motion level the address asked for holds, and navigation keeps the query string (#140) ([6fd31d2](https://github.com/dstoyanoff/hashsome/commit/6fd31d246537640d29760fefbd8c0820557be860))
+
+### Performance
+
+- **ui:** the library and the queue open a row at a time, each sliding in (#145) ([2ee135a](https://github.com/dstoyanoff/hashsome/commit/2ee135ae9578ae437396221f7c3c6bd463285113))
+- **ui:** dragging a tile or slider no longer lays the page out on every move (#144) ([adfbf50](https://github.com/dstoyanoff/hashsome/commit/adfbf50d569c9193c46a08d7a4e9bac8faae198b))
+- **ui:** a page comes in over 90 ms instead of 140 (#141) ([7ec369e](https://github.com/dstoyanoff/hashsome/commit/7ec369efa1633e16fdbc2af206cec22739f36865))
+- **runtime:** the build's files are cached for good and sent compressed (#139) ([b10265e](https://github.com/dstoyanoff/hashsome/commit/b10265e53e03835e0977e8dbc219ce899ab21760))
+
 ## 0.19.2 (2026-10-18)
 
 ### Fixes
