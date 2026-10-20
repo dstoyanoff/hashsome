@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.drawable.GradientDrawable
 import android.view.MotionEvent
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -765,8 +766,10 @@ open class MediaPlayerFullView(context: Context, control: MediaPlayerControl, la
         } else {
             null
         }
+        // The chip and the pill are at the card's own corners, not the player's (which is centered in a narrower column): the same inset from the
+        // top as from the side, in what is drawn (a pill pads its words, so its box is nearer the edge than its glyph).
         val player = NowPlayingView(
-            context, control, label, queue, shuffleAtTitle = true, speakers = pill, playerChip = chip,
+            context, control, label, queue, shuffleAtTitle = true, topRoomDp = 40,
             onOpenArtwork = if (fullScreen) ({ NowPlayingScreen.open(context, control, label) }) else null,
         )
         val stack = FullLayout(context)
@@ -781,8 +784,16 @@ open class MediaPlayerFullView(context: Context, control: MediaPlayerControl, la
             it.addView(stack, FrameLayout.LayoutParams(-1, -2))
         }
         addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        chip?.let { addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START).also { p -> corner(p, start = true) }) }
+        addView(pill, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, Gravity.TOP or if (chip != null) Gravity.END else Gravity.START).also { p -> corner(p, start = chip == null) })
         shownTab = null
         arrange()
+    }
+
+    /** The margins of a view at a corner of the card: [CORNER_SIDE] from the side and [CORNER_TOP] from the top, which look alike once the pill's own padding is counted. */
+    private fun corner(p: LayoutParams, start: Boolean) {
+        p.topMargin = dp(CORNER_TOP)
+        if (start) p.leftMargin = dp(CORNER_SIDE) else p.rightMargin = dp(CORNER_SIDE)
     }
 
     /** The lists the player has: its library and its queue. */
@@ -825,6 +836,10 @@ open class MediaPlayerFullView(context: Context, control: MediaPlayerControl, la
     private companion object {
         /** The widest the player gets, in dp (`.playerBody` is 420 px). */
         const val PLAYER_WIDTH = 420
+
+        /** The pill's box from the card's side and top, in dp: its words are 12 dp inside the box, and 8 dp from its top, so the words are 18 dp from the side and 18 from the top. */
+        const val CORNER_SIDE = 6
+        const val CORNER_TOP = 10
     }
 
     private fun showList(tab: ListTab) {

@@ -185,6 +185,8 @@ internal class NowPlayingView(
     private val speakers: View? = null,
     /** Names the player the card controls and switches it; at the top left, with the speakers pill then at the top right. */
     private val playerChip: View? = null,
+    /** Room kept clear at the top for views the caller puts over it (the card's own corners), in dp; 0 for none. */
+    private val topRoomDp: Int = 0,
     private val onOpenArtwork: (() -> Unit)? = null,
     /** The ring's diameter when the panel has room for it, in dp. */
     ringDp: Int = 168,
@@ -248,6 +250,7 @@ internal class NowPlayingView(
         }
         // The ring starts a little lower, so they do not touch its outline: under the pills' row when there are two of them.
         if (speakers != null || playerChip != null) panel.setPadding(0, dp(if (playerChip != null) 40 else 14), 0, 0)
+        if (topRoomDp > 0) panel.setPadding(0, dp(topRoomDp), 0, 0)
 
         ring.onPreview = { control.seek.drag(it) }
         ring.onCommit = { control.seek.commit(it) }
