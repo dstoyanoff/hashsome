@@ -228,7 +228,7 @@ class MqttBridge(
                 },
             ),
             Component(
-                "block_pull_down", "switch", "Block pull-down shade", value = { onOff(settings.blockPullDown.value) }, stores = listOf(settings.blockPullDown),
+                "block_pull_down", "switch", "Lock the system bars", value = { onOff(settings.blockPullDown.value) }, stores = listOf(settings.blockPullDown),
                 command = { parseOnOff(it)?.let(settings.blockPullDown::set) },
                 offered = { actions.isDeviceOwner },
             ),

@@ -43,12 +43,17 @@ open class NavRailView(context: Context, val pages: List<PageSpec>) : BoundView(
 
     init {
         setWillNotDraw(false)
+        // The device's battery at the foot of the rail, as a tablet has it (nothing on a display with none to report).
+        addView(BatteryIndicator(context, vertical = true), LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL).also { it.bottomMargin = dp(16) })
     }
 
     private fun itemTop(i: Int): Float = 6 * unitPx() + i * (dp(ITEM.toFloat()) + 2.5f * unitPx())
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(dp(NAV_RAIL), MeasureSpec.getSize(heightMeasureSpec))
+        val height = MeasureSpec.getSize(heightMeasureSpec)
+        setMeasuredDimension(dp(NAV_RAIL), height)
+        // The battery at the rail's foot is the only child; it takes what it needs.
+        measureChildren(MeasureSpec.makeMeasureSpec(dp(NAV_RAIL), MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(height, MeasureSpec.AT_MOST))
     }
 
     override fun onDraw(canvas: Canvas) {

@@ -312,6 +312,33 @@ internal object DeviceAdmin {
         }
     }
 
+    /**
+     * Pins the dashboard (lock-task mode with no feature left on: no status bar, no notifications, no home or recents, no navigation handle), or
+     * lets it go. Only a device owner may, and the pin is of this app alone: anything else that is launched is refused until it is let go. True
+     * when the state asked for is the one it is in.
+     */
+    fun lockTask(activity: Activity, on: Boolean): Boolean {
+        if (Build.VERSION.SDK_INT < 28 || !isOwner(activity)) return false
+        return try {
+            val dpm = manager(activity)
+            if (on) {
+                dpm.setLockTaskPackages(component(activity), arrayOf(activity.packageName))
+                dpm.setLockTaskFeatures(component(activity), DevicePolicyManager.LOCK_TASK_FEATURE_NONE)
+                if (!inLockTask(activity)) activity.startLockTask()
+            } else if (inLockTask(activity)) {
+                activity.stopLockTask()
+            }
+            Log.i("admin", "lock task ${if (on) "on" else "off"}")
+            true
+        } catch (e: Exception) {
+            Log.w("admin", "lock task change refused: ${e.message}")
+            false
+        }
+    }
+
+    private fun inLockTask(context: Context): Boolean =
+        (context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager).lockTaskModeState != android.app.ActivityManager.LOCK_TASK_MODE_NONE
+
     /** A non-test admin cannot be removed from adb, nor can the app be uninstalled while it is active (spike S1f); a device owner has to give that up first, and the status bar back. */
     @Suppress("DEPRECATION")
     fun remove(context: Context): Boolean {

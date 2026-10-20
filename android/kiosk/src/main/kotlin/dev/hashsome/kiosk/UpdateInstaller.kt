@@ -144,6 +144,8 @@ class UpdateResultReceiver : BroadcastReceiver() {
                 if (confirm != null) {
                     // Keep-in-front would send the installer's confirmation straight back to the dashboard: stand down while it is up.
                     Kiosk.pause.start(CONFIRM_PAUSE_MS)
+                    // The installer's confirmation is another app: a pinned dashboard has to let go for it.
+                    Kiosk.activity?.get()?.let { DeviceAdmin.lockTask(it, false) }
                     context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 }
             }

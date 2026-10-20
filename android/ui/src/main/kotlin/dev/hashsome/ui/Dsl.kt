@@ -263,6 +263,11 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         put(SystemStatus(context, ConnectionHealth(scope.client, scope)))
     }
 
+    /** The device's battery as a view of the page (see [BatteryIndicator]); the nav rail shows it at its foot by itself. Nothing on a display with no battery to report. */
+    fun batteryIndicator() {
+        put(BatteryIndicator(context))
+    }
+
     /**
      * The wall header: [left] is drawn at its left edge, then the date, the weather ([weather], when given), the clock and the status
      * dot at the right, in one row of the top row's height. [marginBottom] is the space below it in dp, like `column`'s (negative takes

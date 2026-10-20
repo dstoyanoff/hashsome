@@ -98,7 +98,7 @@ internal fun isTopRow(node: PartNode?): Boolean = when (node?.kind) {
 
 private fun View.part(): PartNode = when (this) {
     is TopBarRow -> PartNode(PartKind.TopBar)
-    is DateChip, is WeatherChip, is Clock, is SystemStatus -> PartNode(PartKind.Chip)
+    is DateChip, is WeatherChip, is Clock, is SystemStatus, is BatteryIndicator -> PartNode(PartKind.Chip)
     is RowLayout -> PartNode(PartKind.Row, (0 until childCount).map { getChildAt(it).part() })
     else -> PartNode(PartKind.Other)
 }

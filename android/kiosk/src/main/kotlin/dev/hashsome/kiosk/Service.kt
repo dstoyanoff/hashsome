@@ -83,6 +83,9 @@ class KioskService : Service() {
         val profile = DeviceProfile.detect()
         Log.i("service", "profile ${profile.id} (device ${Build.DEVICE}, model ${Build.MODEL}), device id ${Settings.deviceId.value}")
 
+        // Only a device that runs on a battery shows it: the Shelly displays are wired in and report 100% or 50%.
+        if (profile == DeviceProfile.Generic) dev.hashsome.ui.DeviceBattery.enable(this) else dev.hashsome.ui.DeviceBattery.disable()
+
         val screen = profile.screen(this)
         closers += { (screen as? java.io.Closeable)?.close() }
         val presence = profile.presence(this, sched)
@@ -112,7 +115,11 @@ class KioskService : Service() {
         Kiosk.probeReboot(this, profile)
         closers += { Kiosk.releaseReboot() }
         // As the device owner the pull-down shade can be switched off; anywhere else this does nothing.
-        closers += Settings.blockPullDown.listenNow { DeviceAdmin.blockStatusBar(this, it) }
+        closers += Settings.blockPullDown.listenNow { on ->
+            DeviceAdmin.blockStatusBar(this, on)
+            // The bars themselves: in lock-task mode a swipe from an edge brings up nothing (see [DeviceAdmin.lockTask]).
+            Kiosk.activity?.get()?.let { DeviceAdmin.lockTask(it, on) }
+        }
 
         val bridge = MqttBridge(Settings, state, Kiosk.actions, PahoMqttLink(sched), Hashsome.app.dashboards.map { it.id })
         bridge.scheduler = sched

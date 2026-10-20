@@ -12,7 +12,6 @@ import android.text.TextPaint
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
 import dev.hashsome.client.AssetSize
 import dev.hashsome.client.Cancel
 import dev.hashsome.headless.ActionControl
@@ -372,19 +371,31 @@ internal class AvatarView(context: Context, private val control: PersonControl, 
     }
 }
 
-/** Overlapping avatars, one for each person, the first in front (the web's `PresenceStack`). */
-internal class PeopleStack(context: Context, controls: List<PersonControl>, colors: List<Int> = PersonControl.DEFAULT_COLORS) : LinearLayout(context) {
+/** Overlapping avatars, one for each person, each a little over the one before (the web's `PresenceStack`). Its width is exactly the avatars', with nothing past them to be cut. */
+internal class PeopleStack(context: Context, controls: List<PersonControl>, colors: List<Int> = PersonControl.DEFAULT_COLORS) : ViewGroup(context) {
     init {
-        orientation = HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
         clipChildren = false
-        val overlap = Math.round(2.5f * unitPx())
-        // The first avatar's pull to the left is made up here, so the stack starts where it is put.
-        setPadding(overlap, 0, 0, 0)
         controls.forEach { control ->
             val color = colors[PersonControl.colorIndex(control.handle.ref?.value ?: "", colors.size)]
-            val avatar = AvatarView(context, control, color)
-            addView(avatar, LayoutParams(dp(AvatarView.SIZE), dp(AvatarView.SIZE)).also { it.leftMargin = -overlap })
+            addView(AvatarView(context, control, color), LayoutParams(dp(AvatarView.SIZE), dp(AvatarView.SIZE)))
+        }
+    }
+
+    /** How much of each avatar the next one covers, in px. */
+    private fun overlap() = Math.round(2.5f * unitPx())
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val size = dp(AvatarView.SIZE)
+        for (i in 0 until childCount) getChildAt(i).measure(MeasureSpec.makeMeasureSpec(size, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(size, MeasureSpec.EXACTLY))
+        val n = childCount
+        setMeasuredDimension(if (n == 0) 0 else n * size - (n - 1) * overlap(), size)
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        val size = dp(AvatarView.SIZE)
+        for (i in 0 until childCount) {
+            val x = i * (size - overlap())
+            getChildAt(i).layout(x, 0, x + size, size)
         }
     }
 }
