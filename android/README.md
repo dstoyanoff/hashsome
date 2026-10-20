@@ -82,7 +82,8 @@ names; Home Assistant's `/config/www`, a static host).
    registry, `--to <folder>` writes `<package>-<versionCode>.apk` and `latest.json` (`packageName`, `versionName`, `versionCode`, `apk`,
    `sha256`, `size`, `notes`) for you to put on a web server.
 2. Give each device `"updates": "<the feed's address>"` in `devices.json` and provision or deploy once (or type it into the settings
-   sheet's "Updates" group). Without a feed nothing is checked and no entity appears.
+   sheet's "Updates" group, or the device's "Update feed" entity in Home Assistant; empty switches updates off). Without a feed nothing
+   is checked and no update entity appears.
 3. The device checks a minute after start and every six hours. When `versionCode` is higher, Home Assistant's `update` entity on the
    device (and the sheet's "Install update") offers it. It is never installed by itself.
 4. Install downloads the APK, checks its size and SHA-256, and hands it to the system installer. A system app (the X1) installs

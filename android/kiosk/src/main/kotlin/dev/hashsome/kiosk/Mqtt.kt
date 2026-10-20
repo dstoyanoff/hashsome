@@ -208,6 +208,18 @@ class MqttBridge(
                 // Only an address a client can use: a wrong one would cut the display off, and Home Assistant could not say so.
                 command = { text -> text.trim().takeIf { it.startsWith("http://") || it.startsWith("https://") }?.let(settings.server::set) },
             ),
+            Component(
+                "update_url", "text", "Update feed",
+                describe = { put("mode", "text"); put("min", 0); put("max", 255); put("entity_category", "config") },
+                value = { settings.updateUrl.value ?: "" },
+                stores = listOf(settings.updateUrl),
+                // An address the updater can read (a registry or an http folder), or nothing to switch updates off; anything else is ignored.
+                command = { text ->
+                    val address = text.trim()
+                    val valid = address.startsWith("oci://") || address.startsWith("ocis://") || address.startsWith("http://") || address.startsWith("https://")
+                    if (address.isEmpty()) settings.updateUrl.set(null) else if (valid) settings.updateUrl.set(address)
+                },
+            ),
             Component("dashboard_switcher", "switch", "Dashboard switcher", value = { onOff(settings.switcherEnabled.value) }, stores = listOf(settings.switcherEnabled), command = {
                 parseOnOff(it)?.let(settings.switcherEnabled::set)
             }),
