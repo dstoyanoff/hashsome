@@ -176,4 +176,53 @@ class SensorReadoutTest {
     fun `without a battery there is none`() {
         assertNull(reading(sensor()).reading.value.battery)
     }
+
+    // A sensor that says nothing for a day may be dead or stuck.
+    private val hour = 3_600_000L
+    private val noon = 1_760_000_000_000L
+
+    private fun silent(hoursAgo: Long, id: String = "s") = sensor(id).copy(lastUpdated = iso(noon - hoursAgo * hour))
+
+    private fun iso(ms: Long): String = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date(ms))
+
+    @Test
+    fun `a sensor that updated within a day is not silent`() {
+        rig.scheduler.wall = noon
+        assertNull(reading(silent(23)).silence.value)
+    }
+
+    @Test
+    fun `a sensor with no update for a day is silent, in hours and then in days`() {
+        rig.scheduler.wall = noon
+        val day = reading(silent(25)).silence.value!!
+        assertEquals("No updates for 25 hours", day.title)
+        assertEquals("The sensor may be dead or stuck.", day.hint)
+        rig.scheduler.wall = noon
+        assertEquals("No updates for 3 days", reading(silent(80)).silence.value!!.title)
+    }
+
+    @Test
+    fun `silence is found as the time passes, with no new state`() {
+        rig.scheduler.wall = noon
+        val control = reading(silent(23))
+        assertNull(control.silence.value)
+        rig.scheduler.advance(2 * hour)
+        assertEquals("No updates for 25 hours", control.silence.value!!.title)
+    }
+
+    @Test
+    fun `an update ends the silence`() {
+        rig.scheduler.wall = noon
+        val control = reading(silent(30))
+        assertEquals(30L, control.silence.value!!.hours)
+        rig.client.set(ref("s"), silent(0))
+        rig.settle()
+        assertNull(control.silence.value)
+    }
+
+    @Test
+    fun `a sensor with no timestamp is not called silent`() {
+        rig.scheduler.wall = noon
+        assertNull(reading(sensor()).silence.value)
+    }
 }

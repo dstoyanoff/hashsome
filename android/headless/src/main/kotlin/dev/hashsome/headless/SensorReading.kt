@@ -1,6 +1,7 @@
 package dev.hashsome.headless
 
 import dev.hashsome.client.Availability
+import dev.hashsome.client.Iso8601
 import dev.hashsome.client.SensorEntity
 import dev.hashsome.client.Store
 import java.math.BigDecimal
@@ -22,6 +23,22 @@ data class Reading(
 /** The line under the value in a sensor's drawer: whether the reading is within its safe range, e.g. `Too low · safe range 30–60 %`. */
 data class Verdict(val text: String, val warning: Boolean)
 
+/** How long a sensor has said nothing: more than [THRESHOLD_HOURS] hours, when it is told of at all. */
+data class Silence(val hours: Long) {
+    /** "26 hours", or "3 days" from two days on. */
+    val duration: String get() = if (hours < 48) "$hours hours" else "${hours / 24} days"
+
+    /** "No updates for 26 hours": what the drawer's alert says. */
+    val title: String get() = "No updates for $duration"
+
+    /** What may be the matter. */
+    val hint: String get() = "The sensor may be dead or stuck."
+
+    companion object {
+        const val THRESHOLD_HOURS = 24L
+    }
+}
+
 /**
  * A sensor readout (mirrors `sensor-readout.tsx`). With no [safeRange] a humidity sensor is held to 30..60 and any
  * other has none; pass an unbounded range (`Double.NEGATIVE_INFINITY..Double.POSITIVE_INFINITY`) to turn the default off.
@@ -36,15 +53,21 @@ class SensorReading(
     /** Why the reading is flagged, e.g. `Bedroom is too low (safe range 30–60 %)`; null while it is not. */
     val hint: Store<String?> = Store(null)
 
+    /** Set while the sensor has sent no update for more than 24 hours (by its `lastUpdated`, else `lastChanged`): it may be dead or stuck. Checked again every minute. */
+    val silence: Store<Silence?> = Store(null)
+
     /** The verdict of the sensor's drawer; null while the sensor has no safe range or no numeric reading. */
     val verdict: Store<Verdict?> = Store(null)
 
     init {
         handle.state.listenNow { update() }
         battery?.state?.listen { update() }
+        // A sensor that has stopped reporting never changes its state: the clock has to be looked at.
+        handle.scope?.every(SILENCE_CHECK_MS) { updateSilence() }
     }
 
     private fun update() {
+        updateSilence()
         val sensor = handle.entity
         val ready = handle.state.value is HandleState.Ready
         val unit = sensor?.unit ?: ""
@@ -80,6 +103,14 @@ class SensorReading(
                 null
             },
         )
+    }
+
+    private fun updateSilence() {
+        val sensor = handle.entity
+        val at = Iso8601.parse(sensor?.lastUpdated ?: sensor?.lastChanged)
+        val now = handle.scope?.scheduler?.wallMs()
+        val hours = if (at == null || now == null) 0L else (now - at) / HOUR_MS
+        silence.set(if (hours >= Silence.THRESHOLD_HOURS) Silence(hours) else null)
     }
 
     private fun batteryOf(): Battery? {
@@ -119,6 +150,9 @@ class SensorReading(
     }
 
     companion object {
+        private const val HOUR_MS = 3_600_000L
+        private const val SILENCE_CHECK_MS = 60_000L
+
         /** Below this a battery is shown as low. */
         const val LOW_BATTERY = 20.0
 

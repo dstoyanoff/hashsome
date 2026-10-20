@@ -14,6 +14,7 @@ import dev.hashsome.headless.HistoryControl
 import dev.hashsome.headless.HistoryState
 import dev.hashsome.headless.Reading
 import dev.hashsome.headless.SensorReading
+import dev.hashsome.headless.Silence
 import dev.hashsome.headless.Verdict
 import dev.hashsome.ui.icons.Ui
 import java.util.Locale
@@ -25,11 +26,49 @@ private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
 internal fun samplesOf(state: HistoryState): List<SeriesSample> =
     (state as? HistoryState.Ready)?.result?.points.orEmpty().mapNotNull { p -> Iso8601.parse(p.timestamp)?.let { SeriesSample(it, p.value) } }
 
+/** The alert at the top of a sensor's drawer when it has sent nothing for a day: the triangle, how long, and what may be the matter, in the warm color. */
+private class SilenceBanner(context: Context) : RowLayout(context) {
+    private val glyph = GlyphView(context, Ui.triangleAlert, 22)
+    private val title = AlignedText(context, "", Role.BodyStrong)
+    private val hint = AlignedText(context, "", Role.Secondary, theme.palette.textMuted)
+
+    init {
+        gap = 3
+        align = Align.Center
+        val text = ColumnLayout(context)
+        text.addView(title, FlexParams(MATCH, WRAP))
+        text.addView(hint, FlexParams(MATCH, WRAP))
+        addView(glyph, FlexParams(WRAP, WRAP))
+        addView(text, FlexParams(0, WRAP).apply { grow = true })
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val x = Math.round(3.5f * unitPx())
+        val y = Math.round(3f * unitPx())
+        if (paddingLeft != x || paddingTop != y) setPadding(x, y, x, y)
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
+    fun show(silence: Silence) {
+        val p = theme.palette
+        title.text = silence.title
+        title.color = p.warm
+        hint.text = silence.hint
+        glyph.color = p.warm
+        background = android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = dp(theme.radius.small)
+            setColor(withAlpha(p.warm, 0.14f))
+            setStroke(Math.max(1, dp(1)), withAlpha(p.warm, 0.4f))
+        }
+    }
+}
+
 /**
  * What the drawer of a sensor readout holds (the web's `SensorDetailBody`): the reading now with its verdict on the safe range, the
  * battery when one was given, and the history chart. Built by the readout's tap; [ctx] is the open drawer.
  */
 open class SensorDrawerBody(context: Context, ctx: DrawerContext, val reading: SensorReading) : ColumnLayout(context) {
+    private val silence = SilenceBanner(context)
     private val nowValue = AlignedText(context, "", Role.Stat)
     private val verdictRow = RowLayout(context)
     private val verdictIcon = GlyphView(context, Ui.triangleAlert, 14)
@@ -42,6 +81,8 @@ open class SensorDrawerBody(context: Context, ctx: DrawerContext, val reading: S
 
     init {
         gap = 2
+        // No update for a day: the alert comes first, before the number, which may be days old.
+        addView(silence, FlexParams(MATCH, WRAP))
         val now = RaisedCard(context)
         now.addView(AlignedText(context, "Now", Role.Secondary, theme.palette.textMuted), FlexParams(MATCH, WRAP))
         now.addView(nowValue, FlexParams(MATCH, WRAP))
@@ -68,6 +109,7 @@ open class SensorDrawerBody(context: Context, ctx: DrawerContext, val reading: S
 
         ctx.scope.bind(reading.reading) { render() }
         ctx.scope.bind(reading.verdict) { render() }
+        ctx.scope.bind(reading.silence) { render() }
     }
 
     private fun render() {
@@ -75,6 +117,9 @@ open class SensorDrawerBody(context: Context, ctx: DrawerContext, val reading: S
         val r: Reading = reading.reading.value
         // The unit comes with the sensor's first report.
         history?.refresh()
+        val quiet = reading.silence.value
+        silence.visibility = if (quiet == null) GONE else VISIBLE
+        if (quiet != null) silence.show(quiet)
         nowValue.text = r.formatted
         val verdict: Verdict? = reading.verdict.value
         verdictRow.visibility = if (verdict == null) GONE else VISIBLE
