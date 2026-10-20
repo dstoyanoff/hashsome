@@ -263,7 +263,7 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         put(SystemStatus(context, ConnectionHealth(scope.client, scope)))
     }
 
-    /** The device's battery, before the clock (see [BatteryIndicator]); nothing on a display with no battery to report. */
+    /** The device's battery as a view of the page (see [BatteryIndicator]); the nav rail shows it at its foot by itself. Nothing on a display with no battery to report. */
     fun batteryIndicator() {
         put(BatteryIndicator(context))
     }
@@ -283,7 +283,6 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
             spacer(grow = true)
             dateChip()
             if (weather != null) weatherChip(weather, weatherDrawer)
-            batteryIndicator()
             clock(clockFormat)
             systemStatus()
         }
@@ -301,7 +300,6 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
             spec.weather?.let { weatherChip(it) }
             spec.extra?.invoke(this)
             if (spec.people.isNotEmpty()) put(PeopleStack(context, spec.people.map { PersonControl(handle(it, EntityKind.Person)) }))
-            batteryIndicator()
             clock(spec.clockFormat)
             systemStatus()
         }

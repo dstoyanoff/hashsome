@@ -132,20 +132,29 @@ internal class BatteryGlyphView(context: Context) : View(context) {
 }
 
 /**
- * The device's battery before the clock in the top row, all the time: a battery with its level in color (red at 20% and under, warm under 50%, green from 50%),
- * a bolt over it while it charges, and the percentage beside it. Not there on a display with no battery to report: it takes no room.
+ * The device's battery, all the time: a battery with its level in color (red at 20% and under, warm under 50%, green from 50%), a bolt over it while
+ * it charges, and the percentage, beside it or, with [vertical], under it (the nav rail's). Not there on a display with no battery to report: it
+ * takes no room.
  */
-open class BatteryIndicator(context: Context, private val battery: Store<BatteryStatus?> = DeviceBattery.state) : RowLayout(context) {
+open class BatteryIndicator(
+    context: Context,
+    private val battery: Store<BatteryStatus?> = DeviceBattery.state,
+    vertical: Boolean = false,
+) : BoundView(context) {
     private val glyph = BatteryGlyphView(context)
     private val figure = MarqueeText(context).also { it.role = Role.Label }
     private var cancel: dev.hashsome.client.Cancel? = null
 
     init {
-        gap = 1
-        align = Align.Center
         val wrap = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-        addView(glyph, FlexParams(wrap, wrap))
-        addView(figure, FlexParams(wrap, wrap))
+        val box: android.view.ViewGroup = if (vertical) {
+            ColumnLayout(context).also { it.align = Align.Center; it.gap = 1 }
+        } else {
+            RowLayout(context).also { it.align = Align.Center; it.gap = 1 }
+        }
+        box.addView(glyph, FlexParams(wrap, wrap))
+        box.addView(figure, FlexParams(wrap, wrap))
+        addView(box, LayoutParams(wrap, wrap))
         visibility = GONE
     }
 

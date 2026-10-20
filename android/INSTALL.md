@@ -62,7 +62,7 @@ pauses keep-in-front and shows a "Back to dashboard" button, and the dashboard p
 first. A Lenovo tablet also draws a three-dot bar (Full Screen, Floating Window, Split Screen, Minimize) at the top after an edge swipe: `provision`
 hides it with a secure setting (`ov_tbar_hide_flag`), which only adb may write.
 
-A tablet with a battery shows it before the status dot, all the time: a battery with its level in color (red at 20% and under, yellow under 50%,
+A tablet with a battery shows it at the foot of the nav rail, all the time: a battery with its level in color (red at 20% and under, yellow under 50%,
 green from 50%), a bolt while it charges, and the percentage. A wall display that is wired in shows none.
 
 See "System install on Shelly displays (X1)" in `android/README.md` for what `--system` does step by step.
