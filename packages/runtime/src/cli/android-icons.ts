@@ -225,11 +225,76 @@ const num = (value: string | undefined, fallback = 0) => {
 /** Numbers without float noise (`0.1 + 0.2` -> `0.3`). */
 const fmt = (value: number) => String(Math.round(value * 1e4) / 1e4);
 
+const NUMBER = /[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/y;
+const SEPARATORS = /[\s,]*/y;
+
+/**
+ * SVG lets an arc's two flags run into the numbers around them (`a2 2 0 10.001 3.834` is flags 1 and 0, then x = .001), which Android's
+ * path parser rejects with an exception when the drawable is loaded. This writes every arc with its seven values apart.
+ */
+export function expandArcFlags(d: string): string {
+  if (!/[aA]/.test(d)) {
+    return d;
+  }
+
+  const skip = (at: number): number => {
+    SEPARATORS.lastIndex = at;
+    SEPARATORS.exec(d);
+    return SEPARATORS.lastIndex;
+  };
+
+  const number = (at: number): { text: string; end: number } | undefined => {
+    NUMBER.lastIndex = skip(at);
+    const found = NUMBER.exec(d);
+    return found ? { text: found[0], end: NUMBER.lastIndex } : undefined;
+  };
+
+  const flag = (at: number): { text: string; end: number } | undefined => {
+    const start = skip(at);
+    const char = d[start];
+    return char === '0' || char === '1' ? { text: char, end: start + 1 } : undefined;
+  };
+
+  let out = '';
+  let i = 0;
+  while (i < d.length) {
+    const char = d[i]!;
+    out += char;
+    i += 1;
+    if (char !== 'a' && char !== 'A') {
+      continue;
+    }
+
+    for (;;) {
+      const parts: string[] = [];
+      let at = i;
+      for (const read of [number, number, number, flag, flag, number, number]) {
+        const next = read(at);
+        if (!next) {
+          break;
+        }
+
+        parts.push(next.text);
+        at = next.end;
+      }
+
+      if (parts.length < 7) {
+        break;
+      }
+
+      out += `${out.endsWith('a') || out.endsWith('A') ? '' : ' '}${parts.join(' ')}`;
+      i = at;
+    }
+  }
+
+  return out;
+}
+
 /** A shape as SVG path data. */
 export function toPathData(tag: string, a: Record<string, string>): string {
   switch (tag) {
     case 'path':
-      return (a.d ?? '').trim().replace(/\s+/g, ' ');
+      return expandArcFlags((a.d ?? '').trim().replace(/\s+/g, ' '));
     case 'circle': {
       const [cx, cy, r] = [num(a.cx), num(a.cy), num(a.r)];
       return `M${fmt(cx - r)} ${fmt(cy)}a${fmt(r)} ${fmt(r)} 0 1 0 ${fmt(2 * r)} 0a${fmt(r)} ${fmt(r)} 0 1 0 ${fmt(-2 * r)} 0`;
