@@ -684,14 +684,15 @@ private class FullLayout(context: Context) : ViewGroup(context) {
     }
 }
 
-/** One child, centered, no wider than [maxDp] and as tall as it is. */
+/** One child, centered, no wider than [maxDp] and as tall as it is, or as the room it is given when that is less (the player alone gives way, its record shrinking). */
 private class Capped(context: Context, private val maxDp: Int) : ViewGroup(context) {
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val child = getChildAt(0)
+        val room = MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY
         child.measure(
             MeasureSpec.makeMeasureSpec(minOf(width, dp(maxDp)), MeasureSpec.EXACTLY),
-            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
+            if (room) MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(heightMeasureSpec), MeasureSpec.AT_MOST) else MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
         )
         setMeasuredDimension(width, child.measuredHeight)
     }
@@ -713,6 +714,9 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
 
     /** The speakers that may be grouped with this player; empty for any it can be grouped with. Set before the view is shown. */
     var speakers: List<EntityRef> = emptyList()
+
+    /** Whether the library and the queue are drawn under the player (on by default); off, only the player is, as the web's without `browser` and `queue`. Set before the view is shown. */
+    var lists: Boolean = true
 
     private var own: Scope? = null
     private var tabs: UnderlineTabs? = null
@@ -750,6 +754,7 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
 
     /** The lists the player has: its library and its queue. */
     private fun lists(): List<ListTab> {
+        if (!lists) return emptyList()
         val caps = control.handle.entity?.capabilities
         return buildList {
             if (control.ready && caps?.browse == true) add(ListTab.Library)

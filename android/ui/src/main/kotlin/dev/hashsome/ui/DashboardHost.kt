@@ -136,9 +136,9 @@ internal class DashboardHost(private val activity: Activity, private val dashboa
         }
         val scroll: View = if (isTopRow(first)) {
             holder.removeView(first)
-            PageFrame(activity, first!!, layout, if (shell.rail != null) NAV_RAIL else 0, (holder as? ColumnLayout)?.gap ?: 3)
+            PageFrame(activity, first!!, layout, if (shell.rail != null) NAV_RAIL else 0, (holder as? ColumnLayout)?.gap ?: 3, spec.fixed)
         } else {
-            PageScroll(activity, layout)
+            PageScroll(activity, layout, spec.fixed)
         }
         pageView = scroll
         index = i
