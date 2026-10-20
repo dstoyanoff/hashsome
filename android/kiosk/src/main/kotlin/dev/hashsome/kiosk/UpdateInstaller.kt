@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Build
+import android.util.Log
 import java.io.File
 import java.io.FileInputStream
 import java.net.HttpURLConnection
@@ -117,7 +118,11 @@ class UpdateResultReceiver : BroadcastReceiver() {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 @Suppress("DEPRECATION")
                 val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
-                if (confirm != null) context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                if (confirm != null) {
+                    // Keep-in-front would send the installer's confirmation straight back to the dashboard: stand down while it is up.
+                    Kiosk.pause.start(CONFIRM_PAUSE_MS)
+                    context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
             }
             PackageInstaller.STATUS_SUCCESS -> Unit
             else -> failed?.invoke("the system installer said no ($status): ${intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)}")
@@ -127,8 +132,20 @@ class UpdateResultReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION = "dev.hashsome.UPDATE_RESULT"
 
+        /** How long the confirmation may stay up before the dashboard is brought back (it also returns as soon as it is resumed). */
+        private const val CONFIRM_PAUSE_MS = 120_000L
+
         /** Set by the service that runs the updater, so a refused install shows in the state. */
         @Volatile
         var failed: ((String) -> Unit)? = null
+    }
+}
+
+/** The app was replaced by an update: the old process is gone, so the service starts again (keep-in-front then brings the dashboard back). */
+class UpdatedReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
+        Log.i("update", "replaced by an update, starting the service")
+        Kiosk.startService(context)
     }
 }

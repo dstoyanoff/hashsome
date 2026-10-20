@@ -85,7 +85,8 @@ HTTP GET can read (Home Assistant's `/config/www`, served at `/local/`, a static
    entity on the device (and the sheet's "Install update") offers it. It is never installed by itself.
 4. Install downloads the APK, checks its size and SHA-256 against `latest.json`, and hands it to the system installer.
    A system app (the X1) installs silently and restarts. Any other (the X2i, a tablet) shows Android's confirmation:
-   one tap on the display.
+   one tap on the display. The X1 needs one reboot after the first deploy of a build that has the update feature
+(`INSTALL_PACKAGES` is granted to a system app's new permissions only when its /system copy is rescanned).
 
 The "Check for update" button in Home Assistant checks at once. The feed URL needs no authentication, so keep it on the
 local network.
