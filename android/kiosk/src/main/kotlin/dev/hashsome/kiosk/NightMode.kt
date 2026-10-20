@@ -16,8 +16,8 @@ sealed interface NightState {
 }
 
 /**
- * Follows `Settings.night` and never flips it itself (no schedule, no sun). While night: off after `Settings.nightIdleMs`
- * without a touch or proximity (and not while someone is still near), woken by either. While day: always on, so a screen
+ * Follows `Settings.night` and never flips it itself (no schedule, no sun). Switching night on puts the screen off at once. While
+ * night: off after `Settings.nightIdleMs` without a touch or proximity (and not while someone is still near), woken by either. While day: always on, so a screen
  * that goes off by other means (the power key, the stock app's timeout) is woken at once.
  *
  * A dark panel always wakes: a touch or proximity switches it on whatever the state says. [sleep] and [wake] are the
@@ -35,7 +35,7 @@ class NightMode(private val settings: Settings, private val presence: Presence, 
     private val cancels = ArrayList<Cancel>()
 
     init {
-        cancels += settings.night.listen { onNightChanged(it) }
+        cancels += settings.night.listen { onNightChanged(it, switched = true) }
         cancels += settings.nightIdleMs.listen {
             if (state.value is NightState.NightAwake) armIdle()
         }
@@ -51,7 +51,7 @@ class NightMode(private val settings: Settings, private val presence: Presence, 
                 resync = null
             }
         }
-        onNightChanged(settings.night.value)
+        onNightChanged(settings.night.value, switched = false)
     }
 
     /** The panel is dark, by whatever means: a touch on it, or the next wake, has to be heard. */
@@ -81,13 +81,21 @@ class NightMode(private val settings: Settings, private val presence: Presence, 
         resync = null
     }
 
-    private fun onNightChanged(night: Boolean) {
+    /**
+     * Night was set to [night]. [switched]: someone switched it (Home Assistant, the settings sheet), as against the value kept from
+     * before a restart. Switching night on puts the screen off now, with no idle time to wait out: whoever did it asked for the dark.
+     */
+    private fun onNightChanged(night: Boolean, switched: Boolean) {
         idle?.invoke()
         idle = null
         dayAsleep = false
         if (night) {
-            // A screen that is already dark (night switched on while off, or the app restarted while asleep) starts asleep.
-            if (screen.state.value == ScreenState.Off) state.set(NightState.NightAsleep) else armIdle()
+            when {
+                // A screen that is already dark (night switched on while off, or the app restarted while asleep) starts asleep.
+                screen.state.value == ScreenState.Off -> state.set(NightState.NightAsleep)
+                switched -> sleep()
+                else -> armIdle()
+            }
         } else {
             state.set(NightState.Day)
             if (screen.state.value == ScreenState.Off) screen.wake()

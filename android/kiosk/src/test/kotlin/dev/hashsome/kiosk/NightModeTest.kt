@@ -28,18 +28,28 @@ class NightModeTest {
     }
 
     @Test
-    fun `night puts the screen off after the idle time and a touch wakes it`() {
+    fun `switching night on puts the screen off at once and a touch wakes it, then the idle time applies`() {
         val mode = night(idleMs = 120_000)
         Settings.night.set(true)
-        assertEquals(NightState.NightAwake(sched.now() + 120_000), mode.state.value)
-        sched.advance(119_999)
-        assertEquals(0, screen.offs)
-        sched.advance(1)
         assertEquals(NightState.NightAsleep, mode.state.value)
         assertEquals(1, screen.offs)
         touch()
         assertEquals(1, screen.wakes)
         assertEquals(NightState.NightAwake(sched.now() + 120_000), mode.state.value)
+        sched.advance(119_999)
+        assertEquals(1, screen.offs)
+        sched.advance(1)
+        assertEquals(NightState.NightAsleep, mode.state.value)
+        assertEquals(2, screen.offs)
+    }
+
+    @Test
+    fun `night kept from before a restart waits out the idle time instead of going dark at start`() {
+        val mode = night(idleMs = 120_000, on = true)
+        assertEquals(NightState.NightAwake(sched.now() + 120_000), mode.state.value)
+        assertEquals(0, screen.offs)
+        sched.advance(120_000)
+        assertEquals(1, screen.offs)
     }
 
     @Test
