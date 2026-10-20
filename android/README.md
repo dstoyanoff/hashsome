@@ -69,6 +69,27 @@ Each module publishes its `release` AAR with sources, under group `dev.hashsome`
 - **Open Shelly app** (Connection group, Shelly profiles only; MQTT button `open_stock_app`): launches the stock app and pauses keep-in-front, and draws a floating **Back to dashboard** button over it (a `TYPE_APPLICATION_OVERLAY` window, `TYPE_PHONE` below API 26; needs the `SYSTEM_ALERT_WINDOW` appop, which `provision` grants). Tapping it ends the pause and brings the dashboard back; pressing and dragging it moves it (a tap that stays within the touch slop is a tap), it stays on the screen, starts in the bottom-right corner 12 dp from the edges, and its last position is kept in `Settings` as fractions of the screen. The pause has no timeout of its own: `KioskConfig.stockAppPauseMs` (default 2 hours) is only a safety cap, and it also ends when the dashboard is resumed by other means. Without the overlay permission there is no button and the pause is the old 10 minutes (logged).
 - **Restart device** (Debug group, tap twice; MQTT button `restart_device`): shown only where a reboot is possible, probed once the service runs and again every 5 minutes until a way is found (once found it is not probed again; the reboot itself runs off the main thread): the display's own Shelly RPC (`/rpc/Shelly.Reboot` on 127.0.0.1:80) on a Shelly profile, or `PowerManager.reboot` / the device-owner reboot where the app holds `REBOOT` or is device owner.
 
+## `kiosk`: updating from Home Assistant
+
+The first install of a display is manual, once (`hashsome android provision`, or `provision --system` on the X1; see
+the consumer's README for its per-device steps). After that a display updates itself from a **feed**: any folder a plain
+HTTP GET can read (Home Assistant's `/config/www`, served at `/local/`, a static host, an object store) holding
+`latest.json` and the APK it names.
+
+1. `hashsome android build`, then `hashsome android publish --to <feed folder> --notes "what changed"`. This copies
+   the APK to `<package>-<versionCode>.apk` and writes `latest.json` (`packageName`, `versionName`, `versionCode`,
+   `apk`, `sha256`, `size`, `notes`).
+2. Give each device `"updates": "http://<host>:8123/local/hashsome"` in `devices.json` and provision or deploy once (or
+   type it into the settings sheet's "Updates" group). Without a feed nothing is checked and no entity appears.
+3. The device checks a minute after start and every six hours. When `versionCode` is higher, Home Assistant's `update`
+   entity on the device (and the sheet's "Install update") offers it. It is never installed by itself.
+4. Install downloads the APK, checks its size and SHA-256 against `latest.json`, and hands it to the system installer.
+   A system app (the X1) installs silently and restarts. Any other (the X2i, a tablet) shows Android's confirmation:
+   one tap on the display.
+
+The "Check for update" button in Home Assistant checks at once. The feed URL needs no authentication, so keep it on the
+local network.
+
 ## System install on Shelly displays (X1)
 
 On the Shelly Wall Display X1 (Android 7, a **userdebug** image: `ro.debuggable=1`, `adb root` works) the stock Shelly app force-stops every non-system app at each boot (its shutdown hook, `SHELLY APPLICATION SHUTDOWN COMPLETED`), so the app only survives a reboot as a **system app**. This is optional and for Shelly profiles only; a plain tablet keeps the normal install. The X2i is a user build, with no adb root, and cannot do it.

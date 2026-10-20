@@ -162,7 +162,8 @@ private class SheetContent(
         chips("Theme", ThemeChoice.values().map { it.name }, settings.theme, { it.ordinal }, { ThemeChoice.values()[it] })
 
         section("Screen")
-        slider("Brightness", settings.brightness)
+        // The fixed level: what the screen shows only while auto brightness is off (otherwise the light sensor decides, so this is greyed out).
+        slider("Fixed brightness", settings.brightness, unusedWhen = settings.autoBrightness)
         switch("Auto brightness", settings.autoBrightness)
         slider("Minimum brightness", settings.minBrightness)
 
@@ -172,10 +173,24 @@ private class SheetContent(
         buttons(button("Sleep the screen") { actions.sleep() })
 
         section("MQTT")
+        // The same store as Connection's "Server": the backend this display talks to, shown here too because it is what a Home Assistant device is for.
+        textField("Backend URL", settings.server, { it ?: "" }, { it.trim().ifEmpty { null } }, InputType.TYPE_TEXT_VARIATION_URI, clearable = true)
         switch("Enabled", settings.mqtt.enabled)
         textField("Host", settings.mqtt.host, { it }, { it.trim() }, InputType.TYPE_TEXT_VARIATION_URI)
         textField("Port", settings.mqtt.port, { it.toString() }, { it.trim().toIntOrNull()?.takeIf { p -> p in 1..65535 } }, InputType.TYPE_CLASS_NUMBER)
         textField("Base topic", settings.mqtt.base, { it }, { it.trim().trim('/').ifEmpty { null } })
+
+        section("Updates")
+        info("Installed") { show -> show(actions.installedVersion); {} }
+        info("Status") { show -> actions.updateState.listenNow { show(describeUpdate(it)) } }
+        textField("Feed URL", settings.updateUrl, { it ?: "" }, { it.trim().ifEmpty { null } }, InputType.TYPE_TEXT_VARIATION_URI, clearable = true)
+        val install = button("Install update", primary = true) { actions.installUpdate() }
+        binders += {
+            actions.updateState.listenNow {
+                install.visibility = if (it is UpdateState.Available || it is UpdateState.Failed && it.release != null) View.VISIBLE else View.GONE
+            }
+        }
+        buttons(button("Check for update") { actions.checkForUpdate() }, install)
 
         section("Debug")
         switch("Module grid overlay", settings.debug.grid)
@@ -207,6 +222,15 @@ private class SheetContent(
         binders += { source { row.value = it } }
     }
 
+    private fun describeUpdate(state: UpdateState): String = when (state) {
+        UpdateState.Off -> "No feed set"
+        is UpdateState.Current -> "Up to date"
+        is UpdateState.Available -> "${state.release.versionName} available"
+        is UpdateState.Downloading -> "Downloading ${state.release.versionName} (${state.percent}%)"
+        is UpdateState.Installing -> "Installing ${state.release.versionName}"
+        is UpdateState.Failed -> "Failed: ${state.message}"
+    }
+
     private fun integrations(show: (String) -> Unit): Cancel {
         val map = try { Hashsome.client.integrations } catch (e: Throwable) { show("unknown"); return {} }
         return map.listenNow { statuses -> show(if (statuses.isEmpty()) "none" else statuses.entries.joinToString(", ") { "${it.key}: ${it.value.name.lowercase()}" }) }
@@ -220,8 +244,17 @@ private class SheetContent(
     }
 
     /** A percentage slider with its value beside it. */
-    private fun slider(name: String, store: Store<Int>) {
+    /** [unusedWhen]: while it is true the slider's value is not what the screen follows (greyed out, not draggable). */
+    private fun slider(name: String, store: Store<Int>, unusedWhen: Store<Boolean>? = null) {
         val slider = FormSlider(ctx, 0, 100, "%")
+        if (unusedWhen != null) {
+            binders += {
+                unusedWhen.listenNow {
+                    slider.alpha = if (it) 0.4f else 1f
+                    slider.isEnabled = !it
+                }
+            }
+        }
         slider.onChange = { store.set(it) }
         add(FormRow(ctx, name).control(slider, CONTROL_DP))
         binders += { store.listenNow { slider.value = it } }

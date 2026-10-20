@@ -119,6 +119,27 @@ class KioskService : Service() {
         bridge.start()
         closers += { bridge.stop() }
 
+        val info = try {
+            packageManager.getPackageInfo(packageName, 0)
+        } catch (e: Exception) {
+            null
+        }
+        @Suppress("DEPRECATION")
+        val code = info?.versionCode?.toLong() ?: 0L
+        val updater = Updater(
+            Settings.updateUrl, AndroidUpdateIO(this), sched,
+            { work -> Thread(work, "hashsome-update").start() },
+            packageName, code, info?.versionName ?: "unknown",
+            log = { Log.w("update", it) },
+        )
+        UpdateResultReceiver.failed = { message -> sched.post { updater.fail(message) } }
+        updater.start()
+        closers += Kiosk.followUpdater(updater)
+        closers += {
+            UpdateResultReceiver.failed = null
+            updater.stop()
+        }
+
         val backButton = BackButtonOverlay(this, Settings, Kiosk.pause)
         Kiosk.pause.onChange = { backButton.sync() }
         backButton.sync()
@@ -481,7 +502,7 @@ class ProvisionReceiver : BroadcastReceiver() {
     private companion object {
         const val ACTION_PROVISION = "dev.hashsome.PROVISION"
         const val ACTION_REMOVE_ADMIN = "dev.hashsome.REMOVE_ADMIN"
-        val PROVISION_EXTRAS = listOf("server", "dashboard", "device", "profile", "mqtt")
+        val PROVISION_EXTRAS = listOf("server", "dashboard", "device", "profile", "mqtt", "updates")
     }
 }
 
@@ -494,6 +515,7 @@ internal object Provisioning {
         extras["device"]?.let { id -> id.trim().ifEmpty { null }?.let(settings.deviceId::set) }
         // "auto" (or empty) goes back to detecting the profile.
         extras["profile"]?.let { settings.profileOverride.set(it.trim().takeIf { p -> p.isNotEmpty() && p != "auto" }) }
+        extras["updates"]?.let { settings.updateUrl.set(it.trim().takeIf { u -> u.isNotEmpty() && u != "off" }) }
         extras["mqtt"]?.let { value ->
             val text = value.trim()
             if (text.isEmpty() || text == "off") {

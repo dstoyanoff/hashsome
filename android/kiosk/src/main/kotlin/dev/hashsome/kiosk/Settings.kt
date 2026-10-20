@@ -64,6 +64,9 @@ object Settings : HostSettings {
     /** Where the floating "Back to dashboard" button was left, as fractions (0..1) of the room it can move in, so it survives a rotation; null is the bottom-right corner. */
     val backButtonX: Store<Float?> = Store(null)
     val backButtonY: Store<Float?> = Store(null)
+
+    /** Where the app looks for newer releases: a folder (any HTTP host) with `latest.json` and the APK it names; null checks nothing. */
+    val updateUrl: Store<String?> = Store(null)
     val mqtt: MqttSettings = MqttSettings()
     val debug: DebugSettings = DebugSettings()
 
@@ -111,6 +114,7 @@ object Settings : HostSettings {
         text("deviceName", deviceName)
         text("profileOverride", profileOverride)
         text("dashboard", dashboard)
+        text("updateUrl", updateUrl)
         key("theme", theme, ThemeChoice.Auto, { it.name.lowercase() }, { s -> ThemeChoice.values().firstOrNull { it.name.equals(s, ignoreCase = true) } })
         number("brightness", brightness, 100)
         flag("autoBrightness", autoBrightness, defaults.autoBrightness)

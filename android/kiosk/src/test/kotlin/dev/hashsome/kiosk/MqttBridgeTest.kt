@@ -58,6 +58,10 @@ private class Actions : KioskActions {
     override fun openStockApp() { calls += "open_stock_app" }
     override val canOpenStockApp = Store(false)
     override val canRestartDevice = Store(false)
+    override fun checkForUpdate() { calls += "check_update" }
+    override fun installUpdate() { calls += "install_update" }
+    override val updateState = Store<UpdateState>(UpdateState.Off)
+    override val installedVersion = "0.19.2"
 }
 
 class MqttBridgeTest {
@@ -107,7 +111,7 @@ class MqttBridgeTest {
         assertEquals(
             mapOf(
                 "screen" to "switch", "night_mode" to "switch", "night_idle" to "number", "brightness" to "number",
-                "auto_brightness" to "switch", "min_brightness" to "number", "dashboard" to "select", "dashboard_switcher" to "switch",
+                "auto_brightness" to "switch", "min_brightness" to "number", "dashboard" to "select", "server" to "text", "dashboard_switcher" to "switch",
                 "theme" to "select", "illuminance" to "sensor", "occupancy" to "binary_sensor", "sleeping" to "binary_sensor",
                 "page" to "sensor", "link" to "sensor", "wake" to "button", "sleep" to "button", "reload" to "button", "restart_app" to "button",
             ),
@@ -147,6 +151,37 @@ class MqttBridgeTest {
         assertEquals("button", cmps.getJSONObject("open_stock_app").getString("p"))
         link.receive("$root/open_stock_app/set", "PRESS")
         assertEquals(listOf("open_stock_app"), actions.calls)
+    }
+
+    @Test
+    fun `the update entity appears with a feed, reports the release and installs on request`() {
+        val b = bridge()
+        assertFalse(JSONObject(b.discoveryPayload()).getJSONObject("cmps").has("update"))
+        b.start()
+        link.listener!!.onConnected()
+        val release = Release("dev.hashsome.home", "0.19.3", 1903, "http://h/a.apk", "a".repeat(64), 10, "Fixes")
+        actions.updateState.set(UpdateState.Available(release))
+        val cmps = JSONObject(link.last("homeassistant/device/hashsome-bathroom/config")!!.payload).getJSONObject("cmps")
+        assertEquals("update", cmps.getJSONObject("update").getString("p"))
+        assertTrue(cmps.has("check_update"))
+        val payload = JSONObject(b.updateStatePayload())
+        assertEquals("0.19.2", payload.getString("installed_version"))
+        assertEquals("0.19.3", payload.getString("latest_version"))
+        link.receive("$root/update/set", "INSTALL")
+        link.receive("$root/check_update/set", "PRESS")
+        assertEquals(listOf("install_update", "check_update"), actions.calls)
+    }
+
+    @Test
+    fun `home assistant can change the backend url, but only to an http address`() {
+        val b = bridge()
+        b.start()
+        link.listener!!.onConnected()
+        link.receive("$root/server/set", "http://10.1.1.2:3000")
+        assertEquals("http://10.1.1.2:3000", Settings.server.value)
+        link.receive("$root/server/set", "garbage")
+        assertEquals("http://10.1.1.2:3000", Settings.server.value)
+        assertEquals("http://10.1.1.2:3000", link.last("$root/server/state")!!.payload)
     }
 
     @Test
