@@ -54,6 +54,13 @@
             </intent-filter>
         </receiver>
 
+        <!-- An update replaces the process (and drops its alarms): this brings the service, and with it the dashboard, back. -->
+        <receiver android:name="dev.hashsome.kiosk.UpdatedReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <receiver
             android:name="dev.hashsome.kiosk.WatchdogReceiver"
             android:exported="false" />
