@@ -1063,7 +1063,7 @@ internal class NowPlayingScreenView(
         // What is under the artwork has the height it needs; the artwork takes the rest.
         val textH = dp(30) + dp(22) + dp(18)
         val keysH = dp(KEYS)
-        val under = textH + dp(14) + keysH + dp(6)
+        val under = textH + dp(26) + keysH + dp(6)
         val d = (blockTop - pad - under - dp(6)).coerceIn(dp(96), (w * 0.62f).toInt())
         var y = pad
         place(ring, (w - d) / 2, y, d, d)
@@ -1071,7 +1071,7 @@ internal class NowPlayingScreenView(
         y += d + dp(6)
         place(title, pad, y, colW, dp(30)); y += dp(30)
         place(artist, pad, y, colW, dp(22)); y += dp(22)
-        place(album, pad, y, colW, dp(18)); y += dp(18) + dp(14)
+        place(album, pad, y, colW, dp(18)); y += dp(18) + dp(26)
         controls(pad, y, colW, KEYS, 1f)
     }
 
