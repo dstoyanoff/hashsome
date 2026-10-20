@@ -92,6 +92,11 @@ internal class SpeakersPillView(context: Context, private val compact: Boolean, 
         addView(pill, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
     }
 
+    /** Its glyph as strong as the other keys of the row it is in (the full player's transport row). */
+    fun strongGlyph() {
+        pill.strongGlyph = true
+    }
+
     /** The pill as tall as [dp], and as wide as its place (the bar's two-row layout makes it as big as the buttons beside it). */
     fun fillKey(dp: Int) {
         pill.heightDp = dp
@@ -130,7 +135,8 @@ internal class SpeakersPillView(context: Context, private val compact: Boolean, 
         val grouped = summary.together > 1
         pill.label = if (compact) (if (grouped) summary.together.toString() else null) else summary.label
         pill.accentIcon = grouped
-        pill.muted = !grouped
+        // A key among keys is as strong as they are; the card's ghost pill is muted until something is grouped.
+        pill.muted = !compact && !grouped
         pill.dot = !grouped && summary.elsewhere.isNotEmpty()
         // Without words it is a circle.
         pill.padUnits = if (pill.label == null) 0f else 3f
@@ -747,6 +753,7 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
         // Shuffle and the speakers are keys of the transport row, at its two ends (as the web's player has them), not at the title and a corner.
         val pill = SpeakersPillView(context, compact = true) { openSpeakers(context, control, speakers, label, null, expandable) }
         pill.fillKey(theme.density.iconCircle)
+        pill.strongGlyph()
         pillView = pill
         grouping = null
         val player = NowPlayingView(
