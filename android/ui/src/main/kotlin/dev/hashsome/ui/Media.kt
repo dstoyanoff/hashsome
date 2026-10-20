@@ -727,6 +727,9 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
     /** Whether the library and the queue are drawn under the player (on by default); off, only the player is, as the web's without `browser` and `queue`. Set before the view is shown. */
     var lists: Boolean = true
 
+    /** A tap on the artwork opens the full-screen player ([NowPlayingScreen]). Set before the view is shown. */
+    var fullScreen: Boolean = false
+
     private var own: Scope? = null
     private var tabs: UnderlineTabs? = null
     private var area: android.widget.FrameLayout? = null
@@ -744,7 +747,10 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
         val pill = SpeakersPillView(context, compact = false) { openSpeakers(context, control, speakers, label, null, expandable) }
         pillView = pill
         grouping = null
-        val player = NowPlayingView(context, control, label, queue, shuffleAtTitle = true, speakers = pill)
+        val player = NowPlayingView(
+            context, control, label, queue, shuffleAtTitle = true, speakers = pill,
+            onOpenArtwork = if (fullScreen) ({ NowPlayingScreen.open(context, control, label) }) else null,
+        )
         val stack = FullLayout(context)
         column = stack
         val centered = Capped(context, PLAYER_WIDTH)
