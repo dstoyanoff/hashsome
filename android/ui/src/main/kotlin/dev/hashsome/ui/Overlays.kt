@@ -166,7 +166,11 @@ abstract class Overlay(context: Context) : BoundView(context) {
     protected fun header(vararg actions: View): View {
         val row = RowLayout(context).apply { gap = 3 }
         val label = OverlayTitle(context, title, subtitle, titleIcon)
-        row.addView(label, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { grow = true })
+        // A long title gives way (and is cut with an ellipsis) so the buttons beside it keep their room.
+        row.addView(label, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            grow = true
+            shrink = true
+        })
         val buttons = RowLayout(context).apply { gap = 2 }
         actions.forEach { buttons.addView(it, FlexParams(dp(ACTION), dp(ACTION))) }
         row.addView(buttons, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
