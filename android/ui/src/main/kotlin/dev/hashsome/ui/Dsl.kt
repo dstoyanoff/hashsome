@@ -45,7 +45,13 @@ data class DashboardOption(val dashboard: Dashboard, val label: String, val icon
  * A dashboard. [id] is what `Settings.dashboard` stores and what Home Assistant's select offers. [idleReturn]
  * takes the display back to the home page after `HashsomeApp.idleReturnMs` without a touch.
  */
-abstract class Dashboard(val id: String, val motion: Motion = Motion.Full, val idleReturn: Boolean = true) {
+abstract class Dashboard(
+    val id: String,
+    val motion: Motion = Motion.Full,
+    val idleReturn: Boolean = true,
+    /** Whether the drawers and panels this dashboard opens have the button that widens them (the web's expand button): for a screen with room to widen into, as the tablets' and the X2i's, not for a square one. */
+    val expandableDrawers: Boolean = false,
+) {
     abstract val pages: List<PageSpec>
 
     /** The chrome around the pages (navigation, top bar). The default has none. */
@@ -93,6 +99,9 @@ class ShellScope internal constructor() {
 class PageScope internal constructor(val context: Context, val scope: Scope) {
     /** How a page asks the host to show another page; set by the host. */
     internal var navigator: (String) -> Unit = {}
+
+    /** Whether the drawers this page opens can be widened ([Dashboard.expandableDrawers]); a component's own `expandable` overrides it. */
+    internal var drawersExpandable: Boolean = false
     private val stack = ArrayList<ViewGroup>()
 
     /** Starts building into [root]. */
@@ -226,6 +235,7 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
                     title = weather?.name ?: "Weather",
                     kind = "Weather",
                     icon = UiIcons.weather(weather?.condition ?: WeatherCondition.Unknown),
+                    expandable = drawersExpandable,
                 ) { ctx -> WeatherForecastBody(context, ctx, EntityRef(ref)) }
             }
         }
@@ -321,6 +331,7 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
                     title = name ?: sensor?.name ?: ref.substringAfter(':'),
                     kind = SensorDrawerText.kind(sensor),
                     icon = view.shownIcon,
+                    expandable = drawersExpandable,
                 ) { ctx -> SensorDrawerBody(context, ctx, reading) }
             }
         }
@@ -337,7 +348,7 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         val view = put(LightTileView(context, control, label))
         view.icon = icon
         if (drawer) {
-            view.tile.opensDrawer(context, scope, title = { label }, kind = "Light", icon = { icon ?: Ui.lightbulb }) { drawerContext ->
+            view.tile.opensDrawer(context, scope, title = { label }, kind = "Light", icon = { icon ?: Ui.lightbulb }, expandable = drawersExpandable) { drawerContext ->
                 val charts = if (power != null || energy != null) {
                     EnergyDrawerBody(
                         context,
@@ -370,7 +381,7 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         val view = put(SwitchTileView(context, control, label))
         view.icon = icon
         if (DrawerGuard.energy(power, energy, drawer)) {
-            view.tile.opensDrawer(context, scope, title = { label }, kind = "Switch", icon = { icon }) { drawerContext ->
+            view.tile.opensDrawer(context, scope, title = { label }, kind = "Switch", icon = { icon }, expandable = drawersExpandable) { drawerContext ->
                 EnergyDrawerBody(
                     context,
                     drawerContext.scope,
@@ -411,7 +422,8 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         tabs.icons = icons
         val body = ColumnLayout(context).also { it.gap = 3 }
         stack.last().addView(tabs, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        stack.last().addView(body, flex(grow = true))
+        // 8 dp between the tabs' line and what is under them, as the web's `paddingTop: 8`.
+        stack.last().addView(body, flex(grow = true).also { it.topMargin = dp(8) })
         var surface: Scope? = null
 
         fun open(i: Int) {
@@ -421,6 +433,7 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
             surface = child
             val sub = PageScope(context, child)
             sub.navigator = navigator
+            sub.drawersExpandable = drawersExpandable
             sub.begin(body)
             surfaces.getOrNull(i)?.invoke(sub)
             if (Animation.animates) {
@@ -460,12 +473,12 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         grouping: Boolean = true,
         onOpen: (() -> Unit)? = null,
         speakers: List<EntityRef> = emptyList(),
-        expandable: Boolean = false,
+        expandable: Boolean? = null,
     ) {
         val bar = MediaPlayerBarView(context, player(ref), label, PlayerOptions(time, shuffle, browse, grouping, rows))
         bar.onOpen = onOpen
         bar.speakers = speakers
-        bar.expandable = expandable
+        bar.expandable = expandable ?: drawersExpandable
         place(bar)
     }
 
@@ -480,11 +493,11 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         overlays: Boolean = true,
         fill: Boolean = true,
         speakers: List<EntityRef> = emptyList(),
-        expandable: Boolean = false,
+        expandable: Boolean? = null,
     ) {
         val column = MediaPlayerColumnView(context, player(ref), label, overlays, fill)
         column.speakers = speakers
-        column.expandable = expandable
+        column.expandable = expandable ?: drawersExpandable
         place(column, grow = fill)
     }
 
@@ -492,10 +505,10 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
      * The full player: the player on top and, unless [lists] is false, under it its library and queue as tabs. A page that shows them
      * beside the player (as `mediaBrowser` and `mediaQueue` in a card of their own) passes `lists = false`. It takes the height that is left of the page.
      */
-    fun mediaPlayerFull(ref: String, label: String, speakers: List<EntityRef> = emptyList(), expandable: Boolean = false, lists: Boolean = true) {
+    fun mediaPlayerFull(ref: String, label: String, speakers: List<EntityRef> = emptyList(), expandable: Boolean? = null, lists: Boolean = true) {
         val full = MediaPlayerFullView(context, player(ref), label)
         full.speakers = speakers
-        full.expandable = expandable
+        full.expandable = expandable ?: drawersExpandable
         full.lists = lists
         place(full, grow = true)
     }
