@@ -185,6 +185,20 @@ class MqttBridgeTest {
     }
 
     @Test
+    fun `the brightness number is unavailable in home assistant while auto brightness decides`() {
+        val b = bridge()
+        Settings.autoBrightness.set(true)
+        b.start()
+        link.listener!!.onConnected()
+        val brightness = JSONObject(b.discoveryPayload()).getJSONObject("cmps").getJSONObject("brightness")
+        assertEquals("all", brightness.getString("avty_mode"))
+        assertEquals("$root/brightness/usable", brightness.getJSONArray("avty").getJSONObject(1).getString("topic"))
+        assertEquals("offline", link.last("$root/brightness/usable")!!.payload)
+        Settings.autoBrightness.set(false)
+        assertEquals("online", link.last("$root/brightness/usable")!!.payload)
+    }
+
+    @Test
     fun `every component has what Home Assistant needs`() {
         val cmps = JSONObject(bridge().discoveryPayload()).getJSONObject("cmps")
         val uniqueIds = HashSet<String>()
