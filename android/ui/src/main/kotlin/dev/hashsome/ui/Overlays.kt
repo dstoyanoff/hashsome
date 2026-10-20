@@ -429,6 +429,8 @@ open class Drawer(context: Context, val expandable: Boolean = false) : Overlay(c
             background = surface(FloatArray(4) { t.radius.drawer })
             elevation = elevationOf(t.shadow.drawer)
             isClickable = true
+            // Layouts let their children draw past their bounds; the panel does not, so a scrolling body is cut at the header, not drawn over it.
+            clipChildren = true
             val pad = Math.round(5 * u)
             setPadding(pad, pad, pad, pad)
         }
@@ -437,7 +439,8 @@ open class Drawer(context: Context, val expandable: Boolean = false) : Overlay(c
         expandButton = expand
         expand.shown = if (expanded) Ui.minimize2 else Ui.maximize2
         panel.addView(header(*(if (expandable) arrayOf<View>(expand, closeButton()) else arrayOf<View>(closeButton()))), FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = Math.round(4 * u)
+            // Room under the header, so what scrolls beneath it stops short of the buttons.
+            bottomMargin = Math.round(6 * u)
         })
         panel.addView(content, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             grow = true
@@ -485,6 +488,10 @@ open class Sheet(context: Context) : Overlay(context) {
     private var pullSpeed = 0f
 
     private inner class SheetPanel : ColumnLayout(context) {
+        init {
+            clipChildren = true
+        }
+
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
             val cap = (MeasureSpec.getSize(heightMeasureSpec) * SHEET_HEIGHT).toInt()
             super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(cap, if (tall) MeasureSpec.EXACTLY else MeasureSpec.AT_MOST))
@@ -509,7 +516,7 @@ open class Sheet(context: Context) : Overlay(context) {
         val title = header(close)
         handle.addView(title, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             val side = Math.round(5 * u)
-            setMargins(side, Math.round(2 * u), side, Math.round(3 * u))
+            setMargins(side, Math.round(2 * u), side, Math.round(5 * u))
         })
         handle.tag = "handle"
         handle.setOnTouchListener { _, event -> pull(event) }
