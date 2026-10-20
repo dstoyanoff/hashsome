@@ -744,11 +744,13 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
         val scope = control.scope.child()
         own = scope
         val queue = QueueControl(control.handle, scope)
-        val pill = SpeakersPillView(context, compact = false) { openSpeakers(context, control, speakers, label, null, expandable) }
+        // Shuffle and the speakers are keys of the transport row, at its two ends (as the web's player has them), not at the title and a corner.
+        val pill = SpeakersPillView(context, compact = true) { openSpeakers(context, control, speakers, label, null, expandable) }
+        pill.fillKey(theme.density.iconCircle)
         pillView = pill
         grouping = null
         val player = NowPlayingView(
-            context, control, label, queue, shuffleAtTitle = true, speakers = pill,
+            context, control, label, queue, shuffleAtTitle = false, extra = pill,
             onOpenArtwork = if (fullScreen) ({ NowPlayingScreen.open(context, control, label) }) else null,
         )
         val stack = FullLayout(context)
@@ -838,7 +840,8 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
             if (canGroup && grouping == null) {
                 own?.let { scope -> grouping = SpeakersControl(control.handle, scope, speakers).also { pillView?.use(it) } }
             }
-            pillView?.visibility = if (canGroup) View.VISIBLE else View.GONE
+            // Kept in its place when the player cannot be grouped, so the keys do not shift.
+            pillView?.visibility = if (canGroup) View.VISIBLE else View.INVISIBLE
             val now = lists()
             if (now != had) {
                 had = now
