@@ -9,10 +9,14 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.os.BatteryManager
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import dev.hashsome.client.Store
 import dev.hashsome.headless.BatteryStatus
 import dev.hashsome.headless.HealthLevel
+import dev.hashsome.headless.LowBatteryAlert
+import dev.hashsome.ui.icons.Ui
 
 /**
  * The battery of the device, for a display that runs on one (a tablet). It is off until [enable] is called, so a wall display that is wired in and
@@ -179,5 +183,101 @@ open class BatteryIndicator(
         figure.color = theme.palette.textMuted
         contentDescription = "Battery ${now.label}"
         visibility = VISIBLE
+    }
+}
+
+/**
+ * A modal at the center of the screen for a battery that is running down: under 10%, and not charging, for every percent it drops. [follow] is held
+ * while the dashboard is on screen. The person dismisses it (the button, or a tap beside it) and it comes back at the next percent; while it is up,
+ * the next percent changes what it says.
+ */
+internal class LowBatteryAlerts(private val activity: android.app.Activity) {
+    private val rule = LowBatteryAlert()
+    private var card: BatteryAlertCard? = null
+    private var cancel: (() -> Unit)? = null
+
+    fun start() {
+        if (cancel != null) return
+        cancel = DeviceBattery.state.listenNow { status ->
+            val percent = rule.next(status)
+            if (percent != null) tell(percent) else if (status == null || status.charging || status.percent >= LowBatteryAlert.THRESHOLD) card?.dismiss()
+        }
+    }
+
+    fun stop() {
+        cancel?.invoke()
+        cancel = null
+        card?.dismiss()
+        card = null
+    }
+
+    private fun tell(percent: Int) {
+        val shown = card
+        if (shown != null && shown.isShown) {
+            shown.percent = percent
+            return
+        }
+        card = BatteryAlertCard(activity, percent).also { it.open() }
+    }
+}
+
+/** The card of [LowBatteryAlerts]: a battery, the percentage, a line to say what to do, and a button to dismiss it. */
+internal class BatteryAlertCard(context: Context, percent: Int) : Overlay(context) {
+    private val heading = LabelView(context, Role.Heading)
+    private val glyph = BatteryGlyphView(context)
+
+    var percent: Int = percent
+        set(value) {
+            field = value
+            render()
+        }
+
+    private fun render() {
+        heading.text = "Battery at $percent%"
+        glyph.status = BatteryStatus(percent, charging = false)
+    }
+
+    override fun show(content: View) {
+        attach()
+        val t = theme
+        val u = unitPx()
+        val card = ColumnLayout(context).also {
+            it.gap = 3
+            it.align = Align.Center
+            it.background = surface(FloatArray(4) { t.radius.card })
+            it.elevation = elevationOf(t.shadow.drawer)
+            it.isClickable = true
+            val pad = Math.round(5 * u)
+            it.setPadding(pad, pad, pad, pad)
+        }
+        glyph.scaleX = 2.2f
+        glyph.scaleY = 2.2f
+        card.addView(glyph, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also { it.topMargin = Math.round(2 * u); it.bottomMargin = Math.round(2 * u) })
+        card.addView(heading, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        card.addView(LabelView(context, Role.Body, Tone.Muted).also { it.text = "Plug the charger in to keep the display on." }, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        card.addView(PillButton(context, null, "Dismiss", Role.Label).also {
+            it.primary = true
+            it.onClick = { dismiss() }
+        }, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also { it.topMargin = Math.round(u) })
+        val width = minOf(dp(CARD), resources.displayMetrics.widthPixels - dp(40))
+        addView(card, LayoutParams(width, LayoutParams.WRAP_CONTENT, Gravity.CENTER))
+        render()
+        if (Animation.animates) {
+            scrim.alpha = 0f
+            scrim.animate().alpha(1f).setDuration(200).setInterpolator(EASE_OUT).start()
+            card.alpha = 0f
+            card.animate().alpha(1f).setDuration(200).setInterpolator(EASE_OUT).start()
+        }
+    }
+
+    override fun dismiss() {
+        leave(null)
+    }
+
+    /** Puts it up. */
+    fun open() = show(View(context))
+
+    private companion object {
+        const val CARD = 340
     }
 }
