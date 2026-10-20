@@ -204,7 +204,7 @@ internal open class GlyphButton(context: Context, icon: Icon, private val glyphD
             canvas.drawArcAround(rect, spin.angle, paint)
             return
         }
-        canvas.drawBitmap(iconBitmap(icon, glyph, color), left, top, null)
+        canvas.drawIcon(iconBitmap(icon, glyph, color), left, top)
         if (pending) {
             paint.color = if (primary) t.palette.accentText else t.palette.accent
             rect.set(dp(1f), dp(1f), w - dp(1f), h - dp(1f))
@@ -293,7 +293,7 @@ internal class ArtworkRingView(context: Context) : RingView(context) {
         if (!hasPicture) {
             val s = minOf(width, height)
             val px = (s * 0.24f).toInt().coerceAtLeast(1)
-            canvas.drawBitmap(iconBitmap(Ui.music, px, theme.palette.textMuted), (width - px) / 2f, (height - px) / 2f, null)
+            canvas.drawIcon(iconBitmap(Ui.music, px, theme.palette.textMuted), (width - px) / 2f, (height - px) / 2f)
         }
     }
 
@@ -403,7 +403,7 @@ internal class MiniRingView(context: Context) : View(context) {
             canvas.restore()
         } else {
             val px = dp(14)
-            canvas.drawBitmap(iconBitmap(Ui.music, px, t.palette.textMuted), c - px / 2f, c - px / 2f, null)
+            canvas.drawIcon(iconBitmap(Ui.music, px, t.palette.textMuted), c - px / 2f, c - px / 2f)
         }
     }
 
@@ -816,7 +816,7 @@ class PillButton(context: Context, icon: Icon?, label: String?, private val role
                 canvas.drawArc(rect, spin.angle, 90f, false, paint)
                 paint.style = Paint.Style.FILL
             } else {
-                canvas.drawBitmap(iconBitmap(icon!!, glyph, if (words.isEmpty() || accentIcon) tone else ink.let { if (muted) tone else it }), x, top, null)
+                canvas.drawIcon(iconBitmap(icon!!, glyph, if (words.isEmpty() || accentIcon) tone else ink.let { if (muted) tone else it }), x, top)
             }
             x += glyph
             if (dot) {
@@ -968,7 +968,7 @@ internal class ChipRowView(context: Context) : View(context) {
             var x = lefts[i] + dp(12f)
             chip.icon?.let {
                 val g = glyphPx()
-                canvas.drawBitmap(iconBitmap(it, g, ink), x, (height - g) / 2f, null)
+                canvas.drawIcon(iconBitmap(it, g, ink), x, (height - g) / 2f)
                 x += g + dp(6f)
             }
             canvas.drawTextCentered(chip.label, x, height / 2f, text)
@@ -1124,7 +1124,7 @@ internal class SearchBar(context: Context) : FrameLayout(context) {
         rect.set(0f, 0f, width.toFloat(), h)
         canvas.drawRoundRect(rect, h / 2, h / 2, paint)
         val g = dp(16)
-        canvas.drawBitmap(iconBitmap(Ui.search, g, t.palette.textMuted), 3 * unitPx(), (h - g) / 2, null)
+        canvas.drawIcon(iconBitmap(Ui.search, g, t.palette.textMuted), 3 * unitPx(), (h - g) / 2)
     }
 
     companion object {

@@ -41,7 +41,7 @@ open class GlyphView(context: Context, icon: Icon? = null, sizeDp: Int = 16) : V
 
     override fun onDraw(canvas: Canvas) {
         val glyph = icon ?: return
-        canvas.drawBitmap(iconBitmap(glyph, width, color), 0f, 0f, null)
+        canvas.drawIcon(iconBitmap(glyph, width, color), 0f, 0f)
     }
 }
 

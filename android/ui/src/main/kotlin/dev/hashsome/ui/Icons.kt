@@ -93,6 +93,14 @@ fun iconBitmap(icon: Icon, px: Int, color: Int): Bitmap {
     }
 }
 
+/**
+ * Draws an icon [bitmap] from [iconBitmap] with its corner on a whole pixel. A glyph centred in a button lands on a half pixel as often as
+ * not, and a bitmap drawn there is smoothed by some GPUs and not by others (an emulator's), which leaves its thin strokes jagged.
+ */
+internal fun Canvas.drawIcon(bitmap: Bitmap, x: Float, y: Float) {
+    drawBitmap(bitmap, Math.round(x).toFloat(), Math.round(y).toFloat(), null)
+}
+
 /** Decodes every icon the chrome is going to need, off the first frame. */
 fun warmIcons(context: android.content.Context) {
     Hashsome.appContext = context.applicationContext
