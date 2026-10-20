@@ -197,7 +197,7 @@ describe('provisionCommands', () => {
     const lines = shellLines(device({ owner: true }));
     const owner = lines.findIndex((l) => l.includes('set-device-owner'));
     expect(lines[owner]).toContain(
-      `dpm set-device-owner ${PKG}/dev.hashsome.kiosk.HashsomeDeviceAdmin || echo`,
+      `dpm list-owners | grep -q ${PKG} || dpm set-device-owner ${PKG}/dev.hashsome.kiosk.HashsomeDeviceAdmin || echo`,
     );
 
     expect(owner).toBeGreaterThan(lines.findIndex((l) => l.startsWith('dpm set-active-admin')));

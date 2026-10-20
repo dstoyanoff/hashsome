@@ -327,7 +327,7 @@ export function provisionCommands(
             device,
             'sh',
             '-c',
-            `dpm set-device-owner ${pkg}/${ADMIN} || echo "not the device owner: remove the device's accounts (Settings > Passwords & accounts), then provision again"`,
+            `dpm list-owners | grep -q ${pkg} || dpm set-device-owner ${pkg}/${ADMIN} || echo "not the device owner: remove the device's accounts (Settings > Passwords & accounts), then provision again"`,
           ),
         ]
       : []),

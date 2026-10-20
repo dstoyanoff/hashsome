@@ -54,6 +54,11 @@ Per kind of display:
 | **Shelly Wall Display X1** (`shelly-stargate`) | `hashsome android provision --system --device <id>` | Its stock app force-stops every non-system app at boot, so the app has to be a **system app**. This needs the display's userdebug image (`adb root` works) and reboots it once. Updates then install silently. |
 | **Other Android tablet** (`generic`)           | `hashsome android provision --device <id> [--home]` | `--home` makes the app the home screen; the lock screen is switched off so a sleeping tablet wakes into the dashboard (kept if a PIN is set). Updates ask for one tap.                                         |
 
+A tablet can also be made the **device owner** (`"owner": true` in `devices.json`; Android only allows it on a device with no accounts, so remove
+the Google account first). The app then switches the notification pull-down off (a "Block pull-down shade" switch in the sheet and in Home Assistant),
+and Home Assistant can restart the device. The sheet's and Home Assistant's "Open tablet settings" button is the way into Android's own settings
+then: it pauses keep-in-front and shows a "Back to dashboard" button. `uninstall` gives the device owner up first.
+
 See "System install on Shelly displays (X1)" in `android/README.md` for what `--system` does step by step.
 
 After the first start the display shows its dashboard. If you gave it `mqtt`, Home Assistant offers a device named after the

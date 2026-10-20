@@ -492,6 +492,8 @@ class ProvisionReceiver : BroadcastReceiver() {
                 val extras = PROVISION_EXTRAS.associateWith { intent.getStringExtra(it) }
                 Provisioning.apply(Settings, extras)
                 Settings.lastProvision = Provisioning.encode(extras)
+                // Provisioning may have just made the app the device owner, after the service had started: the shade is switched off now.
+                DeviceAdmin.blockStatusBar(context, Settings.blockPullDown.value)
                 intent.getStringExtra("home")?.let { HomeAlias.setEnabled(context, it == "true") }
                 Log.i("provision", "provisioned: ${extras.filterValues { it != null }}")
                 // New stores are live at once (the bridge and the host listen); a fresh task makes the host read the server again.

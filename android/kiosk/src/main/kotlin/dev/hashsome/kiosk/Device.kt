@@ -300,9 +300,12 @@ internal object DeviceAdmin {
 
     /** Switches the status bar, with its pull-down shade and quick settings, off or on. Only a device owner may; false when it is not or was refused. */
     fun blockStatusBar(context: Context, blocked: Boolean): Boolean {
-        if (!isOwner(context)) return false
+        if (!isOwner(context)) {
+            Log.i("admin", "status bar not changed: not the device owner")
+            return false
+        }
         return try {
-            manager(context).setStatusBarDisabled(component(context), blocked)
+            manager(context).setStatusBarDisabled(component(context), blocked).also { Log.i("admin", "status bar ${if (blocked) "blocked" else "allowed"}: $it") }
         } catch (e: SecurityException) {
             Log.w("admin", "status bar change refused: ${e.message}")
             false
