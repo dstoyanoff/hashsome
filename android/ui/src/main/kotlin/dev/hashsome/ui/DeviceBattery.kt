@@ -132,7 +132,7 @@ internal class BatteryGlyphView(context: Context) : View(context) {
 }
 
 /**
- * The device's battery before the status dot, all the time: a battery with its level in color (red at 20% and under, warm under 50%, green from 50%),
+ * The device's battery before the clock in the top row, all the time: a battery with its level in color (red at 20% and under, warm under 50%, green from 50%),
  * a bolt over it while it charges, and the percentage beside it. Not there on a display with no battery to report: it takes no room.
  */
 open class BatteryIndicator(context: Context, private val battery: Store<BatteryStatus?> = DeviceBattery.state) : RowLayout(context) {
