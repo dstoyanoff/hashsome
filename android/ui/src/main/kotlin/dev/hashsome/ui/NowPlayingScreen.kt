@@ -530,52 +530,6 @@ internal class ScreenButton(context: Context, icon: Icon) : View(context) {
     }
 }
 
-/** The track's time on its artwork: how long it has played and how long is left, in a small dark pill. */
-internal class TimePill(context: Context) : View(context) {
-    var text: CharSequence = ""
-        set(value) {
-            if (field == value) return
-            field = value
-            requestLayout()
-            invalidate()
-        }
-
-    var sizeDp = 13f
-        set(value) {
-            field = value
-            requestLayout()
-            invalidate()
-        }
-
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val label = TextPaint(Paint.ANTI_ALIAS_FLAG)
-    private val rect = RectF()
-
-    private fun prepare() {
-        label.textSize = textPx(sizeDp)
-        label.typeface = theme.typefaces.forWeight(500)
-    }
-
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        prepare()
-        val h = dp(sizeDp * 2f).toInt()
-        val w = if (text.isEmpty()) 0 else Math.ceil(label.measureText(text, 0, text.length).toDouble()).toInt() + dp(sizeDp * 1.6f).toInt()
-        setMeasuredDimension(w, h)
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        if (text.isEmpty()) return
-        prepare()
-        paint.color = 0x66000000
-        rect.set(0f, 0f, width.toFloat(), height.toFloat())
-        canvas.drawRoundRect(rect, height / 2f, height / 2f, paint)
-        label.color = WHITE
-        label.textAlign = Paint.Align.CENTER
-        val fm = label.fontMetrics
-        canvas.drawText(text, 0, text.length, width / 2f, height / 2f - (fm.ascent + fm.descent) / 2f, label)
-    }
-}
-
 /** A thin bar in white over a faint track: how far along the track is (a drag seeks) or the volume (a drag sets it). */
 internal class ScreenBar(context: Context) : View(context) {
     var fraction = 0f
@@ -841,7 +795,6 @@ internal class NowPlayingScreenView(
         it.sizeDp = 14f
         it.color = withAlpha(WHITE, 0.58f)
     }
-    private val time = TimePill(context)
     private val previous = ScreenButton(context, UiIcons.skipPrevious).also {
         it.plain = true
         it.glyphDp = 26f
@@ -886,7 +839,6 @@ internal class NowPlayingScreenView(
         addView(backdrop)
         addView(ring)
         for (v in listOf(title, artist, album, previous, play, next, shuffle, volumeKey, upNextLabel)) addView(v)
-        addView(time)
         items.forEach { addView(it) }
         addView(back)
         addView(popover)
@@ -961,7 +913,7 @@ internal class NowPlayingScreenView(
         ring.length = if (seekable) duration!! else 0.0
         ring.fraction = fraction
         // Where the track is, in words as well as in the ring, as the main player writes it: the position and the length, on the artwork.
-        time.text = if (position != null && duration != null && duration > 0) "${MediaFormat.duration(position)} / ${MediaFormat.duration(duration)}" else ""
+        ring.timeText = if (position != null && duration != null && duration > 0) "${MediaFormat.duration(position)} / ${MediaFormat.duration(duration)}" else ""
         backdrop.running = control.playing.value || NowPlayingScreen.alwaysMoving(context)
 
         val can = availability()
@@ -1045,7 +997,6 @@ internal class NowPlayingScreenView(
         val ringLeft = w - pad - d - dp(8)
         val ringTop = top + (room - d) / 2
         place(ring, ringLeft, ringTop, d, d)
-        timeOn(ringLeft, ringTop, d)
         val x0 = pad
         val colW = ringLeft - dp(24) - x0
         for (t in listOf(title, artist, album)) t.align = Paint.Align.LEFT
@@ -1067,23 +1018,11 @@ internal class NowPlayingScreenView(
         val d = (blockTop - pad - under - dp(6)).coerceIn(dp(96), (w * 0.62f).toInt())
         var y = pad
         place(ring, (w - d) / 2, y, d, d)
-        timeOn((w - d) / 2, y, d)
         y += d + dp(6)
         place(title, pad, y, colW, dp(30)); y += dp(30)
         place(artist, pad, y, colW, dp(22)); y += dp(22)
         place(album, pad, y, colW, dp(18)); y += dp(18) + dp(26)
         controls(pad, y, colW, KEYS, 1f)
-    }
-
-    /** The time sits on the artwork, in the lower part of its picture. */
-    private fun timeOn(left: Int, top: Int, d: Int) {
-        time.sizeDp = if (d > dp(260)) 14f else 12f
-        time.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
-        val tw = time.measuredWidth
-        val th = time.measuredHeight
-        val cx = left + d / 2
-        val cy = top + (d * 0.74f).toInt()
-        time.layout(cx - tw / 2, cy - th / 2, cx + tw / 2, cy + th / 2)
     }
 
     /** The row of keys: shuffle, previous, play, next and the volume, the three of the transport larger than the two at the ends; [scale] sizes them all. */
