@@ -42,7 +42,10 @@ interface KioskActions {
     /** Restarts the device where [canRestartDevice] says it can be; otherwise it only logs. */
     fun restartDevice()
 
-    /** Opens the stock Shelly app and pauses keep-in-front (Shelly profiles only, see [canOpenStockApp]). */
+    /** The label of the button that opens the device's own UI: "Open Shelly app" or "Open tablet settings". */
+    val stockAppLabel: String get() = "Open Shelly app"
+
+    /** Opens the device's own UI (the stock Shelly app, or a tablet's settings) and pauses keep-in-front. */
     fun openStockApp()
 
     val canOpenStockApp: Store<Boolean>
@@ -77,7 +80,7 @@ class KioskState(
  * switch screen, switch night_mode, number night_idle (s), number brightness, switch auto_brightness, number min_brightness,
  * select dashboard (options = the app's dashboard ids), switch dashboard_switcher, select theme (auto|dark|light),
  * sensor illuminance (lx), binary_sensor occupancy, binary_sensor sleeping, sensor page, sensor link (diagnostic),
- * buttons wake/sleep/reload/restart_app, open_stock_app (Shelly profiles) and restart_device only where the device can be rebooted.
+ * buttons wake/sleep/reload/restart_app, open_stock_app (the Shelly app, or a tablet's settings) and restart_device only where the device can be rebooted.
  * Every `Settings` change is published back, so HA and the settings sheet always agree.
  */
 class MqttBridge(
@@ -268,7 +271,7 @@ class MqttBridge(
             ),
             Component("restart_app", "button", "Restart app", describe = { put("payload_press", "PRESS") }, command = { actions.restartApp() }),
             Component(
-                "open_stock_app", "button", "Open Shelly app", describe = { put("payload_press", "PRESS") },
+                "open_stock_app", "button", actions.stockAppLabel, describe = { put("payload_press", "PRESS") },
                 command = { actions.openStockApp() },
                 offered = { actions.canOpenStockApp.value },
             ),

@@ -88,7 +88,7 @@ class KioskService : Service() {
         val presence = profile.presence(this, sched)
         presence.start()
         closers += { presence.stop() }
-        val night = NightMode(Settings, presence, screen, sched)
+        val night = NightMode(Settings, presence, screen, sched, powerKeySleeps = profile.powerKeySleeps)
         closers += { night.close() }
         val brightness = BrightnessControl(Settings, presence, screen)
         brightness.scheduler = sched

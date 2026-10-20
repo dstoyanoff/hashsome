@@ -137,7 +137,7 @@ private class SheetContent(
         textField("Device id", settings.deviceId, { it ?: "" }, { it.trim().ifEmpty { null } }, clearable = true)
         textField("Device name", settings.deviceName, { it ?: "" }, { it.trim().ifEmpty { null } }, clearable = true)
         select("Profile", listOf("auto") + listOf(DeviceProfile.ShellyStargate, DeviceProfile.ShellyJenna, DeviceProfile.Generic).map { it.id }, settings.profileOverride, { it ?: "auto" }, { if (it == "auto") null else it })
-        val stock = button("Open Shelly app") { actions.openStockApp() }
+        val stock = button(actions.stockAppLabel) { actions.openStockApp() }
         binders += { actions.canOpenStockApp.listenNow { stock.visibility = if (it) View.VISIBLE else View.GONE } }
         buttons(
             button("Reload (reconnect)", primary = true) { actions.reload() },

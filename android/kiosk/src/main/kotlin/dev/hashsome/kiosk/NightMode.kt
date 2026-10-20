@@ -25,7 +25,14 @@ sealed interface NightState {
  * until the next touch or proximity (the state stays [NightState.Day]); [wake] switches it on and, at night, starts the
  * idle timer again.
  */
-class NightMode(private val settings: Settings, private val presence: Presence, private val screen: Screen, private val scheduler: Scheduler) {
+class NightMode(
+    private val settings: Settings,
+    private val presence: Presence,
+    private val screen: Screen,
+    private val scheduler: Scheduler,
+    /** See [DeviceProfile.powerKeySleeps]: a screen that goes off by itself in day mode stays off until woken. */
+    private val powerKeySleeps: Boolean = false,
+) {
     val state: Store<NightState> = Store(NightState.Day)
 
     /** A sleep asked for in day mode: the screen is off on purpose although the mode is [NightState.Day]. */
@@ -110,11 +117,13 @@ class NightMode(private val settings: Settings, private val presence: Presence, 
                 idle = null
                 state.set(NightState.NightAsleep)
             } else if (!dayAsleep) {
-                // Day is always on: the power key or the stock app's timeout does not get to keep it dark.
-                screen.wake()
+                // Day is always on: the power key or the stock app's timeout does not get to keep it dark, unless the device has a power key worth obeying.
+                if (powerKeySleeps) dayAsleep = true else screen.wake()
             }
-        } else if (settings.night.value && state.value == NightState.NightAsleep) {
-            armIdle()
+        } else {
+            // Lit again (a touch, the double tap of the firmware, Home Assistant): no longer asleep.
+            dayAsleep = false
+            if (settings.night.value && state.value == NightState.NightAsleep) armIdle()
         }
     }
 
