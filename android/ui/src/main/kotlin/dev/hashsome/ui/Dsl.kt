@@ -507,11 +507,12 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
      * The full player: the player on top and, unless [lists] is false, under it its library and queue as tabs. A page that shows them
      * beside the player (as `mediaBrowser` and `mediaQueue` in a card of their own) passes `lists = false`. It takes the height that is left of the page.
      */
-    fun mediaPlayerFull(ref: String, label: String, speakers: List<EntityRef> = emptyList(), expandable: Boolean? = null, lists: Boolean = true) {
+    fun mediaPlayerFull(ref: String, label: String, speakers: List<EntityRef> = emptyList(), expandable: Boolean? = null, lists: Boolean = true, screen: Boolean = false) {
         val full = MediaPlayerFullView(context, player(ref), label)
         full.speakers = speakers
         full.expandable = expandable ?: drawersExpandable
         full.lists = lists
+        full.fullScreen = screen
         place(full, grow = true)
     }
 
