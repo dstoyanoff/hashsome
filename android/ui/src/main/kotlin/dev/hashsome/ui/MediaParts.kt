@@ -1025,7 +1025,33 @@ internal class SearchBar(context: Context) : FrameLayout(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
     private val clear = GlyphButton(context, Ui.x, 16f, plain = true)
+    private val closeButton = GlyphButton(context, Ui.x, 16f, plain = true)
     private var silent = false
+
+    /** Called by the close button, shown when the field is [closable]. */
+    var onClose: (() -> Unit)? = null
+
+    /** Whether the field has a close button after its clear button (a search that opens from an icon, and closes back to it). */
+    var closable: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            closeButton.visibility = if (value) VISIBLE else GONE
+            val u = unitPx()
+            val room = if (value) dp(28) else 0
+            (input.layoutParams as? LayoutParams)?.rightMargin = Math.round(3 * u) + dp(24) + room
+            (clear.layoutParams as? LayoutParams)?.rightMargin = Math.round(1.5f * u) + room
+            requestLayout()
+        }
+
+    /** Puts the cursor in the field (the field is only focusable once pressed, so this is for opening it from an icon). */
+    fun focusInput() {
+        input.isFocusable = true
+        input.isFocusableInTouchMode = true
+        input.requestFocus()
+        (context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+            ?.showSoftInput(input, 0)
+    }
 
     init {
         setWillNotDraw(false)
@@ -1064,12 +1090,17 @@ internal class SearchBar(context: Context) : FrameLayout(context) {
         }
         clear.visibility = GONE
         clear.onClick = { input.setText("") }
+        closeButton.visibility = GONE
+        closeButton.onClick = { onClose?.invoke() }
         val u = unitPx()
         addView(input, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, android.view.Gravity.CENTER_VERTICAL).apply {
             leftMargin = Math.round(3 * u) + dp(16) + Math.round(2 * u)
             rightMargin = Math.round(3 * u) + dp(24)
         })
         addView(clear, LayoutParams(dp(28), dp(28), android.view.Gravity.END or android.view.Gravity.CENTER_VERTICAL).apply {
+            rightMargin = Math.round(1.5f * u)
+        })
+        addView(closeButton, LayoutParams(dp(28), dp(28), android.view.Gravity.END or android.view.Gravity.CENTER_VERTICAL).apply {
             rightMargin = Math.round(1.5f * u)
         })
     }

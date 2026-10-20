@@ -53,9 +53,9 @@ internal class PageLayout(context: Context) : ColumnLayout(context) {
 /**
  * Holds a page and scrolls it when its content is taller than the screen (the web's page scrolls). The page is measured at the
  * screen's height when its content fits (so a cell that fills, a spacer that grows and the centering all work), and at its content's
- * height when it does not.
+ * height when it does not, unless the page is [fixed] (then always at the screen's, and it never scrolls).
  */
-internal class PageScroll(context: Context, val page: PageLayout) : android.widget.ScrollView(context) {
+internal class PageScroll(context: Context, val page: PageLayout, private val fixed: Boolean = false) : android.widget.ScrollView(context) {
     init {
         isVerticalScrollBarEnabled = false
         overScrollMode = OVER_SCROLL_NEVER
@@ -66,7 +66,8 @@ internal class PageScroll(context: Context, val page: PageLayout) : android.widg
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         val room = measuredHeight - paddingTop - paddingBottom
-        if (MeasureSpec.getMode(heightMeasureSpec) != MeasureSpec.UNSPECIFIED && page.measuredHeight < room) {
+        // A fixed page is always the room's height: what is taller is squeezed or scrolls in its own card, and the page never scrolls.
+        if (MeasureSpec.getMode(heightMeasureSpec) != MeasureSpec.UNSPECIFIED && (fixed || page.measuredHeight < room)) {
             page.measure(
                 MeasureSpec.makeMeasureSpec(measuredWidth - paddingLeft - paddingRight, MeasureSpec.EXACTLY),
                 MeasureSpec.makeMeasureSpec(room, MeasureSpec.EXACTLY),
@@ -153,8 +154,9 @@ internal class PageFrame(
     private val leftInsetDp: Int,
     /** The gap after the header, in spacing units: the page's column's own. */
     private val gapUnits: Int,
+    fixed: Boolean = false,
 ) : ViewGroup(context) {
-    internal val scroll = PageScroll(context, page).also {
+    internal val scroll = PageScroll(context, page, fixed).also {
         it.clipToPadding = true
     }
 

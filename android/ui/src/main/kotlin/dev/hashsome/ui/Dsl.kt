@@ -32,8 +32,11 @@ enum class Motion { Full, Light, None }
 @DslMarker
 annotation class HashsomeDsl
 
-/** One page of a dashboard: its address (empty for the home page), its title and icon in the navigation, and how it is built. */
-data class PageSpec(val path: String, val title: String, val icon: Icon, val build: PageScope.() -> Unit)
+/**
+ * One page of a dashboard: its address (empty for the home page), its title and icon in the navigation, and how it is built. A [fixed]
+ * page is laid out in exactly the room the screen gives it and never scrolls: what is taller (a list in a card) scrolls inside its card.
+ */
+data class PageSpec(val path: String, val title: String, val icon: Icon, val fixed: Boolean = false, val build: PageScope.() -> Unit)
 
 /** A dashboard the top bar's switcher offers: the dashboard, its label and icon. */
 data class DashboardOption(val dashboard: Dashboard, val label: String, val icon: Icon)
@@ -48,7 +51,8 @@ abstract class Dashboard(val id: String, val motion: Motion = Motion.Full, val i
     /** The chrome around the pages (navigation, top bar). The default has none. */
     open fun shell(s: ShellScope) {}
 
-    protected fun page(path: String, title: String, icon: Icon, build: PageScope.() -> Unit): PageSpec = PageSpec(path, title, icon, build)
+    /** A page. [fixed]: laid out in the screen's height and never scrolled as a whole (the web's page with `min-height: 0` and hidden overflow), for a page whose lists scroll in their cards. */
+    protected fun page(path: String, title: String, icon: Icon, fixed: Boolean = false, build: PageScope.() -> Unit): PageSpec = PageSpec(path, title, icon, fixed, build)
 }
 
 /** The chrome of a dashboard: what is drawn around its pages. A dashboard owns its whole layout, so this is optional. */
@@ -136,7 +140,8 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
             it.align = align
             it.justify = justify
         }
-        nest(layout, flex(grow, minHeight, marginBottom, weight), build)
+        // What takes the room that is left also gives way when there is less than it would like (the web's `minHeight: 0`).
+        nest(layout, flex(grow, minHeight, marginBottom, weight).also { it.shrink = grow || weight != null }, build)
     }
 
     fun row(
@@ -154,7 +159,7 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
             it.align = align
             it.justify = justify
         }
-        nest(layout, flex(grow, minHeight, marginBottom, weight), build)
+        nest(layout, flex(grow, minHeight, marginBottom, weight).also { it.shrink = grow || weight != null }, build)
     }
 
     fun grid(columns: Int, gap: Int = 3, build: PageScope.() -> Unit) {
@@ -483,17 +488,26 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         place(column, grow = fill)
     }
 
-    /** The full player: the player on top and under it its library and queue as tabs. It takes the height that is left of the page. */
-    fun mediaPlayerFull(ref: String, label: String, speakers: List<EntityRef> = emptyList(), expandable: Boolean = false) {
+    /**
+     * The full player: the player on top and, unless [lists] is false, under it its library and queue as tabs. A page that shows them
+     * beside the player (as `mediaBrowser` and `mediaQueue` in a card of their own) passes `lists = false`. It takes the height that is left of the page.
+     */
+    fun mediaPlayerFull(ref: String, label: String, speakers: List<EntityRef> = emptyList(), expandable: Boolean = false, lists: Boolean = true) {
         val full = MediaPlayerFullView(context, player(ref), label)
         full.speakers = speakers
         full.expandable = expandable
+        full.lists = lists
         place(full, grow = true)
     }
 
-    /** A player's own library: shelves as tabs, search, and rows to open and play. It takes the height that is left of the page. */
-    fun mediaBrowser(ref: String) {
-        place(MediaBrowserView(context, MediaBrowserControl(handle(ref, EntityKind.MediaPlayer), scope)), grow = true)
+    /**
+     * A player's own library: shelves as tabs, search, and rows to open and play. It takes the height that is left of the page. [search]
+     * says how search is offered: a field above the list, or an icon at the end of the row of tabs that becomes the field (the web's `search="icon"`).
+     */
+    fun mediaBrowser(ref: String, search: SearchMode = SearchMode.Bar) {
+        val view = MediaBrowserView(context, MediaBrowserControl(handle(ref, EntityKind.MediaPlayer), scope))
+        view.searchMode = search
+        place(view, grow = true)
     }
 
     /** A player's queue: what has played, the track playing, and what comes next, which can be put in another order. */

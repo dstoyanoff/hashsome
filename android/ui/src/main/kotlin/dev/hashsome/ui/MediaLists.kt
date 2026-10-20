@@ -177,6 +177,9 @@ internal fun isActive(item: BrowseItem, player: MediaPlayerEntity?): Boolean {
  * at a time. Tap a folder to open it, a track to play it, or the play button of an album or playlist to play all of it; opened, the
  * chosen tab is the way back (and so is a swipe to the right), and Play, Shuffle and Add to queue act on the whole.
  */
+/** How a library offers search: a field above the list ([Bar]), or an icon at the end of the row of tabs that becomes the field when pressed ([Icon]). */
+enum class SearchMode { Bar, Icon }
+
 open class MediaBrowserView private constructor(context: Context, lazyControl: Lazy<MediaBrowserControl>, @Suppress("UNUSED_PARAMETER") marker: Unit) :
     BoundView(context) {
     constructor(context: Context, control: MediaBrowserControl) : this(context, lazyOf(control), Unit)
@@ -186,6 +189,16 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
         this(context, lazy(LazyThreadSafetyMode.NONE) { MediaBrowserControl(handle, scope) }, Unit)
 
     val control: MediaBrowserControl by lazyControl
+
+    /** How search is offered; set before the view is shown. With [SearchMode.Icon], a library without tabs still gets the field above its list. */
+    var searchMode: SearchMode = SearchMode.Bar
+
+    /** Whether the field is open from the icon (it also stays while a search has results). */
+    private var searchOpen = false
+
+    private val searchRule = View(context)
+    private val searchButton = GlyphButton(context, Ui.search, 18f).also { it.sizeDp = 30 }
+    private val searchTrigger = RowLayout(context).also { it.gap = 2 }
 
     private val column = ColumnLayout(context).also { it.gap = 3 }
     private val header = RowLayout(context).also { it.gap = 2 }
@@ -218,6 +231,20 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
         area.addView(scroll, FrameLayout.LayoutParams(-1, -1))
         area.addView(skeleton, FrameLayout.LayoutParams(-1, -2))
         area.addView(note, FrameLayout.LayoutParams(-1, -2))
+        searchTrigger.addView(searchRule, FlexParams(dp(1), dp(20)))
+        searchTrigger.addView(searchButton, FlexParams(dp(30), dp(30)))
+        searchButton.contentDescription = "Search"
+        searchButton.onClick = {
+            searchOpen = true
+            render()
+            search.focusInput()
+        }
+        search.onClose = {
+            searchOpen = false
+            search.setText("")
+            control.search("")
+            render()
+        }
         column.addView(header, across())
         column.addView(search, across())
         column.addView(tabsRow, across())
@@ -264,12 +291,18 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
         header.visibility = if (tabs) GONE else VISIBLE
         back.visibility = if (s.stack.isNotEmpty()) VISIBLE else GONE
         heading.text = s.stack.lastOrNull()?.title ?: "Library"
-        search.visibility = if (caps?.search == true) VISIBLE else GONE
+        // `Icon`: the field is closed until the icon is pressed, and then replaces the row of tabs (until there are results to narrow by kind).
+        val iconMode = searchMode == SearchMode.Icon && caps?.search == true && tabs
+        val field = iconMode && (searchOpen || s.search != null)
+        search.visibility = if (caps?.search != true) GONE else if (iconMode && !field) GONE else VISIBLE
+        search.closable = iconMode
+        searchRule.setBackgroundColor(theme.palette.border)
+        searchTrigger.visibility = if (iconMode && !field && !inside) VISIBLE else GONE
         // What the field shows follows the library: opening something or going back clears it.
         val typed = search.input.text.toString()
         if (s.search == null && typed.isNotBlank()) search.setText("") else if (s.search != null && typed != s.search) search.setText(s.search!!)
 
-        tabsRow.visibility = if (tabs) VISIBLE else GONE
+        tabsRow.visibility = if (tabs && !(field && s.search == null)) VISIBLE else GONE
         if (tabs) {
             if (s.search != null && s.kinds.isNotEmpty()) {
                 chips.chips = s.kinds.map { ChipRowView.Chip(MediaFormat.kindLabel(it)) }
@@ -293,6 +326,11 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
             home.addView(actions, wrap())
         }
         setActions(if (inside) s.stack.last().item else null)
+        // The search icon is always the last thing in the row.
+        if (searchTrigger.parent !== tabsRow || tabsRow.getChildAt(tabsRow.childCount - 1) !== searchTrigger) {
+            (searchTrigger.parent as? ViewGroup)?.removeView(searchTrigger)
+            tabsRow.addView(searchTrigger, wrap())
+        }
         scroll.onSwipeBack = if (inside || s.stack.isNotEmpty()) ({ control.back(); Unit }) else null
         content(s)
     }
