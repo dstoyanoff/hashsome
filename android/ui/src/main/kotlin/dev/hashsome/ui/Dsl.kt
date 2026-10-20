@@ -189,6 +189,27 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         nest(GridLayout(context, columns).also { it.gap = gap }, flex(), build)
     }
 
+    /**
+     * A column that scrolls on its own (no bar) when its children are taller than the room it is given: the rest of the page stays where it is.
+     * [grow] and [weight] are as a [column]'s; it needs a height to scroll in, so it goes in a [fixed][PageSpec.fixed] page's row or column.
+     */
+    fun scroll(gap: Int = 0, grow: Boolean = false, weight: Float? = null, build: PageScope.() -> Unit) {
+        val column = ColumnLayout(context).also { it.gap = gap }
+        val scroller = ScrollView(context).also {
+            it.isVerticalScrollBarEnabled = false
+            it.overScrollMode = View.OVER_SCROLL_NEVER
+            it.clipChildren = false
+            it.addView(column, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+        stack.last().addView(scroller, flex(grow = grow, weight = weight).also { it.shrink = grow || weight != null })
+        stack += column
+        try {
+            build()
+        } finally {
+            stack.removeAt(stack.size - 1)
+        }
+    }
+
     /** A 12-column board; its children are [cell]s. It takes the height that is left of the page. */
     fun board(columns: Int = 12, gap: Int = 3, build: PageScope.() -> Unit) {
         nest(BoardLayout(context, columns).also { it.gap = gap }, flex(grow = true), build)
