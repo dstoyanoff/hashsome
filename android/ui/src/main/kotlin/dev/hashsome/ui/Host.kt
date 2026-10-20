@@ -500,13 +500,17 @@ open class DashboardActivity : Activity() {
         }
     }
 
+    private val batteryAlerts by lazy { LowBatteryAlerts(this) }
+
     override fun onResume() {
         super.onResume()
         switch?.start(Hashsome.settings.dashboard)
         Hashsome.screenPolicy.onResume(this)
+        batteryAlerts.start()
     }
 
     override fun onPause() {
+        batteryAlerts.stop()
         switch?.pause()
         Hashsome.screenPolicy.onPause(this)
         super.onPause()
