@@ -81,4 +81,5 @@ Statuses: `native` (a Kotlin counterpart exists; `native:<Name>` when it is name
 | `FormField`        | a form control of the settings sheet (the web's debug menu uses its ChipRow instead)                                                                             |
 | `DrawerHost`       | the web's single EntityDrawer is internal to @hashsome/ui; this is its host (a drawer, or a sheet on a small screen) that a readout, a chip or a held tile opens |
 | `SeriesChartView`  | the web's SeriesChart, SeriesSample and RangeSwitcher are internal to @hashsome/ui; this is the series chart with its range switcher                             |
+| `NowPlayingScreen` | a full-screen now-playing layout for the wall displays (large artwork, a backdrop of its colors, up next); the web has no counterpart                            |
 | `SensorDrawerBody` | the web's sensor drawer (SensorDetailBody and SensorHistory) is internal to SensorReadout; this is its body                                                      |

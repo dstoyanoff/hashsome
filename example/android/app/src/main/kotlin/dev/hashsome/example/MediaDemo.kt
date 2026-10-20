@@ -57,7 +57,7 @@ object MediaDemo : Dashboard("media", motion = Motion.Light, idleReturn = false)
 
     private fun PageScope.columns() {
         row(gap = 3, grow = true, align = Align.Stretch) {
-            mediaPlayerColumn(LIVING, "Living room", overlays = true, speakers = SPEAKERS)
+            mediaPlayerColumn(LIVING, "Living room", overlays = true, speakers = SPEAKERS, screen = true)
             mediaPlayerColumn(OFFICE, "Office", overlays = true, speakers = SPEAKERS)
             mediaPlayerColumn(GARAGE, "Garage", overlays = true)
         }

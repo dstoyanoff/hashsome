@@ -497,6 +497,9 @@ open class MediaPlayerColumnView(
     /** The panels it opens have a button that widens them (off by default: a small display has no use for it). */
     var expandable: Boolean = false
 
+    /** A tap on the artwork opens the full-screen player ([NowPlayingScreen]) instead of the player's panel. */
+    var fullScreen: Boolean = false
+
     /** The speakers that may be grouped with this player; empty for any it can be grouped with. Set before the view is shown. */
     var speakers: List<EntityRef> = emptyList()
 
@@ -542,11 +545,15 @@ open class MediaPlayerColumnView(
             null
         }
         val panel = if (overlays) {
-            NowPlayingView(context, control, label, queue, shuffleAtTitle = true, leading = browse, extra = queueButton, speakers = pill)
+            NowPlayingView(
+                context, control, label, queue, shuffleAtTitle = true, leading = browse, extra = queueButton, speakers = pill,
+                // The artwork opens the full-screen player when asked to; otherwise it is not a key here (the keys beside it open the panels).
+                onOpenArtwork = if (fullScreen) ({ NowPlayingScreen.open(context, control, label) }) else null,
+            )
         } else {
             NowPlayingView(
                 context, control, label, queue, shuffleAtTitle = false, extra = browse, speakers = pill,
-                onOpenArtwork = { openPlayer(context, control, label, speakers, expandable) },
+                onOpenArtwork = { if (fullScreen) NowPlayingScreen.open(context, control, label) else openPlayer(context, control, label, speakers, expandable) },
             )
         }
         addView(panel, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))

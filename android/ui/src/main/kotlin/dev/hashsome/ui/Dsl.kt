@@ -485,7 +485,7 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
     /**
      * The player as an upright card for a narrow column: art in a ring that shows (and seeks) the position, title, transport and a
      * volume bar. With [overlays] its library and queue open as panels of their own; [fill] takes all the height the parent gives it.
-     * [speakers] are the players that may be grouped with this one. [expandable] gives the panels it opens a button that widens them (the tablets').
+     * [speakers] are the players that may be grouped with this one. [expandable] gives the panels it opens a button that widens them (the tablets'). [screen] makes a tap on the artwork open the full-screen player.
      */
     fun mediaPlayerColumn(
         ref: String,
@@ -494,10 +494,12 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         fill: Boolean = true,
         speakers: List<EntityRef> = emptyList(),
         expandable: Boolean? = null,
+        screen: Boolean = false,
     ) {
         val column = MediaPlayerColumnView(context, player(ref), label, overlays, fill)
         column.speakers = speakers
         column.expandable = expandable ?: drawersExpandable
+        column.fullScreen = screen
         place(column, grow = fill)
     }
 

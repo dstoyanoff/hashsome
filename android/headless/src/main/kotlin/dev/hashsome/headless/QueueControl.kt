@@ -137,3 +137,12 @@ class QueueControl(val handle: EntityHandle<MediaPlayerEntity>, val scope: Scope
         const val REFRESH_AFTER_MS = 400L
     }
 }
+
+/**
+ * What plays after the track that is playing: up to [count] items that follow the one marked current. A queue that has no current track
+ * (not read yet, or it ended) offers its first items.
+ */
+fun QueueState.upNext(count: Int): List<QueueItem> {
+    val at = items.indexOfFirst { it.current }
+    return (if (at >= 0) items.drop(at + 1) else items).take(count.coerceAtLeast(0))
+}

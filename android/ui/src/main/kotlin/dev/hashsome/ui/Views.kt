@@ -584,6 +584,12 @@ open class RingView(context: Context) : View(context) {
     /** Whether dragging round the ring seeks. */
     var seekable: Boolean = false
 
+    /** Colors of the ring's parts when they are not the theme's: the track, the progress arc, the hairline inside it and the disc under the picture. */
+    var trackColor: Int? = null
+    var progressColor: Int? = null
+    var hairlineColor: Int? = null
+    var discColor: Int? = null
+
     /** The position under the finger while seeking, 0..1. */
     var onSeekPreview: ((Float) -> Unit)? = null
 
@@ -615,10 +621,10 @@ open class RingView(context: Context) : View(context) {
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = 3 * unit
         paint.strokeCap = Paint.Cap.BUTT
-        paint.color = p.border
+        paint.color = trackColor ?: p.border
         canvas.drawCircle(cx, cy, 47 * unit, paint)
         if (fraction > 0f) {
-            paint.color = p.accent
+            paint.color = progressColor ?: p.accent
             paint.strokeCap = Paint.Cap.ROUND
             rect.set(cx - 47 * unit, cy - 47 * unit, cx + 47 * unit, cy + 47 * unit)
             canvas.drawArc(rect, -90f, 360f * fraction.coerceAtMost(1f), false, paint)
@@ -627,11 +633,11 @@ open class RingView(context: Context) : View(context) {
         // The hairline circle 9% in, and the picture 14% in.
         paint.strokeCap = Paint.Cap.BUTT
         paint.strokeWidth = dp(1f)
-        paint.color = p.border
+        paint.color = hairlineColor ?: p.border
         canvas.drawCircle(cx, cy, 41 * unit - dp(0.5f), paint)
         val r = 36 * unit
         paint.style = Paint.Style.FILL
-        paint.color = p.surfaceRaised
+        paint.color = discColor ?: p.surfaceRaised
         canvas.drawCircle(cx, cy, r, paint)
         val b = bitmap
         val sh = shader
