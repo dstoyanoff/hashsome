@@ -83,6 +83,8 @@ internal class SpeakersPillView(context: Context, private val compact: Boolean, 
         it.padUnits = 3f
         it.gapUnits = 2f
         it.minWidthDp = 30
+        // On a card (not in a bar's row of keys) it is a ghost: no fill until pressed, as the web's text-only button.
+        it.flat = !compact
         it.onClick = onOpen
     }
 

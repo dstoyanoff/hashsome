@@ -219,13 +219,6 @@ internal class NowPlayingView(
         titles.addView(sub, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also { it.topMargin = Math.round(0.5f * unitPx()) })
         titles.addView(loadingLine, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also { it.topMargin = Math.round(0.5f * unitPx()) })
         panel.addView(titles, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        speakers?.let {
-            panel.addView(it, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also { p ->
-                p.align = Align.Center
-                // Close under the title block: the pill sits in the gap there.
-                p.topMargin = Math.round(unitPx())
-            })
-        }
         // Beside the title shuffle is a plain key, a glyph with no disc under it.
         titleRow.action = if (shuffleAtTitle) keys.shuffle else null
         val transport = RowLayout(context).also {
@@ -244,6 +237,12 @@ internal class NowPlayingView(
         panel.addView(transport, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         panel.addView(volumeRow, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         addView(panel, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        // The speakers pill is at the top left of the card, out of the way of the title block and the keys.
+        speakers?.let {
+            addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, android.view.Gravity.TOP or android.view.Gravity.START))
+            // The ring starts a little lower, so the pill does not touch its outline.
+            panel.setPadding(0, dp(14), 0, 0)
+        }
 
         ring.onPreview = { control.seek.drag(it) }
         ring.onCommit = { control.seek.commit(it) }
