@@ -111,7 +111,7 @@ class MqttBridgeTest {
         assertEquals(
             mapOf(
                 "screen" to "switch", "night_mode" to "switch", "night_idle" to "number", "brightness" to "number",
-                "auto_brightness" to "switch", "min_brightness" to "number", "dashboard" to "select", "server" to "text", "dashboard_switcher" to "switch",
+                "auto_brightness" to "switch", "min_brightness" to "number", "dashboard" to "select", "server" to "text", "update_url" to "text", "dashboard_switcher" to "switch",
                 "theme" to "select", "illuminance" to "sensor", "occupancy" to "binary_sensor", "sleeping" to "binary_sensor",
                 "page" to "sensor", "link" to "sensor", "wake" to "button", "sleep" to "button", "reload" to "button", "restart_app" to "button",
             ),
@@ -196,6 +196,22 @@ class MqttBridgeTest {
         assertEquals("offline", link.last("$root/brightness/usable")!!.payload)
         Settings.autoBrightness.set(false)
         assertEquals("online", link.last("$root/brightness/usable")!!.payload)
+    }
+
+    @Test
+    fun `home assistant can set or clear the update feed, and only to an address the updater reads`() {
+        val b = bridge()
+        b.start()
+        link.listener!!.onConnected()
+        link.receive("$root/update_url/set", "oci://10.4.5.1:5000/home-android")
+        assertEquals("oci://10.4.5.1:5000/home-android", Settings.updateUrl.value)
+        link.receive("$root/update_url/set", "garbage")
+        assertEquals("oci://10.4.5.1:5000/home-android", Settings.updateUrl.value)
+        link.receive("$root/update_url/set", "http://h/local/x")
+        assertEquals("http://h/local/x", Settings.updateUrl.value)
+        link.receive("$root/update_url/set", "")
+        assertEquals(null, Settings.updateUrl.value)
+        assertEquals("", link.last("$root/update_url/state")!!.payload)
     }
 
     @Test
