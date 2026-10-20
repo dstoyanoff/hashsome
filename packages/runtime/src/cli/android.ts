@@ -342,11 +342,6 @@ export function provisionCommands(
           ),
         ]
       : []),
-    // Lenovo's tablets draw a three-dot bar at the top after a swipe from the edge (Full Screen, Floating Window, Split Screen, Minimize): a way out of
-    // the kiosk. This setting hides it; it is in the secure settings, which only adb may write. Another make of tablet has no such setting, and ignores it.
-    ...(device.profile === 'generic'
-      ? [shell(device, 'settings', 'put', 'secure', 'ov_tbar_hide_flag', '1')]
-      : []),
     ...(device.profile === 'shelly-jenna'
       ? [
           shell(device, 'appops', 'set', SHELLY, 'SYSTEM_ALERT_WINDOW', 'deny'),
