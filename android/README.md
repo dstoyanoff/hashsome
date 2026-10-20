@@ -1,5 +1,7 @@
 # Hashsome for Android
 
+Putting the app on a display for the first time: [INSTALL.md](INSTALL.md).
+
 Native Android libraries that render Hashsome dashboards, as a client of the same runtime the web dashboards use
 (`/ws` and `/_hashsome/asset`). The backend, `@hashsome/core` and the integrations are untouched. One consumer app
 depends on these libraries and holds its dashboards in Kotlin, the way a web project holds its `dashboards/` folder.

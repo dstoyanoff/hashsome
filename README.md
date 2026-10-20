@@ -319,7 +319,7 @@ For wall displays where a WebView is too slow, `android/` holds Kotlin libraries
 (`dev.hashsome:client`, `headless`, `ui`, `kiosk` and `testing`, published to GitHub Packages at the same version as the
 npm packages) that render dashboards natively from the same server. You write a dashboard in Kotlin in
 your own Android app, list your displays in `devices.json`, and use `hashsome android build|deploy|provision`.
-[android/README.md](android/README.md) covers building them, `example/android` is a working app, and
+[android/INSTALL.md](android/INSTALL.md) is the first install of a display (and how it then updates from Home Assistant), [android/README.md](android/README.md) covers building them, `example/android` is a working app, and
 [android/PARITY.md](android/PARITY.md) says which web components have a native counterpart. The server
 side is unchanged.
 
