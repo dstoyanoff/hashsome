@@ -427,7 +427,6 @@ open class DashboardActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         hideSystemBars()
-        keepBarsHidden()
         Hashsome.screenPolicy.attach(this)
         Hashsome.connect()
         // The settings sheet, Home Assistant's select and a PROVISION broadcast all write `settings.dashboard`: whichever writes last
@@ -459,22 +458,6 @@ open class DashboardActivity : Activity() {
         return pickDashboard(Hashsome.app.dashboards, Hashsome.settings.dashboard.value) { Log.e("Hashsome", it) }
     }
 
-    /** Hides the bars again whenever they come back: a swipe from an edge reveals them, and a pinned device does not take them away by itself. */
-    private fun keepBarsHidden() {
-        val decor = window.decorView
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            decor.setOnApplyWindowInsetsListener { v, insets ->
-                if (insets.isVisible(WindowInsets.Type.systemBars())) v.postDelayed({ hideSystemBars() }, BARS_BACK_MS)
-                v.onApplyWindowInsets(insets)
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            decor.setOnSystemUiVisibilityChangeListener { flags ->
-                if (flags and View.SYSTEM_UI_FLAG_FULLSCREEN == 0) decor.postDelayed({ hideSystemBars() }, BARS_BACK_MS)
-            }
-        }
-    }
-
     private fun hideSystemBars() {
         @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
@@ -501,11 +484,6 @@ open class DashboardActivity : Activity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) hideSystemBars()
-    }
-
-    private companion object {
-        /** How long the bars are left after they come back before they go again, in ms: long enough for the swipe to be over. */
-        const val BARS_BACK_MS = 250L
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
