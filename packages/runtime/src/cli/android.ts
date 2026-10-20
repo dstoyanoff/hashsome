@@ -17,8 +17,9 @@ Builds the project's native Android app and puts it on the displays listed in de
 
 Commands:
   build       Build the release APK (./gradlew -p android assembleRelease)
-  publish     Copy the built APK and a latest.json into a folder any HTTP server can serve (Home Assistant's
-              /config/www, a static host); displays with "updates" set offer it as an update in Home Assistant
+  publish     Put the built APK where displays can find it: a folder any HTTP server can serve (Home Assistant's
+              /config/www, a static host) with a latest.json, or an OCI registry (Zot, Docker registry). Displays with
+              "updates" set offer it as an update in Home Assistant
   deploy      Install the APK on each device and hand it its settings (server, dashboard, ...)
   provision   deploy, plus the one-time permissions and kiosk set-up for a device
   uninstall   Have the app remove its own device admin, then uninstall it (a device admin blocks pm uninstall,
@@ -29,7 +30,8 @@ Commands:
   icons       Convert an icon pack's SVGs to drawables and a Kotlin object (hashsome android icons --help)
 
 Options (build, deploy, provision, uninstall, publish):
-  --to <dir>      publish: the feed folder (default android/dist)
+  --to <where>    publish: the feed folder (default android/dist), or a registry: oci://host:port/repository
+                  (ocis:// for HTTPS), which gets the release as an artifact tagged with its version code
   --notes <text>  publish: release notes shown in Home Assistant
   --device <id>   Only this device from devices.json
   --home          provision: also make the app the device's home screen
@@ -45,7 +47,8 @@ devices.json (project root):
      "dashboard": "bathroom", "server": "http://10.1.1.2:3000", "mqtt": "mqtt://10.1.1.2",
      "home": true }]
   profile: shelly-stargate | shelly-jenna | generic. dashboard, server, mqtt, updates and home are optional.
-  updates is the folder URL the published feed is served from, e.g. "http://10.1.1.2:8123/local/hashsome".
+  updates is the folder URL the published feed is served from, e.g. "http://10.1.1.2:8123/local/hashsome", or a
+  registry repository, e.g. "oci://10.1.1.3:5000/home-android".
   host is ip or ip:port (port 5555 if omitted); IPv6 is not supported.
 `;
 
@@ -670,8 +673,116 @@ export function releaseFeed(
   };
 }
 
-/** Copies the built APK to `<to>/<package>-<code>.apk` and writes `<to>/latest.json` beside it. */
-function publishRelease(apk: string, to: string, notes: string | undefined, dryRun: boolean) {
+export const OCI_CONFIG_TYPE = 'application/vnd.hashsome.android.config.v1+json';
+export const OCI_APK_TYPE = 'application/vnd.android.package-archive';
+const OCI_MANIFEST_TYPE = 'application/vnd.oci.image.manifest.v1+json';
+
+/** Whether `to` names an OCI registry repository: `oci://host:port/repository` (plain HTTP) or `ocis://...` (HTTPS). */
+export const isOciTarget = (to: string): boolean => /^ocis?:\/\//.test(to);
+
+/** `http(s)://host:port/v2/repository`, the root of the repository's registry API. */
+export function ociApi(to: string): string {
+  const secure = to.startsWith('ocis://');
+  const rest = to.replace(/^ocis?:\/\//, '').replace(/\/+$/, '');
+  const slash = rest.indexOf('/');
+  if (slash < 0) {
+    throw new Error(`"${to}" needs a repository: oci://host:port/<repository>.`);
+  }
+
+  return `${secure ? 'https' : 'http'}://${rest.slice(0, slash)}/v2/${rest.slice(slash + 1)}`;
+}
+
+const sha256Of = (bytes: Uint8Array): string =>
+  `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+
+/** The registry manifest of a release: the APK is the one layer, the version's facts are the config blob. Tagged with the version code. */
+export function ociRelease(
+  badge: { packageName: string; versionCode: number; versionName: string },
+  apk: Uint8Array,
+  notes: string | undefined,
+) {
+  const config = new TextEncoder().encode(
+    JSON.stringify({
+      packageName: badge.packageName,
+      versionName: badge.versionName,
+      versionCode: badge.versionCode,
+      ...(notes ? { notes } : {}),
+    }),
+  );
+
+  const manifest = {
+    schemaVersion: 2,
+    mediaType: OCI_MANIFEST_TYPE,
+    artifactType: OCI_CONFIG_TYPE,
+    config: { mediaType: OCI_CONFIG_TYPE, digest: sha256Of(config), size: config.length },
+    layers: [
+      {
+        mediaType: OCI_APK_TYPE,
+        digest: sha256Of(apk),
+        size: apk.length,
+        annotations: { 'org.opencontainers.image.title': `${badge.packageName}.apk` },
+      },
+    ],
+  };
+
+  return { config, manifest, tag: String(badge.versionCode) };
+}
+
+/** Pushes one blob unless the registry has it: a POST that opens an upload, then a PUT with the digest. */
+async function pushBlob(api: string, bytes: Uint8Array, digest: string): Promise<void> {
+  const have = await fetch(`${api}/blobs/${digest}`, { method: 'HEAD' });
+  if (have.ok) {
+    return;
+  }
+
+  const open = await fetch(`${api}/blobs/uploads/`, { method: 'POST' });
+  const where = open.headers.get('location');
+  if (open.status !== 202 || !where) {
+    throw new Error(`The registry would not open an upload (${open.status}).`);
+  }
+
+  const url = new URL(where, api);
+  url.searchParams.set('digest', digest);
+  const put = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: bytes as BodyInit,
+  });
+
+  if (put.status !== 201) {
+    throw new Error(`The registry refused a blob (${put.status}): ${await put.text()}`);
+  }
+}
+
+/** Pushes the release as an OCI artifact: its blobs, then the manifest under the version code as the tag. */
+async function pushRelease(
+  badge: { packageName: string; versionCode: number; versionName: string },
+  apk: Uint8Array,
+  to: string,
+  notes: string | undefined,
+): Promise<void> {
+  const api = ociApi(to);
+  const { config, manifest, tag } = ociRelease(badge, apk, notes);
+  await pushBlob(api, config, manifest.config.digest);
+  await pushBlob(api, apk, manifest.layers[0]!.digest);
+  const put = await fetch(`${api}/manifests/${tag}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': OCI_MANIFEST_TYPE },
+    body: JSON.stringify(manifest),
+  });
+
+  if (put.status !== 201) {
+    throw new Error(`The registry refused the release (${put.status}): ${await put.text()}`);
+  }
+
+  console.log(`Pushed ${api.replace('/v2/', '/')}:${tag}`);
+}
+
+/**
+ * Publishes the built APK. To a folder: copies it to `<to>/<package>-<code>.apk` and writes `<to>/latest.json` beside it. To a registry
+ * (`oci://host:port/repository`): pushes it as an artifact tagged with its version code.
+ */
+async function publishRelease(apk: string, to: string, notes: string | undefined, dryRun: boolean) {
   const aapt = findAapt();
   if (!aapt) {
     throw new Error('publish needs aapt (Android SDK build-tools): set ANDROID_HOME.');
@@ -684,6 +795,19 @@ function publishRelease(apk: string, to: string, notes: string | undefined, dryR
   }
 
   const bytes = readFileSync(apk);
+  if (isOciTarget(to)) {
+    const { tag } = ociRelease(badge, bytes, notes);
+    console.log(
+      `${dryRun ? '(dry run) ' : ''}${ociApi(to)}: ${badge.packageName} ${badge.versionName} (${tag}), ${bytes.length} bytes`,
+    );
+
+    if (!dryRun) {
+      await pushRelease(badge, bytes, to, notes);
+    }
+
+    return;
+  }
+
   const name = `${badge.packageName}-${badge.versionCode}.apk`;
   const feed = releaseFeed(
     badge,
@@ -1033,7 +1157,14 @@ export async function androidCommand(
       throw new Error(`No APK at ${APK}. Run \`hashsome android build\` first.`);
     }
 
-    publishRelease(apkFile, resolve(root, values.to ?? 'android/dist'), values.notes, dryRun);
+    const target = values.to !== undefined && isOciTarget(values.to) ? values.to : undefined;
+    await publishRelease(
+      apkFile,
+      target ?? resolve(root, values.to ?? 'android/dist'),
+      values.notes,
+      dryRun,
+    );
+
     return;
   }
 

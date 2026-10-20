@@ -57,11 +57,81 @@ object ReleaseFeed {
         )
     }
 
+    /** The newest release of the feed at [base]: a `latest.json` in a folder, or the newest tag of a registry repository. Throws when there is none. */
+    fun resolve(io: UpdateIO, base: String): Release =
+        if (OciFeed.handles(base)) OciFeed.latest(io, base) else parse(io.fetch(latestUrl(base)), base) ?: error("latest.json is not a release")
+
     /** Whether [release] is a version this install should move to: a higher code, for this package. */
     fun isNewer(release: Release, installedPackage: String, installedCode: Long): Boolean =
         (release.packageName.isEmpty() || release.packageName == installedPackage) && release.versionCode > installedCode
 
     private val SHA256 = Regex("[0-9a-f]{64}")
+}
+
+/**
+ * A release kept in an OCI registry (Zot, the Docker registry, GHCR) instead of a folder: `oci://host:port/repository` (plain HTTP, the
+ * address a LAN registry answers on) or `ocis://...` (HTTPS). The tags are version codes; a tag's manifest has the APK as its one layer
+ * (so its size and SHA-256 are the layer's) and a config blob `{packageName, versionName, versionCode, notes}`. `hashsome android
+ * publish --to oci://...` writes it; the app only needs anonymous GETs.
+ */
+object OciFeed {
+    const val CONFIG_TYPE = "application/vnd.hashsome.android.config.v1+json"
+    const val APK_TYPE = "application/vnd.android.package-archive"
+    private const val MANIFEST_TYPE = "application/vnd.oci.image.manifest.v1+json"
+
+    /** Whether [base] names a registry repository. */
+    fun handles(base: String): Boolean = base.trim().startsWith("oci://") || base.trim().startsWith("ocis://")
+
+    /** `http(s)://host:port/v2/repository`, the root of the repository's API. */
+    fun api(base: String): String {
+        val text = base.trim().trimEnd('/')
+        val secure = text.startsWith("ocis://")
+        val rest = text.removePrefix("ocis://").removePrefix("oci://")
+        val host = rest.substringBefore('/')
+        val repository = rest.substringAfter('/', "")
+        return "${if (secure) "https" else "http"}://$host/v2/$repository"
+    }
+
+    /** The highest version code among the tags of a `tags/list` answer; tags that are not a number (`latest`) are ignored. */
+    fun newestTag(tagsJson: String): String? = try {
+        val tags = JSONObject(tagsJson).optJSONArray("tags")
+        (0 until (tags?.length() ?: 0)).map { tags!!.getString(it) }.filter { it.toLongOrNull() != null }.maxByOrNull { it.toLong() }
+    } catch (_: Exception) {
+        null
+    }
+
+    /** The release a manifest and its config blob describe, or null when they are not one. */
+    fun release(base: String, manifestJson: String, configJson: String): Release? {
+        return try {
+            val layers = JSONObject(manifestJson).optJSONArray("layers") ?: return null
+            val layer = (0 until layers.length()).map { layers.getJSONObject(it) }.firstOrNull { it.optString("mediaType") == APK_TYPE } ?: return null
+            val digest = layer.optString("digest")
+            if (!digest.startsWith("sha256:")) return null
+            val config = JSONObject(configJson)
+            val code = config.optLong("versionCode", -1)
+            if (code <= 0) return null
+            Release(
+                packageName = config.optString("packageName", ""),
+                versionName = config.optString("versionName", code.toString()),
+                versionCode = code,
+                apkUrl = "${api(base)}/blobs/$digest",
+                sha256 = digest.removePrefix("sha256:").lowercase(),
+                size = layer.optLong("size", -1),
+                notes = config.optString("notes", "").ifBlank { null },
+            )
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Asks the registry for its newest release: the tags, then that tag's manifest and config. Throws when there is none. */
+    fun latest(io: UpdateIO, base: String): Release {
+        val api = api(base)
+        val tag = newestTag(io.fetch("$api/tags/list")) ?: error("the registry has no release")
+        val manifest = io.fetch("$api/manifests/$tag", MANIFEST_TYPE)
+        val configDigest = JSONObject(manifest).optJSONObject("config")?.optString("digest")?.takeIf { it.isNotEmpty() } ?: error("the release has no config")
+        return release(base, manifest, io.fetch("$api/blobs/$configDigest")) ?: error("the release in the registry is not a release")
+    }
 }
 
 sealed interface UpdateState {
@@ -83,8 +153,8 @@ sealed interface UpdateState {
 
 /** What the updater needs of the outside world, so the logic is a plain state machine. */
 interface UpdateIO {
-    /** The text at [url] (a `latest.json`), or throws. */
-    fun fetch(url: String): String
+    /** The text at [url] (a `latest.json`, or a registry's JSON when [accept] names the media type wanted), or throws. */
+    fun fetch(url: String, accept: String? = null): String
 
     /** Downloads [url] to a file and returns its path, calling [progress] with 0..100; throws on failure. */
     fun download(url: String, progress: (Int) -> Unit): String
@@ -165,7 +235,7 @@ class Updater(
         if (busy || state.value is UpdateState.Downloading || state.value is UpdateState.Installing) return
         busy = true
         background {
-            val result = runCatching { ReleaseFeed.parse(io.fetch(ReleaseFeed.latestUrl(base)), base) ?: error("latest.json is not a release") }
+            val result = runCatching { ReleaseFeed.resolve(io, base) }
             scheduler.post {
                 busy = false
                 result.fold(

@@ -22,8 +22,8 @@ import java.security.MessageDigest
 class AndroidUpdateIO(private val context: Context) : UpdateIO {
     private val dir: File get() = File(context.cacheDir, "updates").also { it.mkdirs() }
 
-    override fun fetch(url: String): String {
-        val c = open(url)
+    override fun fetch(url: String, accept: String?): String {
+        val c = open(url, accept)
         try {
             return c.inputStream.bufferedReader().use { it.readText() }
         } finally {
@@ -98,8 +98,9 @@ class AndroidUpdateIO(private val context: Context) : UpdateIO {
         }
     }
 
-    private fun open(url: String): HttpURLConnection {
+    private fun open(url: String, accept: String? = null): HttpURLConnection {
         val c = URL(url).openConnection() as HttpURLConnection
+        if (accept != null) c.setRequestProperty("Accept", accept)
         c.connectTimeout = 10_000
         c.readTimeout = 30_000
         c.useCaches = false
