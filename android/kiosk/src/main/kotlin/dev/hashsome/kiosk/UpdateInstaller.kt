@@ -31,34 +31,51 @@ class AndroidUpdateIO(private val context: Context) : UpdateIO {
         }
     }
 
+    /**
+     * Downloads to a file, resuming where it stopped (a `Range` request) when the connection stalls or drops, which a wall display on a weak
+     * 2.4 GHz link does: a few tries, each starting from what is already on disk. A server that ignores the range starts the file over.
+     */
     override fun download(url: String, progress: (Int) -> Unit): String {
         dir.listFiles()?.forEach { it.delete() }
         val target = File(dir, "update.apk")
-        val c = open(url)
-        try {
-            val total = c.contentLengthLong
-            var done = 0L
-            var shown = -1
-            c.inputStream.use { input ->
-                target.outputStream().use { output ->
-                    val buffer = ByteArray(64 * 1024)
-                    while (true) {
-                        val n = input.read(buffer)
-                        if (n < 0) break
-                        output.write(buffer, 0, n)
-                        done += n
-                        val percent = if (total > 0) (done * 100 / total).toInt() else 0
-                        if (percent != shown && percent % 5 == 0) {
-                            shown = percent
-                            progress(percent)
+        var done = 0L
+        var total = -1L
+        var shown = -1
+        var failure: java.io.IOException? = null
+        for (attempt in 1..DOWNLOAD_TRIES) {
+            val c = open(url, from = done)
+            try {
+                if (done > 0 && c.responseCode != HttpURLConnection.HTTP_PARTIAL) {
+                    done = 0
+                    target.delete()
+                }
+                if (total < 0) total = done + c.contentLengthLong
+                c.inputStream.use { input ->
+                    java.io.FileOutputStream(target, done > 0).use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        while (true) {
+                            val n = input.read(buffer)
+                            if (n < 0) break
+                            output.write(buffer, 0, n)
+                            done += n
+                            val percent = if (total > 0) (done * 100 / total).toInt() else 0
+                            if (percent != shown && percent % 5 == 0) {
+                                shown = percent
+                                progress(percent)
+                            }
                         }
                     }
                 }
+                if (total <= 0 || done >= total) return target.path
+                failure = java.io.IOException("the download ended at $done of $total bytes")
+            } catch (e: java.io.IOException) {
+                failure = e
+            } finally {
+                c.disconnect()
             }
-        } finally {
-            c.disconnect()
+            Log.e("hashsome", "I update: download stopped at $done of $total (try $attempt of $DOWNLOAD_TRIES): ${failure?.message}")
         }
-        return target.path
+        throw failure ?: java.io.IOException("the download failed")
     }
 
     override fun sha256(path: String): String {
@@ -98,11 +115,16 @@ class AndroidUpdateIO(private val context: Context) : UpdateIO {
         }
     }
 
-    private fun open(url: String, accept: String? = null): HttpURLConnection {
+    private companion object {
+        const val DOWNLOAD_TRIES = 6
+    }
+
+    private fun open(url: String, accept: String? = null, from: Long = 0): HttpURLConnection {
         val c = URL(url).openConnection() as HttpURLConnection
         if (accept != null) c.setRequestProperty("Accept", accept)
+        if (from > 0) c.setRequestProperty("Range", "bytes=$from-")
         c.connectTimeout = 10_000
-        c.readTimeout = 30_000
+        c.readTimeout = 15_000
         c.useCaches = false
         if (c.responseCode !in 200..299) {
             c.disconnect()
