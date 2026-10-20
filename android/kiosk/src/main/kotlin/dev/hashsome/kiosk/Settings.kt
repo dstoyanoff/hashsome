@@ -46,6 +46,9 @@ object Settings : HostSettings {
 
     /** Whether the top bar's dashboard switcher shows (default on for the generic profile, off for the Shelly ones). */
     override val switcherEnabled: Store<Boolean> = Store(true)
+
+    /** Whether the pull-down shade is switched off: only where the app is the device owner (nothing happens elsewhere). */
+    val blockPullDown: Store<Boolean> = Store(true)
     override val theme: Store<ThemeChoice> = Store(ThemeChoice.Auto)
 
     /** Percent, 0..100; each profile maps it onto the panel's own range (see [panelLevel]), and 0 % is still lit. */
@@ -135,6 +138,7 @@ object Settings : HostSettings {
         debug.touch.listenNow { dev.hashsome.ui.TouchDebug.enabled = it }
         // Read after the profile override is in.
         flag("switcherEnabled", switcherEnabled, isGeneric())
+        flag("blockPullDown", blockPullDown, true)
         persisting = cancels
     }
 

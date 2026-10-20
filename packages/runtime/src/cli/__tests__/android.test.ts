@@ -193,6 +193,18 @@ describe('provisionCommands', () => {
     ]);
   });
 
+  test('owner: true makes the app the device owner, after the admin and before the start, and tolerates a refusal', () => {
+    const lines = shellLines(device({ owner: true }));
+    const owner = lines.findIndex((l) => l.includes('set-device-owner'));
+    expect(lines[owner]).toContain(
+      `dpm set-device-owner ${PKG}/dev.hashsome.kiosk.HashsomeDeviceAdmin || echo`,
+    );
+
+    expect(owner).toBeGreaterThan(lines.findIndex((l) => l.startsWith('dpm set-active-admin')));
+    expect(owner).toBeLessThan(lines.findIndex((l) => l.startsWith('am start')));
+    expect(shellLines(device()).some((l) => l.includes('set-device-owner'))).toBe(false);
+  });
+
   test('only a generic device has its lock screen switched off', () => {
     for (const profile of ['shelly-stargate', 'shelly-jenna'] as const) {
       expect(shellLines(device({ profile })).some((l) => l.includes('locksettings'))).toBe(false);

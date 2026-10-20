@@ -166,6 +166,8 @@ internal object Kiosk {
 
         override val stockAppLabel: String get() = hostAppLabel
 
+        override val isDeviceOwner: Boolean get() = Kiosk.appContext?.let { DeviceAdmin.isOwner(it) } == true
+
         override fun openStockApp() = openStockApp(Kiosk.activity?.get() ?: Kiosk.appContext)
 
         override val canRestartDevice: Store<Boolean> = rebootAvailable

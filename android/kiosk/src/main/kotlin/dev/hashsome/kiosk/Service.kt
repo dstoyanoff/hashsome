@@ -111,6 +111,8 @@ class KioskService : Service() {
 
         Kiosk.probeReboot(this, profile)
         closers += { Kiosk.releaseReboot() }
+        // As the device owner the pull-down shade can be switched off; anywhere else this does nothing.
+        closers += Settings.blockPullDown.listenNow { DeviceAdmin.blockStatusBar(this, it) }
 
         val bridge = MqttBridge(Settings, state, Kiosk.actions, PahoMqttLink(sched), Hashsome.app.dashboards.map { it.id })
         bridge.scheduler = sched

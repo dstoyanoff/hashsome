@@ -295,9 +295,29 @@ internal object DeviceAdmin {
         false
     }
 
-    /** A non-test admin cannot be removed from adb, nor can the app be uninstalled while it is active (spike S1f). */
+    /** Whether this app is the device owner (`dpm set-device-owner`, which Android only allows on a device with no accounts): it can then switch the status bar off. */
+    fun isOwner(context: Context): Boolean = manager(context).isDeviceOwnerApp(context.packageName)
+
+    /** Switches the status bar, with its pull-down shade and quick settings, off or on. Only a device owner may; false when it is not or was refused. */
+    fun blockStatusBar(context: Context, blocked: Boolean): Boolean {
+        if (!isOwner(context)) return false
+        return try {
+            manager(context).setStatusBarDisabled(component(context), blocked)
+        } catch (e: SecurityException) {
+            Log.w("admin", "status bar change refused: ${e.message}")
+            false
+        }
+    }
+
+    /** A non-test admin cannot be removed from adb, nor can the app be uninstalled while it is active (spike S1f); a device owner has to give that up first, and the status bar back. */
+    @Suppress("DEPRECATION")
     fun remove(context: Context): Boolean {
-        if (!isActive(context)) return false
+        val owner = isOwner(context)
+        if (owner) {
+            blockStatusBar(context, false)
+            manager(context).clearDeviceOwnerApp(context.packageName)
+        }
+        if (!isActive(context)) return owner
         manager(context).removeActiveAdmin(component(context))
         return true
     }

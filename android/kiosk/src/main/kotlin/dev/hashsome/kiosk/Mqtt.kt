@@ -50,6 +50,9 @@ interface KioskActions {
 
     val canOpenStockApp: Store<Boolean>
 
+    /** Whether the app is the device owner, so it can switch the pull-down shade off (see `Settings.blockPullDown`). */
+    val isDeviceOwner: Boolean get() = false
+
     /** Whether [restartDevice] has a way to work (probed once the service runs); false until then. */
     val canRestartDevice: Store<Boolean>
 
@@ -223,6 +226,11 @@ class MqttBridge(
                     val valid = address.startsWith("oci://") || address.startsWith("ocis://") || address.startsWith("http://") || address.startsWith("https://")
                     if (address.isEmpty()) settings.updateUrl.set(null) else if (valid) settings.updateUrl.set(address)
                 },
+            ),
+            Component(
+                "block_pull_down", "switch", "Block pull-down shade", value = { onOff(settings.blockPullDown.value) }, stores = listOf(settings.blockPullDown),
+                command = { parseOnOff(it)?.let(settings.blockPullDown::set) },
+                offered = { actions.isDeviceOwner },
             ),
             Component("dashboard_switcher", "switch", "Dashboard switcher", value = { onOff(settings.switcherEnabled.value) }, stores = listOf(settings.switcherEnabled), command = {
                 parseOnOff(it)?.let(settings.switcherEnabled::set)
