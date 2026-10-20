@@ -140,11 +140,12 @@ object DrawerHost {
     }
 
     private fun scrolled(context: Context, body: View): View = ScrollView(context).also {
-        it.isFillViewport = false
+        // A body as tall as the panel when it is shorter, so one that pins something to its bottom (the history) has a bottom to pin to.
+        it.isFillViewport = true
         it.isVerticalScrollBarEnabled = false
         it.tag = "scroll body"
         it.overScrollMode = View.OVER_SCROLL_NEVER
-        it.addView(body, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
+        it.addView(body, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
     }
 }
 

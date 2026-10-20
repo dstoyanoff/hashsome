@@ -396,9 +396,43 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         }
     }
 
-    /** A thermostat tile over [handle], which may be `EntityHandle.fixed(HandleState.Unavailable(null))` for a room that has none. */
-    fun climateTile(handle: EntityHandle<dev.hashsome.client.ClimateEntity>, label: String) {
-        put(ClimateTileView(context, ClimateControl(handle), label))
+    /**
+     * A thermostat: the room's temperature, a button for the mode and the target with a step each side. Hold the tile for the drawer (the mode,
+     * the target, the presets, what it did lately and, with [power] and [energy], what it draws). [icon] is a thermometer when null.
+     */
+    fun climateTile(ref: String, label: String, icon: Icon? = null, drawer: Boolean = true, power: String? = null, energy: String? = null) {
+        climateTile(handle(ref, EntityKind.Climate), label, icon, drawer, power, energy)
+    }
+
+    /** A thermostat tile over [handle], which may be `EntityHandle.fixed(HandleState.Unavailable(null))` for a room that has none (dimmed, with no drawer). */
+    fun climateTile(
+        handle: EntityHandle<dev.hashsome.client.ClimateEntity>,
+        label: String,
+        icon: Icon? = null,
+        drawer: Boolean = true,
+        power: String? = null,
+        energy: String? = null,
+    ) {
+        val control = ClimateControl(handle)
+        val view = put(ClimateTileView(context, control, label))
+        view.icon = icon ?: Ui.thermometer
+        if (drawer && handle.ref != null) {
+            view.tile.opensDrawer(context, scope, title = { label }, kind = "Climate", icon = { icon ?: Ui.thermometer }, expandable = drawersExpandable) { drawerContext ->
+                val charts = if (power != null || energy != null) {
+                    EnergyDrawerBody(
+                        context,
+                        drawerContext.scope,
+                        power?.let { EntityHandle(drawerContext.scope, EntityRef(it), EntityKind.Sensor) },
+                        energy?.let { EntityHandle(drawerContext.scope, EntityRef(it), EntityKind.Sensor) },
+                        drawerContext.expanded,
+                        drawerContext::onExpandedChanged,
+                    )
+                } else {
+                    null
+                }
+                ClimateDrawerBody(context, control, drawerContext.scope, LogbookControl(handle, drawerContext.scope), charts)
+            }
+        }
     }
 
     /**
