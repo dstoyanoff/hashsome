@@ -195,6 +195,14 @@ class MqttBridge(
                 stores = listOf(settings.dashboard),
                 command = { if (it in dashboardIds) settings.dashboard.set(it) },
             ),
+            Component(
+                "server", "text", "Backend URL",
+                describe = { put("mode", "text"); put("pattern", "https?://.+"); put("max", 255) },
+                value = { settings.server.value ?: "" },
+                stores = listOf(settings.server),
+                // Only an address a client can use: a wrong one would cut the display off, and Home Assistant could not say so.
+                command = { text -> text.trim().takeIf { it.startsWith("http://") || it.startsWith("https://") }?.let(settings.server::set) },
+            ),
             Component("dashboard_switcher", "switch", "Dashboard switcher", value = { onOff(settings.switcherEnabled.value) }, stores = listOf(settings.switcherEnabled), command = {
                 parseOnOff(it)?.let(settings.switcherEnabled::set)
             }),
