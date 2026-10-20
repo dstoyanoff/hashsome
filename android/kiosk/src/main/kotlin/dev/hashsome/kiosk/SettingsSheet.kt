@@ -250,8 +250,7 @@ private class SheetContent(
         if (unusedWhen != null) {
             binders += {
                 unusedWhen.listenNow {
-                    slider.alpha = if (it) 0.4f else 1f
-                    slider.isEnabled = !it
+                    slider.active = !it
                 }
             }
         }

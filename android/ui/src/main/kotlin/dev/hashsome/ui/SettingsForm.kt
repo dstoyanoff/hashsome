@@ -366,6 +366,16 @@ class FormSlider(context: Context, private val min: Int = 0, private val max: In
     /** Called with the value under the finger, as it moves. */
     var onChange: ((Int) -> Unit)? = null
 
+    /** Whether the slider can be moved: when it is not, it is dimmed and takes no touch (it still shows [value]). */
+    var active: Boolean = true
+        set(v) {
+            field = v
+            alpha = if (v) 1f else 0.4f
+        }
+
+    /** A slider that is not [active] swallows the touch before the bar sees it. */
+    override fun onInterceptTouchEvent(ev: android.view.MotionEvent): Boolean = !active
+
     init {
         gap = 3
         align = Align.Center
