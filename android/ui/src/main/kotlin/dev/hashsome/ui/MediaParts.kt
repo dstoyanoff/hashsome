@@ -268,6 +268,12 @@ internal class ArtworkRingView(context: Context) : RingView(context) {
     private var hasPicture = false
     private var pressedPicture = false
 
+    /** Where the finger is while the ring is being dragged, in seconds; null otherwise. It is shown on the picture. */
+    private var previewSeconds: Double? = null
+    private val bubble = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bubbleText = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG)
+    private val bubbleRect = RectF()
+
     fun show(picture: Bitmap?) {
         hasPicture = picture != null
         setArtwork(picture)
@@ -295,6 +301,24 @@ internal class ArtworkRingView(context: Context) : RingView(context) {
             val px = (s * 0.24f).toInt().coerceAtLeast(1)
             canvas.drawIcon(iconBitmap(Ui.music, px, theme.palette.textMuted), (width - px) / 2f, (height - px) / 2f)
         }
+        previewSeconds?.let { drawPosition(canvas, it) }
+    }
+
+    /** The position under the finger, in a dark pill in the middle of the picture, so it can be read where the thumb is not. */
+    private fun drawPosition(canvas: Canvas, seconds: Double) {
+        val s = minOf(width, height).toFloat()
+        bubbleText.textSize = s * 0.12f
+        bubbleText.typeface = theme.typefaces.forWeight(600)
+        bubbleText.color = 0xFFFFFFFF.toInt()
+        bubbleText.textAlign = Paint.Align.CENTER
+        val text = MediaFormat.duration(seconds)
+        val w = bubbleText.measureText(text) + s * 0.1f
+        val h = s * 0.2f
+        bubble.color = 0xB3000000.toInt()
+        bubbleRect.set(width / 2f - w / 2f, height / 2f - h / 2f, width / 2f + w / 2f, height / 2f + h / 2f)
+        canvas.drawRoundRect(bubbleRect, h / 2f, h / 2f, bubble)
+        val fm = bubbleText.fontMetrics
+        canvas.drawText(text, width / 2f, height / 2f - (fm.ascent + fm.descent) / 2f, bubbleText)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -305,7 +329,12 @@ internal class ArtworkRingView(context: Context) : RingView(context) {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 if (length > 0.0 && RingSeek.onRing(Math.hypot(dx, dy), size) && Math.hypot(dx, dy) <= size / 2 + dp(8f)) {
-                    seeking = RingSeek(length).also { onPreview?.invoke(it.start(turn)) }
+                    seeking = RingSeek(length).also {
+                        val at = it.start(turn)
+                        previewSeconds = at
+                        onPreview?.invoke(at)
+                    }
+                    invalidate()
                     parent?.requestDisallowInterceptTouchEvent(true)
                     return true
                 }
@@ -316,10 +345,18 @@ internal class ArtworkRingView(context: Context) : RingView(context) {
                 return false
             }
 
-            MotionEvent.ACTION_MOVE -> seeking?.let { onPreview?.invoke(it.follow(turn)) }
+            MotionEvent.ACTION_MOVE -> seeking?.let {
+                val at = it.follow(turn)
+                previewSeconds = at
+                invalidate()
+                onPreview?.invoke(at)
+            }
+
             MotionEvent.ACTION_UP -> {
                 seeking?.let { onCommit?.invoke(it.follow(turn)) }
                 seeking = null
+                previewSeconds = null
+                invalidate()
                 if (pressedPicture && contains(event.x, event.y)) onOpen?.invoke()
                 pressedPicture = false
             }
@@ -327,6 +364,8 @@ internal class ArtworkRingView(context: Context) : RingView(context) {
             MotionEvent.ACTION_CANCEL -> {
                 if (seeking != null) onCancel?.invoke()
                 seeking = null
+                previewSeconds = null
+                invalidate()
                 pressedPicture = false
             }
         }
