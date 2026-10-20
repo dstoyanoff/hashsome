@@ -263,6 +263,11 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
         put(SystemStatus(context, ConnectionHealth(scope.client, scope)))
     }
 
+    /** The device's battery before the status dot, while it needs looking at (see [BatteryIndicator]); nothing on a display with no battery to report. */
+    fun batteryIndicator() {
+        put(BatteryIndicator(context))
+    }
+
     /**
      * The wall header: [left] is drawn at its left edge, then the date, the weather ([weather], when given), the clock and the status
      * dot at the right, in one row of the top row's height. [marginBottom] is the space below it in dp, like `column`'s (negative takes
@@ -279,6 +284,7 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
             dateChip()
             if (weather != null) weatherChip(weather, weatherDrawer)
             clock(clockFormat)
+            batteryIndicator()
             systemStatus()
         }
     }
@@ -296,6 +302,7 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
             spec.extra?.invoke(this)
             if (spec.people.isNotEmpty()) put(PeopleStack(context, spec.people.map { PersonControl(handle(it, EntityKind.Person)) }))
             clock(spec.clockFormat)
+            batteryIndicator()
             systemStatus()
         }
     }

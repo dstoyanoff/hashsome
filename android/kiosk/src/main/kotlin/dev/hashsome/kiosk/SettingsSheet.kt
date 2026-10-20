@@ -157,7 +157,7 @@ private class SheetContent(
         val ids = try { Hashsome.app.dashboards.map { it.id } } catch (e: Throwable) { emptyList() }
         select("Dashboard", ids, settings.dashboard, { it ?: ids.firstOrNull() ?: "" }, { it })
         switch("Dashboard switcher", settings.switcherEnabled)
-        if (actions.isDeviceOwner) switch("Block pull-down shade", settings.blockPullDown)
+        if (actions.isDeviceOwner) switch("Lock the system bars", settings.blockPullDown)
 
         section("Theme")
         chips("Theme", ThemeChoice.values().map { it.name }, settings.theme, { it.ordinal }, { ThemeChoice.values()[it] })

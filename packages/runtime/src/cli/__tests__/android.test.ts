@@ -188,6 +188,7 @@ describe('provisionCommands', () => {
       `dumpsys deviceidle whitelist +${PKG}`,
       `dpm set-active-admin ${PKG}/dev.hashsome.kiosk.HashsomeDeviceAdmin`,
       `sh -c 'locksettings set-disabled true || echo "the lock screen stays: the device has a PIN or pattern"'`,
+      'settings put secure ov_tbar_hide_flag 1',
       `am broadcast --include-stopped-packages -a dev.hashsome.PROVISION -p ${PKG} --es device bathroom --es profile generic`,
       `am start -n ${PKG}/dev.hashsome.ui.DashboardActivity`,
     ]);
@@ -205,9 +206,12 @@ describe('provisionCommands', () => {
     expect(shellLines(device()).some((l) => l.includes('set-device-owner'))).toBe(false);
   });
 
-  test('only a generic device has its lock screen switched off', () => {
+  test('only a generic device has its lock screen switched off and the Lenovo freeform bar hidden', () => {
     for (const profile of ['shelly-stargate', 'shelly-jenna'] as const) {
       expect(shellLines(device({ profile })).some((l) => l.includes('locksettings'))).toBe(false);
+      expect(shellLines(device({ profile })).some((l) => l.includes('ov_tbar_hide_flag'))).toBe(
+        false,
+      );
     }
   });
 

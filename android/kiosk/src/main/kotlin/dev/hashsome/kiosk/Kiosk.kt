@@ -232,6 +232,8 @@ internal object Kiosk {
         }
         try {
             android.os.Handler(android.os.Looper.getMainLooper()).post { SettingsHost.close() }
+            // A pinned app cannot launch another one: let go first (the dashboard pins itself again when it is back in front).
+            Kiosk.activity?.get()?.let { DeviceAdmin.lockTask(it, false) }
             context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             val overlay = overlayAllowed(context)
             if (!overlay) Log.w("kiosk", "no permission to draw over other apps (appops SYSTEM_ALERT_WINDOW), no back button: pausing for ${FALLBACK_PAUSE_MS / 1000} s")
@@ -336,6 +338,8 @@ internal class KioskScreenPolicy(private val next: ScreenPolicy) : ScreenPolicy 
         next.onResume(activity)
         Kiosk.dashboardResumed = true
         shown(activity)
+        // The dashboard is in front, so the pin goes back on (it was let go for the tablet's settings or an install).
+        if (Settings.blockPullDown.value) DeviceAdmin.lockTask(activity, true)
     }
 
     override fun onPause(activity: Activity) {
