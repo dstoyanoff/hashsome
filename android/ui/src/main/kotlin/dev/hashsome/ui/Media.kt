@@ -665,6 +665,9 @@ internal class UnderlineTabs(context: Context, private val tabs: List<ListTab>) 
 /**
  * What the full player's parts are laid out in: every part but the last as tall as it is, the last (the list) the height that is left, and
  * never less than [minList]; when that is more than the room there is, the whole is taller than its scroll view and scrolls.
+ *
+ * With a height to fill and a list to show, the split is even: the player (the first part) is half of it and the library or queue, with its tabs,
+ * the other half, so the artwork grows into the room. The player is never less than it needs, and the list never less than [minList].
  */
 private class FullLayout(context: Context) : ViewGroup(context) {
     var minListDp = 260
@@ -672,18 +675,43 @@ private class FullLayout(context: Context) : ViewGroup(context) {
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val gap = Math.round(5 * unitPx())
-        var used = 0
         val count = childCount
-        for (i in 0 until count - 1) {
+        val exact = MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY
+        val total = MeasureSpec.getSize(heightMeasureSpec)
+        val widthSpec = MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY)
+        val unspecified = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+
+        // The parts between the player and the list (the tabs or the rule), as tall as they are.
+        var between = 0
+        for (i in 1 until count - 1) {
             val child = getChildAt(i)
             if (child.visibility == GONE) continue
-            child.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
-            used += child.measuredHeight + gap
+            child.measure(widthSpec, unspecified)
+            between += child.measuredHeight + gap
         }
+        val first = if (count > 1) getChildAt(0) else null
+        var playerHeight = 0
+        if (first != null && first.visibility != GONE) {
+            (first as? Capped)?.fill = false
+            first.measure(widthSpec, unspecified)
+            playerHeight = first.measuredHeight
+            if (exact) {
+                // Half of the room for the player, but no more than leaves the list its least; never less than it needs.
+                val half = (total - gap) / 2
+                val most = total - gap - between - gap - dp(minListDp)
+                val wanted = maxOf(playerHeight, minOf(half, most))
+                if (wanted > playerHeight) {
+                    (first as? Capped)?.fill = true
+                    first.measure(widthSpec, MeasureSpec.makeMeasureSpec(wanted, MeasureSpec.EXACTLY))
+                    playerHeight = first.measuredHeight
+                }
+            }
+        }
+        val used = (if (first != null && first.visibility != GONE) playerHeight + gap else 0) + between
         val last = if (count > 0) getChildAt(count - 1) else null
-        val room = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) MeasureSpec.getSize(heightMeasureSpec) - used else 0
+        val room = if (exact) total - used else 0
         val list = maxOf(room, dp(minListDp))
-        last?.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(list, MeasureSpec.EXACTLY))
+        last?.measure(widthSpec, MeasureSpec.makeMeasureSpec(list, MeasureSpec.EXACTLY))
         setMeasuredDimension(width, used + if (last == null) 0 else list)
     }
 
@@ -701,13 +729,21 @@ private class FullLayout(context: Context) : ViewGroup(context) {
 
 /** One child, centered, no wider than [maxDp] and as tall as it is, or as the room it is given when that is less (the player alone gives way, its record shrinking). */
 private class Capped(context: Context, private val maxDp: Int) : ViewGroup(context) {
+    /** Whether the child is given exactly the height it is offered (it grows into it), not at most (it shrinks to fit). */
+    var fill = false
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val child = getChildAt(0)
         val room = MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY
+        val height = MeasureSpec.getSize(heightMeasureSpec)
         child.measure(
             MeasureSpec.makeMeasureSpec(minOf(width, dp(maxDp)), MeasureSpec.EXACTLY),
-            if (room) MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(heightMeasureSpec), MeasureSpec.AT_MOST) else MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
+            when {
+                room && fill -> MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
+                room -> MeasureSpec.makeMeasureSpec(height, MeasureSpec.AT_MOST)
+                else -> MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+            },
         )
         setMeasuredDimension(width, child.measuredHeight)
     }
