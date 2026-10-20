@@ -8,6 +8,7 @@ import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
@@ -30,10 +31,29 @@ import dev.hashsome.headless.upNext
 
 /** The full-screen player: the track in large type beside its artwork, over a backdrop of the artwork's colors that drifts, with the keys and what plays next. */
 object NowPlayingScreen {
+    /** How the backdrop moves. For trying the styles on a device without a rebuild: `adb shell settings put global hashsome_backdrop lava` (any style's name) is read each time the screen opens. */
+    var backdropStyle: BackdropStyle = BackdropStyle.Drift
+
     /** Opens it over the page; Back (or the chevron) closes it. */
     fun open(context: Context, control: MediaPlayerControl, label: String) {
         ScreenOverlay(context).open(control, label)
     }
+
+    /** For looking at a style while nothing plays: `adb shell settings put global hashsome_backdrop_always 1` keeps the backdrop moving whatever the player does. */
+    internal fun alwaysMoving(context: Context): Boolean = try {
+        android.provider.Settings.Global.getInt(context.contentResolver, "hashsome_backdrop_always", 0) == 1
+    } catch (_: Exception) {
+        false
+    }
+
+    internal fun styleFor(context: Context): BackdropStyle = BackdropStyle.named(
+        try {
+            android.provider.Settings.Global.getString(context.contentResolver, "hashsome_backdrop")
+        } catch (_: Exception) {
+            null
+        },
+        backdropStyle,
+    )
 }
 
 /** Covers the window with the screen, fading in; there is no scrim, the screen is opaque. */
@@ -49,6 +69,9 @@ private class ScreenOverlay(context: Context) : Overlay(context) {
 
     override fun show(content: View) {
         attach()
+        // The base overlay closes on a tap on its scrim; here the screen is all there is, and only its own keys close it.
+        scrim.setOnClickListener(null)
+        scrim.isClickable = false
         this.content = content
         addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         if (Animation.animates) {
@@ -75,11 +98,48 @@ private fun mixColors(a: Int, b: Int, amount: Float): Int {
     return (0xFF shl 24) or (part(16) shl 16) or (part(8) shl 8) or part(0)
 }
 
+/** How the backdrop of the full-screen player moves. */
+enum class BackdropStyle {
+    /** Three large soft blobs going round slow loops, passing through one another. */
+    Drift,
+
+    /** Long soft bands sweeping across and turning, like northern lights. */
+    Aurora,
+
+    /** Five smaller blobs rising and sinking at their own paces, like a lava lamp. */
+    Lava,
+
+    /** Three layers of waves in the colors, scrolling at different speeds. */
+    Waves,
+
+    /** The blobs stay where they are and swell and ebb, the calmest. */
+    Breathe,
+    ;
+
+    companion object {
+        /** The style named [name] (any case), or [fallback]. */
+        fun named(name: String?, fallback: BackdropStyle): BackdropStyle = values().firstOrNull { it.name.equals(name?.trim(), ignoreCase = true) } ?: fallback
+    }
+}
+
 /**
- * Soft blobs of three colors on a deep base, drifting slowly (when the motion level allows) and changing color with a long fade when
- * the colors do. The blobs are radial gradients moved by a matrix, so a frame allocates nothing.
+ * Soft shapes of three colors on a deep base, moving as [style] says (when the motion level allows, and while [running]) and changing color
+ * with a long fade when the colors do. Blobs are radial gradients moved by a matrix and the waves reuse one path, so a frame allocates nothing.
  */
 internal class AmbientBackdrop(context: Context) : View(context) {
+    var style: BackdropStyle = BackdropStyle.Drift
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /** Whether it moves: it holds still where it is (a paused player) when not. */
+    var running: Boolean = true
+        set(value) {
+            field = value
+            drive()
+        }
+
     private var from = NEUTRAL
     private var to = NEUTRAL
     private var fromShaders: Array<RadialGradient>? = null
@@ -90,6 +150,7 @@ internal class AmbientBackdrop(context: Context) : View(context) {
     private var drawnAt = 0L
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val matrix = Matrix()
+    private val path = Path()
     private var radius = 0f
     private var shade: LinearGradient? = null
 
@@ -107,11 +168,11 @@ internal class AmbientBackdrop(context: Context) : View(context) {
 
     private fun shadersFor(colors: IntArray): Array<RadialGradient>? {
         if (radius <= 0f) return null
-        return Array(3) { RadialGradient(0f, 0f, radius, intArrayOf(withAlpha(colors[it], 0.85f), withAlpha(colors[it], 0f)), null, Shader.TileMode.CLAMP) }
+        return Array(BLOBS) { RadialGradient(0f, 0f, radius, intArrayOf(withAlpha(colors[it % 3], 0.9f), withAlpha(colors[it % 3], 0f)), null, Shader.TileMode.CLAMP) }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        radius = maxOf(w, h) * 0.95f
+        radius = maxOf(w, h) * 0.62f
         fromShaders = shadersFor(from)
         toShaders = shadersFor(to)
         // The bottom darkens, where the small type of what plays next sits.
@@ -122,12 +183,12 @@ internal class AmbientBackdrop(context: Context) : View(context) {
         super.onAttachedToWindow()
         if (Animation.animates) {
             drift = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = DRIFT_MS
+                duration = LOOP_MS
                 repeatCount = ValueAnimator.INFINITE
                 interpolator = LinearInterpolator()
                 addUpdateListener {
                     phase = it.animatedValue as Float
-                    // A slow drift needs no more than about 20 frames a second, and a frame is three screen-size gradients.
+                    // A slow drift needs no more than about 20 frames a second, and a frame is several screen-size gradients.
                     val now = android.os.SystemClock.uptimeMillis()
                     if (now - drawnAt >= FRAME_MS) {
                         drawnAt = now
@@ -136,6 +197,17 @@ internal class AmbientBackdrop(context: Context) : View(context) {
                 }
                 start()
             }
+            drive()
+        }
+    }
+
+    /** Runs or holds the loop. */
+    private fun drive() {
+        val loop = drift ?: return
+        if (running) {
+            if (loop.isPaused) loop.resume()
+        } else if (loop.isRunning && !loop.isPaused) {
+            loop.pause()
         }
     }
 
@@ -150,8 +222,8 @@ internal class AmbientBackdrop(context: Context) : View(context) {
         val h = height.toFloat()
         val t = fade.value
         canvas.drawColor(mixColors(deep(from[0]), deep(to[0]), t))
-        drawBlobs(canvas, fromShaders, (1f - t), w, h)
-        drawBlobs(canvas, toShaders, t, w, h)
+        draw(canvas, from, fromShaders, 1f - t, w, h)
+        draw(canvas, to, toShaders, t, w, h)
         shade?.let {
             paint.shader = it
             paint.alpha = 255
@@ -160,15 +232,42 @@ internal class AmbientBackdrop(context: Context) : View(context) {
         }
     }
 
-    private fun drawBlobs(canvas: Canvas, shaders: Array<RadialGradient>?, strength: Float, w: Float, h: Float) {
-        if (shaders == null || strength <= 0.01f) return
+    private fun draw(canvas: Canvas, colors: IntArray, shaders: Array<RadialGradient>?, strength: Float, w: Float, h: Float) {
+        if (strength <= 0.01f) return
+        if (style == BackdropStyle.Waves) {
+            waves(canvas, colors, strength, w, h)
+            return
+        }
+        if (shaders == null) return
         val turn = (phase * 2.0 * Math.PI).toFloat()
-        for (i in 0 until 3) {
-            // Each blob goes round its own slow loop, at its own pace, so they pass through one another.
-            val a = turn * (1 + i) + i * 2.1f
-            val cx = w * (0.5f + 0.4f * Math.cos(a.toDouble()).toFloat() * (if (i == 1) -1f else 1f))
-            val cy = h * (0.5f + 0.38f * Math.sin((a * 0.8f + i).toDouble()).toFloat())
-            matrix.setTranslate(cx, cy)
+        val count = if (style == BackdropStyle.Lava) BLOBS else 3
+        for (i in 0 until count) {
+            when (style) {
+                BackdropStyle.Drift -> {
+                    // Each blob goes round its own loop, at its own pace, so they pass through one another.
+                    val a = turn * (1 + i) + i * 2.1f
+                    matrix.setTranslate(w * (0.5f + 0.46f * cos(a) * (if (i == 1) -1f else 1f)), h * (0.5f + 0.44f * sin(a * 0.8f + i)))
+                }
+
+                BackdropStyle.Aurora -> {
+                    // A long band: the gradient stretched along one way and turned, then carried across.
+                    matrix.setScale(2.4f, 0.5f)
+                    matrix.postRotate(Math.toDegrees((turn * (0.5f + 0.2f * i) + i * 1.3f).toDouble()).toFloat() % 360f)
+                    matrix.postTranslate(w * (0.5f + 0.4f * sin(turn * (1 + i * 0.5f) + i * 1.7f)), h * (0.5f + 0.34f * cos(turn * (1 + i * 0.35f) + i * 2.2f)))
+                }
+
+                BackdropStyle.Lava -> {
+                    matrix.setScale(0.6f, 0.6f)
+                    matrix.postTranslate(w * (0.5f + 0.36f * sin(turn * (1 + i % 2) + i * 1.7f)), h * (0.5f + 0.62f * sin(turn * (1 + i * 0.5f) + i * 2.3f)))
+                }
+
+                else -> {
+                    // Breathe: fixed places, swelling and ebbing out of step.
+                    val scale = 0.8f + 0.35f * sin(turn * 3 + i * 2.1f)
+                    matrix.setScale(scale, scale)
+                    matrix.postTranslate(w * BREATHE_X[i], h * BREATHE_Y[i] + h * 0.04f * sin(turn * 2 + i))
+                }
+            }
             shaders[i].setLocalMatrix(matrix)
             paint.shader = shaders[i]
             paint.alpha = Math.round(strength * 255f)
@@ -178,15 +277,40 @@ internal class AmbientBackdrop(context: Context) : View(context) {
         paint.alpha = 255
     }
 
-    /** The base under the blobs: the first color, very dark. */
+    private fun waves(canvas: Canvas, colors: IntArray, strength: Float, w: Float, h: Float) {
+        val turn = (phase * 2.0 * Math.PI).toFloat()
+        for (layer in 0 until 3) {
+            path.reset()
+            path.moveTo(0f, h)
+            val steps = 28
+            for (k in 0..steps) {
+                val x = w * k / steps
+                val y = h * (0.42f + 0.17f * layer) + h * (0.07f + 0.02f * layer) * sin(x / w * 6.2832f * (1f + layer * 0.5f) + turn * (layer + 1) * (if (layer == 1) -1f else 1f) + layer)
+                path.lineTo(x, y)
+            }
+            path.lineTo(w, h)
+            path.close()
+            paint.color = withAlpha(colors[layer], 0.6f * strength)
+            canvas.drawPath(path, paint)
+        }
+        paint.color = WHITE
+    }
+
+    private fun cos(a: Float) = Math.cos(a.toDouble()).toFloat()
+    private fun sin(a: Float) = Math.sin(a.toDouble()).toFloat()
+
+    /** The base under the shapes: the first color, very dark. */
     private fun deep(color: Int): Int = mixColors(0xFF08080C.toInt(), color, 0.3f)
 
     private companion object {
-        /** One loop of every blob's path, in ms; the faster ones go round several times in it. */
-        const val DRIFT_MS = 70_000L
+        /** One loop of the motion, in ms; the faster shapes go round several times in it. */
+        const val LOOP_MS = 26_000L
 
-        /** The least time between two drawn frames of the drift. */
+        /** The least time between two drawn frames. */
         const val FRAME_MS = 45L
+        const val BLOBS = 5
+        val BREATHE_X = floatArrayOf(0.25f, 0.78f, 0.5f)
+        val BREATHE_Y = floatArrayOf(0.3f, 0.4f, 0.85f)
         val NEUTRAL = intArrayOf(0xFF4A4A5A.toInt(), 0xFF3A3A48.toInt(), 0xFF2A2A36.toInt())
     }
 }
@@ -263,7 +387,14 @@ internal class ScreenText(context: Context) : View(context) {
 }
 
 /** A round key of the screen: a white glyph on a faint disc, or (when [filled]) a dark glyph on a white one. It squeezes while pressed. */
-internal class ScreenButton(context: Context, var icon: Icon) : View(context) {
+internal class ScreenButton(context: Context, icon: Icon) : View(context) {
+    var icon: Icon = icon
+        set(value) {
+            if (field == value) return
+            field = value
+            invalidate()
+        }
+
     var glyphDp = 24f
     var filled = false
     var plain = false
@@ -579,15 +710,9 @@ internal class NowPlayingScreenView(
         it.sizeDp = 14f
         it.color = withAlpha(WHITE, 0.58f)
     }
-    private val bar = ScreenBar(context)
-    private val elapsed = ScreenText(context).also {
-        it.sizeDp = 12f
-        it.color = withAlpha(WHITE, 0.7f)
-    }
-    private val remaining = ScreenText(context).also {
-        it.sizeDp = 12f
-        it.color = withAlpha(WHITE, 0.7f)
-        it.align = Paint.Align.RIGHT
+    private val time = ScreenText(context).also {
+        it.sizeDp = 14f
+        it.color = withAlpha(WHITE, 0.6f)
     }
     private val previous = ScreenButton(context, UiIcons.skipPrevious).also {
         it.plain = true
@@ -628,9 +753,11 @@ internal class NowPlayingScreenView(
     private var shown = MAX_UP_NEXT
 
     init {
+        isClickable = true
+        backdrop.style = NowPlayingScreen.styleFor(context)
         addView(backdrop)
         addView(ring)
-        for (v in listOf(title, artist, album, bar, elapsed, remaining, previous, play, next, shuffle, volumeKey, upNextLabel)) addView(v)
+        for (v in listOf(title, artist, album, time, previous, play, next, shuffle, volumeKey, upNextLabel)) addView(v)
         items.forEach { addView(it) }
         addView(back)
         addView(popover)
@@ -644,9 +771,6 @@ internal class NowPlayingScreenView(
         ring.onPreview = { control.seek.drag(it) }
         ring.onCommit = { control.seek.commit(it) }
         ring.onCancel = { control.seek.cancel() }
-        bar.onPreview = { fraction -> control.handle.entity?.duration?.let { control.seek.drag(it * fraction) } }
-        bar.onCommit = { fraction -> control.handle.entity?.duration?.let { control.seek.commit(it * fraction) } }
-        bar.onCancel = { control.seek.cancel() }
         popover.bar.onPreview = { control.volume.drag(it.toDouble()) }
         popover.bar.onCommit = { control.volume.commit(it.toDouble()) }
         popover.bar.onCancel = { control.volume.cancel() }
@@ -706,10 +830,9 @@ internal class NowPlayingScreenView(
         val seekable = ready && caps?.seek == true && duration != null && duration > 0
         ring.length = if (seekable) duration!! else 0.0
         ring.fraction = fraction
-        bar.fraction = fraction
-        bar.isEnabled = seekable
-        elapsed.text = if (position != null && duration != null && duration > 0) MediaFormat.duration(position) else ""
-        remaining.text = if (position != null && duration != null && duration > 0) "-" + MediaFormat.duration((duration - position).coerceAtLeast(0.0)) else ""
+        // Where the track is, as the ring shows, in words: how long it has played and how long is left.
+        time.text = if (position != null && duration != null && duration > 0) "${MediaFormat.duration(position)}  ·  -${MediaFormat.duration((duration - position).coerceAtLeast(0.0))}" else ""
+        backdrop.running = control.playing.value || NowPlayingScreen.alwaysMoving(context)
 
         val can = availability()
         previous.isEnabled = ready && caps?.previous != false && can.previous
@@ -789,51 +912,53 @@ internal class NowPlayingScreenView(
         place(ring, ringLeft, top + (room - d) / 2, d, d)
         val x0 = pad
         val colW = ringLeft - dp(24) - x0
-        for (t in listOf(title, artist, album)) t.align = Paint.Align.LEFT
-        // The text, the keys and the progress are one block, centred in the height there is under the back key.
-        val textH = dp(32) + dp(24) + dp(20)
-        val keysH = dp(KEYS)
-        val progressH = dp(ScreenBar.HEIGHT) + dp(12)
-        val blockH = textH + dp(18) + keysH + dp(14) + progressH
+        for (t in listOf(title, artist, album, time)) t.align = Paint.Align.LEFT
+        // The text and the keys are one block, a third of the way down what there is under the back key: higher than the middle.
+        val textH = dp(32) + dp(24) + dp(20) + dp(22)
+        val keysH = dp(KEYS_WIDE)
+        val blockH = textH + dp(16) + keysH
         val free = blockTop - (top + dp(44)) - dp(8)
-        var y = top + dp(44) + maxOf(0, (free - blockH) / 2)
+        var y = top + dp(40) + maxOf(0, (free - blockH) / 4)
         place(title, x0, y, colW, dp(32)); y += dp(32)
         place(artist, x0, y, colW, dp(24)); y += dp(24)
-        place(album, x0, y, colW, dp(20)); y += dp(20) + dp(18)
-        controls(x0, y, colW)
-        y += keysH + dp(14)
-        progress(x0, y, colW)
+        place(album, x0, y, colW, dp(20)); y += dp(20)
+        place(time, x0, y + dp(2), colW, dp(20)); y += dp(22) + dp(16)
+        controls(x0, y, colW, KEYS_WIDE, 1.22f)
     }
 
     private fun layoutSquare(w: Int, pad: Int, blockTop: Int) {
         val colW = w - 2 * pad
-        for (t in listOf(title, artist, album)) t.align = Paint.Align.CENTER
+        for (t in listOf(title, artist, album, time)) t.align = Paint.Align.CENTER
         // What is under the artwork has the height it needs; the artwork takes the rest.
-        val textH = dp(30) + dp(22) + dp(18)
+        val textH = dp(30) + dp(22) + dp(18) + dp(20)
         val keysH = dp(KEYS)
-        val progressH = dp(ScreenBar.HEIGHT) + dp(12)
-        val under = textH + dp(6) + progressH + dp(4) + keysH + dp(10)
-        val d = (blockTop - pad - under - dp(6)).coerceIn(dp(96), (w * 0.56f).toInt())
+        val under = textH + dp(8) + keysH + dp(6)
+        val d = (blockTop - pad - under - dp(6)).coerceIn(dp(96), (w * 0.62f).toInt())
         var y = pad
         place(ring, (w - d) / 2, y, d, d)
         y += d + dp(6)
         place(title, pad, y, colW, dp(30)); y += dp(30)
         place(artist, pad, y, colW, dp(22)); y += dp(22)
-        place(album, pad, y, colW, dp(18)); y += dp(18) + dp(6)
-        progress(pad, y, colW)
-        y += progressH + dp(4)
-        controls(pad, y, colW)
+        place(album, pad, y, colW, dp(18)); y += dp(18)
+        place(time, pad, y + dp(2), colW, dp(20)); y += dp(20) + dp(8)
+        controls(pad, y, colW, KEYS, 1f)
     }
 
-    /** The row of keys: shuffle, previous, play, next and the volume, the three of the transport larger than the two at the ends. */
-    private fun controls(x0: Int, y: Int, width: Int) {
-        val small = dp(44)
-        val side = dp(48)
-        val big = dp(64)
-        val gap = dp(10)
+    /** The row of keys: shuffle, previous, play, next and the volume, the three of the transport larger than the two at the ends; [scale] sizes them all. */
+    private fun controls(x0: Int, y: Int, width: Int, height: Int, scale: Float) {
+        val small = Math.round(dp(44f * scale))
+        val side = Math.round(dp(48f * scale))
+        val big = Math.round(dp(64f * scale))
+        val gap = Math.round(dp(10f * scale))
+        // The glyphs grow with their keys.
+        previous.glyphDp = 26f * scale
+        next.glyphDp = 26f * scale
+        play.glyphDp = 26f * scale
+        shuffle.glyphDp = 20f * scale
+        volumeKey.glyphDp = 20f * scale
         val total = small * 2 + side * 2 + big + gap * 4
         var x = x0 + (width - total) / 2
-        val centre = y + dp(KEYS) / 2
+        val centre = y + height / 2
         place(shuffle, x, centre - small / 2, small, small); x += small + gap
         place(previous, x, centre - side / 2, side, side); x += side + gap
         place(play, x, centre - big / 2, big, big); x += big + gap
@@ -846,15 +971,10 @@ internal class NowPlayingScreenView(
         place(popover, left, y - popH - dp(6), popW, popH)
     }
 
-    private fun progress(x0: Int, y: Int, width: Int) {
-        place(bar, x0, y, width, dp(ScreenBar.HEIGHT))
-        place(elapsed, x0, y + dp(ScreenBar.HEIGHT) - dp(4), width / 2, dp(16))
-        place(remaining, x0 + width / 2, y + dp(ScreenBar.HEIGHT) - dp(4), width - width / 2, dp(16))
-    }
-
     private companion object {
         /** The height of the row of keys, in dp. */
         const val KEYS = 64
+        const val KEYS_WIDE = 78
         const val MAX_UP_NEXT = 4
         const val SAMPLE = 24
     }
