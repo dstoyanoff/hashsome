@@ -228,7 +228,8 @@ internal class NowPlayingView(
                 p.topMargin = -Math.round(unitPx())
             })
         }
-        titleRow.action = if (shuffleAtTitle) keys.shuffleRound else null
+        // Beside the title shuffle is a plain key, a glyph with no disc under it.
+        titleRow.action = if (shuffleAtTitle) keys.shuffle else null
         val transport = RowLayout(context).also {
             it.gap = 3
             it.justify = Justify.Center

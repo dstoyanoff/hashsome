@@ -23,6 +23,7 @@ import dev.hashsome.client.Cancel
 import dev.hashsome.client.MediaPlayerCommands
 import dev.hashsome.client.QueueItem
 import dev.hashsome.client.QueueResult
+import dev.hashsome.headless.Feedback
 import dev.hashsome.headless.HandleState
 import dev.hashsome.headless.MediaPlayerControl
 import dev.hashsome.headless.QueueControl
@@ -386,13 +387,19 @@ internal class ScreenText(context: Context) : View(context) {
     }
 }
 
-/** A round key of the screen: a white glyph on a faint disc, or (when [filled]) a dark glyph on a white one. It squeezes while pressed. */
+/**
+ * A round key of the screen: a white glyph on a faint disc, or (when [filled]) a dark glyph on a white one. It squeezes while pressed, fades
+ * its glyph in when it changes (play to pause), turns a ring while its press waits for the player and shows a failed press in red, as the
+ * player's own keys do.
+ */
 internal class ScreenButton(context: Context, icon: Icon) : View(context) {
     var icon: Icon = icon
         set(value) {
             if (field == value) return
             field = value
-            invalidate()
+            // The new glyph comes in rather than appearing.
+            glyphFade.to(0f, false)
+            glyphFade.to(1f)
         }
 
     var glyphDp = 24f
@@ -407,23 +414,101 @@ internal class ScreenButton(context: Context, icon: Icon) : View(context) {
             invalidate()
         }
 
+    /** The press is waiting for the player: a ring turns. */
+    var pending = false
+        set(value) {
+            if (field == value) return
+            field = value
+            spin.run(value && isAttachedToWindow)
+            invalidate()
+        }
+
+    /** The press failed: the glyph is red. */
+    var failed = false
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /** Struck through with a slash, for what is off (shuffle that is not on): the state is in the shape, not only in the color. */
+    var crossed = false
+        set(value) {
+            if (field == value) return
+            field = value
+            invalidate()
+        }
+
+    /** Sets [pending] and [failed] from what the press tracker says. */
+    fun feedback(state: Feedback?) {
+        pending = state == Feedback.Pending
+        failed = state == Feedback.Error
+    }
+
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var pressed = false
+    private val rect = RectF()
+    private val spin = Spin(this)
+    private val glyphFade = Eased(this, 1f, 160)
 
     init {
         isClickable = true
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        spin.run(pending)
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        spin.run(false)
     }
 
     override fun onDraw(canvas: Canvas) {
         val s = minOf(width, height).toFloat()
         alpha = if (isEnabled) 1f else 0.35f
         if (filled || !plain) {
+            paint.style = Paint.Style.FILL
             paint.color = if (filled) WHITE else withAlpha(WHITE, 0.14f)
             canvas.drawCircle(width / 2f, height / 2f, s / 2f, paint)
         }
+        val ink = if (filled) 0xFF14141A.toInt() else WHITE
+        if (pending) {
+            // A ring turning round the key (inside a disc, at the glyph's size on a plain key), where the player's keys turn theirs.
+            val inset = if (filled || !plain) dp(3f) else (s - dp(glyphDp)) / 2f
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = dp(2f)
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.color = ink
+            rect.set(inset, inset, width - inset, height - inset)
+            canvas.drawArc(rect, spin.angle, 90f, false, paint)
+            return
+        }
         val px = Math.round(dp(glyphDp))
-        val color = if (filled) 0xFF14141A.toInt() else if (active) WHITE else withAlpha(WHITE, 0.5f)
-        canvas.drawIcon(iconBitmap(icon, px, color), (width - px) / 2f, (height - px) / 2f)
+        val color = when {
+            failed -> 0xFFFF6B6B.toInt()
+            filled -> ink
+            active -> WHITE
+            else -> withAlpha(WHITE, 0.5f)
+        }
+        paint.style = Paint.Style.FILL
+        paint.alpha = Math.round(glyphFade.value * 255f)
+        canvas.drawBitmap(iconBitmap(icon, px, color), Math.round((width - px) / 2f).toFloat(), Math.round((height - px) / 2f).toFloat(), paint)
+        paint.alpha = 255
+        if (crossed) {
+            // A slash from the top left to the bottom right, with a dark edge so it cuts the glyph instead of merging with it.
+            val half = px * 0.46f
+            val cx = width / 2f
+            val cy = height / 2f
+            paint.style = Paint.Style.STROKE
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.strokeWidth = dp(5f)
+            paint.color = 0x59000000
+            canvas.drawLine(cx - half, cy - half, cx + half, cy + half, paint)
+            paint.strokeWidth = dp(2f)
+            paint.color = color
+            canvas.drawLine(cx - half, cy - half, cx + half, cy + half, paint)
+            paint.style = Paint.Style.FILL
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -442,6 +527,52 @@ internal class ScreenButton(context: Context, icon: Icon) : View(context) {
     private fun squeeze(to: Float) {
         if (!Animation.animates) return
         animate().scaleX(to).scaleY(to).setDuration(110).start()
+    }
+}
+
+/** The track's time on its artwork: how long it has played and how long is left, in a small dark pill. */
+internal class TimePill(context: Context) : View(context) {
+    var text: CharSequence = ""
+        set(value) {
+            if (field == value) return
+            field = value
+            requestLayout()
+            invalidate()
+        }
+
+    var sizeDp = 13f
+        set(value) {
+            field = value
+            requestLayout()
+            invalidate()
+        }
+
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val label = TextPaint(Paint.ANTI_ALIAS_FLAG)
+    private val rect = RectF()
+
+    private fun prepare() {
+        label.textSize = textPx(sizeDp)
+        label.typeface = theme.typefaces.forWeight(500)
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        prepare()
+        val h = dp(sizeDp * 2f).toInt()
+        val w = if (text.isEmpty()) 0 else Math.ceil(label.measureText(text, 0, text.length).toDouble()).toInt() + dp(sizeDp * 1.6f).toInt()
+        setMeasuredDimension(w, h)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        if (text.isEmpty()) return
+        prepare()
+        paint.color = 0x66000000
+        rect.set(0f, 0f, width.toFloat(), height.toFloat())
+        canvas.drawRoundRect(rect, height / 2f, height / 2f, paint)
+        label.color = WHITE
+        label.textAlign = Paint.Align.CENTER
+        val fm = label.fontMetrics
+        canvas.drawText(text, 0, text.length, width / 2f, height / 2f - (fm.ascent + fm.descent) / 2f, label)
     }
 }
 
@@ -710,10 +841,7 @@ internal class NowPlayingScreenView(
         it.sizeDp = 14f
         it.color = withAlpha(WHITE, 0.58f)
     }
-    private val time = ScreenText(context).also {
-        it.sizeDp = 14f
-        it.color = withAlpha(WHITE, 0.6f)
-    }
+    private val time = TimePill(context)
     private val previous = ScreenButton(context, UiIcons.skipPrevious).also {
         it.plain = true
         it.glyphDp = 26f
@@ -757,7 +885,8 @@ internal class NowPlayingScreenView(
         backdrop.style = NowPlayingScreen.styleFor(context)
         addView(backdrop)
         addView(ring)
-        for (v in listOf(title, artist, album, time, previous, play, next, shuffle, volumeKey, upNextLabel)) addView(v)
+        for (v in listOf(title, artist, album, previous, play, next, shuffle, volumeKey, upNextLabel)) addView(v)
+        addView(time)
         items.forEach { addView(it) }
         addView(back)
         addView(popover)
@@ -785,6 +914,7 @@ internal class NowPlayingScreenView(
         val cancels = ArrayList<Cancel>()
         cancels += control.handle.state.listen(redraw)
         cancels += control.playing.listen(redraw)
+        cancels += control.feedback.listen(redraw)
         cancels += control.seek.shown.listen(redraw)
         cancels += control.volume.shown.listen(redraw)
         cancels += control.volume.muted.listen(redraw)
@@ -830,8 +960,8 @@ internal class NowPlayingScreenView(
         val seekable = ready && caps?.seek == true && duration != null && duration > 0
         ring.length = if (seekable) duration!! else 0.0
         ring.fraction = fraction
-        // Where the track is, as the ring shows, in words: how long it has played and how long is left.
-        time.text = if (position != null && duration != null && duration > 0) "${MediaFormat.duration(position)}  ·  -${MediaFormat.duration((duration - position).coerceAtLeast(0.0))}" else ""
+        // Where the track is, in words as well as in the ring, as the main player writes it: the position and the length, on the artwork.
+        time.text = if (position != null && duration != null && duration > 0) "${MediaFormat.duration(position)} / ${MediaFormat.duration(duration)}" else ""
         backdrop.running = control.playing.value || NowPlayingScreen.alwaysMoving(context)
 
         val can = availability()
@@ -839,8 +969,12 @@ internal class NowPlayingScreenView(
         next.isEnabled = ready && caps?.next != false && can.next
         play.isEnabled = ready && can.play
         play.icon = if (control.playing.value) UiIcons.pause else UiIcons.play
+        previous.feedback(control.feedbackFor("previous"))
+        play.feedback(control.feedbackFor("togglePlay"))
+        next.feedback(control.feedbackFor("next"))
+        shuffle.feedback(control.feedbackFor("setShuffle"))
         shuffle.visibility = if (ready && caps?.shuffle == true) VISIBLE else INVISIBLE
-        shuffle.active = player?.shuffle == true
+        shuffle.crossed = player?.shuffle != true
         val hasVolume = ready && (caps?.volume != false || caps?.mute == true)
         volumeKey.visibility = if (hasVolume) VISIBLE else INVISIBLE
         val muted = control.volume.muted.value
@@ -909,39 +1043,47 @@ internal class NowPlayingScreenView(
         val room = blockTop - top - dp(12)
         val d = minOf(room, ((w - 2 * pad) * 0.42f).toInt())
         val ringLeft = w - pad - d - dp(8)
-        place(ring, ringLeft, top + (room - d) / 2, d, d)
+        val ringTop = top + (room - d) / 2
+        place(ring, ringLeft, ringTop, d, d)
+        timeOn(ringLeft, ringTop, d)
         val x0 = pad
         val colW = ringLeft - dp(24) - x0
-        for (t in listOf(title, artist, album, time)) t.align = Paint.Align.LEFT
-        // The text and the keys are one block, a third of the way down what there is under the back key: higher than the middle.
-        val textH = dp(32) + dp(24) + dp(20) + dp(22)
-        val keysH = dp(KEYS_WIDE)
-        val blockH = textH + dp(16) + keysH
-        val free = blockTop - (top + dp(44)) - dp(8)
-        var y = top + dp(40) + maxOf(0, (free - blockH) / 4)
+        for (t in listOf(title, artist, album)) t.align = Paint.Align.LEFT
+        // The text is at the top of the column and the keys at the bottom of it, above what plays next.
+        var y = top + dp(44)
         place(title, x0, y, colW, dp(32)); y += dp(32)
         place(artist, x0, y, colW, dp(24)); y += dp(24)
-        place(album, x0, y, colW, dp(20)); y += dp(20)
-        place(time, x0, y + dp(2), colW, dp(20)); y += dp(22) + dp(16)
-        controls(x0, y, colW, KEYS_WIDE, 1.22f)
+        place(album, x0, y, colW, dp(20))
+        controls(x0, blockTop - dp(10) - dp(KEYS_WIDE), colW, KEYS_WIDE, 1.22f)
     }
 
     private fun layoutSquare(w: Int, pad: Int, blockTop: Int) {
         val colW = w - 2 * pad
-        for (t in listOf(title, artist, album, time)) t.align = Paint.Align.CENTER
+        for (t in listOf(title, artist, album)) t.align = Paint.Align.CENTER
         // What is under the artwork has the height it needs; the artwork takes the rest.
-        val textH = dp(30) + dp(22) + dp(18) + dp(20)
+        val textH = dp(30) + dp(22) + dp(18)
         val keysH = dp(KEYS)
-        val under = textH + dp(8) + keysH + dp(6)
+        val under = textH + dp(14) + keysH + dp(6)
         val d = (blockTop - pad - under - dp(6)).coerceIn(dp(96), (w * 0.62f).toInt())
         var y = pad
         place(ring, (w - d) / 2, y, d, d)
+        timeOn((w - d) / 2, y, d)
         y += d + dp(6)
         place(title, pad, y, colW, dp(30)); y += dp(30)
         place(artist, pad, y, colW, dp(22)); y += dp(22)
-        place(album, pad, y, colW, dp(18)); y += dp(18)
-        place(time, pad, y + dp(2), colW, dp(20)); y += dp(20) + dp(8)
+        place(album, pad, y, colW, dp(18)); y += dp(18) + dp(14)
         controls(pad, y, colW, KEYS, 1f)
+    }
+
+    /** The time sits on the artwork, in the lower part of its picture. */
+    private fun timeOn(left: Int, top: Int, d: Int) {
+        time.sizeDp = if (d > dp(260)) 14f else 12f
+        time.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+        val tw = time.measuredWidth
+        val th = time.measuredHeight
+        val cx = left + d / 2
+        val cy = top + (d * 0.74f).toInt()
+        time.layout(cx - tw / 2, cy - th / 2, cx + tw / 2, cy + th / 2)
     }
 
     /** The row of keys: shuffle, previous, play, next and the volume, the three of the transport larger than the two at the ends; [scale] sizes them all. */
