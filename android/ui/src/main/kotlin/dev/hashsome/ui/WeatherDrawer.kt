@@ -1,8 +1,13 @@
 package dev.hashsome.ui
 
 import android.content.Context
+import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.RectF
+import android.view.View
 import android.view.ViewGroup
+import android.widget.HorizontalScrollView
+import android.widget.LinearLayout
 import dev.hashsome.client.EntityKind
 import dev.hashsome.client.EntityRef
 import dev.hashsome.client.ForecastPoint
@@ -13,6 +18,7 @@ import dev.hashsome.client.WeatherCondition
 import dev.hashsome.client.WeatherEntity
 import dev.hashsome.headless.EntityHandle
 import dev.hashsome.headless.ForecastState
+import dev.hashsome.headless.Scope
 import dev.hashsome.headless.WeatherControl
 import dev.hashsome.ui.icons.Ui
 
@@ -25,16 +31,84 @@ private const val HOURS = 24
 /** Hours between the labelled points under the chart. */
 private const val EVERY = 4
 
+/** A tile with a label and a value, for the readings of the expanded forecast (the web's `Stat`). */
+private class StatTile(context: Context) : ColumnLayout(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).also { it.style = Paint.Style.STROKE }
+    private val rect = RectF()
+
+    init {
+        setWillNotDraw(false)
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val x = Math.round(3 * unitPx())
+        val y = Math.round(2.5f * unitPx())
+        if (paddingLeft != x || paddingTop != y) setPadding(x, y, x, y)
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val t = theme
+        val stroke = dp(1f)
+        paint.strokeWidth = stroke
+        paint.color = t.palette.border
+        rect.set(stroke / 2, stroke / 2, width - stroke / 2, height - stroke / 2)
+        canvas.drawRoundRect(rect, dp(t.radius.row), dp(t.radius.row), paint)
+    }
+}
+
+/** The hours in one row: as many as fit show (at least 84 dp each, widened to use the room), and the rest are a swipe away. */
+private class HourStrip(context: Context) : HorizontalScrollView(context) {
+    val row = LinearLayout(context).also { it.orientation = LinearLayout.HORIZONTAL }
+
+    init {
+        isHorizontalScrollBarEnabled = false
+        overScrollMode = OVER_SCROLL_NEVER
+        addView(row, ViewGroup.LayoutParams(WRAP, WRAP))
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val width = MeasureSpec.getSize(widthMeasureSpec)
+        val cell = if (width > 0) width / Math.max(1, width / dp(HOUR)) else dp(HOUR)
+        for (i in 0 until row.childCount) {
+            val lp = row.getChildAt(i).layoutParams
+            if (lp.width != cell) lp.width = cell
+        }
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
+    private companion object {
+        const val HOUR = 84
+    }
+}
+
 /**
- * A weather entity's forecast (the web's `WeatherForecast`, in the layout of the narrow drawer): the weather now, the next 24 hours as a
- * chart with every fourth hour under it, and the days ahead with each day's range of temperature. Touch the chart for the sky, wind and
- * rain of an hour. The web's expanded layout (readings tiles, a card for each hour, more columns for the days) is not drawn; a source
- * with no forecast shows only the weather now.
+ * A weather entity's forecast (the web's `WeatherForecast`): the weather now, the next 24 hours as a chart with every fourth hour under it, and
+ * the days ahead with each day's range of temperature. Touch the chart for the sky, wind and rain of an hour. [expanded] is the layout for a wide
+ * space (the web's): larger, with tiles of the readings now, a column for each hour and the wind, humidity and UV of each day; a drawer takes it
+ * when it is widened. A source with no forecast shows only the weather now.
  */
-open class WeatherForecastBody(context: Context, private val ctx: DrawerContext, ref: EntityRef) : ColumnLayout(context) {
-    private val handle = EntityHandle(ctx.scope, ref, EntityKind.Weather)
-    private val hourly = WeatherControl(handle, ctx.scope)
-    private val daily = WeatherControl(handle, ctx.scope)
+open class WeatherForecastBody(context: Context, private val scope: Scope, ref: EntityRef, expanded: Boolean = false) : ColumnLayout(context) {
+    /** For a drawer: the layout follows the panel, wide when it is widened. */
+    constructor(context: Context, ctx: DrawerContext, ref: EntityRef) : this(context, ctx.scope, ref, ctx.expanded) {
+        ctx.onExpandedChanged { this.expanded = it }
+    }
+
+    var expanded: Boolean = expanded
+        set(value) {
+            if (field == value) return
+            field = value
+            // Everything is drawn again in the other layout.
+            shownHours = null
+            renderHours()
+            renderDays()
+            renderNow()
+        }
+
+    private val handle = EntityHandle(scope, ref, EntityKind.Weather)
+    private val hourly = WeatherControl(handle, scope)
+    private val daily = WeatherControl(handle, scope)
+    private val stats = GridLayout(context, 3).also { it.gap = 3 }
 
     private val sky = GlyphView(context, null, 40)
     private val temp = AlignedText(context, "", Role.Heading)
@@ -64,14 +138,22 @@ open class WeatherForecastBody(context: Context, private val ctx: DrawerContext,
         text.addView(windNow, FlexParams(WRAP, WRAP))
         now.addView(text, FlexParams(WRAP, WRAP).apply { grow = true })
         addView(now, FlexParams(MATCH, WRAP))
+        addView(stats, FlexParams(MATCH, WRAP))
         hoursBlock.gap = 1
         addView(hoursBlock, FlexParams(MATCH, WRAP))
         daysBlock.gap = 2
         addView(daysBlock, FlexParams(MATCH, WRAP))
 
-        ctx.scope.bind(handle.state) { renderNow() }
-        ctx.scope.bind(hourly.forecast) { renderHours() }
-        ctx.scope.bind(daily.forecast) { renderDays() }
+        scope.bind(handle.state) { renderNow() }
+        scope.bind(hourly.forecast) { renderHours() }
+        scope.bind(daily.forecast) { renderDays() }
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        // As many tiles to a row as are 150 dp wide, the web's `repeat(auto-fill, minmax(150px, 1fr))`.
+        val inner = MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight
+        stats.columns = Math.max(1, (inner + Math.round(3 * unitPx())) / (dp(150) + Math.round(3 * unitPx())))
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
     }
 
     private fun weather(): WeatherEntity? = handle.entity
@@ -87,7 +169,7 @@ open class WeatherForecastBody(context: Context, private val ctx: DrawerContext,
         val p = theme.palette
         val soon = hours.firstOrNull()
         sky.icon = UiIcons.weather(w?.condition ?: WeatherCondition.Unknown)
-        sky.sizeDp = 40
+        sky.sizeDp = if (expanded) 56 else 40
         temp.text = ForecastText.degrees(w?.temperature)
         val humidity = w?.humidity ?: soon?.humidity
         val uv = w?.uvIndex ?: soon?.uvIndex
@@ -103,6 +185,47 @@ open class WeatherForecastBody(context: Context, private val ctx: DrawerContext,
             windArrow.rotation = ((w.windBearing ?: 0.0) + 180.0).toFloat()
             windArrow.color = p.textMuted
         }
+        renderStats(w, soon)
+    }
+
+    /** The readings now as tiles, from the entity and, for what it lacks, the hour under way (a source may give UV or cloud cover only in its forecast). */
+    private fun renderStats(w: WeatherEntity?, soon: ForecastPoint?) {
+        stats.removeAllViews()
+        stats.visibility = if (expanded) VISIBLE else GONE
+        if (!expanded) return
+        val feels = w?.apparentTemperature ?: soon?.apparentTemperature
+        val humidity = w?.humidity ?: soon?.humidity
+        val uv = w?.uvIndex ?: soon?.uvIndex
+        val cloud = w?.cloudCoverage ?: soon?.cloudCoverage
+        val pressure = w?.pressure ?: soon?.pressure
+        feels?.let { stat("Feels like", ForecastText.degrees(it)) }
+        humidity?.let { stat("Humidity", "${roundHalfUp(it)}%") }
+        w?.windSpeed?.let { stat("Wind", ForecastText.wind(it, w.windBearing, w.windUnit)) }
+        uv?.let { stat("UV index", "${ChartMath.tenths(it)} · ${ForecastText.uvLevel(it)}") }
+        cloud?.let { stat("Cloud cover", "${roundHalfUp(it)}%") }
+        pressure?.let { stat("Pressure", "${roundHalfUp(it)}${w?.pressureUnit?.let { u -> " $u" } ?: ""}") }
+    }
+
+    private fun stat(label: String, value: String) {
+        val tile = StatTile(context)
+        tile.addView(AlignedText(context, label, Role.Secondary, theme.palette.textMuted), FlexParams(MATCH, WRAP))
+        tile.addView(AlignedText(context, value, Role.BodyStrong), FlexParams(MATCH, WRAP))
+        stats.addView(tile)
+    }
+
+    /** One small reading with an icon in front of it (the web's `Metric`). */
+    private fun metric(icon: Icon, text: String, turn: Float? = null): View {
+        val row = RowLayout(context).also { it.gap = 1; it.align = Align.Center }
+        row.addView(GlyphView(context, icon, 12).also { g -> g.color = theme.palette.textMuted; if (turn != null) g.rotation = turn }, FlexParams(WRAP, WRAP))
+        row.addView(AlignedText(context, text, Role.Secondary, theme.palette.textMuted, ellipsize = false), FlexParams(WRAP, WRAP))
+        return row
+    }
+
+    /** The wind as a metric: an arrow the way it blows, and its speed; none when the step has no wind. */
+    private fun windMetric(point: ForecastPoint, unit: String?): View? {
+        val speed = point.windSpeed ?: return null
+        val text = "${roundHalfUp(speed)}${unit?.let { " $it" } ?: ""}"
+        return if (point.windBearing != null) metric(Ui.arrowUp, text, (point.windBearing!! + 180.0).toFloat()) else metric(Ui.wind, text)
     }
 
     private fun renderHours() {
@@ -128,7 +251,8 @@ open class WeatherForecastBody(context: Context, private val ctx: DrawerContext,
             Iso8601.parse(h.timestamp)?.let { at -> SeriesSample(at, h.temperature!!, describe(h, result)) } to h
         }.filter { it.first != null }
         val chart = SeriesChartView(context)
-        chart.heightDp = 88
+        chart.heightDp = if (expanded) 180 else 88
+        chart.expanded = expanded
         chart.fitDomain = true
         chart.unit = result?.unit ?: "°"
         chart.range = SeriesRange.Day
@@ -144,6 +268,10 @@ open class WeatherForecastBody(context: Context, private val ctx: DrawerContext,
         detail.text = ""
         hoursBlock.addView(detail, FlexParams(MATCH, WRAP))
 
+        if (expanded) {
+            hoursBlock.addView(hourStrip(result), FlexParams(MATCH, WRAP).apply { topMargin = Math.round(2 * unitPx()) })
+            return
+        }
         val along = RowLayout(context).also { it.justify = Justify.SpaceBetween; it.align = Align.Start }
         hours.filterIndexed { i, _ -> i % EVERY == 0 }.forEach { h ->
             val col = ColumnLayout(context).also { it.gap = 1; it.align = Align.Center }
@@ -153,6 +281,27 @@ open class WeatherForecastBody(context: Context, private val ctx: DrawerContext,
             along.addView(col, FlexParams(0, WRAP).apply { grow = true; weight = 1f })
         }
         hoursBlock.addView(along, FlexParams(MATCH, WRAP).apply { topMargin = Math.round(unitPx()) })
+    }
+
+    /** Every one of the hours as a column: the hour, the sky, the temperature, and what it knows of the rain, the wind, the air and the sun. */
+    private fun hourStrip(result: ForecastResult?): View {
+        val strip = HourStrip(context)
+        for (h in hours) {
+            val col = ColumnLayout(context).also { it.gap = 2; it.align = Align.Center }
+            val pad = Math.round(unitPx())
+            col.setPadding(Math.round(2 * unitPx()), pad, Math.round(2 * unitPx()), pad)
+            col.addView(AlignedText(context, Iso8601.parse(h.timestamp)?.let { ChartText.hour(it) } ?: "", Role.Secondary, theme.palette.textMuted, Paint.Align.CENTER), FlexParams(WRAP, WRAP))
+            col.addView(GlyphView(context, UiIcons.weather(h.condition), 26), FlexParams(WRAP, WRAP))
+            col.addView(AlignedText(context, ForecastText.degrees(h.temperature), Role.BodyStrong, align = Paint.Align.CENTER), FlexParams(WRAP, WRAP))
+            val metrics = ColumnLayout(context).also { it.gap = 1; it.align = Align.Center }
+            ForecastText.rain(h.precipitationProbability, h.precipitation, result?.precipitationUnit)?.let { metrics.addView(metric(Ui.umbrella, it), FlexParams(WRAP, WRAP)) }
+            windMetric(h, result?.windUnit)?.let { metrics.addView(it, FlexParams(WRAP, WRAP)) }
+            h.humidity?.let { metrics.addView(metric(Ui.droplets, "${roundHalfUp(it)}%"), FlexParams(WRAP, WRAP)) }
+            h.uvIndex?.takeIf { it > 0 }?.let { metrics.addView(metric(Ui.sun, "UV ${ChartMath.tenths(it)}"), FlexParams(WRAP, WRAP)) }
+            col.addView(metrics, FlexParams(WRAP, WRAP))
+            strip.row.addView(col, LinearLayout.LayoutParams(dp(84), WRAP))
+        }
+        return strip
     }
 
     private fun renderDays() {
@@ -175,7 +324,7 @@ open class WeatherForecastBody(context: Context, private val ctx: DrawerContext,
             row.setPadding(0, pad, 0, pad)
             row.addView(AlignedText(context, if (at == null) "" else ForecastText.dayName(at, now, ChartText.weekday(at)), Role.Body, widthDp = 104), FlexParams(dp(104), WRAP))
             row.addView(GlyphView(context, UiIcons.weather(day.condition), 20), FlexParams(WRAP, WRAP))
-            row.addView(AlignedText(context, ForecastText.rain(day.precipitationProbability, day.precipitation, result?.precipitationUnit) ?: "", Role.Secondary, theme.palette.textMuted, widthDp = 40, ellipsize = false), FlexParams(dp(40), WRAP))
+            row.addView(AlignedText(context, ForecastText.rain(day.precipitationProbability, day.precipitation, result?.precipitationUnit) ?: "", Role.Secondary, theme.palette.textMuted, widthDp = if (expanded) 90 else 40, ellipsize = false), FlexParams(dp(if (expanded) 90 else 40), WRAP))
             row.addView(AlignedText(context, ForecastText.degrees(day.low), Role.Label, theme.palette.textMuted, Paint.Align.RIGHT, widthDp = 36), FlexParams(dp(36), WRAP))
             val bar = SpanBar(context)
             if (span > 0 && day.low != null && day.temperature != null) {
@@ -184,6 +333,16 @@ open class WeatherForecastBody(context: Context, private val ctx: DrawerContext,
             }
             row.addView(bar, FlexParams(0, WRAP).apply { grow = true })
             row.addView(AlignedText(context, ForecastText.degrees(day.temperature), Role.Label, widthDp = 36), FlexParams(dp(36), WRAP))
+            if (expanded) {
+                // The wind, the humidity and the UV of the day, each in a column of its own width.
+                fun cell(width: Int, view: View?) = row.addView(
+                    FrameLayoutOf(context, view),
+                    FlexParams(dp(width), WRAP),
+                )
+                cell(84, windMetric(day, result?.windUnit))
+                cell(64, day.humidity?.let { metric(Ui.droplets, "${roundHalfUp(it)}%") })
+                cell(72, day.uvIndex?.let { metric(Ui.sun, "UV ${ChartMath.tenths(it)}") })
+            }
             list.addView(row, FlexParams(MATCH, WRAP))
         }
         daysBlock.addView(list, FlexParams(MATCH, WRAP))
@@ -204,4 +363,9 @@ open class WeatherForecastBody(context: Context, private val ctx: DrawerContext,
         h.pressure?.let { lines += "Pressure ${roundHalfUp(it)}${result?.pressureUnit?.let { u -> " $u" } ?: ""}" }
         return lines
     }
+}
+
+/** A fixed-width cell for a table's column: holds [view] at its start, or nothing. */
+private fun FrameLayoutOf(context: Context, view: View?): View = android.widget.FrameLayout(context).also { cell ->
+    if (view != null) cell.addView(view, android.widget.FrameLayout.LayoutParams(WRAP, WRAP))
 }
