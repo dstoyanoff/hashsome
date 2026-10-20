@@ -242,6 +242,9 @@ open class WeatherForecastBody(context: Context, private val scope: Scope, ref: 
         val head = RowLayout(context).also { it.gap = 3 }
         head.addView(AlignedText(context, "Next 24 hours", Role.Label, theme.palette.textMuted), FlexParams(WRAP, WRAP))
         readout.text = ""
+        // The readout and the detail line outlive the block they were in, which is made again when the layout changes.
+        (readout.parent as? ViewGroup)?.removeView(readout)
+        (detail.parent as? ViewGroup)?.removeView(detail)
         head.addView(readout, FlexParams(WRAP, WRAP).apply { grow = true })
         hoursBlock.addView(head, FlexParams(MATCH, WRAP))
 
