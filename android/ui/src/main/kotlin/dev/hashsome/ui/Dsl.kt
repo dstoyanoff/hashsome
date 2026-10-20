@@ -324,15 +324,28 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
     /**
      * A light: tap to toggle, drag along the tile to dim. [icon] is a bulb, lit while on, when null. [drawer]: holding the tile opens a
      * drawer with the full controls (the power button, brightness with fine steps, the color bars and swatches) and the light's recent
-     * activity; off, the tile is only a toggle that dims, and no drawer is built, which is lighter on a small display.
+     * activity; off, the tile is only a toggle that dims, and no drawer is built, which is lighter on a small display. [power] and [energy]
+     * are the light's power sensor and lifetime energy counter (a Shelly's, say): given, the drawer also charts what it draws, as the web's `energy`.
      */
-    fun lightTile(ref: String, label: String, icon: Icon? = null, drawer: Boolean = true) {
+    fun lightTile(ref: String, label: String, icon: Icon? = null, drawer: Boolean = true, power: String? = null, energy: String? = null) {
         val control = LightControl(handle(ref, EntityKind.Light))
         val view = put(LightTileView(context, control, label))
         view.icon = icon
         if (drawer) {
             view.tile.opensDrawer(context, scope, title = { label }, kind = "Light", icon = { icon ?: Ui.lightbulb }) { drawerContext ->
-                LightDrawerBody(context, control, drawerContext.scope, LogbookControl(control.handle, drawerContext.scope))
+                val charts = if (power != null || energy != null) {
+                    EnergyDrawerBody(
+                        context,
+                        drawerContext.scope,
+                        power?.let { EntityHandle(drawerContext.scope, EntityRef(it), EntityKind.Sensor) },
+                        energy?.let { EntityHandle(drawerContext.scope, EntityRef(it), EntityKind.Sensor) },
+                        drawerContext.expanded,
+                        drawerContext::onExpandedChanged,
+                    )
+                } else {
+                    null
+                }
+                LightDrawerBody(context, control, drawerContext.scope, LogbookControl(control.handle, drawerContext.scope), charts)
             }
         }
     }
