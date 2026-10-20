@@ -204,7 +204,6 @@ internal class NowPlayingView(
         it.align = Paint.Align.CENTER
         it.visibility = View.GONE
     }
-    private val time = LabelView(context, Role.Secondary, Tone.Muted).also { it.align = Paint.Align.CENTER }
     private val volumeRow = volume.row(context)
     private val artwork = ArtworkSlot(AssetSize.Medium, { (minOf(ring.width, ring.height) * 0.72f).toInt().takeIf { it > 0 } ?: dp(130) }) { ring.show(it) }
     private val queueState = queue
@@ -220,12 +219,11 @@ internal class NowPlayingView(
         titles.addView(sub, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also { it.topMargin = Math.round(0.5f * unitPx()) })
         titles.addView(loadingLine, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also { it.topMargin = Math.round(0.5f * unitPx()) })
         panel.addView(titles, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        panel.addView(time, FlexParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         speakers?.let {
             panel.addView(it, FlexParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).also { p ->
                 p.align = Align.Center
-                // Close under the time: the pill sits in the gap the time leaves.
-                p.topMargin = -Math.round(unitPx())
+                // Close under the title block: the pill sits in the gap there.
+                p.topMargin = Math.round(unitPx())
             })
         }
         // Beside the title shuffle is a plain key, a glyph with no disc under it.
@@ -292,8 +290,8 @@ internal class NowPlayingView(
         val shown = control.seek.shown.value
         ring.length = if (ready && caps?.seek == true && duration != null && duration > 0) duration else 0.0
         ring.fraction = if (shown != null && duration != null && duration > 0) (shown / duration).coerceIn(0.0, 1.0).toFloat() else 0f
-        time.text = if (ready && shown != null && duration != null && duration > 0) "${MediaFormat.duration(shown)} / ${MediaFormat.duration(duration)}" else ""
-        time.visibility = if (time.text.isEmpty()) View.INVISIBLE else View.VISIBLE
+        // The time is on the artwork, which has the row it used to take.
+        ring.timeText = if (ready && shown != null && duration != null && duration > 0) "${MediaFormat.duration(shown)} / ${MediaFormat.duration(duration)}" else ""
 
         keys.render()
         volumeRow.visibility = if (volume.present()) View.VISIBLE else View.GONE

@@ -268,6 +268,14 @@ internal class ArtworkRingView(context: Context) : RingView(context) {
     private var hasPicture = false
     private var pressedPicture = false
 
+    /** The track's time, as "1:40 / 2:33", drawn in a pill on the lower part of the picture (nothing when empty); it gives way to the position under the finger while the ring is dragged. */
+    var timeText: CharSequence = ""
+        set(value) {
+            if (field == value) return
+            field = value
+            invalidate()
+        }
+
     /** Where the finger is while the ring is being dragged, in seconds; null otherwise. It is shown on the picture. */
     private var previewSeconds: Double? = null
     private val bubble = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -302,6 +310,24 @@ internal class ArtworkRingView(context: Context) : RingView(context) {
             canvas.drawIcon(iconBitmap(Ui.music, px, theme.palette.textMuted), (width - px) / 2f, (height - px) / 2f)
         }
         previewSeconds?.let { drawPosition(canvas, it) }
+        if (previewSeconds == null && timeText.isNotEmpty()) drawTime(canvas)
+    }
+
+    /** The time in a small dark pill low on the picture, sized with the ring. */
+    private fun drawTime(canvas: Canvas) {
+        val s = minOf(width, height).toFloat()
+        bubbleText.textSize = (s * 0.075f).coerceIn(dp(11f), dp(15f))
+        bubbleText.typeface = theme.typefaces.forWeight(500)
+        bubbleText.color = 0xFFFFFFFF.toInt()
+        bubbleText.textAlign = Paint.Align.CENTER
+        val w = bubbleText.measureText(timeText, 0, timeText.length) + bubbleText.textSize * 1.4f
+        val h = bubbleText.textSize * 2f
+        val cy = height / 2f + s * 0.24f
+        bubble.color = 0x8C000000.toInt()
+        bubbleRect.set(width / 2f - w / 2f, cy - h / 2f, width / 2f + w / 2f, cy + h / 2f)
+        canvas.drawRoundRect(bubbleRect, h / 2f, h / 2f, bubble)
+        val fm = bubbleText.fontMetrics
+        canvas.drawText(timeText, 0, timeText.length, width / 2f, cy - (fm.ascent + fm.descent) / 2f, bubbleText)
     }
 
     /** The position under the finger, in a dark pill in the middle of the picture, so it can be read where the thumb is not. */
