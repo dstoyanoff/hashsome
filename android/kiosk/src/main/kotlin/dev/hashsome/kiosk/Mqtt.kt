@@ -135,7 +135,8 @@ class MqttBridge(
     /** The `update` entity's state, as Home Assistant reads it: the installed and the latest version, the notes, and whether an install is running. */
     internal fun updateStatePayload(): String {
         val installed = actions.installedVersion
-        val json = JSONObject().put("installed_version", installed).put("title", "Hashsome")
+        // Home Assistant keeps the last value of a key a state message leaves out, so an install that ended would stay "installing": say it every time.
+        val json = JSONObject().put("installed_version", installed).put("title", "Hashsome").put("in_progress", false).put("update_percentage", JSONObject.NULL)
         when (val u = actions.updateState.value) {
             is UpdateState.Available -> json.put("latest_version", u.release.versionName).put("release_summary", u.release.notes ?: "")
             is UpdateState.Downloading -> json.put("latest_version", u.release.versionName).put("in_progress", true).put("update_percentage", u.percent)

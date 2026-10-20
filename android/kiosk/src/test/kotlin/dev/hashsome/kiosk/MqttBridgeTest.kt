@@ -167,6 +167,12 @@ class MqttBridgeTest {
         val payload = JSONObject(b.updateStatePayload())
         assertEquals("0.19.2", payload.getString("installed_version"))
         assertEquals("0.19.3", payload.getString("latest_version"))
+        // Home Assistant keeps a key a message leaves out, so the end of an install must be said, not omitted.
+        assertFalse(payload.getBoolean("in_progress"))
+        assertTrue(payload.isNull("update_percentage"))
+        actions.updateState.set(UpdateState.Downloading(release, 100))
+        assertTrue(JSONObject(b.updateStatePayload()).getBoolean("in_progress"))
+        actions.updateState.set(UpdateState.Available(release))
         link.receive("$root/update/set", "INSTALL")
         link.receive("$root/check_update/set", "PRESS")
         assertEquals(listOf("install_update", "check_update"), actions.calls)
