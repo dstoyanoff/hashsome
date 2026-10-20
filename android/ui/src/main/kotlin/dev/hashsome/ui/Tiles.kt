@@ -141,6 +141,7 @@ open class SensorReadoutView(context: Context, val reading: SensorReading, icon:
         super.onAttachedToWindow()
         bind(reading.reading) { render() }
         bind(reading.handle.state) { render() }
+        bind(reading.silence) { render() }
     }
 
     private fun render() {
@@ -148,13 +149,15 @@ open class SensorReadoutView(context: Context, val reading: SensorReading, icon:
         val r = reading.reading.value
         val ready = reading.handle.state.value is HandleState.Ready
         val flagged = ready && !r.inSafeRange
+        // A sensor that has said nothing for a day gets the triangle too, in the warm color: it may be dead or stuck.
+        val silent = ready && reading.silence.value != null
         val tone = if (flagged) p.danger else if (muted) p.textMuted else p.text
         glyph.icon = shownIcon
         glyph.color = tone
         value.color = tone
         value.text = r.formatted
-        warning.color = tone
-        warning.visibility = if (flagged) VISIBLE else GONE
+        warning.color = if (flagged) tone else p.warm
+        warning.visibility = if (flagged || silent) VISIBLE else GONE
         battery.color = p.danger
         battery.visibility = if (showBattery && r.battery?.low == true) VISIBLE else GONE
         alpha = if (ready) 1f else 0.6f
