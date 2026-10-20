@@ -733,7 +733,7 @@ private class FullLayout(context: Context) : ViewGroup(context) {
 }
 
 /** One child, centered, no wider than [maxDp] and as tall as it is, or as the room it is given when that is less (the player alone gives way, its record shrinking). */
-private class Capped(context: Context, private val maxDp: Int) : ViewGroup(context) {
+internal class Capped(context: Context, private val maxDp: Int) : ViewGroup(context) {
     /** Whether the child is given exactly the height it is offered (it grows into it), not at most (it shrinks to fit). */
     var fill = false
 

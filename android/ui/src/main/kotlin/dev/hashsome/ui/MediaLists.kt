@@ -193,6 +193,9 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
     /** How search is offered; set before the view is shown. With [SearchMode.Icon], a library without tabs still gets the field above its list. */
     var searchMode: SearchMode = SearchMode.Bar
 
+    /** How the items are laid out: rows, or one row of large cards that scrolls sideways. Set before the view is shown. */
+    var layout: BrowseLayout = BrowseLayout.List
+
     /** Whether the field is open from the icon (it also stays while a search has results). */
     private var searchOpen = false
 
@@ -216,10 +219,28 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
     private val note = FrameLayout(context)
     private val rows = ArrayList<BrowseRow>()
     private val pictures = ArrayList<ArtworkSlot>()
+    private val theaterScroll = android.widget.HorizontalScrollView(context).also {
+        it.isHorizontalScrollBarEnabled = false
+        it.overScrollMode = OVER_SCROLL_NEVER
+        it.visibility = GONE
+    }
+    private val theaterHost = LinearLayout(context).also { it.orientation = LinearLayout.HORIZONTAL }
+    private val cards = ArrayList<BrowseCard>()
+    private var cardLimit = 0
+    private var cardArt = 0
     private var items: List<BrowseItem> = emptyList()
     private var shownRows: List<BrowseItem>? = null
     private var summary: LabelView? = null
     private var limit = 0
+
+    private companion object {
+        /** How many cards come at a time, as the end of the row is scrolled to. */
+        const val CARD_BATCH = 10
+
+        /** A card's artwork side when there is room for it, and the least it gets, in dp (the web's `CARD` and `MIN_CARD`). */
+        const val CARD_MAX = 200
+        const val CARD_MIN = 120
+    }
 
     init {
         header.addView(back, wrap().also { it.rightMargin = 0 })
@@ -229,7 +250,9 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
             it.shrink = true
         })
         scroll.addView(host, FrameLayout.LayoutParams(-1, -2))
+        theaterScroll.addView(theaterHost, FrameLayout.LayoutParams(-2, -2))
         area.addView(scroll, FrameLayout.LayoutParams(-1, -1))
+        area.addView(theaterScroll, FrameLayout.LayoutParams(-1, -1))
         area.addView(skeleton, FrameLayout.LayoutParams(-1, -2))
         area.addView(note, FrameLayout.LayoutParams(-1, -2))
         searchTrigger.addView(searchRule, FlexParams(dp(1), dp(20)))
@@ -254,6 +277,16 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
 
         back.onClick = { control.back() }
         search.onChange = { control.search(it) }
+        // The cards are as large as the room under the tabs allows, so they follow its height; more of them arrive as the end is scrolled to.
+        area.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
+            if (layout == BrowseLayout.Theater && bottom - top != oldBottom - oldTop) fillTheater()
+        }
+        theaterScroll.setOnScrollChangeListener { _, x, _, _, _ ->
+            if (cards.size < items.size && x + theaterScroll.width >= theaterHost.width - dp(300)) {
+                cardLimit += CARD_BATCH
+                fillTheater()
+            }
+        }
         scroll.onNearEnd = {
             // Not while the list is being laid out: the rows are added a moment later.
             scroll.post {
@@ -371,6 +404,7 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
         skeleton.visibility = GONE
         note.visibility = GONE
         scroll.visibility = GONE
+        theaterScroll.visibility = GONE
         when {
             error != null -> {
                 note.removeAllViews()
@@ -380,7 +414,8 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
             }
 
             s.loading -> {
-                skeleton.visibility = VISIBLE
+                // The cards have no placeholder: the row is empty until they come.
+                if (layout == BrowseLayout.List) skeleton.visibility = VISIBLE
                 clearRows()
             }
 
@@ -392,21 +427,26 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
             }
 
             else -> {
-                scroll.visibility = VISIBLE
+                val theater = layout == BrowseLayout.Theater
+                (if (theater) theaterScroll else scroll).visibility = VISIBLE
                 if (shownRows != s.rows) {
                     // Another list: it arrives as new rows, from the top.
                     clearRows()
                     shownRows = s.rows
                     items = s.rows
                     scroll.scrollTo(0, 0)
+                    theaterScroll.scrollTo(0, 0)
                 }
-                fill()
+                if (theater) fillTheater() else fill()
             }
         }
     }
 
     private fun clearRows() {
         host.removeAllViews()
+        theaterHost.removeAllViews()
+        cards.clear()
+        cardLimit = 0
         rows.clear()
         pictures.forEach { it.stop() }
         pictures.clear()
@@ -449,6 +489,41 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
         }
     }
 
+    /** Adds the cards the row has room for; their size follows the room under the tabs (the web's `CARD_SIZE`). */
+    private fun fillTheater() {
+        val s = control.state.value
+        if (shownRows == null || s.loading || s.error != null || area.height <= 0) return
+        val art = (area.height - dp(BrowseCard.LABEL)).coerceIn(dp(CARD_MIN), dp(CARD_MAX))
+        if (cardLimit == 0) cardLimit = CARD_BATCH
+        if (art != cardArt) {
+            cardArt = art
+            cards.forEach { it.artPx = art }
+        }
+        val gap = Math.round(3 * unitPx())
+        while (cards.size < items.size && cards.size < cardLimit) {
+            val index = cards.size
+            val card = BrowseCard(context).also { it.artPx = art }
+            val slot = ArtworkSlot(AssetSize.Medium, { cardArt }) { card.picture = it }
+            cards += card
+            pictures += slot
+            val item = items[index]
+            card.onOpen = { control.open(item) }
+            card.onPlay = { play(item) }
+            card.onToggle = { control.handle.command(MediaPlayerCommands.togglePlay()) }
+            card.onAdd = { control.play(item, PlayMode.Add) }
+            bindCard(index)
+            theaterHost.addView(card, LinearLayout.LayoutParams(art, LinearLayout.LayoutParams.WRAP_CONTENT).also { if (index > 0) it.leftMargin = gap })
+        }
+    }
+
+    private fun bindCard(index: Int) {
+        val item = items.getOrNull(index) ?: return
+        val player = control.handle.entity
+        cards[index].bind(item, queueable(), isActive(item, player), player?.playback == PlaybackState.Playing, control.feedback.value)
+        // The artwork slot of a card is the one added with it: after the rows' (there are none in this layout).
+        pictures.getOrNull(index)?.set(item.artworkUrl)
+    }
+
     private fun wire(row: BrowseRow, item: BrowseItem) {
         row.onOpen = { control.open(item) }
         row.onPlay = { play(item) }
@@ -466,6 +541,7 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
 
     private fun updateRows() {
         for (i in rows.indices) bindRow(i)
+        for (i in cards.indices) bindCard(i)
         // The actions of the open item depend on the player having a queue.
         val s = control.state.value
         if (s.stack.isNotEmpty() && s.search == null) setActions(s.stack.last().item)

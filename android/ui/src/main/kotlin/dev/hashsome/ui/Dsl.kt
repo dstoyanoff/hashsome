@@ -586,6 +586,18 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
     }
 
     /**
+     * The player for a wide space: the player at the left and its queue beside it, and under them the library as one row of large cards. It takes the
+     * height that is left of the page; a page that is one card of it is a music page (the web's `MediaPlayerFull wide`).
+     */
+    fun mediaPlayerWide(ref: String, label: String, speakers: List<EntityRef> = emptyList(), expandable: Boolean? = null, screen: Boolean = false) {
+        val wide = MediaPlayerWideView(context, player(ref), label)
+        wide.speakers = speakers
+        wide.expandable = expandable ?: drawersExpandable
+        wide.fullScreen = screen
+        place(wide, grow = true)
+    }
+
+    /**
      * A player's own library: shelves as tabs, search, and rows to open and play. It takes the height that is left of the page. [search]
      * says how search is offered: a field above the list, or an icon at the end of the row of tabs that becomes the field (the web's `search="icon"`).
      */
