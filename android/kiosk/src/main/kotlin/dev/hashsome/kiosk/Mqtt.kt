@@ -118,6 +118,8 @@ class MqttBridge(
         val stores: List<Store<*>> = emptyList(),
         /** Whether this component is announced and answers at all (restart_device only where a reboot is possible). */
         val offered: () -> Boolean = { true },
+        /** When it returns false Home Assistant shows the entity as unavailable (greyed out, not settable): it has no effect right now. Null: always usable. */
+        val usable: (() -> Boolean)? = null,
     )
 
     private val deviceId: String get() = settings.deviceId.value ?: "unknown"
@@ -126,6 +128,7 @@ class MqttBridge(
 
     private fun stateTopic(key: String) = "$root/$key/state"
     private fun commandTopic(key: String) = "$root/$key/set"
+    private fun usableTopic(key: String) = "$root/$key/usable"
 
     private fun onOff(on: Boolean) = if (on) "ON" else "OFF"
 
@@ -175,7 +178,9 @@ class MqttBridge(
                 "brightness", "number", "Brightness",
                 describe = { put("min", 0); put("max", 100); put("step", 1); put("unit_of_measurement", "%") },
                 value = { settings.brightness.value.toString() },
-                stores = listOf(settings.brightness),
+                // Only what the screen follows while auto brightness is off: with it on, the light sensor decides and this is unavailable.
+                stores = listOf(settings.brightness, settings.autoBrightness),
+                usable = { !settings.autoBrightness.value },
                 command = { parseNumber(it)?.let { n -> settings.brightness.set(n.coerceIn(0, 100)) } },
             ),
             Component("auto_brightness", "switch", "Auto brightness", value = { onOff(settings.autoBrightness.value) }, stores = listOf(settings.autoBrightness), command = {
@@ -322,7 +327,8 @@ class MqttBridge(
                 .put("p", c.platform)
                 .put("unique_id", "hashsome-${deviceId}_${c.key}")
                 .put("name", c.name)
-                .put("avty", availability)
+                .put("avty", if (c.usable == null) availability else JSONArray(availability.toString()).put(JSONObject().put("topic", usableTopic(c.key)).put("payload_available", "online").put("payload_not_available", "offline")))
+            if (c.usable != null) body.put("avty_mode", "all")
             if (c.value != null) body.put("stat_t", stateTopic(c.key))
             if (c.command != null) body.put("cmd_t", commandTopic(c.key))
             c.describe(body)
@@ -427,6 +433,7 @@ class MqttBridge(
     }
 
     private fun publishState(component: Component) {
+        component.usable?.let { link.publish(MqttLink.Message(usableTopic(component.key), if (it()) "online" else "offline", retained = true)) }
         val payload = component.value?.invoke() ?: return
         link.publish(MqttLink.Message(stateTopic(component.key), payload, retained = true))
     }
