@@ -46,7 +46,9 @@ devices.json (project root):
   [{ "id": "bathroom", "host": "10.1.1.50", "profile": "shelly-jenna",
      "dashboard": "bathroom", "server": "http://10.1.1.2:3000", "mqtt": "mqtt://10.1.1.2",
      "home": true }]
-  profile: shelly-stargate | shelly-jenna | generic. dashboard, server, mqtt, updates and home are optional.
+  profile: shelly-stargate | shelly-jenna | generic. dashboard, server, mqtt, updates, home and owner are optional.
+  owner: true makes the app the device owner on provision (the device must have no accounts), so it can switch off the
+  pull-down shade; a device owner is given up by uninstall.
   updates is the folder URL the published feed is served from, e.g. "http://10.1.1.2:8123/local/hashsome", or a
   registry repository, e.g. "oci://10.1.1.3:5000/home-android".
   host is ip or ip:port (port 5555 if omitted); IPv6 is not supported.
@@ -68,6 +70,9 @@ export interface Device {
   /** Where the update feed (latest.json and the APKs) is served from. */
   updates?: string;
   home?: boolean;
+
+  /** Make the app the device owner (`dpm set-device-owner`, which needs a device with no accounts): the pull-down shade can then be switched off. */
+  owner?: boolean;
 }
 
 export const APK = 'android/app/build/outputs/apk/release/app-release.apk';
@@ -158,7 +163,7 @@ export function validateDevices(json: unknown): Device[] {
     }
 
     const device = raw as Record<string, unknown>;
-    const known = new Set(['id', 'host', 'profile', 'home', ...OPTIONAL_STRINGS]);
+    const known = new Set(['id', 'host', 'profile', 'home', 'owner', ...OPTIONAL_STRINGS]);
     const extra = Object.keys(device).find((key) => !known.has(key));
     if (extra) {
       throw new Error(`${where}: unknown field "${extra}".`);
@@ -180,8 +185,10 @@ export function validateDevices(json: unknown): Device[] {
       }
     }
 
-    if (device.home !== undefined && typeof device.home !== 'boolean') {
-      throw new Error(`${where}: "home" must be true or false.`);
+    for (const field of ['home', 'owner'] as const) {
+      if (device[field] !== undefined && typeof device[field] !== 'boolean') {
+        throw new Error(`${where}: "${field}" must be true or false.`);
+      }
     }
 
     const id = device.id as string;
@@ -313,6 +320,17 @@ export function provisionCommands(
     ),
     shell(device, 'dumpsys', 'deviceidle', 'whitelist', `+${pkg}`),
     ...(admin ? [shell(device, 'dpm', 'set-active-admin', `${pkg}/${ADMIN}`)] : []),
+    // Android only lets a device without accounts get a device owner: where it refuses, the rest of the set-up goes on and says why.
+    ...(device.owner === true
+      ? [
+          shell(
+            device,
+            'sh',
+            '-c',
+            `dpm list-owners | grep -q ${pkg} || dpm set-device-owner ${pkg}/${ADMIN} || echo "not the device owner: remove the device's accounts (Settings > Passwords & accounts), then provision again"`,
+          ),
+        ]
+      : []),
     // A tablet that is put to sleep with lockNow() wakes on its lock screen unless that is off. A device with a PIN keeps it: the step does not fail.
     ...(device.profile === 'generic'
       ? [
