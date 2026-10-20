@@ -49,6 +49,16 @@ interface KioskActions {
 
     /** Whether [restartDevice] has a way to work (probed once the service runs); false until then. */
     val canRestartDevice: Store<Boolean>
+
+    /** Asks the update feed whether a newer release is there; see [UpdateState]. */
+    fun checkForUpdate()
+
+    /** Downloads and installs the release that is available. */
+    fun installUpdate()
+
+    /** Where the updater stands, and the version this install is. */
+    val updateState: Store<UpdateState>
+    val installedVersion: String
 }
 
 /** What the bridge reports that is not a setting. */
@@ -118,6 +128,20 @@ class MqttBridge(
     private fun commandTopic(key: String) = "$root/$key/set"
 
     private fun onOff(on: Boolean) = if (on) "ON" else "OFF"
+
+    /** The `update` entity's state, as Home Assistant reads it: the installed and the latest version, the notes, and whether an install is running. */
+    internal fun updateStatePayload(): String {
+        val installed = actions.installedVersion
+        val json = JSONObject().put("installed_version", installed).put("title", "Hashsome")
+        when (val u = actions.updateState.value) {
+            is UpdateState.Available -> json.put("latest_version", u.release.versionName).put("release_summary", u.release.notes ?: "")
+            is UpdateState.Downloading -> json.put("latest_version", u.release.versionName).put("in_progress", true).put("update_percentage", u.percent)
+            is UpdateState.Installing -> json.put("latest_version", u.release.versionName).put("in_progress", true)
+            is UpdateState.Failed -> json.put("latest_version", u.release?.versionName ?: installed).put("release_summary", "Update failed: ${u.message}")
+            else -> json.put("latest_version", installed)
+        }
+        return json.toString()
+    }
 
     private fun parseOnOff(payload: String): Boolean? = when (payload.trim().uppercase()) {
         "ON", "TRUE", "1" -> true
@@ -203,6 +227,19 @@ class MqttBridge(
             Component("wake", "button", "Wake", describe = { put("payload_press", "PRESS") }, command = { actions.wake() }),
             Component("sleep", "button", "Sleep", describe = { put("payload_press", "PRESS") }, command = { actions.sleep() }),
             Component("reload", "button", "Reload", describe = { put("payload_press", "PRESS") }, command = { actions.reload() }),
+            Component("check_update", "button", "Check for update", describe = { put("payload_press", "PRESS"); put("entity_category", "diagnostic") }, command = { actions.checkForUpdate() }, stores = listOf(actions.updateState), offered = { actions.updateState.value != UpdateState.Off }),
+            Component(
+                "update", "update", "Hashsome",
+                describe = {
+                    put("device_class", "firmware")
+                    put("payload_install", "INSTALL")
+                    put("entity_category", "diagnostic")
+                },
+                value = { updateStatePayload() },
+                command = { if (it.trim().equals("INSTALL", ignoreCase = true)) actions.installUpdate() },
+                stores = listOf(actions.updateState),
+                offered = { actions.updateState.value != UpdateState.Off },
+            ),
             Component("restart_app", "button", "Restart app", describe = { put("payload_press", "PRESS") }, command = { actions.restartApp() }),
             Component(
                 "open_stock_app", "button", "Open Shelly app", describe = { put("payload_press", "PRESS") },
@@ -240,6 +277,15 @@ class MqttBridge(
         watching += actions.canRestartDevice.listen { if (connected) publishDiscovery() }
         // The profile (and so "Open Shelly app") is known once the service has built, and changes with profileOverride.
         watching += actions.canOpenStockApp.listen { if (connected) publishDiscovery() }
+        // The update entity is announced only with a feed set; set or cleared, it appears or goes.
+        var feedOn = actions.updateState.value != UpdateState.Off
+        watching += actions.updateState.listen {
+            val on = it != UpdateState.Off
+            if (on != feedOn) {
+                feedOn = on
+                if (connected) publishDiscovery()
+            }
+        }
         connectIfWanted()
     }
 

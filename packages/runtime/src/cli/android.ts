@@ -1,13 +1,24 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { join, resolve } from 'node:path';
 
-const USAGE = `Usage: hashsome android <build|deploy|provision|uninstall|icons> [options]
+const USAGE = `Usage: hashsome android <build|publish|deploy|provision|uninstall|icons> [options]
 
 Builds the project's native Android app and puts it on the displays listed in devices.json.
 
 Commands:
   build       Build the release APK (./gradlew -p android assembleRelease)
+  publish     Copy the built APK and a latest.json into a folder any HTTP server can serve (Home Assistant's
+              /config/www, a static host); displays with "updates" set offer it as an update in Home Assistant
   deploy      Install the APK on each device and hand it its settings (server, dashboard, ...)
   provision   deploy, plus the one-time permissions and kiosk set-up for a device
   uninstall   Have the app remove its own device admin, then uninstall it (a device admin blocks pm uninstall,
@@ -17,7 +28,9 @@ Commands:
               app again: the previous one is not known.
   icons       Convert an icon pack's SVGs to drawables and a Kotlin object (hashsome android icons --help)
 
-Options (build, deploy, provision, uninstall):
+Options (build, deploy, provision, uninstall, publish):
+  --to <dir>      publish: the feed folder (default android/dist)
+  --notes <text>  publish: release notes shown in Home Assistant
   --device <id>   Only this device from devices.json
   --home          provision: also make the app the device's home screen
   --system        provision / uninstall, Shelly displays only: install the app as a system app (adb root,
@@ -31,7 +44,8 @@ devices.json (project root):
   [{ "id": "bathroom", "host": "10.1.1.50", "profile": "shelly-jenna",
      "dashboard": "bathroom", "server": "http://10.1.1.2:3000", "mqtt": "mqtt://10.1.1.2",
      "home": true }]
-  profile: shelly-stargate | shelly-jenna | generic. dashboard, server, mqtt and home are optional.
+  profile: shelly-stargate | shelly-jenna | generic. dashboard, server, mqtt, updates and home are optional.
+  updates is the folder URL the published feed is served from, e.g. "http://10.1.1.2:8123/local/hashsome".
   host is ip or ip:port (port 5555 if omitted); IPv6 is not supported.
 `;
 
@@ -47,6 +61,9 @@ export interface Device {
   dashboard?: string;
   server?: string;
   mqtt?: string;
+
+  /** Where the update feed (latest.json and the APKs) is served from. */
+  updates?: string;
   home?: boolean;
 }
 
@@ -119,7 +136,7 @@ function applicationId(root: string): string {
 
 // --- devices.json ---
 
-const OPTIONAL_STRINGS = ['dashboard', 'server', 'mqtt'] as const;
+const OPTIONAL_STRINGS = ['dashboard', 'server', 'mqtt', 'updates'] as const;
 
 /** Checks the parsed devices.json and returns it typed. Every problem names the device and the field. `host` is `ip[:port]` (default port 5555); IPv6 is not supported. */
 export function validateDevices(json: unknown): Device[] {
@@ -245,6 +262,7 @@ function provisionBroadcast(device: Device, pkg: string): Command {
     ['device', device.id],
     ['profile', device.profile],
     ['mqtt', device.mqtt],
+    ['updates', device.updates],
   ].flatMap(([key, value]) => (value ? ['--es', key!, value] : []));
 
   return shell(
@@ -620,6 +638,72 @@ function apkVersionCode(apk: string): number | undefined {
   return result.status === 0 ? parseAaptVersionCode(result.stdout) : undefined;
 }
 
+/** `package`, `versionCode` and `versionName` of `aapt dump badging` output, or undefined when it is not there. */
+export function parseAaptBadging(
+  badging: string,
+): { packageName: string; versionCode: number; versionName: string } | undefined {
+  const match =
+    /package: name='([^']+)' versionCode='(\d+)' versionName='([^']*)'/.exec(badging) ??
+    /package: name='([^']+)' versionCode='(\d+)'()/.exec(badging);
+
+  return match
+    ? { packageName: match[1]!, versionCode: Number(match[2]), versionName: match[3] || match[2]! }
+    : undefined;
+}
+
+/** The `latest.json` the app's updater reads (kiosk `ReleaseFeed`). */
+export function releaseFeed(
+  badge: { packageName: string; versionCode: number; versionName: string },
+  apkName: string,
+  sha256: string,
+  size: number,
+  notes: string | undefined,
+): Record<string, unknown> {
+  return {
+    packageName: badge.packageName,
+    versionName: badge.versionName,
+    versionCode: badge.versionCode,
+    apk: apkName,
+    sha256,
+    size,
+    ...(notes ? { notes } : {}),
+  };
+}
+
+/** Copies the built APK to `<to>/<package>-<code>.apk` and writes `<to>/latest.json` beside it. */
+function publishRelease(apk: string, to: string, notes: string | undefined, dryRun: boolean) {
+  const aapt = findAapt();
+  if (!aapt) {
+    throw new Error('publish needs aapt (Android SDK build-tools): set ANDROID_HOME.');
+  }
+
+  const result = spawnSync(aapt, ['dump', 'badging', apk], { encoding: 'utf8' });
+  const badge = result.status === 0 ? parseAaptBadging(result.stdout) : undefined;
+  if (!badge) {
+    throw new Error(`Could not read the package and version of ${apk} with aapt.`);
+  }
+
+  const bytes = readFileSync(apk);
+  const name = `${badge.packageName}-${badge.versionCode}.apk`;
+  const feed = releaseFeed(
+    badge,
+    name,
+    createHash('sha256').update(bytes).digest('hex'),
+    bytes.length,
+    notes,
+  );
+
+  console.log(`${dryRun ? '(dry run) ' : ''}${join(to, name)}`);
+  console.log(`${dryRun ? '(dry run) ' : ''}${join(to, 'latest.json')}: ${JSON.stringify(feed)}`);
+  if (dryRun) {
+    return;
+  }
+
+  mkdirSync(to, { recursive: true });
+  copyFileSync(apk, join(to, name));
+  writeFileSync(join(to, 'latest.json'), `${JSON.stringify(feed, null, 2)}\n`);
+}
+
 /** Runs `command` and returns what it printed; a failure throws as in runCommands. */
 function readOutput(command: Command, cwd: string, exec: Exec): string {
   console.log(show(command));
@@ -895,7 +979,7 @@ export async function androidCommand(
     return;
   }
 
-  if (!['build', 'deploy', 'provision', 'uninstall'].includes(sub)) {
+  if (!['build', 'publish', 'deploy', 'provision', 'uninstall'].includes(sub)) {
     throw new Error(`Unknown command "${sub}"\n\n${USAGE}`);
   }
 
@@ -905,12 +989,16 @@ export async function androidCommand(
   }
 
   const { positional, values, flags } = parseFlags(rest, {
-    values: ['device'],
+    values: ['device', 'to', 'notes'],
     flags: ['dry-run', 'home', 'system'],
   });
 
   if (positional.length > 0) {
     throw new Error(`Unexpected argument "${positional[0]}"\n\n${USAGE}`);
+  }
+
+  if ((values.to !== undefined || values.notes !== undefined) && sub !== 'publish') {
+    throw new Error('--to and --notes only apply to publish.');
   }
 
   if (flags.has('home') && sub !== 'provision') {
@@ -921,8 +1009,8 @@ export async function androidCommand(
     throw new Error('--system only applies to provision and uninstall.');
   }
 
-  if (values.device !== undefined && sub === 'build') {
-    throw new Error('--device does not apply to build (one APK serves every device).');
+  if (values.device !== undefined && (sub === 'build' || sub === 'publish')) {
+    throw new Error(`--device does not apply to ${sub} (one APK serves every device).`);
   }
 
   const dryRun = flags.has('dry-run');
@@ -936,6 +1024,16 @@ export async function androidCommand(
 
     runCommands(buildCommands(), android, { dryRun, exec });
     console.log(`\nAPK: ${APK}`);
+    return;
+  }
+
+  if (sub === 'publish') {
+    const apkFile = join(root, APK);
+    if (!existsSync(apkFile)) {
+      throw new Error(`No APK at ${APK}. Run \`hashsome android build\` first.`);
+    }
+
+    publishRelease(apkFile, resolve(root, values.to ?? 'android/dist'), values.notes, dryRun);
     return;
   }
 

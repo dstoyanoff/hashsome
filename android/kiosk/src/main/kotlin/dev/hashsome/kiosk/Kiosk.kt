@@ -123,6 +123,20 @@ internal object Kiosk {
     /** Whether "Open Shelly app" is offered: a Shelly profile is in use (read when the service builds, which a change of profile repeats). */
     private val stockAppOffered = Store(false)
 
+    /** [KioskActions.updateState], one store for the whole process: the updater feeds it while the service runs. */
+    private val updateStateStore = Store<UpdateState>(UpdateState.Off)
+
+    /** Makes [updateStateStore] follow [u]'s state; returns how to stop. */
+    fun followUpdater(u: Updater): () -> Unit {
+        updater = u
+        val cancel = u.state.listenNow { updateStateStore.set(it) }
+        return {
+            cancel()
+            updater = null
+            updateStateStore.set(UpdateState.Off)
+        }
+    }
+
     val actions = object : KioskActions {
         override fun wake() {
             nightMode?.wake()
@@ -148,7 +162,24 @@ internal object Kiosk {
         override fun openStockApp() = openStockApp(Kiosk.activity?.get() ?: Kiosk.appContext)
 
         override val canRestartDevice: Store<Boolean> = rebootAvailable
+
+        override fun checkForUpdate() {
+            updater?.check()
+        }
+
+        override fun installUpdate() {
+            updater?.install()
+        }
+
+        override val updateState: Store<UpdateState> = updateStateStore
+
+        override val installedVersion: String
+            get() = updater?.installedName ?: "unknown"
     }
+
+    /** The updater of whichever service is running, or null before it runs. */
+    @Volatile
+    var updater: Updater? = null
 
     /** Set by [KioskExtension]; what the restart needs to schedule an alarm. */
     @Volatile

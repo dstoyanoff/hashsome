@@ -8,7 +8,9 @@ import {
   hasSystemFlag,
   isDataInstall,
   isRootable,
+  parseAaptBadging,
   parseAaptVersionCode,
+  releaseFeed,
   parseFreeKb,
   parseVersionCode,
   shouldUninstallDataCopy,
@@ -791,5 +793,45 @@ describe('HOME_ALIAS', () => {
     );
 
     expect(manifest).toContain(`android:name="${HOME_ALIAS}"`);
+  });
+});
+
+describe('release feed', () => {
+  test('reads package, code and name from aapt badging', () => {
+    const text =
+      "package: name='dev.hashsome.home' versionCode='1903' versionName='0.19.3' platformBuildVersionName='14'";
+
+    expect(parseAaptBadging(text)).toEqual({
+      packageName: 'dev.hashsome.home',
+      versionCode: 1903,
+      versionName: '0.19.3',
+    });
+
+    expect(parseAaptBadging('nothing')).toBeUndefined();
+  });
+
+  test('latest.json carries what the app checks, notes only when given', () => {
+    const badge = { packageName: 'dev.hashsome.home', versionCode: 1903, versionName: '0.19.3' };
+    expect(releaseFeed(badge, 'dev.hashsome.home-1903.apk', 'ab', 10, undefined)).toEqual({
+      packageName: 'dev.hashsome.home',
+      versionName: '0.19.3',
+      versionCode: 1903,
+      apk: 'dev.hashsome.home-1903.apk',
+      sha256: 'ab',
+      size: 10,
+    });
+
+    expect(releaseFeed(badge, 'a.apk', 'ab', 10, 'Fixes')).toHaveProperty('notes', 'Fixes');
+  });
+
+  test('a device may name its update feed', () => {
+    const [device] = validateDevices([
+      { id: 'a', host: '1.2.3.4', profile: 'generic', updates: 'http://h/local/x' },
+    ]);
+
+    expect(device?.updates).toBe('http://h/local/x');
+    expect(() =>
+      validateDevices([{ id: 'a', host: '1.2.3.4', profile: 'generic', updates: '' }]),
+    ).toThrow(/updates/);
   });
 });
