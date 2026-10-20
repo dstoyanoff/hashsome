@@ -47,6 +47,12 @@ sealed class EntityKind<E : Entity>(val name: String) {
         override fun cast(entity: Entity): WeatherEntity? = entity as? WeatherEntity
     }
 
+    /** Anything with no kind of its own (a `select`, say): its state as text. Shown, not controlled; a service is called with [Client.raw]. */
+    data object Generic : EntityKind<GenericEntity>("generic") {
+        override fun parse(ref: EntityRef, json: JSONObject): GenericEntity = parseGeneric(ref, json)
+        override fun cast(entity: Entity): GenericEntity? = entity as? GenericEntity
+    }
+
     data object MediaPlayer : EntityKind<MediaPlayerEntity>("mediaPlayer") {
         override fun parse(ref: EntityRef, json: JSONObject): MediaPlayerEntity = parseMediaPlayer(ref, json)
         override fun cast(entity: Entity): MediaPlayerEntity? = entity as? MediaPlayerEntity

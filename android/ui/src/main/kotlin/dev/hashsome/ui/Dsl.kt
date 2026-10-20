@@ -8,6 +8,7 @@ import dev.hashsome.client.EntityKind
 import dev.hashsome.client.EntityRef
 import dev.hashsome.client.Store
 import dev.hashsome.client.WeatherCondition
+import dev.hashsome.headless.ActionControl
 import dev.hashsome.headless.ClimateControl
 import dev.hashsome.headless.ConnectionHealth
 import dev.hashsome.headless.EntityHandle
@@ -15,6 +16,7 @@ import dev.hashsome.headless.LightControl
 import dev.hashsome.headless.LogbookControl
 import dev.hashsome.headless.MediaBrowserControl
 import dev.hashsome.headless.MediaPlayerControl
+import dev.hashsome.headless.PersonControl
 import dev.hashsome.headless.QueueControl
 import dev.hashsome.headless.Scope
 import dev.hashsome.headless.SensorReading
@@ -66,8 +68,7 @@ abstract class Dashboard(
 class ShellScope internal constructor() {
     internal var rail: List<PageSpec>? = null
     internal val attention = LinkedHashMap<String, Store<Attention?>>()
-    internal var topBarTitle: String? = null
-    internal var switcher: List<DashboardOption> = emptyList()
+    internal var topBar: TopBarSpec? = null
 
     /** The page navigation down the left edge; the pages are padded for it. */
     fun navRail(pages: List<PageSpec>) {
@@ -87,10 +88,22 @@ class ShellScope internal constructor() {
         attention[path] = level
     }
 
-    /** The top bar (WP4a for the Shelly pages, M2 for the tablets': title, switcher, scenes). */
-    fun topBar(title: String, dashboards: List<DashboardOption> = emptyList()) {
-        topBarTitle = title
-        switcher = dashboards
+    /**
+     * The top bar above every page, pinned (the web's `TopBar`): the dashboard's [title], which opens a menu of the [dashboards] to switch to when there
+     * are two or more (and the display's switcher is on); round [scenes] buttons; and at the right the date ([showDate]), the [weather] chip, whatever
+     * the dashboard puts there itself ([extra]), who is home ([people], as `ha:person.*` refs, anyone away dimmed), the clock and the status dot.
+     */
+    fun topBar(
+        title: String,
+        dashboards: List<DashboardOption> = emptyList(),
+        scenes: List<TopBarScene> = emptyList(),
+        weather: String? = null,
+        people: List<String> = emptyList(),
+        clockFormat: ClockFormat = ClockFormat.Auto,
+        showDate: Boolean = true,
+        extra: (PageScope.() -> Unit)? = null,
+    ) {
+        topBar = TopBarSpec(title, dashboards, scenes, weather, people, clockFormat, showDate, extra)
     }
 }
 
@@ -266,6 +279,23 @@ class PageScope internal constructor(val context: Context, val scope: Scope) {
             dateChip()
             if (weather != null) weatherChip(weather, weatherDrawer)
             clock(clockFormat)
+            systemStatus()
+        }
+    }
+
+    /** The shell's top bar as the first row of the page, which the page pins. [currentId] is the dashboard being shown. */
+    internal fun topBarRow(spec: TopBarSpec, currentId: String) {
+        nest(TopBarRow(context), flex(minHeight = TOP_ROW)) {
+            put(DashboardTitle(context, spec.title, spec.dashboards, currentId))
+            spec.scenes.forEach { scene ->
+                put(SceneDot(context, ActionControl(handle(scene.entity, EntityKind.Action)), scene.icon ?: Ui.workflow, scene.color))
+            }
+            spacer(grow = true)
+            if (spec.showDate) dateChip()
+            spec.weather?.let { weatherChip(it) }
+            spec.extra?.invoke(this)
+            if (spec.people.isNotEmpty()) put(PeopleStack(context, spec.people.map { PersonControl(handle(it, EntityKind.Person)) }))
+            clock(spec.clockFormat)
             systemStatus()
         }
     }

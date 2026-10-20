@@ -23,10 +23,10 @@ Statuses: `native` (a Kotlin counterpart exists; `native:<Name>` when it is name
 | `NavRail`           | component | native  |                       |
 | `NavDock`           | component | planned |                       |
 | `NavBar`            | component | planned |                       |
-| `TopBar`            | component | planned |                       |
+| `TopBar`            | component | native  | `topBar`              |
 | `SystemStatus`      | component | native  |                       |
 | `WeatherChip`       | component | native  |                       |
-| `PresenceStack`     | component | planned |                       |
+| `PresenceStack`     | component | native  | `PeopleStack`         |
 | `DateChip`          | component | native  |                       |
 | `Clock`             | component | native  |                       |
 | `WeatherForecast`   | component | native  | `WeatherForecastBody` |

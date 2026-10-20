@@ -76,32 +76,6 @@ internal class PageScroll(context: Context, val page: PageLayout, private val fi
     }
 }
 
-/**
- * The top bar of a page (title, and a switcher between dashboards): the title in the `title` style and, when the display
- * offers a switcher, a chevron after it. The switcher's menu and the scenes are the tablets' (M2); this draws the bar.
- */
-internal class TopBarView(context: Context, private val title: String, private val switcher: List<DashboardOption>) : View(context) {
-    private val paint = TextPaint(Paint.ANTI_ALIAS_FLAG)
-    private val glyph = iconDrawable(Ui.chevronDown)
-
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), dp(TOP_ROW))
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        val t = theme
-        paint.style(t, Role.Title, t.palette.text)
-        canvas.drawTextCentered(title, 0f, height / 2f, paint)
-        if (switcher.isNotEmpty() && Hashsome.settings.switcherEnabled.value) {
-            val x = paint.measureText(title) + dp(6f)
-            glyph.setTint(t.palette.textMuted)
-            val s = dp(8)
-            glyph.setBounds(x.toInt(), height / 2 - s, x.toInt() + 2 * s, height / 2 + s)
-            glyph.draw(canvas)
-        }
-    }
-}
-
 /** The empty space of `spacer()`: no size of its own (a plain `View` takes all the room it is offered), so it only grows. */
 internal class Spacer(context: Context) : View(context) {
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) = setMeasuredDimension(0, 0)
@@ -123,7 +97,7 @@ internal fun isTopRow(node: PartNode?): Boolean = when (node?.kind) {
 }
 
 private fun View.part(): PartNode = when (this) {
-    is TopBarView -> PartNode(PartKind.TopBar)
+    is TopBarRow -> PartNode(PartKind.TopBar)
     is DateChip, is WeatherChip, is Clock, is SystemStatus -> PartNode(PartKind.Chip)
     is RowLayout -> PartNode(PartKind.Row, (0 until childCount).map { getChildAt(it).part() })
     else -> PartNode(PartKind.Other)
