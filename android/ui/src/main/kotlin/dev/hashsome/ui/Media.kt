@@ -92,6 +92,11 @@ internal class SpeakersPillView(context: Context, private val compact: Boolean, 
         addView(pill, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
     }
 
+    /** Its glyph as strong as the other keys of the row it is in (the full player's transport row). */
+    fun strongGlyph() {
+        pill.strongGlyph = true
+    }
+
     /** The pill as tall as [dp], and as wide as its place (the bar's two-row layout makes it as big as the buttons beside it). */
     fun fillKey(dp: Int) {
         pill.heightDp = dp
@@ -130,7 +135,8 @@ internal class SpeakersPillView(context: Context, private val compact: Boolean, 
         val grouped = summary.together > 1
         pill.label = if (compact) (if (grouped) summary.together.toString() else null) else summary.label
         pill.accentIcon = grouped
-        pill.muted = !grouped
+        // A key among keys is as strong as they are; the card's ghost pill is muted until something is grouped.
+        pill.muted = !compact && !grouped
         pill.dot = !grouped && summary.elsewhere.isNotEmpty()
         // Without words it is a circle.
         pill.padUnits = if (pill.label == null) 0f else 3f
@@ -659,25 +665,58 @@ internal class UnderlineTabs(context: Context, private val tabs: List<ListTab>) 
 /**
  * What the full player's parts are laid out in: every part but the last as tall as it is, the last (the list) the height that is left, and
  * never less than [minList]; when that is more than the room there is, the whole is taller than its scroll view and scrolls.
+ *
+ * With a height to fill and a list to show, the split is 40 / 60: the player (the first part) takes two fifths of it and the library or queue, with its
+ * tabs, the rest, so the artwork grows into the room while the list keeps the larger part. The player is never less than it needs, and the list never less than [minList].
  */
 private class FullLayout(context: Context) : ViewGroup(context) {
     var minListDp = 260
 
+    private companion object {
+        /** The player's share of the room, the library or queue (with its tabs) having the rest: 40 / 60. */
+        const val PLAYER_SHARE = 0.4f
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val gap = Math.round(5 * unitPx())
-        var used = 0
         val count = childCount
-        for (i in 0 until count - 1) {
+        val exact = MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY
+        val total = MeasureSpec.getSize(heightMeasureSpec)
+        val widthSpec = MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY)
+        val unspecified = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+
+        // The parts between the player and the list (the tabs or the rule), as tall as they are.
+        var between = 0
+        for (i in 1 until count - 1) {
             val child = getChildAt(i)
             if (child.visibility == GONE) continue
-            child.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
-            used += child.measuredHeight + gap
+            child.measure(widthSpec, unspecified)
+            between += child.measuredHeight + gap
         }
+        val first = if (count > 1) getChildAt(0) else null
+        var playerHeight = 0
+        if (first != null && first.visibility != GONE) {
+            (first as? Capped)?.fill = false
+            first.measure(widthSpec, unspecified)
+            playerHeight = first.measuredHeight
+            if (exact) {
+                // Its share of the room for the player, but no more than leaves the list its least; never less than it needs.
+                val share = ((total - gap) * PLAYER_SHARE).toInt()
+                val most = total - gap - between - gap - dp(minListDp)
+                val wanted = maxOf(playerHeight, minOf(share, most))
+                if (wanted > playerHeight) {
+                    (first as? Capped)?.fill = true
+                    first.measure(widthSpec, MeasureSpec.makeMeasureSpec(wanted, MeasureSpec.EXACTLY))
+                    playerHeight = first.measuredHeight
+                }
+            }
+        }
+        val used = (if (first != null && first.visibility != GONE) playerHeight + gap else 0) + between
         val last = if (count > 0) getChildAt(count - 1) else null
-        val room = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) MeasureSpec.getSize(heightMeasureSpec) - used else 0
+        val room = if (exact) total - used else 0
         val list = maxOf(room, dp(minListDp))
-        last?.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(list, MeasureSpec.EXACTLY))
+        last?.measure(widthSpec, MeasureSpec.makeMeasureSpec(list, MeasureSpec.EXACTLY))
         setMeasuredDimension(width, used + if (last == null) 0 else list)
     }
 
@@ -695,13 +734,21 @@ private class FullLayout(context: Context) : ViewGroup(context) {
 
 /** One child, centered, no wider than [maxDp] and as tall as it is, or as the room it is given when that is less (the player alone gives way, its record shrinking). */
 private class Capped(context: Context, private val maxDp: Int) : ViewGroup(context) {
+    /** Whether the child is given exactly the height it is offered (it grows into it), not at most (it shrinks to fit). */
+    var fill = false
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val child = getChildAt(0)
         val room = MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY
+        val height = MeasureSpec.getSize(heightMeasureSpec)
         child.measure(
             MeasureSpec.makeMeasureSpec(minOf(width, dp(maxDp)), MeasureSpec.EXACTLY),
-            if (room) MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(heightMeasureSpec), MeasureSpec.AT_MOST) else MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
+            when {
+                room && fill -> MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
+                room -> MeasureSpec.makeMeasureSpec(height, MeasureSpec.AT_MOST)
+                else -> MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+            },
         )
         setMeasuredDimension(width, child.measuredHeight)
     }
@@ -744,11 +791,14 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
         val scope = control.scope.child()
         own = scope
         val queue = QueueControl(control.handle, scope)
-        val pill = SpeakersPillView(context, compact = false) { openSpeakers(context, control, speakers, label, null, expandable) }
+        // Shuffle and the speakers are keys of the transport row, at its two ends (as the web's player has them), not at the title and a corner.
+        val pill = SpeakersPillView(context, compact = true) { openSpeakers(context, control, speakers, label, null, expandable) }
+        pill.fillKey(theme.density.iconCircle)
+        pill.strongGlyph()
         pillView = pill
         grouping = null
         val player = NowPlayingView(
-            context, control, label, queue, shuffleAtTitle = true, speakers = pill,
+            context, control, label, queue, shuffleAtTitle = false, extra = pill,
             onOpenArtwork = if (fullScreen) ({ NowPlayingScreen.open(context, control, label) }) else null,
         )
         val stack = FullLayout(context)
@@ -838,7 +888,8 @@ open class MediaPlayerFullView(context: Context, val control: MediaPlayerControl
             if (canGroup && grouping == null) {
                 own?.let { scope -> grouping = SpeakersControl(control.handle, scope, speakers).also { pillView?.use(it) } }
             }
-            pillView?.visibility = if (canGroup) View.VISIBLE else View.GONE
+            // Kept in its place when the player cannot be grouped, so the keys do not shift.
+            pillView?.visibility = if (canGroup) View.VISIBLE else View.INVISIBLE
             val now = lists()
             if (now != had) {
                 had = now

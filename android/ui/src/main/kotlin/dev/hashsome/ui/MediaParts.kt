@@ -762,6 +762,13 @@ class PillButton(context: Context, icon: Icon?, label: String?, private val role
             invalidate()
         }
 
+    /** A pill with no words draws its glyph in the text color, not the muted one (a key among keys that are as strong). */
+    var strongGlyph = false
+        set(value) {
+            field = value
+            invalidate()
+        }
+
     /** The glyph in the accent color. */
     var accentIcon = false
         set(value) {
@@ -887,7 +894,7 @@ class PillButton(context: Context, icon: Icon?, label: String?, private val role
         var x = (w - content) / 2
         if (icon != null) {
             val top = (h - glyph) / 2
-            val tone = if (accentIcon) t.palette.accent else if (primary) t.palette.accentText else if (failed) t.palette.danger else t.palette.textMuted
+            val tone = if (accentIcon) t.palette.accent else if (primary) t.palette.accentText else if (failed) t.palette.danger else if (strongGlyph) t.palette.text else t.palette.textMuted
             if (pending) {
                 paint.style = Paint.Style.STROKE
                 paint.strokeWidth = dp(2f)
