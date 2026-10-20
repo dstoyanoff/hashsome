@@ -65,6 +65,29 @@ Publishing goes to GitHub Packages (`https://maven.pkg.github.com/dstoyanoff/has
 
 Each module publishes its `release` AAR with sources, under group `dev.hashsome` and the module's name as the artifact id.
 
+## Emulators that match the displays
+
+To look at a dashboard without putting it on a display, run it on an emulator with the display's Android version, screen size, density and RAM:
+the Shelly Wall Display X1 is Android 7 (API 24), 720x720 at 240 dpi, 1 GB; the X2i is Android 11 (API 30), 1440x720 at 240 dpi, 2 GB. On Apple
+Silicon the images are `arm64-v8a`; take the plain `default` ones, which are the closest to the displays' own Android (no Google services).
+
+```sh
+# Once: the SDK's command-line tools (https://developer.android.com/studio#command-line-tools-only, into $ANDROID_HOME/cmdline-tools/latest), then
+sdkmanager "emulator" "system-images;android-24;default;arm64-v8a" "system-images;android-30;default;arm64-v8a"
+avdmanager create avd -n shelly-x1  -k "system-images;android-24;default;arm64-v8a" -d pixel
+avdmanager create avd -n shelly-x2i -k "system-images;android-30;default;arm64-v8a" -d pixel
+```
+
+Then set the screen and memory in each `~/.android/avd/<name>.avd/config.ini` (replace the lines that are there):
+
+| AVD          | `hw.lcd.width` | `hw.lcd.height` | `hw.lcd.density` | `hw.ramSize` |
+| ------------ | -------------- | --------------- | ---------------- | ------------ |
+| `shelly-x1`  | 720            | 720             | 240              | 1024         |
+| `shelly-x2i` | 1440           | 720             | 240              | 2048         |
+
+and remove the `skin.name` and `skin.path` lines, so the window is the screen and nothing else. `emulator -avd shelly-x2i -gpu host` starts one; a
+consumer project can script installing its app on it (`home/android/README.md` does).
+
 ## `kiosk`: restarting from the settings sheet and Home Assistant
 
 - **Restart app** (Connection group; MQTT button `restart_app`): schedules a one-shot alarm 1.5 s ahead that starts `KioskService` (the boot gate of a Shelly profile applies as to any start), then ends the process; the dashboard comes back with the service.
