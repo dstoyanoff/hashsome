@@ -64,7 +64,7 @@ internal class PictureFill {
             canvas.drawRoundRect(rect, radius, radius, fill)
         } else {
             val g = dp(20)
-            canvas.drawBitmap(iconBitmap(glyph, g, glyphColor), rect.centerX() - g / 2f, rect.centerY() - g / 2f, null)
+            canvas.drawIcon(iconBitmap(glyph, g, glyphColor), rect.centerX() - g / 2f, rect.centerY() - g / 2f)
         }
     }
 }
@@ -311,7 +311,7 @@ open class BrowseRow(context: Context) : View(context) {
         }
         if (expandable) {
             val g = dp(16)
-            canvas.drawBitmap(iconBitmap(UiIcons.chevronRight, g, t.palette.textMuted), mainWidth - 6 * u - g / 2f, (h - g) / 2, null)
+            canvas.drawIcon(iconBitmap(UiIcons.chevronRight, g, t.palette.textMuted), mainWidth - 6 * u - g / 2f, (h - g) / 2)
         }
 
         buttons.forEachIndexed { i, button ->
@@ -332,7 +332,7 @@ open class BrowseRow(context: Context) : View(context) {
                 else -> if (playing) UiIcons.pause else UiIcons.play
             }
             val g = (dp(16) * squeeze).toInt().coerceAtLeast(1)
-            canvas.drawBitmap(iconBitmap(glyph, g, if (primary) t.palette.accentText else t.palette.text), cx - g / 2f, cy - g / 2f, null)
+            canvas.drawIcon(iconBitmap(glyph, g, if (primary) t.palette.accentText else t.palette.text), cx - g / 2f, cy - g / 2f)
             val waits = when (button) {
                 RowButton.Next -> pendingNext
                 RowButton.Add -> pendingAdd
@@ -536,7 +536,7 @@ open class QueueRow(context: Context) : View(context) {
         }
         if (reorderable) {
             val g = dp(16)
-            canvas.drawBitmap(iconBitmap(UiIcons.grip, g, t.palette.textMuted), dp(GRIP) / 2f - g / 2f, (h - g) / 2, null)
+            canvas.drawIcon(iconBitmap(UiIcons.grip, g, t.palette.textMuted), dp(GRIP) / 2f - g / 2f, (h - g) / 2)
         }
 
         val left = trackLeft + 2 * u
@@ -562,7 +562,7 @@ open class QueueRow(context: Context) : View(context) {
         }
         if (reorderable) {
             val g = dp(16)
-            canvas.drawBitmap(iconBitmap(UiIcons.close, g, t.palette.textMuted), w - dp(REMOVE) / 2f - g / 2f, (h - g) / 2, null)
+            canvas.drawIcon(iconBitmap(UiIcons.close, g, t.palette.textMuted), w - dp(REMOVE) / 2f - g / 2f, (h - g) / 2)
         }
     }
 

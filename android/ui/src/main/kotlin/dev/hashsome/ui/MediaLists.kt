@@ -197,7 +197,8 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
     private var searchOpen = false
 
     private val searchRule = View(context)
-    private val searchButton = GlyphButton(context, Ui.search, 18f).also { it.sizeDp = 30 }
+    // No background, as the web's: a muted glyph in a box as tall as the search field, so the row of tabs is as tall as the field that replaces it.
+    private val searchButton = GlyphButton(context, Ui.search, 18f, plain = true).also { it.sizeDp = SearchBar.HEIGHT }
     private val searchTrigger = RowLayout(context).also { it.gap = 2 }
 
     private val column = ColumnLayout(context).also { it.gap = 3 }
@@ -232,7 +233,7 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
         area.addView(skeleton, FrameLayout.LayoutParams(-1, -2))
         area.addView(note, FrameLayout.LayoutParams(-1, -2))
         searchTrigger.addView(searchRule, FlexParams(dp(1), dp(20)))
-        searchTrigger.addView(searchButton, FlexParams(dp(30), dp(30)))
+        searchTrigger.addView(searchButton, FlexParams(dp(SearchBar.HEIGHT), dp(SearchBar.HEIGHT)))
         searchButton.contentDescription = "Search"
         searchButton.onClick = {
             searchOpen = true

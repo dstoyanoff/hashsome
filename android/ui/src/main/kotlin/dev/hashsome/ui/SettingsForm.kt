@@ -216,7 +216,7 @@ class FormSelect(context: Context) : View(context) {
         val room = width - dp(14) - chevron - dp(8) - dp(10)
         val shown = android.text.TextUtils.ellipsize(selected, text, room.toFloat(), android.text.TextUtils.TruncateAt.END)
         canvas.drawTextCentered(shown, dp(14f), h / 2, text)
-        canvas.drawBitmap(iconBitmap(UiIcons.chevronDown, chevron, p.text), (width - dp(10) - chevron).toFloat(), (h - chevron) / 2, null)
+        canvas.drawIcon(iconBitmap(UiIcons.chevronDown, chevron, p.text), (width - dp(10) - chevron).toFloat(), (h - chevron) / 2)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {

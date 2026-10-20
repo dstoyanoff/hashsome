@@ -624,7 +624,7 @@ internal class UnderlineTabs(context: Context, private val tabs: List<ListTab>) 
             val gap = 2 * unitPx()
             val textW = text.measureText(label)
             val x = i * w + (w - (glyph + gap + textW)) / 2
-            canvas.drawBitmap(iconBitmap(if (tab == ListTab.Library) Ui.library else Ui.listMusic, glyph, ink), x, (h - glyph) / 2, null)
+            canvas.drawIcon(iconBitmap(if (tab == ListTab.Library) Ui.library else Ui.listMusic, glyph, ink), x, (h - glyph) / 2)
             canvas.drawTextCentered(label, x + glyph + gap, h / 2, text)
         }
         paint.color = t.palette.accent

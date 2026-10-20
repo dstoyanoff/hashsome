@@ -125,7 +125,7 @@ internal class ActivityRowView(context: Context, private val entry: LogbookEntry
             canvas.drawTextCentered(initials, size / 2, cy, strong, Paint.Align.CENTER)
         } else if (glyph != null) {
             val s = dp(16)
-            canvas.drawBitmap(iconBitmap(glyph, s, if (entry.actor == null) p.textMuted else p.text), size / 2 - s / 2f, cy - s / 2f, null)
+            canvas.drawIcon(iconBitmap(glyph, s, if (entry.actor == null) p.textMuted else p.text), size / 2 - s / 2f, cy - s / 2f)
         }
 
         val x = size + 3 * unitPx()
