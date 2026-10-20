@@ -11,6 +11,7 @@ import {
   sanitizeName,
   sourcesFor,
   svgToVectorDrawable,
+  expandArcFlags,
   toPathData,
 } from '../android-icons.ts';
 
@@ -361,5 +362,25 @@ describe('iconsCommand', () => {
     expect(() => iconsCommand(['a', 'b', '--dir', fixtures, '--package', 'x'], root)).toThrow(
       'exactly one',
     );
+  });
+});
+
+describe('expandArcFlags', () => {
+  test('writes an arc whose flags run into its numbers with its seven values apart', () => {
+    expect(expandArcFlags('M10.083 5.428 5.57 4.083a2 2 0 10.001 3.834l4.512-1.345')).toBe(
+      'M10.083 5.428 5.57 4.083a2 2 0 1 0 .001 3.834l4.512-1.345',
+    );
+
+    expect(expandArcFlags('a2 2 0 011 1')).toBe('a2 2 0 0 1 1 1');
+  });
+
+  test('leaves a path that has no arcs, or arcs already apart, as it was', () => {
+    expect(expandArcFlags('M1 2L3 4')).toBe('M1 2L3 4');
+    expect(expandArcFlags('M0 0a2 2 0 0 1 4 0')).toBe('M0 0a2 2 0 0 1 4 0');
+  });
+
+  test('handles repeated arcs under one command and absolute arcs', () => {
+    expect(expandArcFlags('a1 1 0 11 2 0 1 1 0 01-2 0')).toBe('a1 1 0 1 1 2 0 1 1 0 0 1 -2 0');
+    expect(expandArcFlags('A3 3 0 1 0 6 0')).toBe('A3 3 0 1 0 6 0');
   });
 });
