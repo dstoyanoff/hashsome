@@ -859,8 +859,14 @@ internal class NowPlayingScreenView(
     private var queue: QueueControl? = null
     private var wide = true
 
-    // A wide display has the queue and the library beside the artwork; it is known from the display, before the first layout.
-    private val stage = context.resources.displayMetrics.let { it.widthPixels >= it.heightPixels * 1.3f }
+    // A wide display has the queue and the library beside the artwork; it is known from the display, before the first layout. The X2i
+    // is wide by that ratio too (930x460 dp) but far too short for a panel beside the artwork, so a real height is also asked for.
+    private val stage = context.resources.displayMetrics.let { dm ->
+        val density = dm.density
+        val w = dm.widthPixels / density
+        val h = dm.heightPixels / density
+        w >= h * 1.3f && h >= STAGE_MIN_HEIGHT
+    }
     private var shown = MAX_UP_NEXT
 
     init {
@@ -1235,5 +1241,8 @@ internal class NowPlayingScreenView(
         const val KEYS = 64
         const val MAX_UP_NEXT = 4
         const val SAMPLE = 24
+
+        /** The least height, in dp, for the queue and the library to sit beside the artwork; under it (the X2i's 460 dp) they would have no room. */
+        const val STAGE_MIN_HEIGHT = 700
     }
 }
