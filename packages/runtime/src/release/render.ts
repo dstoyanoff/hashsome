@@ -32,7 +32,7 @@ export function safeName(raw: string): string {
 
 export function dockerfile({ port }: Pick<ReleaseInfo, 'port'>): string {
   return `# The release's server and client: nothing is installed or compiled here.
-FROM node:24-slim
+FROM node:24.22.1-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
 ENV NODE_ENV=production PORT=${port}
 WORKDIR /app
 COPY server.mjs ./
