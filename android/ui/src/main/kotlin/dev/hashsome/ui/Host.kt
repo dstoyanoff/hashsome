@@ -427,6 +427,7 @@ open class DashboardActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         hideSystemBars()
+        followKeyboard()
         Hashsome.screenPolicy.attach(this)
         Hashsome.connect()
         // The settings sheet, Home Assistant's select and a PROVISION broadcast all write `settings.dashboard`: whichever writes last
@@ -456,6 +457,20 @@ open class DashboardActivity : Activity() {
     /** The dashboard `Hashsome.settings.dashboard` names; the first one when it names none that exists. */
     protected open fun chosenDashboard(): Dashboard? {
         return pickDashboard(Hashsome.app.dashboards, Hashsome.settings.dashboard.value) { Log.e("Hashsome", it) }
+    }
+
+    /**
+     * Shifts the page up by the keyboard's height while it is shown, so a field near the bottom (the library's search, in the
+     * full-screen player's bottom panel) stays above it. The window already fills the screen under the system bars (`hideSystemBars`),
+     * so there is nothing left for the platform's own `windowSoftInputMode` to resize or pan against; this does that by hand.
+     */
+    private fun followKeyboard() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        window.decorView.setOnApplyWindowInsetsListener { _, insets ->
+            val ime = insets.getInsets(WindowInsets.Type.ime()).bottom
+            findViewById<View>(android.R.id.content).translationY = -ime.toFloat()
+            insets
+        }
     }
 
     private fun hideSystemBars() {
