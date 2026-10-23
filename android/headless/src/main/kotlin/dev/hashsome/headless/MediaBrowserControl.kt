@@ -395,8 +395,9 @@ class MediaBrowserControl(val handle: EntityHandle<MediaPlayerEntity>, val scope
     }
 
     companion object {
-        /** How long typing stops before a search is sent. */
-        const val SEARCH_PAUSE_MS = 300L
+        /** How long typing stops before a search is sent: long enough that a tap-typed word on a wall tablet's on-screen keyboard
+         * (slower, more uneven than a physical one) does not fire a search partway through it. */
+        const val SEARCH_PAUSE_MS = 500L
 
         /** How long a play from the library is shown as waiting at most (the web's `playItem` settle time is also 15 s; see [PressTracker.PENDING_MS] for the divergence) (a player takes many seconds to start an album). */
         const val PLAY_PENDING_MS = 15_000L
