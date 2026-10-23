@@ -1,11 +1,11 @@
 {
   "name": "hashsome",
   "private": true,
-  "version": "0.20.0",
+  "version": "0.21.0",
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "24.21.0",
+      "version": "24.22.1",
       "onFail": "download"
     }
   },

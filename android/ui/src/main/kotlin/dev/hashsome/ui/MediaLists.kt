@@ -159,6 +159,85 @@ internal class SkeletonList(context: Context, private val rows: Int = 6) : View(
     }
 }
 
+/** Placeholders shaped like the cards that are coming, in the room they take, so nothing moves when they arrive (the theater layout's
+ * counterpart to [SkeletonList], the web's theater skeleton). */
+internal class TheaterSkeletonList(context: Context, private val count: Int = 10) : View(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val rect = RectF()
+    private var pulse: ValueAnimator? = null
+    private var shade = 0.1f
+
+    override fun onVisibilityChanged(changed: View, visibility: Int) {
+        super.onVisibilityChanged(changed, visibility)
+        if (changed === this) sync()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        sync()
+    }
+
+    /** The pulse runs only while the placeholders are on show: an animation nobody sees still costs a frame each time. */
+    private fun sync() {
+        pulse?.cancel()
+        pulse = null
+        if (Animation.full && isAttachedToWindow && visibility == VISIBLE) {
+            pulse = ValueAnimator.ofFloat(0.04f, 0.14f).apply {
+                duration = 700
+                repeatCount = ValueAnimator.INFINITE
+                repeatMode = ValueAnimator.REVERSE
+                interpolator = EASE
+                addUpdateListener {
+                    shade = it.animatedValue as Float
+                    invalidate()
+                }
+                start()
+            }
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        pulse?.cancel()
+        pulse = null
+    }
+
+    private fun block(canvas: Canvas, l: Float, t: Float, r: Float, b: Float, radius: Float) {
+        val p = theme.palette
+        rect.set(l, t, r, b)
+        paint.color = p.surfaceRaised
+        canvas.drawRoundRect(rect, radius, radius, paint)
+        paint.color = withAlpha(p.text, shade)
+        canvas.drawRoundRect(rect, radius, radius, paint)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        if (height <= 0) return
+        val u = unitPx()
+        val small = dp(theme.radius.small)
+        // The same sizing a real card gets (`fillTheater`): the room under the label, clamped to the card's least and most.
+        val side = (height - dp(BrowseCard.LABEL)).coerceIn(dp(CARD_MIN), dp(CARD_MAX)).toFloat()
+        val gap = 3 * u
+        var x = 0f
+        var i = 0
+        while (x < width && i < count) {
+            block(canvas, x, 0f, x + side, side, small)
+            val y1 = side + 1.5f * u
+            block(canvas, x, y1, x + side * 0.7f, y1 + dp(12f), small / 2)
+            val y2 = y1 + dp(12f) + u
+            block(canvas, x, y2, x + side * 0.45f, y2 + dp(10f), small / 2)
+            x += side + gap
+            i++
+        }
+    }
+
+    private companion object {
+        // Mirrors MediaBrowserView's own CARD_MAX/CARD_MIN (the web's CARD and MIN_CARD): a card's artwork side when there is room for it, and the least it gets, in dp.
+        const val CARD_MAX = 200
+        const val CARD_MIN = 120
+    }
+}
+
 /** A line of text where a list would be (an error, nothing found). */
 internal fun message(context: Context, text: String, tone: Tone = Tone.Muted): LabelView =
     LabelView(context, Role.Body, tone).also { it.text = text }
@@ -216,6 +295,7 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
     private val scroll = LibraryScroll(context)
     private val host = LinearLayout(context).also { it.orientation = LinearLayout.VERTICAL }
     private val skeleton = SkeletonList(context)
+    private val theaterSkeleton = TheaterSkeletonList(context)
     private val note = FrameLayout(context)
     private val rows = ArrayList<BrowseRow>()
     private val pictures = ArrayList<ArtworkSlot>()
@@ -254,6 +334,7 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
         area.addView(scroll, FrameLayout.LayoutParams(-1, -1))
         area.addView(theaterScroll, FrameLayout.LayoutParams(-1, -1))
         area.addView(skeleton, FrameLayout.LayoutParams(-1, -2))
+        area.addView(theaterSkeleton, FrameLayout.LayoutParams(-1, -1))
         area.addView(note, FrameLayout.LayoutParams(-1, -2))
         searchTrigger.addView(searchRule, FlexParams(dp(1), dp(20)))
         searchTrigger.addView(searchButton, FlexParams(dp(SearchBar.HEIGHT), dp(SearchBar.HEIGHT)))
@@ -402,6 +483,7 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
     private fun content(s: BrowserState) {
         val error = s.error
         skeleton.visibility = GONE
+        theaterSkeleton.visibility = GONE
         note.visibility = GONE
         scroll.visibility = GONE
         theaterScroll.visibility = GONE
@@ -414,8 +496,7 @@ open class MediaBrowserView private constructor(context: Context, lazyControl: L
             }
 
             s.loading -> {
-                // The cards have no placeholder: the row is empty until they come.
-                if (layout == BrowseLayout.List) skeleton.visibility = VISIBLE
+                if (layout == BrowseLayout.List) skeleton.visibility = VISIBLE else theaterSkeleton.visibility = VISIBLE
                 clearRows()
             }
 

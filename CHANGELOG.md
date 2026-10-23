@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.21.0 (2026-10-22)
+
+### Features
+
+- **android-ui:** a sensor with no update for a day is flagged, and its drawer says it may be dead or stuck (#220) ([b9f5ff8](https://github.com/dstoyanoff/hashsome/commit/b9f5ff828885caabbbe1e0dd614b7a3c79b1568c))
+- **android-ui:** a battery under 10% says so at the center of the screen, for every percent it drops (#218) ([2b9ffb3](https://github.com/dstoyanoff/hashsome/commit/2b9ffb30436abde8c801661035311d0bacd6658f))
+- **android-ui:** a page can have a column that scrolls on its own (#219) ([9d4a48e](https://github.com/dstoyanoff/hashsome/commit/9d4a48e1ad0841f2bb459f6f330d5c53ab1d0b71))
+- **android-ui:** the weather forecast has the layout for a wide space, and a page of its own (#216) ([98db2d2](https://github.com/dstoyanoff/hashsome/commit/98db2d24b2e6b3cebf1abc856985e0bf1212b2ac))
+- **android-ui:** a wide player with its queue beside it, and a full-screen player with the queue and the library (#215) ([7e95e05](https://github.com/dstoyanoff/hashsome/commit/7e95e05401300336e46a6ce053758045da6edef8))
+- **android:** the tablet pins itself, so an edge swipe shows no bars, and it shows its battery (#214) ([8cf7ab2](https://github.com/dstoyanoff/hashsome/commit/8cf7ab2678df2ada5c9593fe2f56762bdac848ce))
+- **android-ui:** the full player's shuffle and speakers are keys of the transport row (#213) ([d426731](https://github.com/dstoyanoff/hashsome/commit/d42673126df1a815b1ab72dce853e13eb4d5544e))
+- **android-ui:** a real thermostat tile with a mode menu, a target stepper and a drawer (#211) ([9431285](https://github.com/dstoyanoff/hashsome/commit/943128536d8f08cf8723a86ab060c6446ee1bd45))
+- **android-ui:** the tablet top bar: title with a dashboard menu, scene buttons, who is home (#210) ([05efef2](https://github.com/dstoyanoff/hashsome/commit/05efef21e7a1a765cd725da04df20a193044816e))
+- **android-kiosk:** the app as device owner switches the tablet's pull-down shade off (#209) ([30f8246](https://github.com/dstoyanoff/hashsome/commit/30f824658b98cf12083ddc31a5237a4addc80697))
+- **android:** provisioning a tablet switches off its lock screen and sets the app as home on current Android (#207) ([1aa7f84](https://github.com/dstoyanoff/hashsome/commit/1aa7f84a970321dfd6e84f41603849bd200d0929))
+
+### Fixes
+
+- **runtime:** pin the release image's Node base by version and digest (NARN-92) (#222) ([0b691db](https://github.com/dstoyanoff/hashsome/commit/0b691db0a444d3bf3e6b27bcb8015d45db53773b))
+- **android-ui:** the full-screen player's queue and library panels no longer show on the X2i (#221) ([4bf6751](https://github.com/dstoyanoff/hashsome/commit/4bf6751c733806a10f6e2820460e32c3d3483169))
+- **android-ui:** widening the weather drawer no longer crashes the app (#217) ([3b00aaf](https://github.com/dstoyanoff/hashsome/commit/3b00aafec36925b4507cf57d4b344f05ccf38d6b))
+- **android-kiosk:** a tablet stays asleep after its power key, and its settings open from the settings sheet (#208) ([0d67852](https://github.com/dstoyanoff/hashsome/commit/0d6785289cb5722baf806784b109dedaa15e5c23))
+- **android-ui:** the system bars stay hidden after the screen wakes on Android 11 and later (#206) ([dc87108](https://github.com/dstoyanoff/hashsome/commit/dc8710817b693a47bfad94a0988df12368eb6306))
+- **android-kiosk:** an update that is not installing no longer shows as installing in Home Assistant (#204) ([c842d40](https://github.com/dstoyanoff/hashsome/commit/c842d402cb7e4550c434b62a3e9d89012990628e))
+- **android-ui:** the artwork of the full player opens the full-screen player (#203) ([69edebd](https://github.com/dstoyanoff/hashsome/commit/69edebd160121d817920d4df24c9174a8c1cc0c9))
+- **android-kiosk:** an update download that stalls or drops resumes instead of failing (#205) ([244eb25](https://github.com/dstoyanoff/hashsome/commit/244eb25e6dba049a764894c75e2217ad64d2cbf1))
+
 ## 0.20.0 (2026-10-20)
 
 ### ⚠ Breaking changes

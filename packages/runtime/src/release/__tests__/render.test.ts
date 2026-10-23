@@ -35,7 +35,10 @@ describe('names', () => {
 describe('the image', () => {
   test('is the bundle on a slim Node, run as a user that is not root, with a health check', () => {
     const file = dockerfile(info);
-    expect(file).toContain('FROM node:24-slim');
+    expect(file).toContain(
+      'FROM node:24.22.1-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205',
+    );
+
     expect(file).toContain('COPY server.mjs');
     expect(file).toContain('USER node');
     expect(file).toContain('/healthz');
