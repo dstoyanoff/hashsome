@@ -460,15 +460,33 @@ open class DashboardActivity : Activity() {
     }
 
     /**
-     * Shifts the page up by the keyboard's height while it is shown, so a field near the bottom (the library's search, in the
-     * full-screen player's bottom panel) stays above it. The window already fills the screen under the system bars (`hideSystemBars`),
-     * so there is nothing left for the platform's own `windowSoftInputMode` to resize or pan against; this does that by hand.
+     * Shifts the page up while the keyboard covers the field that is focused, by only as much as the overlap (a field already clear
+     * of the keyboard, the X2i's search icon near the top, is not moved at all). The window already fills the screen under the
+     * system bars (`hideSystemBars`), so there is nothing left for the platform's own `windowSoftInputMode` to resize or pan
+     * against; this does that by hand.
      */
     private fun followKeyboard() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
         window.decorView.setOnApplyWindowInsetsListener { _, insets ->
+            val content = findViewById<View>(android.R.id.content)
             val ime = insets.getInsets(WindowInsets.Type.ime()).bottom
-            findViewById<View>(android.R.id.content).translationY = -ime.toFloat()
+            if (ime <= 0) {
+                content.translationY = 0f
+                return@setOnApplyWindowInsetsListener insets
+            }
+            // Measured at its own layout position: undoing a shift from an earlier keyboard state first, in this same callback,
+            // so nothing is drawn at 0 in between.
+            content.translationY = 0f
+            val focused = currentFocus
+            val screenBottom = window.decorView.height
+            val overlap = if (focused != null) {
+                val loc = IntArray(2)
+                focused.getLocationOnScreen(loc)
+                ((loc[1] + focused.height) - (screenBottom - ime)).coerceAtLeast(0)
+            } else {
+                ime
+            }
+            content.translationY = -overlap.toFloat()
             insets
         }
     }
